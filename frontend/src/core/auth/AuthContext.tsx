@@ -1,11 +1,11 @@
 /**
- * Authentication Context
+ * Authentication Provider Component
  *
  * Provides authentication state and methods throughout the application.
  * Manages user sessions, login, logout, and registration.
  */
 
-import { createContext, useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type {
   AuthContextValue,
   AuthState,
@@ -13,44 +13,30 @@ import type {
   RegisterData,
   User,
 } from './types';
+import { AuthContext } from './context';
 import { pb, getCurrentUser, clearAuth, onAuthChange, Collections } from '../api/pocketbase';
 import { queryClient, queryKeys } from '../api/queryClient';
-
-const initialState: AuthState = {
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  isLoading: true,
-};
-
-export const AuthContext = createContext<AuthContextValue>({
-  ...initialState,
-  login: async () => {},
-  logout: () => {},
-  register: async () => {},
-  refreshUser: async () => {},
-});
 
 interface AuthProviderProps {
   children: React.ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [state, setState] = useState<AuthState>(initialState);
-
-  /**
-   * Initialize auth state from PocketBase store
-   */
-  useEffect(() => {
+  // Initialize state from PocketBase store immediately
+  const [state, setState] = useState<AuthState>(() => {
     const user = getCurrentUser();
-    setState({
+    return {
       user,
       token: pb.authStore.token || null,
       isAuthenticated: pb.authStore.isValid,
       isLoading: false,
-    });
+    };
+  });
 
-    // Subscribe to auth changes
+  /**
+   * Subscribe to auth changes
+   */
+  useEffect(() => {
     const unsubscribe = onAuthChange((token, model) => {
       setState({
         user: model,
@@ -161,7 +147,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // If refresh fails, user might be deleted or token invalid
       logout();
     }
-  }, [state.user?.id, logout]);
+  }, [state.user, logout]);
 
   const value: AuthContextValue = {
     ...state,

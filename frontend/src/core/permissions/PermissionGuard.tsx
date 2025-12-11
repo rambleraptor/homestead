@@ -82,19 +82,3 @@ export function PermissionGuard({
 
   return <>{children}</>;
 }
-
-/**
- * Higher-order component version of PermissionGuard
- */
-export function withPermission<P extends object>(
-  Component: React.ComponentType<P>,
-  options: Omit<PermissionGuardProps, 'children'>
-) {
-  return function PermissionWrappedComponent(props: P) {
-    return (
-      <PermissionGuard {...options}>
-        <Component {...props} />
-      </PermissionGuard>
-    );
-  };
-}
