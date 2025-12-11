@@ -305,12 +305,16 @@ We welcome contributions! Here's how:
 
 ### Code Review
 
-This project uses **Claude Code** for automated code reviews via GitHub Actions. When you open a PR:
-
+**Automated CI Checks** run on every PR:
 - ✅ TypeScript type checking
 - ✅ ESLint validation
-- ✅ Security scan
-- ✅ Claude AI code review
+- ✅ Build verification
+- ✅ Security scanning (npm audit)
+
+**For AI-Powered Code Reviews with Claude:**
+- Use [Claude Code](https://claude.ai/code) to review PRs locally
+- Or invoke Claude in GitHub PR comments for review feedback
+- See [`.github/workflows/code-review.yml`](.github/workflows/code-review.yml) for CI configuration
 
 ## 📝 License
 
