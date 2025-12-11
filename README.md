@@ -251,7 +251,26 @@ function AdminOnlyPage() {
 
 ## 🛠️ Development
 
-### Available Scripts
+### Using the Makefile
+
+HomeOS includes a Makefile for common development tasks. All commands should be run from the project root:
+
+```bash
+make help          # Show all available commands
+make install       # Install dependencies
+make dev           # Start development server
+make build         # Build for production
+make lint          # Run ESLint
+make type-check    # Run TypeScript type checking
+make audit         # Run security audit
+make ci            # Run all CI checks (lint + type-check + build)
+make all           # Install + lint + type-check + build
+make clean         # Remove build artifacts and dependencies
+```
+
+### Available NPM Scripts
+
+If you prefer using npm directly (from the `frontend/` directory):
 
 ```bash
 npm run dev        # Start dev server
