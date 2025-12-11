@@ -1,16 +1,12 @@
 /// <reference path="../pb_data/types.d.ts" />
 migrate((db) => {
   const collection = new Collection({
-    "id": "user_roles_id",
-    "created": "2024-12-11 00:00:01.000Z",
-    "updated": "2024-12-11 00:00:01.000Z",
     "name": "user_roles",
     "type": "base",
     "system": false,
     "schema": [
       {
         "system": false,
-        "id": "role_text",
         "name": "role",
         "type": "text",
         "required": true,
@@ -24,7 +20,6 @@ migrate((db) => {
       },
       {
         "system": false,
-        "id": "name_text",
         "name": "name",
         "type": "text",
         "required": true,
@@ -38,7 +33,6 @@ migrate((db) => {
       },
       {
         "system": false,
-        "id": "description_text",
         "name": "description",
         "type": "text",
         "required": false,
@@ -52,7 +46,6 @@ migrate((db) => {
       },
       {
         "system": false,
-        "id": "permissions_json",
         "name": "permissions",
         "type": "json",
         "required": true,

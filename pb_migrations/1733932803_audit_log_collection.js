@@ -1,16 +1,12 @@
 /// <reference path="../pb_data/types.d.ts" />
 migrate((db) => {
   const collection = new Collection({
-    "id": "audit_log_id",
-    "created": "2024-12-11 00:00:03.000Z",
-    "updated": "2024-12-11 00:00:03.000Z",
     "name": "audit_log",
     "type": "base",
     "system": false,
     "schema": [
       {
         "system": false,
-        "id": "user_relation",
         "name": "user",
         "type": "relation",
         "required": false,
@@ -26,7 +22,6 @@ migrate((db) => {
       },
       {
         "system": false,
-        "id": "action_text",
         "name": "action",
         "type": "text",
         "required": true,
@@ -40,7 +35,6 @@ migrate((db) => {
       },
       {
         "system": false,
-        "id": "resource_text",
         "name": "resource",
         "type": "text",
         "required": false,
@@ -54,7 +48,6 @@ migrate((db) => {
       },
       {
         "system": false,
-        "id": "details_json",
         "name": "details",
         "type": "json",
         "required": false,
@@ -66,7 +59,6 @@ migrate((db) => {
       },
       {
         "system": false,
-        "id": "ip_address_text",
         "name": "ip_address",
         "type": "text",
         "required": false,
@@ -80,7 +72,6 @@ migrate((db) => {
       },
       {
         "system": false,
-        "id": "user_agent_text",
         "name": "user_agent",
         "type": "text",
         "required": false,
