@@ -402,87 +402,44 @@ false // Audit logs are immutable
 3. Run: `./pocketbase serve`
 4. Access admin UI: `http://127.0.0.1:8090/_/`
 
-### 2. Create Collections
+### 2. Apply Database Migrations
 
-You can create collections either through:
-- **Admin UI**: Use the web interface (easier for first-time setup)
-- **Migrations**: Use the JSON schemas provided above
+**Automatic (Recommended)**: Migrations are automatically applied when PocketBase starts.
 
-### 3. Seed Initial Data
+The `pb_migrations/` directory contains all the schema migrations:
+- `1733932800_users_collection.js` - Extends users with custom fields (name, avatar, role)
+- `1733932801_user_roles_collection.js` - Creates user_roles collection
+- `1733932802_module_permissions_collection.js` - Creates module_permissions collection
+- `1733932803_audit_log_collection.js` - Creates audit_log collection
+- `1733932804_seed_initial_roles.js` - Seeds initial role data (admin, member, viewonly)
 
-Create a migration file or use the admin UI to add initial roles:
+When you run `./pocketbase serve`, these migrations will be automatically detected and applied.
 
-```javascript
-// pb_migrations/initial_roles.js
-migrate((db) => {
-  const dao = new Dao(db);
-  const collection = dao.findCollectionByNameOrId("user_roles");
-
-  // Admin Role
-  const adminRole = new Record(collection);
-  adminRole.set("role", "admin");
-  adminRole.set("name", "Admin (Parent)");
-  adminRole.set("description", "Full system access");
-  adminRole.set("permissions", {
-    modules: {
-      dashboard: { read: true, write: true, admin: true },
-      chores: { read: true, write: true, admin: true },
-      meals: { read: true, write: true, admin: true }
-    },
-    system: {
-      manageUsers: true,
-      viewAuditLog: true
-    }
-  });
-  dao.saveRecord(adminRole);
-
-  // Member Role
-  const memberRole = new Record(collection);
-  memberRole.set("role", "member");
-  memberRole.set("name", "Member (Family)");
-  memberRole.set("description", "Standard family member access");
-  memberRole.set("permissions", {
-    modules: {
-      dashboard: { read: true, write: false, admin: false },
-      chores: { read: true, write: true, admin: false },
-      meals: { read: true, write: true, admin: false }
-    },
-    system: {
-      manageUsers: false,
-      viewAuditLog: false
-    }
-  });
-  dao.saveRecord(memberRole);
-
-  // View Only Role
-  const viewRole = new Record(collection);
-  viewRole.set("role", "viewonly");
-  viewRole.set("name", "View Only (Guest)");
-  viewRole.set("description", "Read-only access for guests");
-  viewRole.set("permissions", {
-    modules: {
-      dashboard: { read: true, write: false, admin: false },
-      chores: { read: true, write: false, admin: false },
-      meals: { read: true, write: false, admin: false }
-    },
-    system: {
-      manageUsers: false,
-      viewAuditLog: false
-    }
-  });
-  dao.saveRecord(viewRole);
-});
+**Manual**: If you prefer to apply migrations manually:
+```bash
+cd pocketbase
+./pocketbase migrate up
 ```
 
-### 4. Create First Admin User
+**Verify**: Check the admin UI at `http://127.0.0.1:8090/_/` to see all collections have been created.
 
-1. Via Admin UI: Go to Collections > users
+See [Migration Documentation](../pb_migrations/README.md) for more details.
+
+### 3. Create First Admin User
+
+**Option A: Via Admin UI** (Recommended for first user)
+1. Go to Collections > users
 2. Create new auth record with:
    - Email: your@email.com
    - Password: (set a strong password)
    - Name: Your Name
    - Role: admin
    - Verified: true
+
+**Option B: Via Frontend Registration**
+1. Start the frontend: `cd frontend && npm run dev`
+2. Navigate to the registration page
+3. Create your account (first user should be set to admin role manually via Admin UI)
 
 ---
 
@@ -583,9 +540,10 @@ migrate((db) => {
 
 ## Next Steps
 
-1. Set up PocketBase and create collections
-2. Create initial admin user
-3. Test authentication flow
-4. Implement frontend auth integration
+1. ✅ Database migrations are ready in `pb_migrations/`
+2. Set up PocketBase binary and run migrations (automatically applied on first start)
+3. Create initial admin user via Admin UI
+4. Test authentication flow in the frontend
 5. Build first module (Dashboard)
 6. Add module permission checks in UI
+7. Configure role permissions as needed
