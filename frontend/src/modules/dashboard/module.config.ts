@@ -14,7 +14,6 @@ export const dashboardModule: HomeModule = {
   name: 'Dashboard',
   description: 'Overview of your HomeOS system',
   icon: LayoutDashboard,
-  requiredRole: 'viewonly', // Available to all authenticated users
   basePath: '/dashboard',
   routes: dashboardRoutes,
   showInNav: true,

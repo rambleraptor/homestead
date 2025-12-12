@@ -20,7 +20,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
 
   // Get modules available to current user
-  const modules = user ? getNavigationModules(user.role) : [];
+  const modules = user ? getNavigationModules() : [];
 
   const handleLogout = () => {
     logout();
@@ -76,9 +76,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                     {user.name}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                    {user.role}
                   </p>
                 </div>
               </div>

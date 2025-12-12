@@ -7,16 +7,6 @@
 
 import type { RouteObject } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import type { UserRole } from '../core/auth/types';
-
-/**
- * Permission levels for module access
- */
-export interface ModulePermissions {
-  read: boolean;
-  write: boolean;
-  admin: boolean;
-}
 
 /**
  * Core Module Configuration
@@ -44,12 +34,6 @@ export interface HomeModule {
    * Lucide icon component for navigation
    */
   icon: LucideIcon;
-
-  /**
-   * Minimum required role to access this module
-   * Users with lower roles will not see this module
-   */
-  requiredRole: UserRole;
 
   /**
    * Base path for module routes (must start with /)
@@ -95,40 +79,7 @@ export interface HomeModule {
 export interface ModuleRegistry {
   modules: HomeModule[];
   getModule: (id: string) => HomeModule | undefined;
-  getModulesByRole: (role: UserRole) => HomeModule[];
-  getNavigationModules: (role: UserRole) => HomeModule[];
-}
-
-/**
- * Per-user module permission override
- */
-export interface ModulePermissionOverride {
-  id: string;
-  user: string;
-  module_id: string;
-  enabled: boolean;
-  permissions?: ModulePermissions;
-  created: string;
-  updated: string;
-}
-
-/**
- * Role definition with permissions matrix
- */
-export interface RoleDefinition {
-  id: string;
-  role: UserRole;
-  name: string;
-  description: string;
-  permissions: {
-    modules: Record<string, ModulePermissions>;
-    system: {
-      manageUsers: boolean;
-      viewAuditLog: boolean;
-    };
-  };
-  created: string;
-  updated: string;
+  getNavigationModules: () => HomeModule[];
 }
 
 /**

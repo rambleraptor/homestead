@@ -113,8 +113,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await pb.collection(Collections.USERS).create({
         ...data,
         emailVisibility: true,
-        // Default role is 'member' unless specified
-        role: data.role || 'member',
       });
 
       // Auto-login after registration

@@ -15,7 +15,6 @@ export function DashboardHome() {
     {
       title: 'Welcome Back',
       value: user?.name || 'User',
-      subtitle: `Role: ${user?.role || 'Unknown'}`,
       icon: Users,
       color: 'blue',
     },
@@ -77,9 +76,6 @@ export function DashboardHome() {
                   </p>
                   <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
                     {stat.value}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
-                    {stat.subtitle}
                   </p>
                 </div>
                 <div
@@ -153,18 +149,12 @@ export function DashboardHome() {
         <h2 className="text-xl font-bold mb-4">
           ✨ Modular Architecture
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h3 className="font-semibold mb-2">Self-Contained Modules</h3>
             <p className="text-sm text-primary-100">
               Each module has its own components, hooks, routes, and types. No
               cross-dependencies.
-            </p>
-          </div>
-          <div>
-            <h3 className="font-semibold mb-2">Role-Based Access</h3>
-            <p className="text-sm text-primary-100">
-              Built-in RBAC ensures users only see what they're allowed to access.
             </p>
           </div>
           <div>

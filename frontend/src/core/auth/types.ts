@@ -2,15 +2,12 @@
  * Core Authentication Types for HomeOS
  */
 
-export type UserRole = 'admin' | 'member' | 'viewonly';
-
 export interface User {
   id: string;
   email: string;
   username: string;
   name: string;
   avatar?: string;
-  role: UserRole;
   verified: boolean;
   emailVisibility?: boolean;
   created: string;
@@ -35,7 +32,6 @@ export interface RegisterData {
   passwordConfirm: string;
   name: string;
   username: string;
-  role?: UserRole;
 }
 
 export interface AuthContextValue extends AuthState {

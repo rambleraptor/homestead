@@ -27,25 +27,9 @@ export function useUser() {
 }
 
 /**
- * Hook to get user role
- */
-export function useUserRole() {
-  const { user } = useAuth();
-  return user?.role || null;
-}
-
-/**
  * Hook to check if user is authenticated
  */
 export function useIsAuthenticated() {
   const { isAuthenticated } = useAuth();
   return isAuthenticated;
-}
-
-/**
- * Hook to check if current user is admin
- */
-export function useIsAdmin() {
-  const { user } = useAuth();
-  return user?.role === 'admin';
 }

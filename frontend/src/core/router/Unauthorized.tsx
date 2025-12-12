@@ -5,11 +5,8 @@
 
 import { Link } from 'react-router-dom';
 import { ShieldX, ArrowLeft } from 'lucide-react';
-import { useAuth } from '../auth/useAuth';
 
 export function Unauthorized() {
-  const { user } = useAuth();
-
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center">
@@ -22,14 +19,9 @@ export function Unauthorized() {
         <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
           Access Denied
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-2 max-w-md">
+        <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
           You don't have permission to access this resource.
         </p>
-        {user && (
-          <p className="text-sm text-gray-500 dark:text-gray-500 mb-8">
-            Your role: <span className="font-semibold capitalize">{user.role}</span>
-          </p>
-        )}
         <Link
           to="/dashboard"
           className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"

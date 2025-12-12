@@ -24,8 +24,6 @@
  */
 
 import type { HomeModule, ModuleRegistry } from './types';
-import type { UserRole } from '../core/auth/types';
-import { hasRoleAccess } from '../core/permissions/rbac';
 
 // =============================================================================
 // IMPORT YOUR MODULES HERE
@@ -102,19 +100,10 @@ class ModuleRegistryImpl implements ModuleRegistry {
   }
 
   /**
-   * Get modules accessible by a specific role
+   * Get modules that should appear in navigation
    */
-  getModulesByRole(role: UserRole): HomeModule[] {
-    return this.modules.filter((m) => hasRoleAccess(role, m.requiredRole));
-  }
-
-  /**
-   * Get modules that should appear in navigation for a specific role
-   */
-  getNavigationModules(role: UserRole): HomeModule[] {
-    return this.modules.filter(
-      (m) => m.showInNav !== false && hasRoleAccess(role, m.requiredRole)
-    );
+  getNavigationModules(): HomeModule[] {
+    return this.modules.filter((m) => m.showInNav !== false);
   }
 
   /**
@@ -125,25 +114,11 @@ class ModuleRegistryImpl implements ModuleRegistry {
   }
 
   /**
-   * Get routes accessible by a specific role
-   */
-  getRoutesByRole(role: UserRole): HomeModule['routes'] {
-    return this.modules
-      .filter((m) => hasRoleAccess(role, m.requiredRole))
-      .flatMap((m) => m.routes);
-  }
-
-  /**
    * Get module statistics
    */
   getStats() {
     return {
       total: this.modules.length,
-      byRole: {
-        admin: this.getModulesByRole('admin').length,
-        member: this.getModulesByRole('member').length,
-        viewonly: this.getModulesByRole('viewonly').length,
-      },
       inNavigation: this.modules.filter((m) => m.showInNav !== false).length,
     };
   }
@@ -171,8 +146,8 @@ export function getModuleById(id: string): HomeModule | undefined {
 /**
  * Helper function to get modules for navigation
  */
-export function getNavigationModules(role: UserRole): HomeModule[] {
-  return moduleRegistry.getNavigationModules(role);
+export function getNavigationModules(): HomeModule[] {
+  return moduleRegistry.getNavigationModules();
 }
 
 /**
