@@ -29,6 +29,7 @@ export const Collections = {
   MODULE_PERMISSIONS: 'module_permissions',
   AUDIT_LOG: 'audit_log',
   GIFT_CARDS: 'gift_cards',
+  ENCRYPTION_METADATA: 'encryption_metadata',
 } as const;
 
 /**

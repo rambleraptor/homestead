@@ -6,6 +6,7 @@ A self-hosted, modular web application for managing your home. Built with React,
 
 - **🧩 Modular Architecture** - Add new features by creating self-contained modules
 - **🔐 Role-Based Access Control** - Admin, Member, and View-Only roles
+- **🔒 Encrypted Fields** - End-to-end encryption for sensitive data with client-side crypto
 - **⚡ Fast & Modern** - Built with Vite, React 19, and TypeScript
 - **🎨 Beautiful UI** - Tailwind CSS with dark mode support
 - **💾 Self-Hosted** - Your data stays on your server with PocketBase
@@ -132,6 +133,7 @@ Now you can log in!
 - [**PocketBase Schema**](docs/POCKETBASE_SCHEMA.md) - Database structure and API rules
 - [**Architecture**](PROJECT_STRUCTURE.md) - File structure and design decisions
 - [**Module Guide**](docs/MODULE_GUIDE.md) - How to create new modules *(coming soon)*
+- [**Encrypted Fields**](frontend/src/core/crypto/README.md) - End-to-end encryption for sensitive data
 
 ## 🧩 Creating Your First Module
 
