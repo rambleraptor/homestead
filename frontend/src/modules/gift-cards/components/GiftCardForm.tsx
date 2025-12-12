@@ -156,7 +156,7 @@ export function GiftCardForm({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
         >
           <Save className="w-4 h-4" />
           {isSubmitting ? 'Saving...' : initialData ? 'Update' : 'Add Card'}

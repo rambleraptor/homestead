@@ -42,10 +42,10 @@ export function DashboardHome() {
   ];
 
   const colorClasses = {
-    blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    purple: 'bg-purple-500',
-    orange: 'bg-orange-500',
+    blue: 'bg-blue-600',
+    green: 'bg-green-600',
+    purple: 'bg-purple-600',
+    orange: 'bg-orange-600',
   };
 
   return (
@@ -98,7 +98,7 @@ export function DashboardHome() {
         </h2>
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-primary-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+            <div className="flex-shrink-0 w-6 h-6 bg-primary-500 text-gray-900 rounded-full flex items-center justify-center text-sm font-bold">
               1
             </div>
             <div>
@@ -113,7 +113,7 @@ export function DashboardHome() {
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-primary-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+            <div className="flex-shrink-0 w-6 h-6 bg-primary-500 text-gray-900 rounded-full flex items-center justify-center text-sm font-bold">
               2
             </div>
             <div>
@@ -128,7 +128,7 @@ export function DashboardHome() {
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-primary-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+            <div className="flex-shrink-0 w-6 h-6 bg-primary-500 text-gray-900 rounded-full flex items-center justify-center text-sm font-bold">
               3
             </div>
             <div>
@@ -145,21 +145,21 @@ export function DashboardHome() {
       </div>
 
       {/* Architecture Highlights */}
-      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg shadow-md p-6 text-white">
+      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg shadow-md p-6 text-gray-900">
         <h2 className="text-xl font-bold mb-4">
           ✨ Modular Architecture
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h3 className="font-semibold mb-2">Self-Contained Modules</h3>
-            <p className="text-sm text-primary-100">
+            <p className="text-sm text-gray-700">
               Each module has its own components, hooks, routes, and types. No
               cross-dependencies.
             </p>
           </div>
           <div>
             <h3 className="font-semibold mb-2">Easy to Extend</h3>
-            <p className="text-sm text-primary-100">
+            <p className="text-sm text-gray-700">
               Creating a new module is as simple as following the established pattern.
             </p>
           </div>

@@ -10,11 +10,7 @@ These JavaScript files define the database schema for HomeOS using PocketBase's 
 
 The migrations are numbered and run in order:
 
-1. **1733932800_users_collection.js** - Extends the built-in users auth collection with custom fields (name, avatar, role)
-2. **1733932801_user_roles_collection.js** - Creates the user_roles collection for role-based permissions
-3. **1733932802_module_permissions_collection.js** - Creates the module_permissions collection for per-user module access
-4. **1733932803_audit_log_collection.js** - Creates the audit_log collection for activity tracking
-5. **1733932804_seed_initial_roles.js** - Seeds initial role data (admin, member, viewonly)
+1. **1733932805_gift_cards_collection.js** - Creates the gift_cards collection for managing household gift cards
 
 ## How to Apply Migrations
 

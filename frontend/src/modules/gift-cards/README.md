@@ -45,13 +45,21 @@ In the merchant detail view, you can:
 
 The module uses a `gift_cards` collection in PocketBase with the following fields:
 
-- `merchant` (text, required): Merchant name
-- `card_number` (text, required): Gift card number
-- `pin` (text, optional): Security PIN
-- `amount` (number, required): Current balance
-- `notes` (text, optional): Additional notes
-- `created_by` (relation, optional): User who created the card
+- `merchant` (text, required, max 200): Merchant name
+- `card_number` (text, required, max 100): Gift card number
+- `pin` (text, optional, max 50): Security PIN
+- `amount` (number, required, min 0): Current balance
+- `notes` (text, optional, max 1000): Additional notes
+- `created_by` (relation, optional): User who created the card (relates to users collection)
 - `created`, `updated` (timestamps): Auto-managed by PocketBase
+
+**Migration**: `pb_migrations/1733932805_gift_cards_collection.js`
+
+**Indexes**:
+- `idx_merchant` - Index on merchant field for faster filtering
+- `idx_created_by` - Index on created_by field for ownership queries
+
+See the full schema documentation in `docs/POCKETBASE_SCHEMA.md`.
 
 ### Components
 
@@ -62,11 +70,13 @@ The module uses a `gift_cards` collection in PocketBase with the following field
 
 ### Hooks
 
-- **useGiftCards**: Fetches all gift cards using React Query
+- **useGiftCards**: Fetches all gift cards using React Query (sorted by ID descending)
 - **useMerchantSummaries**: Computes merchant summaries and statistics from gift cards
 - **useCreateGiftCard**: Mutation hook for creating new gift cards
 - **useUpdateGiftCard**: Mutation hook for updating existing gift cards
 - **useDeleteGiftCard**: Mutation hook for deleting gift cards
+
+All hooks use TanStack Query (React Query) for automatic caching, refetching, and state management.
 
 ### Permissions
 

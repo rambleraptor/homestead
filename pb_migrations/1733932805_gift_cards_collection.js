@@ -1,90 +1,56 @@
 /// <reference path="../pb_data/types.d.ts" />
-migrate((db) => {
+migrate((app) => {
+  // Get the users collection ID
+  const usersCollection = app.findCollectionByNameOrId("users");
+
   const collection = new Collection({
-    "id": "gift_cards",
     "name": "gift_cards",
     "type": "base",
     "system": false,
-    "schema": [
+    "fields": [
       {
-        "id": "merchant",
         "name": "merchant",
         "type": "text",
         "required": true,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": null,
-          "max": 200,
-          "pattern": ""
-        }
+        "max": 200
       },
       {
-        "id": "card_number",
         "name": "card_number",
         "type": "text",
         "required": true,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": null,
-          "max": 100,
-          "pattern": ""
-        }
+        "max": 100
       },
       {
-        "id": "pin",
         "name": "pin",
         "type": "text",
         "required": false,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": null,
-          "max": 50,
-          "pattern": ""
-        }
+        "max": 50
       },
       {
-        "id": "amount",
         "name": "amount",
         "type": "number",
         "required": true,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": null,
-          "noDecimal": false
-        }
+        "min": 0
       },
       {
-        "id": "notes",
         "name": "notes",
         "type": "text",
         "required": false,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": null,
-          "max": 1000,
-          "pattern": ""
-        }
+        "max": 1000
       },
       {
-        "id": "created_by",
         "name": "created_by",
         "type": "relation",
         "required": false,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "collectionId": "users",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": ["name", "email"]
-        }
+        "collectionId": usersCollection.id,
+        "cascadeDelete": false,
+        "maxSelect": 1
       }
     ],
     "indexes": [
@@ -95,13 +61,11 @@ migrate((db) => {
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != '' && (created_by = @request.auth.id || @request.auth.role = 'admin')",
-    "deleteRule": "@request.auth.id != '' && (created_by = @request.auth.id || @request.auth.role = 'admin')",
-    "options": {}
+    "deleteRule": "@request.auth.id != '' && (created_by = @request.auth.id || @request.auth.role = 'admin')"
   });
 
-  return Dao(db).saveCollection(collection);
-}, (db) => {
-  const dao = new Dao(db);
-  const collection = dao.findCollectionByNameOrId("gift_cards");
-  return dao.deleteCollection(collection);
+  app.save(collection);
+}, (app) => {
+  const collection = app.findCollectionByNameOrId("gift_cards");
+  app.delete(collection);
 });

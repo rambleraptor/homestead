@@ -118,7 +118,7 @@ export function GiftCardHome() {
             </div>
             <button
               onClick={handleAddCard}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors shadow-md"
+              className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-gray-900 rounded-lg font-medium transition-colors shadow-md"
             >
               <Plus className="w-5 h-5" />
               Add Gift Card

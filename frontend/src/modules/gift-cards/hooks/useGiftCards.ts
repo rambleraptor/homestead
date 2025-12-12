@@ -14,8 +14,7 @@ export function useGiftCards() {
     queryKey: queryKeys.module('gift-cards').list(),
     queryFn: async () => {
       const cards = await getCollection<GiftCard>(Collections.GIFT_CARDS).getFullList({
-        sort: '-created',
-        expand: 'created_by',
+        sort: '-id',
       });
       return cards;
     },

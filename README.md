@@ -5,7 +5,7 @@ A self-hosted, modular web application for managing your home. Built with React,
 ## ✨ Key Features
 
 - **🧩 Modular Architecture** - Add new features by creating self-contained modules
-- **🔐 Role-Based Access Control** - Admin, Member, and View-Only roles
+- **🔐 Authentication** - Secure user authentication with PocketBase
 - **⚡ Fast & Modern** - Built with Vite, React 19, and TypeScript
 - **🎨 Beautiful UI** - Tailwind CSS with dark mode support
 - **💾 Self-Hosted** - Your data stays on your server with PocketBase
@@ -24,9 +24,9 @@ Every feature is a **module** with its own:
 
 **Adding a new module is as simple as:**
 1. Create your module folder in `src/modules/`
-2. Define `module.config.ts`
+2. Define `module.config.ts` with module metadata
 3. Register in `src/modules/registry.ts`
-4. Done! 🎉
+4. Done! Your module appears in the navigation automatically 🎉
 
 ### Tech Stack
 
@@ -76,16 +76,12 @@ chmod +x pocketbase
 
 PocketBase will be available at `http://127.0.0.1:8090`
 
-3. **Configure PocketBase Collections**
+3. **Configure PocketBase**
 
 Open `http://127.0.0.1:8090/_/` in your browser and:
 
 - Create an admin account
-- Go to **Collections**
-- Follow the schema in `docs/POCKETBASE_SCHEMA.md` to create:
-  - `users` (extend auth collection with `role` field)
-  - `user_roles`
-  - `module_permissions`
+- The database migrations will automatically create the required collections when the backend starts
 
 See detailed instructions in [`docs/POCKETBASE_SCHEMA.md`](docs/POCKETBASE_SCHEMA.md)
 
@@ -120,8 +116,7 @@ In PocketBase Admin UI (`http://127.0.0.1:8090/_/`):
 - Fill in:
   - Email: `admin@example.com`
   - Password: (your password)
-  - Name: `Admin User`
-  - Role: `admin`
+  - Name: `Admin User` (optional)
   - Verified: ✓
 - Save
 
@@ -157,7 +152,6 @@ export const choresModule: HomeModule = {
   name: 'Chores',
   description: 'Manage household chores and tasks',
   icon: ListTodo,
-  requiredRole: 'member', // Members and Admins can access
   basePath: '/chores',
   routes: choresRoutes,
   showInNav: true,
@@ -207,47 +201,18 @@ const MODULES: HomeModule[] = [
 ];
 ```
 
-**That's it!** Your module will now appear in the navigation sidebar for users with `member` or `admin` roles.
+**That's it!** Your module will now appear in the navigation sidebar for all authenticated users.
 
-## 🔐 Role-Based Access Control
+## 🔐 Authentication
 
-HomeOS has three built-in roles:
+HomeOS uses PocketBase's built-in authentication system:
 
-| Role | Level | Permissions |
-|------|-------|-------------|
-| **viewonly** | 1 | Read-only access to modules |
-| **member** | 2 | Can view and edit most features |
-| **admin** | 3 | Full access, can manage users and settings |
+- User registration and login
+- JWT token-based sessions
+- Password reset functionality
+- Email verification (optional)
 
-### Using Permissions in Components
-
-```typescript
-import { usePermissions } from '@/core/permissions/usePermissions';
-
-function MyComponent() {
-  const { canAccessModule, isAdmin } = usePermissions();
-
-  if (!canAccessModule('chores', 'write')) {
-    return <div>You don't have permission to edit chores</div>;
-  }
-
-  return <div>Chore editor...</div>;
-}
-```
-
-### Protecting Routes
-
-```typescript
-import { PermissionGuard } from '@/core/permissions/PermissionGuard';
-
-function AdminOnlyPage() {
-  return (
-    <PermissionGuard requiredRole="admin">
-      <div>Admin content</div>
-    </PermissionGuard>
-  );
-}
-```
+All routes in the application require authentication. Users must log in to access any modules.
 
 ## 🛠️ Development
 
@@ -307,10 +272,11 @@ homeOS/
 ## 🔒 Security
 
 - ✅ HTTPS recommended for production
-- ✅ Role-based access control
 - ✅ PocketBase API rules for data security
 - ✅ Authentication required for all routes
 - ✅ JWT token-based sessions
+- ✅ Secure password hashing
+- ✅ Email verification support
 
 ## 🤝 Contributing
 

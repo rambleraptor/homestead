@@ -4,16 +4,14 @@ This document describes the database schema for HomeOS, including collections, f
 
 ## Collections Overview
 
-1. **users** (System Collection - Extended)
-2. **user_roles** - Role definitions and permissions
-3. **module_permissions** - Module access control per user/role
-4. **audit_log** - Activity tracking (optional, for future use)
+1. **users** (System Auth Collection)
+2. **gift_cards** - Gift card management and tracking
 
 ---
 
-## 1. users Collection (Extended System Collection)
+## 1. users Collection
 
-**Type**: Auth Collection (System)
+**Type**: Auth Collection (System - Built-in)
 
 ### Fields
 
@@ -21,63 +19,68 @@ This document describes the database schema for HomeOS, including collections, f
 |-------|------|----------|--------|-------------|
 | id | text | ✓ | ✓ | Auto-generated user ID |
 | email | email | ✓ | ✓ | User's email address |
-| username | text | ✓ | ✓ | Unique username |
-| name | text | ✓ | | Full display name |
+| username | text | | ✓ | Unique username (optional) |
+| name | text | | | Full display name |
 | avatar | file | | | Profile picture |
-| role | select | ✓ | | User role (admin, member, viewonly) |
 | verified | bool | ✓ | | Email verification status |
 | emailVisibility | bool | | | Email visibility setting |
 | created | date | ✓ | | Account creation timestamp |
 | updated | date | ✓ | | Last update timestamp |
 
-### Role Options
+### Notes
 
-```json
-{
-  "options": [
-    { "value": "admin", "label": "Admin (Parent)" },
-    { "value": "member", "label": "Member (Family)" },
-    { "value": "viewonly", "label": "View Only (Guest)" }
-  ]
-}
+This is PocketBase's built-in auth collection. You can extend it with custom fields as needed through the PocketBase admin UI.
+
+### Recommended Access Rules (API Rules)
+
+```javascript
+// List/Search Rule
+@request.auth.id != ""
+
+// View Rule
+@request.auth.id != ""
+
+// Create Rule
+"" // Allow registration, or restrict with: @request.auth.id != ""
+
+// Update Rule
+@request.auth.id = id
+
+// Delete Rule
+@request.auth.id = id
 ```
 
-### Schema Definition (JSON)
+---
 
-```json
-{
-  "name": "users",
-  "type": "auth",
-  "schema": [
-    {
-      "name": "name",
-      "type": "text",
-      "required": true,
-      "options": {
-        "min": 1,
-        "max": 100
-      }
-    },
-    {
-      "name": "avatar",
-      "type": "file",
-      "options": {
-        "maxSelect": 1,
-        "maxSize": 5242880,
-        "mimeTypes": ["image/jpeg", "image/png", "image/gif", "image/webp"]
-      }
-    },
-    {
-      "name": "role",
-      "type": "select",
-      "required": true,
-      "options": {
-        "maxSelect": 1,
-        "values": ["admin", "member", "viewonly"]
-      }
-    }
-  ]
-}
+## 2. gift_cards Collection
+
+**Type**: Base Collection
+
+**Migration**: `1733932805_gift_cards_collection.js`
+
+### Purpose
+
+Track and manage household gift cards with merchant information, card numbers, PINs, and balances.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | text | ✓ | Auto-generated ID |
+| merchant | text | ✓ | Merchant/store name (max 200 chars) |
+| card_number | text | ✓ | Gift card number (max 100 chars) |
+| pin | text | | Security PIN if applicable (max 50 chars) |
+| amount | number | ✓ | Current balance on the card (min 0) |
+| notes | text | | Additional information (max 1000 chars) |
+| created_by | relation | | User who created the card (users) |
+| created | date | ✓ | Creation timestamp |
+| updated | date | ✓ | Last update timestamp |
+
+### Indexes
+
+```sql
+CREATE INDEX idx_merchant ON gift_cards (merchant)
+CREATE INDEX idx_created_by ON gift_cards (created_by)
 ```
 
 ### Access Rules (API Rules)
@@ -87,309 +90,24 @@ This document describes the database schema for HomeOS, including collections, f
 @request.auth.id != ""
 
 // View Rule
-@request.auth.id != "" && (
-  id = @request.auth.id ||
-  @request.auth.role = "admin"
-)
-
-// Create Rule
-@request.auth.role = "admin"
-
-// Update Rule
-@request.auth.id = id || @request.auth.role = "admin"
-
-// Delete Rule
-@request.auth.role = "admin"
-```
-
----
-
-## 2. user_roles Collection
-
-**Type**: Base Collection
-
-### Purpose
-Define what permissions each role has. This allows for future expansion of the RBAC system.
-
-### Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | text | ✓ | Auto-generated ID |
-| role | text | ✓ | Role identifier (admin, member, viewonly) |
-| name | text | ✓ | Display name |
-| description | text | | Role description |
-| permissions | json | ✓ | Permission matrix |
-| created | date | ✓ | Creation timestamp |
-| updated | date | ✓ | Last update timestamp |
-
-### Schema Definition (JSON)
-
-```json
-{
-  "name": "user_roles",
-  "type": "base",
-  "schema": [
-    {
-      "name": "role",
-      "type": "text",
-      "required": true,
-      "options": {
-        "min": 1,
-        "max": 50,
-        "pattern": "^[a-z_]+$"
-      }
-    },
-    {
-      "name": "name",
-      "type": "text",
-      "required": true,
-      "options": {
-        "min": 1,
-        "max": 100
-      }
-    },
-    {
-      "name": "description",
-      "type": "text",
-      "options": {
-        "max": 500
-      }
-    },
-    {
-      "name": "permissions",
-      "type": "json",
-      "required": true
-    }
-  ],
-  "indexes": [
-    "CREATE UNIQUE INDEX idx_role ON user_roles (role)"
-  ]
-}
-```
-
-### Permissions JSON Structure
-
-```json
-{
-  "modules": {
-    "dashboard": { "read": true, "write": false },
-    "chores": { "read": true, "write": true, "admin": false },
-    "meals": { "read": true, "write": false }
-  },
-  "system": {
-    "manageUsers": false,
-    "viewAuditLog": false
-  }
-}
-```
-
-### Access Rules
-
-```javascript
-// List/Search Rule
 @request.auth.id != ""
-
-// View Rule
-@request.auth.id != ""
-
-// Create Rule
-@request.auth.role = "admin"
-
-// Update Rule
-@request.auth.role = "admin"
-
-// Delete Rule
-@request.auth.role = "admin"
-```
-
----
-
-## 3. module_permissions Collection
-
-**Type**: Base Collection
-
-### Purpose
-Fine-grained control for module access per user. Overrides role-based defaults.
-
-### Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | text | ✓ | Auto-generated ID |
-| user | relation | ✓ | User reference (users) |
-| module_id | text | ✓ | Module identifier |
-| enabled | bool | ✓ | Module enabled for user |
-| permissions | json | | Custom permissions for this user |
-| created | date | ✓ | Creation timestamp |
-| updated | date | ✓ | Last update timestamp |
-
-### Schema Definition (JSON)
-
-```json
-{
-  "name": "module_permissions",
-  "type": "base",
-  "schema": [
-    {
-      "name": "user",
-      "type": "relation",
-      "required": true,
-      "options": {
-        "collectionId": "users",
-        "cascadeDelete": true,
-        "maxSelect": 1,
-        "displayFields": ["name", "email"]
-      }
-    },
-    {
-      "name": "module_id",
-      "type": "text",
-      "required": true,
-      "options": {
-        "min": 1,
-        "max": 100,
-        "pattern": "^[a-z_]+$"
-      }
-    },
-    {
-      "name": "enabled",
-      "type": "bool",
-      "required": true
-    },
-    {
-      "name": "permissions",
-      "type": "json"
-    }
-  ],
-  "indexes": [
-    "CREATE UNIQUE INDEX idx_user_module ON module_permissions (user, module_id)"
-  ]
-}
-```
-
-### Access Rules
-
-```javascript
-// List/Search Rule
-@request.auth.id != "" && (
-  user = @request.auth.id ||
-  @request.auth.role = "admin"
-)
-
-// View Rule
-@request.auth.id != "" && (
-  user = @request.auth.id ||
-  @request.auth.role = "admin"
-)
-
-// Create Rule
-@request.auth.role = "admin"
-
-// Update Rule
-@request.auth.role = "admin"
-
-// Delete Rule
-@request.auth.role = "admin"
-```
-
----
-
-## 4. audit_log Collection (Optional - Future Enhancement)
-
-**Type**: Base Collection
-
-### Purpose
-Track user actions for security and debugging.
-
-### Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | text | ✓ | Auto-generated ID |
-| user | relation | | User reference (null for system) |
-| action | text | ✓ | Action type |
-| resource | text | | Resource affected |
-| details | json | | Additional context |
-| ip_address | text | | Request IP |
-| user_agent | text | | Browser/client info |
-| created | date | ✓ | Action timestamp |
-
-### Schema Definition (JSON)
-
-```json
-{
-  "name": "audit_log",
-  "type": "base",
-  "schema": [
-    {
-      "name": "user",
-      "type": "relation",
-      "options": {
-        "collectionId": "users",
-        "cascadeDelete": false,
-        "maxSelect": 1
-      }
-    },
-    {
-      "name": "action",
-      "type": "text",
-      "required": true,
-      "options": {
-        "max": 100
-      }
-    },
-    {
-      "name": "resource",
-      "type": "text",
-      "options": {
-        "max": 200
-      }
-    },
-    {
-      "name": "details",
-      "type": "json"
-    },
-    {
-      "name": "ip_address",
-      "type": "text",
-      "options": {
-        "max": 45
-      }
-    },
-    {
-      "name": "user_agent",
-      "type": "text",
-      "options": {
-        "max": 500
-      }
-    }
-  ],
-  "indexes": [
-    "CREATE INDEX idx_user_created ON audit_log (user, created)",
-    "CREATE INDEX idx_created ON audit_log (created)"
-  ]
-}
-```
-
-### Access Rules
-
-```javascript
-// List/Search Rule
-@request.auth.role = "admin"
-
-// View Rule
-@request.auth.role = "admin"
 
 // Create Rule
 @request.auth.id != ""
 
 // Update Rule
-false // Audit logs are immutable
+@request.auth.id != "" && (created_by = @request.auth.id || @request.auth.role = "admin")
 
 // Delete Rule
-@request.auth.role = "admin" // Allow cleanup of old logs
+@request.auth.id != "" && (created_by = @request.auth.id || @request.auth.role = "admin")
 ```
+
+### Notes
+
+- All authenticated users can view and create gift cards
+- Only the creator or admins can edit/delete cards
+- Card numbers and PINs are masked by default in the UI for security
+- The `created_by` relation is optional but recommended for tracking ownership
 
 ---
 
@@ -406,12 +124,8 @@ false // Audit logs are immutable
 
 **Automatic (Recommended)**: Migrations are automatically applied when PocketBase starts.
 
-The `pb_migrations/` directory contains all the schema migrations:
-- `1733932800_users_collection.js` - Extends users with custom fields (name, avatar, role)
-- `1733932801_user_roles_collection.js` - Creates user_roles collection
-- `1733932802_module_permissions_collection.js` - Creates module_permissions collection
-- `1733932803_audit_log_collection.js` - Creates audit_log collection
-- `1733932804_seed_initial_roles.js` - Seeds initial role data (admin, member, viewonly)
+The `pb_migrations/` directory contains the schema migrations:
+- `1733932805_gift_cards_collection.js` - Creates the gift_cards collection
 
 When you run `./pocketbase serve`, these migrations will be automatically detected and applied.
 
@@ -425,38 +139,20 @@ cd pocketbase
 
 See [Migration Documentation](../pb_migrations/README.md) for more details.
 
-### 3. Create First Admin User
+### 3. Create First User
 
 **Option A: Via Admin UI** (Recommended for first user)
 1. Go to Collections > users
 2. Create new auth record with:
    - Email: your@email.com
    - Password: (set a strong password)
-   - Name: Your Name
-   - Role: admin
+   - Name: Your Name (optional)
    - Verified: true
 
 **Option B: Via Frontend Registration**
 1. Start the frontend: `cd frontend && npm run dev`
 2. Navigate to the registration page
-3. Create your account (first user should be set to admin role manually via Admin UI)
-
----
-
-## Role-Based Access Matrix
-
-| Feature | Admin | Member | View Only |
-|---------|-------|--------|-----------|
-| View Dashboard | ✓ | ✓ | ✓ |
-| Edit Dashboard | ✓ | ✗ | ✗ |
-| View Chores | ✓ | ✓ | ✓ |
-| Complete Chores | ✓ | ✓ | ✗ |
-| Create/Delete Chores | ✓ | ✗ | ✗ |
-| View Meal Plans | ✓ | ✓ | ✓ |
-| Edit Meal Plans | ✓ | ✓ | ✗ |
-| Manage Users | ✓ | ✗ | ✗ |
-| View Audit Log | ✓ | ✗ | ✗ |
-| Module Settings | ✓ | ✗ | ✗ |
+3. Create your account
 
 ---
 
@@ -470,34 +166,51 @@ const authData = await pb.collection('users').authWithPassword(
   'password'
 );
 
-// authData.record contains user with role field
-console.log(authData.record.role); // "admin", "member", or "viewonly"
+console.log(authData.record.id); // User ID
+console.log(authData.record.email); // User email
 ```
 
-### Check User Permissions
+### Create a Gift Card
 
 ```javascript
-// Get role permissions
-const rolePermissions = await pb.collection('user_roles').getFirstListItem(
-  `role="${authData.record.role}"`
-);
-
-// Check module-specific overrides
-const moduleOverride = await pb.collection('module_permissions').getFirstListItem(
-  `user="${authData.record.id}" && module_id="chores"`
-).catch(() => null);
-
-const hasAccess = moduleOverride?.enabled ??
-  rolePermissions.permissions.modules.chores.read;
-```
-
-### Fetch User Data with Expand
-
-```javascript
-const users = await pb.collection('users').getList(1, 50, {
-  expand: 'module_permissions_via_user',
-  sort: '-created'
+const giftCard = await pb.collection('gift_cards').create({
+  merchant: 'Amazon',
+  card_number: '1234-5678-9012-3456',
+  pin: '1234',
+  amount: 50.00,
+  notes: 'Birthday gift from Mom',
+  created_by: pb.authStore.model?.id
 });
+```
+
+### Fetch Gift Cards
+
+```javascript
+// Get all gift cards
+const giftCards = await pb.collection('gift_cards').getFullList({
+  sort: '-id'
+});
+
+// Get gift cards with creator info
+const giftCardsWithCreator = await pb.collection('gift_cards').getFullList({
+  sort: '-id',
+  expand: 'created_by'
+});
+```
+
+### Update a Gift Card
+
+```javascript
+await pb.collection('gift_cards').update(giftCardId, {
+  amount: 25.00, // Updated balance
+  notes: 'Used $25'
+});
+```
+
+### Delete a Gift Card
+
+```javascript
+await pb.collection('gift_cards').delete(giftCardId);
 ```
 
 ---
@@ -541,9 +254,9 @@ migrate((db) => {
 ## Next Steps
 
 1. ✅ Database migrations are ready in `pb_migrations/`
-2. Set up PocketBase binary and run migrations (automatically applied on first start)
-3. Create initial admin user via Admin UI
-4. Test authentication flow in the frontend
-5. Build first module (Dashboard)
-6. Add module permission checks in UI
-7. Configure role permissions as needed
+2. ✅ Gift Cards module is implemented and functional
+3. Set up PocketBase binary and run migrations (automatically applied on first start)
+4. Create initial user via Admin UI or registration
+5. Test authentication flow in the frontend
+6. Create additional modules as needed (see `docs/MODULE_GUIDE.md`)
+7. Extend the database schema with new collections for new features
