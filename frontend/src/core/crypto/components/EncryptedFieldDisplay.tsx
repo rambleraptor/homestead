@@ -5,7 +5,7 @@
  * Shows a locked indicator when encryption session is not unlocked.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useEncryptedSession } from '../EncryptedSessionContext';
 import { decryptField } from '../encryption';
 import type { EncryptedFieldValue } from '../types';

@@ -6,7 +6,7 @@
  * kept in memory for the duration of the session.
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import type { EncryptionMetadata } from './types';
 import {
   unlockEncryption as unlockEncryptionImpl,
@@ -15,26 +15,11 @@ import {
   getPrivateKey,
   getPublicKey,
 } from './keyManagement';
-
-interface EncryptedSessionContextValue {
-  isUnlocked: boolean;
-  metadata: EncryptionMetadata | null;
-  unlockEncryption: (metadata: EncryptionMetadata, password: string) => Promise<void>;
-  lockEncryption: () => void;
-  getPrivateKey: () => CryptoKey | null;
-  getPublicKey: () => CryptoKey | null;
-}
-
-const EncryptedSessionContext = createContext<EncryptedSessionContextValue | null>(null);
+import { EncryptedSessionContext } from './encryptedSessionContext';
 
 export function EncryptedSessionProvider({ children }: { children: React.ReactNode }) {
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(() => isEncryptionUnlocked());
   const [metadata, setMetadata] = useState<EncryptionMetadata | null>(null);
-
-  // Sync with key store on mount
-  useEffect(() => {
-    setIsUnlocked(isEncryptionUnlocked());
-  }, []);
 
   const unlockEncryption = useCallback(
     async (metadata: EncryptionMetadata, password: string) => {
@@ -65,12 +50,4 @@ export function EncryptedSessionProvider({ children }: { children: React.ReactNo
       {children}
     </EncryptedSessionContext.Provider>
   );
-}
-
-export function useEncryptedSession() {
-  const context = useContext(EncryptedSessionContext);
-  if (!context) {
-    throw new Error('useEncryptedSession must be used within EncryptedSessionProvider');
-  }
-  return context;
 }

@@ -4,7 +4,7 @@
  * Shows the current encryption session status and provides unlock/lock controls.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useEncryptedSession } from '../EncryptedSessionContext';
 import { getEncryptionMetadata } from '../api';
 import { FamilyPasswordPrompt } from './FamilyPasswordPrompt';

@@ -110,8 +110,9 @@ export function getPublicKey(): CryptoKey | null {
 }
 
 /**
- * Get the encryption metadata (if unlocked)
+ * Get the encryption metadata from the current session (if unlocked)
+ * Use getEncryptionMetadata from api.ts to fetch from server
  */
-export function getEncryptionMetadata(): EncryptionMetadata | null {
+export function getSessionMetadata(): EncryptionMetadata | null {
   return keyStore.getMetadata();
 }

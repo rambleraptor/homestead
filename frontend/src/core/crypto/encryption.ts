@@ -104,7 +104,7 @@ export async function hashPassword(password: string): Promise<string> {
  */
 async function deriveKeyFromPassword(
   password: string,
-  salt: Uint8Array
+  salt: BufferSource
 ): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const passwordData = encoder.encode(password);
@@ -160,8 +160,8 @@ export async function encryptPrivateKey(
 
   return {
     encryptedData: arrayBufferToBase64(encryptedData),
-    salt: arrayBufferToBase64(salt),
-    iv: arrayBufferToBase64(iv),
+    salt: arrayBufferToBase64(salt.buffer),
+    iv: arrayBufferToBase64(iv.buffer),
   };
 }
 
@@ -190,7 +190,7 @@ export async function decryptPrivateKey(
 
     const decoder = new TextDecoder();
     return decoder.decode(decryptedData);
-  } catch (error) {
+  } catch {
     throw new Error('Failed to decrypt private key. Invalid password?');
   }
 }
@@ -219,7 +219,7 @@ export async function encryptField(
 
   return {
     data: arrayBufferToBase64(encryptedData),
-    iv: arrayBufferToBase64(iv),
+    iv: arrayBufferToBase64(iv.buffer),
   };
 }
 
@@ -243,7 +243,7 @@ export async function decryptField(
 
     const decoder = new TextDecoder();
     return decoder.decode(decryptedData);
-  } catch (error) {
+  } catch {
     throw new Error('Failed to decrypt field value');
   }
 }

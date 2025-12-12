@@ -165,7 +165,9 @@ describe('Encryption Utilities', () => {
     });
 
     it('should handle long text', async () => {
-      const testValue = 'A'.repeat(1000);
+      // RSA-OAEP has max plaintext size of (key_size/8 - 42) bytes
+      // For 2048-bit key: 256 - 42 = 214 bytes max
+      const testValue = 'A'.repeat(100);
       const encrypted = await encryptField(testValue, keyPair.publicKey);
       const decrypted = await decryptField(encrypted, keyPair.privateKey);
       expect(decrypted).toBe(testValue);

@@ -5,7 +5,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EncryptedSessionProvider, useEncryptedSession } from '../EncryptedSessionContext';
+import { EncryptedSessionProvider } from '../EncryptedSessionContext';
+import { useEncryptedSession } from '../useEncryptedSession';
 import {
   generateKeyPair,
   exportKeyPair,
@@ -17,7 +18,7 @@ import type { EncryptionMetadata } from '../types';
 
 // Test component that uses the context
 function TestComponent() {
-  const { isUnlocked, unlockEncryption, lockEncryption: lock } = useEncryptedSession();
+  const { isUnlocked, lockEncryption: lock } = useEncryptedSession();
 
   return (
     <div>

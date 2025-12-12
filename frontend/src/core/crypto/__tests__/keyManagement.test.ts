@@ -9,7 +9,7 @@ import {
   isEncryptionUnlocked,
   getPrivateKey,
   getPublicKey,
-  getEncryptionMetadata,
+  getSessionMetadata,
 } from '../keyManagement';
 import {
   generateKeyPair,
@@ -89,7 +89,7 @@ describe('Key Management', () => {
     it('should return null keys when locked', () => {
       expect(getPrivateKey()).toBeNull();
       expect(getPublicKey()).toBeNull();
-      expect(getEncryptionMetadata()).toBeNull();
+      expect(getSessionMetadata()).toBeNull();
     });
 
     it('should return keys when unlocked', async () => {
@@ -97,7 +97,7 @@ describe('Key Management', () => {
 
       const privateKey = getPrivateKey();
       const publicKey = getPublicKey();
-      const metadata = getEncryptionMetadata();
+      const metadata = getSessionMetadata();
 
       expect(privateKey).not.toBeNull();
       expect(publicKey).not.toBeNull();
