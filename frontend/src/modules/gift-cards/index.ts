@@ -11,4 +11,7 @@ export type {
   GiftCardFormData,
   MerchantSummary,
   GiftCardStats,
+  GiftCardTransaction,
+  TransactionFormData,
+  TransactionType,
 } from './types';

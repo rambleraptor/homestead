@@ -33,9 +33,13 @@ export function useMerchantSummaries() {
       }
     });
 
-    const merchants = Array.from(merchantMap.values()).sort((a, b) =>
-      a.merchant.localeCompare(b.merchant)
-    );
+    const merchants = Array.from(merchantMap.values())
+      .map((merchant) => ({
+        ...merchant,
+        // Merchant is archived if total balance is 0
+        archived: merchant.totalAmount === 0,
+      }))
+      .sort((a, b) => a.merchant.localeCompare(b.merchant));
 
     return {
       totalCards: giftCards.length,

@@ -15,6 +15,7 @@ export interface GiftCard {
   created_by?: string;
   created: string;
   updated: string;
+  archived?: boolean;
 }
 
 /**
@@ -29,6 +30,36 @@ export interface GiftCardFormData {
 }
 
 /**
+ * Transaction type
+ */
+export type TransactionType = 'decrement' | 'set';
+
+/**
+ * Gift Card Transaction record from PocketBase
+ */
+export interface GiftCardTransaction {
+  id: string;
+  gift_card: string;
+  transaction_type: TransactionType;
+  previous_amount: number;
+  new_amount: number;
+  amount_changed: number;
+  notes?: string;
+  created_by?: string;
+  created: string;
+  updated: string;
+}
+
+/**
+ * Form data for creating transactions
+ */
+export interface TransactionFormData {
+  transaction_type: TransactionType;
+  amount: number;
+  notes?: string;
+}
+
+/**
  * Merchant summary with total amount
  */
 export interface MerchantSummary {
@@ -36,6 +67,7 @@ export interface MerchantSummary {
   totalAmount: number;
   cardCount: number;
   cards: GiftCard[];
+  archived?: boolean;
 }
 
 /**

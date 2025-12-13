@@ -4,7 +4,8 @@
  * Displays list of merchants with total amounts
  */
 
-import { ChevronRight, Store } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronRight, Store, ChevronDown, ChevronUp } from 'lucide-react';
 import type { MerchantSummary } from '../types';
 
 interface MerchantListProps {
@@ -13,6 +14,12 @@ interface MerchantListProps {
 }
 
 export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) {
+  const [showArchived, setShowArchived] = useState(false);
+
+  // Separate active and archived merchants
+  const activeMerchants = merchants.filter((m) => !m.archived);
+  const archivedMerchants = merchants.filter((m) => m.archived);
+
   if (merchants.length === 0) {
     return (
       <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -24,39 +31,90 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
     );
   }
 
-  return (
-    <div className="space-y-3">
-      {merchants.map((merchant) => (
-        <button
-          key={merchant.merchant}
-          onClick={() => onMerchantClick(merchant.merchant)}
-          className="w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow text-left group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center">
-                <Store className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {merchant.merchant}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {merchant.cardCount} {merchant.cardCount === 1 ? 'card' : 'cards'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="text-right">
-                <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                  ${merchant.totalAmount.toFixed(2)}
-                </p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
-            </div>
+  const renderMerchant = (merchant: MerchantSummary, isArchived = false) => (
+    <button
+      key={merchant.merchant}
+      onClick={() => onMerchantClick(merchant.merchant)}
+      className={`w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow text-left group ${
+        isArchived ? 'opacity-60' : ''
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+              isArchived
+                ? 'bg-gray-100 dark:bg-gray-700'
+                : 'bg-primary-100 dark:bg-primary-900'
+            }`}
+          >
+            <Store
+              className={`w-6 h-6 ${
+                isArchived
+                  ? 'text-gray-400'
+                  : 'text-primary-600 dark:text-primary-400'
+              }`}
+            />
           </div>
-        </button>
-      ))}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {merchant.merchant}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {merchant.cardCount} {merchant.cardCount === 1 ? 'card' : 'cards'}
+              {isArchived && ' • Archived'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <p className={`text-2xl font-bold ${
+              isArchived
+                ? 'text-gray-400'
+                : 'text-primary-600 dark:text-primary-400'
+            }`}>
+              ${merchant.totalAmount.toFixed(2)}
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+        </div>
+      </div>
+    </button>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Active Merchants */}
+      {activeMerchants.length > 0 && (
+        <div className="space-y-3">
+          {activeMerchants.map((merchant) => renderMerchant(merchant, false))}
+        </div>
+      )}
+
+      {/* Archived Merchants Toggle */}
+      {archivedMerchants.length > 0 && (
+        <div className="space-y-3">
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            {showArchived ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
+            )}
+            <span className="font-medium">
+              Archived Merchants ({archivedMerchants.length})
+            </span>
+          </button>
+
+          {showArchived && (
+            <div className="space-y-3">
+              {archivedMerchants.map((merchant) => renderMerchant(merchant, true))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

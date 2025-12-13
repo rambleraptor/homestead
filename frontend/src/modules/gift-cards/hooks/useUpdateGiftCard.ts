@@ -12,7 +12,12 @@ import type { GiftCard, GiftCardFormData } from '../types';
 export function useUpdateGiftCard() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: GiftCardFormData }) => {
-      return await getCollection<GiftCard>(Collections.GIFT_CARDS).update(id, data);
+      // Automatically archive if amount is 0
+      const updateData = {
+        ...data,
+        archived: data.amount === 0,
+      };
+      return await getCollection<GiftCard>(Collections.GIFT_CARDS).update(id, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
