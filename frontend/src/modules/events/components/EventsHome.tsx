@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Calendar, Cake, Heart, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Cake, Heart, Plus, Upload } from 'lucide-react';
 import { Card } from '../../../shared/components/Card';
 import { Button } from '../../../shared/components/Button';
 import { Modal } from '../../../shared/components/Modal';
@@ -16,6 +17,7 @@ import { EventCard } from './EventCard';
 import type { Event, EventFormData } from '../types';
 
 export function EventsHome() {
+  const navigate = useNavigate();
   const { data: events, isLoading } = useEvents();
   const { data: stats } = useEventStats();
   const createEvent = useCreateEvent();
@@ -145,10 +147,16 @@ export function EventsHome() {
             Track important birthdays and anniversaries
           </p>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Event
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => navigate('/events/import')}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import
+          </Button>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Event
+          </Button>
+        </div>
       </div>
 
       {stats && (
