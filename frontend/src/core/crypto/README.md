@@ -174,6 +174,69 @@ This creates the `encryption_metadata` collection to store:
 - Encrypted private key
 - Password hash
 
+## Deployment
+
+### Initial Setup
+
+1. **Apply Migrations**
+
+   Migrations are automatically applied when PocketBase starts. The `encryption_metadata` collection will be created on first run.
+
+2. **Bootstrap Encryption** (Admin Only, One-Time)
+
+   After deployment, an admin must bootstrap the encryption system:
+
+   ```javascript
+   // In browser console or via API call
+   import { bootstrapEncryption } from '@/core/crypto';
+   await bootstrapEncryption('your-secure-family-password');
+   ```
+
+   Or use the UI-based bootstrap flow (recommended for non-technical users).
+
+3. **Wrap App with Provider**
+
+   Ensure `EncryptedSessionProvider` wraps your app in the root component:
+
+   ```tsx
+   // In your main App component
+   import { EncryptedSessionProvider } from '@/core/crypto';
+
+   function App() {
+     return (
+       <EncryptedSessionProvider>
+         {/* Your app */}
+       </EncryptedSessionProvider>
+     );
+   }
+   ```
+
+### Production Checklist
+
+- [ ] HTTPS enabled (required for Web Crypto API in production)
+- [ ] Family password securely stored and shared with authorized users only
+- [ ] Backup strategy in place (consider storing encrypted backup of private key)
+- [ ] Password rotation policy established (if needed)
+- [ ] Users educated on:
+  - Importance of the family password
+  - That password loss means data loss
+  - Session locks on page refresh (must re-enter password)
+
+### Breaking Changes Warning
+
+**Important:** The encryption scheme has been updated for security:
+
+- **Old format:** Direct RSA-OAEP encryption (limited to ~190 bytes)
+- **New format:** Hybrid RSA-OAEP + AES-GCM encryption (unlimited size)
+
+**Migration required:** If you have existing encrypted data from earlier versions, you will need to:
+
+1. Decrypt old data with old keys (if possible)
+2. Re-encrypt with new hybrid encryption scheme
+3. Update database records with new format
+
+Contact your system administrator before upgrading if you have production encrypted data.
+
 ## License
 
 Part of HomeOS - see main project LICENSE

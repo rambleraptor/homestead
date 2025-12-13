@@ -128,6 +128,49 @@ In PocketBase Admin UI (`http://127.0.0.1:8090/_/`):
 
 Now you can log in!
 
+### 8. **Optional: Set Up Encrypted Fields** (for sensitive data)
+
+If you plan to use encrypted fields for sensitive data (like PINs, passwords, or private notes):
+
+**Prerequisites:**
+- PocketBase migrations have been applied (automatic on first run)
+- You're logged in as an admin user
+
+**Setup Steps:**
+
+1. **Bootstrap Encryption** (one-time, admin only)
+
+   The first time you want to use encrypted fields, you need to bootstrap the encryption system with a family password. This can be done:
+
+   - Via the UI: Navigate to any module using encrypted fields and follow the setup prompt
+   - Or programmatically using the browser console:
+
+   ```javascript
+   import { bootstrapEncryption } from '@/core/crypto';
+   await bootstrapEncryption('your-secure-family-password');
+   ```
+
+2. **Important Security Notes**
+
+   ⚠️ **Save your family password securely!**
+   - If lost, encrypted data cannot be recovered
+   - All family members will use this password to unlock encrypted fields
+   - Consider using a password manager to store it
+
+   🔒 **What gets encrypted:**
+   - Data is encrypted in your browser before being sent to the server
+   - PocketBase only stores encrypted data (it cannot read it)
+   - Only users who enter the family password can decrypt the data
+
+3. **Using Encrypted Fields**
+
+   Once bootstrapped, users can:
+   - Enter the family password to unlock their session
+   - View and edit encrypted fields
+   - Session locks automatically on browser refresh (password required again)
+
+For detailed usage and examples, see [Encrypted Fields Documentation](frontend/src/core/crypto/README.md).
+
 ## 📚 Documentation
 
 - [**PocketBase Schema**](docs/POCKETBASE_SCHEMA.md) - Database structure and API rules
