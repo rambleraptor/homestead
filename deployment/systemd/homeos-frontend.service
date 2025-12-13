@@ -1,0 +1,25 @@
+[Unit]
+Description=HomeOS Frontend
+After=network.target homeos-pocketbase.service
+Requires=homeos-pocketbase.service
+
+[Service]
+Type=simple
+User=homeosuser
+WorkingDirectory=/path/to/homeOS/frontend
+ExecStart=/usr/bin/npx serve -s dist -l 3000
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/path/to/homeOS/frontend/dist
+
+# Environment
+Environment="NODE_ENV=production"
+
+[Install]
+WantedBy=multi-user.target

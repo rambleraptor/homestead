@@ -1,0 +1,24 @@
+[Unit]
+Description=PocketBase for HomeOS
+After=network.target
+
+[Service]
+Type=simple
+User=homeosuser
+WorkingDirectory=/path/to/homeOS/pocketbase
+ExecStart=/path/to/homeOS/pocketbase/pocketbase serve --http=127.0.0.1:8090
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/path/to/homeOS/pocketbase
+
+# Environment
+Environment="HOME=/path/to/homeOS/pocketbase"
+
+[Install]
+WantedBy=multi-user.target

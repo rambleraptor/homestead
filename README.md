@@ -122,6 +122,29 @@ In PocketBase Admin UI (`http://127.0.0.1:8090/_/`):
 
 Now you can log in!
 
+## 🚀 Production Deployment
+
+For deploying HomeOS on a local machine (accessible via Tailscale), see the comprehensive deployment guide:
+
+**[📖 Deployment Guide](deployment/README.md)** - Complete deployment instructions
+
+**[⚡ Quick Start](deployment/QUICKSTART.md)** - Get running in 5 minutes
+
+The deployment package includes:
+- Scripts for installing PocketBase and building the frontend
+- Systemd service configurations for automatic startup
+- Sample production environment files
+- Management scripts (start, stop, restart, update, status)
+- Detailed troubleshooting guide
+
+```bash
+# Quick deployment
+./deployment/install-pocketbase.sh
+./deployment/build.sh
+sudo ./deployment/setup-services.sh
+sudo ./deployment/start.sh
+```
+
 ## 📚 Documentation
 
 - [**PocketBase Schema**](docs/POCKETBASE_SCHEMA.md) - Database structure and API rules
