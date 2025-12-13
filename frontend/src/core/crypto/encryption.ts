@@ -90,13 +90,38 @@ export async function importPrivateKey(privateKeyB64: string): Promise<CryptoKey
 }
 
 /**
- * Hash a password using SHA-256 for verification purposes
+ * Hash a password using PBKDF2 for secure verification
  */
 export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_SIZE));
   const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return arrayBufferToBase64(hashBuffer);
+  const passwordData = encoder.encode(password);
+
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    passwordData,
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+
+  const hashBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations: PBKDF2_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    baseKey,
+    256 // 256 bits = 32 bytes
+  );
+
+  const passwordHash: import('./types').PasswordHash = {
+    hash: arrayBufferToBase64(hashBits),
+    salt: arrayBufferToBase64(salt.buffer),
+  };
+
+  return JSON.stringify(passwordHash);
 }
 
 /**
@@ -196,49 +221,108 @@ export async function decryptPrivateKey(
 }
 
 /**
- * Encrypt a field value using the public key
+ * Encrypt a field value using hybrid encryption (RSA-OAEP + AES-GCM)
+ *
+ * This avoids RSA-OAEP's message size limitation by:
+ * 1. Generating a random AES-256 key
+ * 2. Encrypting the data with AES-GCM
+ * 3. Encrypting the AES key with RSA-OAEP
  */
 export async function encryptField(
   value: string,
   publicKey: CryptoKey
 ): Promise<EncryptedFieldValue> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(value);
+  // Generate random AES key
+  const aesKey = await crypto.subtle.generateKey(
+    {
+      name: 'AES-GCM',
+      length: AES_KEY_SIZE,
+    },
+    true,
+    ['encrypt']
+  );
 
-  // RSA-OAEP doesn't use IV, but we'll generate one for consistency
-  // and potential future use with hybrid encryption
-  const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
+  // Export AES key for encryption with RSA
+  const aesKeyData = await crypto.subtle.exportKey('raw', aesKey);
 
-  const encryptedData = await crypto.subtle.encrypt(
+  // Encrypt AES key with RSA-OAEP
+  const encryptedKey = await crypto.subtle.encrypt(
     {
       name: 'RSA-OAEP',
     },
     publicKey,
+    aesKeyData
+  );
+
+  // Generate IV for AES-GCM
+  const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
+
+  // Encrypt data with AES-GCM
+  const encoder = new TextEncoder();
+  const data = encoder.encode(value);
+
+  const encryptedData = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv,
+    },
+    aesKey,
     data
   );
 
   return {
-    data: arrayBufferToBase64(encryptedData),
+    encryptedKey: arrayBufferToBase64(encryptedKey),
+    encryptedData: arrayBufferToBase64(encryptedData),
     iv: arrayBufferToBase64(iv.buffer),
   };
 }
 
 /**
- * Decrypt a field value using the private key
+ * Decrypt a field value using hybrid decryption (RSA-OAEP + AES-GCM)
+ *
+ * Reverses the hybrid encryption process:
+ * 1. Decrypt the AES key with RSA-OAEP
+ * 2. Import the AES key
+ * 3. Decrypt the data with AES-GCM
  */
 export async function decryptField(
   encryptedValue: EncryptedFieldValue,
   privateKey: CryptoKey
 ): Promise<string> {
-  const data = base64ToArrayBuffer(encryptedValue.data);
-
   try {
-    const decryptedData = await crypto.subtle.decrypt(
+    // Decrypt AES key with RSA-OAEP
+    const encryptedKeyData = base64ToArrayBuffer(encryptedValue.encryptedKey);
+    const aesKeyData = await crypto.subtle.decrypt(
       {
         name: 'RSA-OAEP',
       },
       privateKey,
-      data
+      encryptedKeyData
+    );
+
+    // Import AES key
+    const aesKey = await crypto.subtle.importKey(
+      'raw',
+      aesKeyData,
+      {
+        name: 'AES-GCM',
+        length: AES_KEY_SIZE,
+      },
+      false,
+      ['decrypt']
+    );
+
+    // Decrypt data with AES-GCM
+    const encryptedData = base64ToArrayBuffer(encryptedValue.encryptedData);
+    const iv = base64ToArrayBuffer(encryptedValue.iv);
+
+    const decryptedData = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: new Uint8Array(iv),
+      },
+      aesKey,
+      encryptedData
     );
 
     const decoder = new TextDecoder();
@@ -264,14 +348,39 @@ export async function changePassword(
 }
 
 /**
- * Verify a password against a hash
+ * Verify a password against a PBKDF2 hash
  */
 export async function verifyPassword(
   password: string,
-  passwordHash: string
+  passwordHashJson: string
 ): Promise<boolean> {
-  const hash = await hashPassword(password);
-  return hash === passwordHash;
+  const storedHash: import('./types').PasswordHash = JSON.parse(passwordHashJson);
+  const salt = base64ToArrayBuffer(storedHash.salt);
+
+  const encoder = new TextEncoder();
+  const passwordData = encoder.encode(password);
+
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    passwordData,
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+
+  const hashBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations: PBKDF2_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    baseKey,
+    256
+  );
+
+  const computedHash = arrayBufferToBase64(hashBits);
+  return computedHash === storedHash.hash;
 }
 
 // Utility functions

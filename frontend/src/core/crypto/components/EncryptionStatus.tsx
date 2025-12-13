@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useEncryptedSession } from '../EncryptedSessionContext';
+import { useEncryptedSession } from '../useEncryptedSession';
 import { getEncryptionMetadata } from '../api';
 import { FamilyPasswordPrompt } from './FamilyPasswordPrompt';
 import type { EncryptionMetadata } from '../types';

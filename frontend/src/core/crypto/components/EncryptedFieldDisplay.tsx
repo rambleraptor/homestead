@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useEncryptedSession } from '../EncryptedSessionContext';
+import { useEncryptedSession } from '../useEncryptedSession';
 import { decryptField } from '../encryption';
 import type { EncryptedFieldValue } from '../types';
 

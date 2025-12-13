@@ -68,13 +68,18 @@ describe('Encryption Utilities', () => {
       const hash = await hashPassword(password);
       expect(hash).toBeDefined();
       expect(hash.length).toBeGreaterThan(0);
+      // Should be valid JSON with hash and salt
+      const parsed = JSON.parse(hash);
+      expect(parsed.hash).toBeDefined();
+      expect(parsed.salt).toBeDefined();
     });
 
-    it('should produce consistent hashes for the same password', async () => {
+    it('should produce different hashes for the same password (different salts)', async () => {
       const password = 'test-password-123';
       const hash1 = await hashPassword(password);
       const hash2 = await hashPassword(password);
-      expect(hash1).toBe(hash2);
+      // Different salts mean different hashes
+      expect(hash1).not.toBe(hash2);
     });
 
     it('should produce different hashes for different passwords', async () => {
@@ -136,7 +141,8 @@ describe('Encryption Utilities', () => {
       const testValue = 'Secret Information 123!';
       const encrypted = await encryptField(testValue, keyPair.publicKey);
 
-      expect(encrypted.data).toBeDefined();
+      expect(encrypted.encryptedKey).toBeDefined();
+      expect(encrypted.encryptedData).toBeDefined();
       expect(encrypted.iv).toBeDefined();
 
       const decrypted = await decryptField(encrypted, keyPair.privateKey);
@@ -164,13 +170,14 @@ describe('Encryption Utilities', () => {
       expect(decrypted).toBe(testValue);
     });
 
-    it('should handle long text', async () => {
-      // RSA-OAEP has max plaintext size of (key_size/8 - 42) bytes
-      // For 2048-bit key: 256 - 42 = 214 bytes max
-      const testValue = 'A'.repeat(100);
+    it('should handle long text beyond RSA-OAEP limits using hybrid encryption', async () => {
+      // With hybrid encryption, we can encrypt data much larger than RSA-OAEP's
+      // ~190 byte limit. Test with 1000+ characters to prove it works.
+      const testValue = 'A'.repeat(1000) + ' This is a very long encrypted message! ' + 'B'.repeat(500);
       const encrypted = await encryptField(testValue, keyPair.publicKey);
       const decrypted = await decryptField(encrypted, keyPair.privateKey);
       expect(decrypted).toBe(testValue);
+      expect(testValue.length).toBeGreaterThan(1000); // Verify we're testing with large data
     });
 
     it('should fail to decrypt with wrong private key', async () => {

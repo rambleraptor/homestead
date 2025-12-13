@@ -18,16 +18,22 @@ export interface EncryptedPrivateKey {
   iv: string; // Base64 encoded initialization vector
 }
 
+export interface PasswordHash {
+  hash: string; // Base64 encoded PBKDF2 hash
+  salt: string; // Base64 encoded salt
+}
+
 export interface EncryptionMetadata {
   id?: string;
   publicKey: string; // Base64 encoded public key (JWK)
   encryptedPrivateKey: string; // JSON string of EncryptedPrivateKey
-  passwordHash: string; // Hash of family password for verification
+  passwordHash: string; // JSON string of PasswordHash
   created: string;
   updated: string;
 }
 
 export interface EncryptedFieldValue {
-  data: string; // Base64 encoded encrypted data
-  iv: string; // Base64 encoded initialization vector
+  encryptedKey: string; // Base64 encoded RSA-encrypted AES key
+  encryptedData: string; // Base64 encoded AES-encrypted data
+  iv: string; // Base64 encoded initialization vector for AES
 }
