@@ -1,4 +1,4 @@
-.PHONY: help install clean lint type-check build test test-migrations test-all dev preview audit format all ci
+.PHONY: help install clean lint type-check build test test-migrations test-hooks test-all dev preview audit format all ci
 
 # Default target
 .DEFAULT_GOAL := help
@@ -50,7 +50,11 @@ test-migrations: ## Run PocketBase migration tests
 	@echo "Running migration tests..."
 	npm test --prefix tests/migrations
 
-test-all: test test-migrations ## Run all tests (frontend + migrations)
+test-hooks: ## Run PocketBase hook validation tests
+	@echo "Running hook validation tests..."
+	node tests/hooks/test-notification-hook.js
+
+test-all: test test-migrations test-hooks ## Run all tests (frontend + migrations + hooks)
 	@echo "All tests completed!"
 
 audit: ## Run security audit
