@@ -16,14 +16,24 @@ export function useEventStats() {
       const upcomingEvents = events.filter((event) => {
         const eventDate = new Date(event.event_date);
 
-        // For recurring yearly events, check if it's upcoming this year
+        // For recurring yearly events, check if it's upcoming this year or next year
         if (event.recurring_yearly) {
-          const thisYearEvent = new Date(
+          let nextOccurrence = new Date(
             now.getFullYear(),
             eventDate.getMonth(),
             eventDate.getDate()
           );
-          return thisYearEvent >= now && thisYearEvent <= oneMonthFromNow;
+
+          // If the event has already passed this year, use next year's date
+          if (nextOccurrence < now) {
+            nextOccurrence = new Date(
+              now.getFullYear() + 1,
+              eventDate.getMonth(),
+              eventDate.getDate()
+            );
+          }
+
+          return nextOccurrence >= now && nextOccurrence <= oneMonthFromNow;
         }
 
         return eventDate >= now && eventDate <= oneMonthFromNow;

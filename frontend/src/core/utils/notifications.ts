@@ -2,8 +2,15 @@
  * Utility functions for managing web push notifications
  */
 
-const VAPID_PUBLIC_KEY =
-  'BEL8xH1kLqr8C9F0b3X7Y_Z5K6J4W8Q2M1N3P5R7T9V0A2C4E6G8I0K2M4O6Q8S0U2W4Y6A8C0E2G4I6K8M0O2';
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+if (!VAPID_PUBLIC_KEY) {
+  console.error(
+    'VITE_VAPID_PUBLIC_KEY is not set. Web push notifications will not work. ' +
+      'Please set this environment variable in your .env file. ' +
+      'You can generate VAPID keys using: npx web-push generate-vapid-keys'
+  );
+}
 
 /**
  * Convert VAPID public key to Uint8Array

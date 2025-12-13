@@ -73,12 +73,22 @@ export function EventsHome() {
         const eventDate = new Date(event.event_date);
 
         if (event.recurring_yearly) {
-          const thisYearEvent = new Date(
+          let nextOccurrence = new Date(
             now.getFullYear(),
             eventDate.getMonth(),
             eventDate.getDate()
           );
-          return thisYearEvent >= now && thisYearEvent <= oneMonthFromNow;
+
+          // If the event has already passed this year, use next year's date
+          if (nextOccurrence < now) {
+            nextOccurrence = new Date(
+              now.getFullYear() + 1,
+              eventDate.getMonth(),
+              eventDate.getDate()
+            );
+          }
+
+          return nextOccurrence >= now && nextOccurrence <= oneMonthFromNow;
         }
 
         return eventDate >= now && eventDate <= oneMonthFromNow;
@@ -204,7 +214,7 @@ export function EventsHome() {
                         <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                           Reminders:{' '}
                           {event.notification_preferences
-                            .map((p) => p.replace('_', ' '))
+                            .map((p) => p.replaceAll('_', ' '))
                             .join(', ')}
                         </p>
                       )}
@@ -215,6 +225,7 @@ export function EventsHome() {
                       variant="secondary"
                       size="sm"
                       onClick={() => setEditingEvent(event)}
+                      aria-label={`Edit ${event.title}`}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -222,6 +233,7 @@ export function EventsHome() {
                       variant="secondary"
                       size="sm"
                       onClick={() => handleDeleteEvent(event.id)}
+                      aria-label={`Delete ${event.title}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -272,6 +284,7 @@ export function EventsHome() {
                       variant="secondary"
                       size="sm"
                       onClick={() => setEditingEvent(event)}
+                      aria-label={`Edit ${event.title}`}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -279,6 +292,7 @@ export function EventsHome() {
                       variant="secondary"
                       size="sm"
                       onClick={() => handleDeleteEvent(event.id)}
+                      aria-label={`Delete ${event.title}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
