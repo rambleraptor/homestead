@@ -37,10 +37,6 @@ function createAppRouter() {
           children: module.routes,
         })),
         {
-          path: '/settings',
-          element: <div className="text-center py-12">Settings page (coming soon)</div>,
-        },
-        {
           path: '/unauthorized',
           element: <Unauthorized />,
         },
