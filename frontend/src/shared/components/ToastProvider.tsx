@@ -1,14 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { Toast, type ToastType } from './Toast';
+import { toast as sonnerToast } from 'sonner';
+import { Toaster } from '@/shared/components/ui/sonner';
 
-interface ToastData {
-  id: string;
-  type: ToastType;
-  message: string;
-  duration?: number;
-}
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 interface ToastContextValue {
   showToast: (type: ToastType, message: string, duration?: number) => void;
@@ -21,16 +17,24 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<ToastData[]>([]);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
-
   const showToast = useCallback(
     (type: ToastType, message: string, duration?: number) => {
-      const id = `toast-${Date.now()}-${Math.random()}`;
-      setToasts((prev) => [...prev, { id, type, message, duration }]);
+      const options = duration ? { duration } : undefined;
+
+      switch (type) {
+        case 'success':
+          sonnerToast.success(message, options);
+          break;
+        case 'error':
+          sonnerToast.error(message, options);
+          break;
+        case 'info':
+          sonnerToast.info(message, options);
+          break;
+        case 'warning':
+          sonnerToast.warning(message, options);
+          break;
+      }
     },
     []
   );
@@ -60,12 +64,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
-        {toasts.map((toast) => (
-          <Toast key={toast.id} {...toast} onClose={removeToast} />
-        ))}
-      </div>
+      <Toaster />
     </ToastContext.Provider>
   );
 }

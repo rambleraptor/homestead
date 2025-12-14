@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { Button as ShadcnButton } from '@/shared/components/ui/button';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger';
@@ -11,34 +12,30 @@ export function Button({
   size = 'md',
   className = '',
   children,
-  disabled,
   ...props
 }: ButtonProps) {
-  const baseClasses =
-    'inline-flex items-center justify-center font-medium transition-colors rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
-
-  const variantClasses = {
-    primary:
-      'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600',
-    secondary:
-      'bg-gray-200 hover:bg-gray-300 text-gray-900 focus:ring-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white',
-    danger:
-      'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 dark:bg-red-500 dark:hover:bg-red-600',
+  // Map old variants to shadcn/ui variants
+  const variantMap = {
+    primary: 'default' as const,
+    secondary: 'secondary' as const,
+    danger: 'destructive' as const,
   };
 
-  const sizeClasses = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg',
+  // Map old sizes to shadcn/ui sizes
+  const sizeMap = {
+    sm: 'sm' as const,
+    md: 'default' as const,
+    lg: 'lg' as const,
   };
 
   return (
-    <button
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
-      disabled={disabled}
+    <ShadcnButton
+      variant={variantMap[variant]}
+      size={sizeMap[size]}
+      className={className}
       {...props}
     >
       {children}
-    </button>
+    </ShadcnButton>
   );
 }

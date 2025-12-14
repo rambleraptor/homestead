@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Card as ShadcnCard, CardContent } from '@/shared/components/ui/card';
 
 interface CardProps {
   children: ReactNode;
@@ -7,10 +8,13 @@ interface CardProps {
 
 export function Card({ children, className = '' }: CardProps) {
   return (
-    <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 ${className}`}
-    >
-      {children}
-    </div>
+    <ShadcnCard className={className}>
+      <CardContent className="p-6">
+        {children}
+      </CardContent>
+    </ShadcnCard>
   );
 }
+
+// Re-export shadcn Card subcomponents for more advanced usage
+export { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/shared/components/ui/card';
