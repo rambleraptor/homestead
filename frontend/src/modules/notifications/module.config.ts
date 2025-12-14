@@ -1,3 +1,10 @@
+/**
+ * Notifications Module Configuration
+ *
+ * Module for viewing and managing user notifications.
+ * Displays event reminders and system notifications.
+ */
+
 import { Bell } from 'lucide-react';
 import type { HomeModule } from '../types';
 import { notificationRoutes } from './routes';

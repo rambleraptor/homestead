@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCollection } from '../../../core/api/pocketbase';
-import { queryKeys } from '../../../core/api/queryClient';
+import { getCollection, Collections } from '@/core/api/pocketbase';
+import { queryKeys } from '@/core/api/queryClient';
 import type { Notification } from '../types';
 
 export function useMarkNotificationAsRead() {
@@ -9,7 +9,7 @@ export function useMarkNotificationAsRead() {
   return useMutation({
     mutationFn: async (id: string) => {
       const notification = await getCollection<Notification>(
-        'notifications'
+        Collections.NOTIFICATIONS
       ).update(id, {
         read: true,
         read_at: new Date().toISOString(),
@@ -18,7 +18,7 @@ export function useMarkNotificationAsRead() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.module('notifications').list(),
+        queryKey: queryKeys.module(Collections.NOTIFICATIONS).list(),
       });
     },
   });

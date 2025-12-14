@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCollection } from '../../../core/api/pocketbase';
-import { queryKeys } from '../../../core/api/queryClient';
+import { getCollection, Collections } from '@/core/api/pocketbase';
+import { queryKeys } from '@/core/api/queryClient';
 import type { Event, EventFormData } from '../types';
 
 interface UpdateEventData {
@@ -13,7 +13,7 @@ export function useUpdateEvent() {
 
   return useMutation({
     mutationFn: async ({ id, data }: UpdateEventData) => {
-      const event = await getCollection<Event>('events').update(id, data);
+      const event = await getCollection<Event>(Collections.EVENTS).update(id, data);
       return event;
     },
     onSuccess: (_, variables) => {

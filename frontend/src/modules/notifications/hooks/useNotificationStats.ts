@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { getCollection, pb } from '../../../core/api/pocketbase';
-import { queryKeys } from '../../../core/api/queryClient';
+import { getCollection, pb, Collections } from '@/core/api/pocketbase';
+import { queryKeys } from '@/core/api/queryClient';
 import type { Notification, NotificationStats } from '../types';
 
 export function useNotificationStats() {
   return useQuery({
-    queryKey: queryKeys.module('notifications').list({ type: 'stats' }),
+    queryKey: queryKeys.module(Collections.NOTIFICATIONS).list({ type: 'stats' }),
     queryFn: async () => {
       const userId = pb.authStore.record?.id;
       if (!userId) {
@@ -13,7 +13,7 @@ export function useNotificationStats() {
       }
 
       const notifications = await getCollection<Notification>(
-        'notifications'
+        Collections.NOTIFICATIONS
       ).getFullList({
         filter: `user_id="${userId}"`,
       });

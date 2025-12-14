@@ -1,6 +1,6 @@
 import { Cake, Heart, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
-import { Card } from '../../../shared/components/Card';
-import { Checkbox } from '../../../shared/components/Checkbox';
+import { Card } from '@/shared/components/Card';
+import { Checkbox } from '@/shared/components/Checkbox';
 import type { ParsedEvent } from '../utils/csvParser';
 
 interface EventPreviewProps {

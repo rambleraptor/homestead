@@ -1,7 +1,7 @@
 import { Bell, BellOff } from 'lucide-react';
-import { Card } from '../../../shared/components/Card';
-import { Button } from '../../../shared/components/Button';
-import { Spinner } from '../../../shared/components/Spinner';
+import { Card } from '@/shared/components/Card';
+import { Button } from '@/shared/components/Button';
+import { Spinner } from '@/shared/components/Spinner';
 import { useNotificationSubscription } from '../hooks/useNotificationSubscription';
 import { useUpdateNotificationSubscription } from '../hooks/useUpdateNotificationSubscription';
 import { useDeleteNotificationSubscription } from '../hooks/useDeleteNotificationSubscription';
@@ -10,7 +10,7 @@ import {
   requestNotificationPermission,
   subscribeToPushNotifications,
   unsubscribeFromPushNotifications,
-} from '../../../core/utils/notifications';
+} from '@/core/utils/notifications';
 
 export function SettingsHome() {
   const { data: subscription, isLoading } = useNotificationSubscription();

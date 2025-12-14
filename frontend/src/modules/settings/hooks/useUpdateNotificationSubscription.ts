@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCollection, pb } from '../../../core/api/pocketbase';
-import { queryKeys } from '../../../core/api/queryClient';
+import { getCollection, pb, Collections } from '@/core/api/pocketbase';
+import { queryKeys } from '@/core/api/queryClient';
 import type { NotificationSubscription } from '../types';
 
 interface UpdateSubscriptionData {
@@ -18,7 +18,7 @@ export function useUpdateNotificationSubscription() {
 
       // Check if subscription already exists
       const existing = await getCollection<NotificationSubscription>(
-        'notification_subscriptions'
+        Collections.NOTIFICATION_SUBSCRIPTIONS
       ).getFullList({
         filter: `user_id="${userId}"`,
       });
@@ -26,7 +26,7 @@ export function useUpdateNotificationSubscription() {
       if (existing.length > 0) {
         // Update existing subscription
         return await getCollection<NotificationSubscription>(
-          'notification_subscriptions'
+          Collections.NOTIFICATION_SUBSCRIPTIONS
         ).update(existing[0].id, {
           subscription_data: data.subscription,
           enabled: data.enabled,
@@ -34,7 +34,7 @@ export function useUpdateNotificationSubscription() {
       } else {
         // Create new subscription
         return await getCollection<NotificationSubscription>(
-          'notification_subscriptions'
+          Collections.NOTIFICATION_SUBSCRIPTIONS
         ).create({
           user_id: userId,
           subscription_data: data.subscription,

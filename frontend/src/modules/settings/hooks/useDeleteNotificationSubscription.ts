@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCollection, pb } from '../../../core/api/pocketbase';
-import { queryKeys } from '../../../core/api/queryClient';
+import { getCollection, pb, Collections } from '@/core/api/pocketbase';
+import { queryKeys } from '@/core/api/queryClient';
 import type { NotificationSubscription } from '../types';
 
 export function useDeleteNotificationSubscription() {
@@ -12,13 +12,13 @@ export function useDeleteNotificationSubscription() {
       if (!userId) throw new Error('User not authenticated');
 
       const existing = await getCollection<NotificationSubscription>(
-        'notification_subscriptions'
+        Collections.NOTIFICATION_SUBSCRIPTIONS
       ).getFullList({
         filter: `user_id="${userId}"`,
       });
 
       if (existing.length > 0) {
-        await getCollection('notification_subscriptions').delete(existing[0].id);
+        await getCollection(Collections.NOTIFICATION_SUBSCRIPTIONS).delete(existing[0].id);
       }
     },
     onSuccess: () => {

@@ -4,7 +4,7 @@ import { BulkImport } from './components/BulkImport';
 
 export const eventRoutes: RouteObject[] = [
   {
-    path: '',
+    index: true,
     element: <EventsHome />,
   },
   {

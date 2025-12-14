@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Cake, Heart, Plus, Upload } from 'lucide-react';
-import { Card } from '../../../shared/components/Card';
-import { Button } from '../../../shared/components/Button';
-import { Modal } from '../../../shared/components/Modal';
-import { Spinner } from '../../../shared/components/Spinner';
-import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
-import { useToast } from '../../../shared/components/ToastProvider';
+import { Card } from '@/shared/components/Card';
+import { Button } from '@/shared/components/Button';
+import { Modal } from '@/shared/components/Modal';
+import { Spinner } from '@/shared/components/Spinner';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { useToast } from '@/shared/components/ToastProvider';
 import { useEvents } from '../hooks/useEvents';
 import { useCreateEvent } from '../hooks/useCreateEvent';
 import { useUpdateEvent } from '../hooks/useUpdateEvent';

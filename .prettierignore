@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+package-lock.json
+
+# Build output
+dist
+build
+.next
+out
+
+# PocketBase
+pocketbase
+pb_data
+pb_migrations/*.js
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage
+.nyc_output
+
+# Cache
+.cache
+.temp
+.tmp

@@ -61,9 +61,9 @@ audit: ## Run security audit
 	@echo "Running security audit..."
 	cd $(FRONTEND_DIR) && npm audit --audit-level=high
 
-format: ## Format code (placeholder - add prettier/formatter as needed)
-	@echo "No formatter configured yet"
-	@echo "Consider adding prettier to your project"
+format: ## Format code with Prettier
+	@echo "Formatting code with Prettier..."
+	cd $(FRONTEND_DIR) && npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css,md}"
 
 all: install lint type-check build ## Run install, lint, type-check, and build
 

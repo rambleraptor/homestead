@@ -5,7 +5,7 @@
  */
 
 
-import { useAuth } from '../../../core/auth/useAuth';
+import { useAuth } from '@/core/auth/useAuth';
 import { LayoutDashboard, Users, Activity, Clock } from 'lucide-react';
 
 export function DashboardHome() {

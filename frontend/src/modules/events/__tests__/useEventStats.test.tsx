@@ -10,11 +10,11 @@ import { useEventStats } from '../hooks/useEventStats';
 import type { Event } from '../types';
 
 // Mock the getCollection function
-vi.mock('../../../core/api/pocketbase', () => ({
+vi.mock('@/core/api/pocketbase', () => ({
   getCollection: vi.fn(),
 }));
 
-import { getCollection } from '../../../core/api/pocketbase';
+import { getCollection } from '@/core/api/pocketbase';
 
 const createWrapper = () => {
   const queryClient = new QueryClient({

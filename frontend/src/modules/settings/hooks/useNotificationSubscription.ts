@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getCollection, pb } from '../../../core/api/pocketbase';
-import { queryKeys } from '../../../core/api/queryClient';
+import { getCollection, pb, Collections } from '@/core/api/pocketbase';
+import { queryKeys } from '@/core/api/queryClient';
 import type { NotificationSubscription } from '../types';
 
 export function useNotificationSubscription() {
@@ -12,7 +12,7 @@ export function useNotificationSubscription() {
 
       try {
         const subscriptions = await getCollection<NotificationSubscription>(
-          'notification_subscriptions'
+          Collections.NOTIFICATION_SUBSCRIPTIONS
         ).getFullList({
           filter: `user_id="${userId}"`,
         });

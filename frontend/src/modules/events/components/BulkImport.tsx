@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Download, FileText, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
-import { Button } from '../../../shared/components/Button';
-import { Card } from '../../../shared/components/Card';
-import { useToast } from '../../../shared/components/ToastProvider';
+import { Button } from '@/shared/components/Button';
+import { Card } from '@/shared/components/Card';
+import { useToast } from '@/shared/components/ToastProvider';
 import { parseEventsCSV, downloadCSVTemplate } from '../utils/csvParser';
 import type { ParsedEvent } from '../utils/csvParser';
 import { EventPreview } from './EventPreview';

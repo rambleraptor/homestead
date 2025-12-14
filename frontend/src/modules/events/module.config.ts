@@ -1,3 +1,10 @@
+/**
+ * Events Module Configuration
+ *
+ * Module for managing household events and calendar items.
+ * Supports tracking birthdays, anniversaries, recurring events, and bulk imports.
+ */
+
 import { Calendar } from 'lucide-react';
 import type { HomeModule } from '../types';
 import { eventRoutes } from './routes';

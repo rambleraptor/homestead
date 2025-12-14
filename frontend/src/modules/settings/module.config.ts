@@ -1,3 +1,10 @@
+/**
+ * Settings Module Configuration
+ *
+ * Module for managing user preferences and notification settings.
+ * Enables web push notifications and customization options.
+ */
+
 import { Settings } from 'lucide-react';
 import type { HomeModule } from '../types';
 import { settingsRoutes } from './routes';

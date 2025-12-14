@@ -1,6 +1,13 @@
 /**
  * Dashboard Module Configuration
  *
+ * Main dashboard module providing overview of the HomeOS system.
+ * Displays welcome message, statistics, and getting started guide.
+ */
+
+/**
+ * Dashboard Module Configuration
+ *
  * This file defines the Dashboard module for HomeOS.
  * It demonstrates the pattern that all modules should follow.
  */

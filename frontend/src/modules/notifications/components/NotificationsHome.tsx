@@ -1,7 +1,7 @@
 import { Bell, BellOff, Check, Calendar } from 'lucide-react';
-import { Card } from '../../../shared/components/Card';
-import { Button } from '../../../shared/components/Button';
-import { Spinner } from '../../../shared/components/Spinner';
+import { Card } from '@/shared/components/Card';
+import { Button } from '@/shared/components/Button';
+import { Spinner } from '@/shared/components/Spinner';
 import { useNotifications } from '../hooks/useNotifications';
 import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
 import { useNotificationStats } from '../hooks/useNotificationStats';

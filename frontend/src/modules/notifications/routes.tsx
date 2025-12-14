@@ -3,7 +3,7 @@ import { NotificationsHome } from './components/NotificationsHome';
 
 export const notificationRoutes: RouteObject[] = [
   {
-    path: '',
+    index: true,
     element: <NotificationsHome />,
   },
 ];

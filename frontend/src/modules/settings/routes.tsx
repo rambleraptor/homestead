@@ -3,7 +3,7 @@ import { SettingsHome } from './components/SettingsHome';
 
 export const settingsRoutes: RouteObject[] = [
   {
-    path: '',
+    index: true,
     element: <SettingsHome />,
   },
 ];

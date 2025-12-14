@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCollection, pb } from '../../../core/api/pocketbase';
-import { queryKeys } from '../../../core/api/queryClient';
+import { getCollection, pb, Collections } from '@/core/api/pocketbase';
+import { queryKeys } from '@/core/api/queryClient';
 import type { EventFormData } from '../types';
 
 interface BulkImportEvent extends EventFormData {
@@ -40,7 +40,7 @@ export function useBulkImportEvents() {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { rowNumber, isValid, errors, ...eventData } = event;
 
-          await getCollection('events').create({
+          await getCollection(Collections.EVENTS).create({
             ...eventData,
             created_by: userId,
           });

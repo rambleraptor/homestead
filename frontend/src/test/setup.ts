@@ -31,6 +31,10 @@ vi.mock('@/core/api/pocketbase', () => ({
     MODULE_PERMISSIONS: 'module_permissions',
     AUDIT_LOG: 'audit_log',
     GIFT_CARDS: 'gift_cards',
+    GIFT_CARD_TRANSACTIONS: 'gift_card_transactions',
+    EVENTS: 'events',
+    NOTIFICATIONS: 'notifications',
+    NOTIFICATION_SUBSCRIPTIONS: 'notification_subscriptions',
   },
   getCurrentUser: vi.fn(() => ({
     id: 'test-user-id',

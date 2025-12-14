@@ -1,6 +1,6 @@
 import { Cake, Heart, Edit, Trash2 } from 'lucide-react';
-import { Card } from '../../../shared/components/Card';
-import { Button } from '../../../shared/components/Button';
+import { Card } from '@/shared/components/Card';
+import { Button } from '@/shared/components/Button';
 import type { Event } from '../types';
 
 interface EventCardProps {
