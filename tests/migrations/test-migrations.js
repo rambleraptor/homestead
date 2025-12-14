@@ -155,6 +155,9 @@ async function setupPocketBase() {
   const migrationFiles = await readdir(migrationsDir);
   console.log(`✓ Copied ${migrationFiles.length} migration(s):`);
   migrationFiles.forEach(file => console.log(`  - ${file}`));
+
+  // Create admin user before starting server
+  await createAdminUser();
 }
 
 /**
@@ -256,9 +259,9 @@ async function checkHealth() {
 }
 
 /**
- * Create admin user using PocketBase CLI and authenticate
+ * Create admin user using PocketBase CLI (before server starts)
  */
-async function createAdminAndAuth() {
+async function createAdminUser() {
   return new Promise((resolve, reject) => {
     console.log('\n👤 Creating admin user via CLI...\n');
 
@@ -287,8 +290,7 @@ async function createAdminAndAuth() {
     adminProcess.on('close', (code) => {
       if (code === 0 || output.includes('Successfully')) {
         console.log('✓ Admin user created/updated');
-        // Now authenticate
-        authenticateAdmin().then(resolve).catch(reject);
+        resolve();
       } else {
         reject(new Error(`Failed to create admin: ${output}`));
       }
@@ -305,6 +307,8 @@ async function createAdminAndAuth() {
  */
 async function authenticateAdmin() {
   return new Promise((resolve, reject) => {
+    console.log('\n🔐 Authenticating admin user...\n');
+
     const postData = JSON.stringify({
       identity: 'test@test.com',
       password: 'test1234test1234'
@@ -452,7 +456,7 @@ async function runTests() {
 
     // Run checks
     await checkHealth();
-    const authToken = await createAdminAndAuth();
+    const authToken = await authenticateAdmin();
     await verifyCollections(authToken);
 
     // Success!
