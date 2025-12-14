@@ -5,8 +5,9 @@
  */
 
 import { useState } from 'react';
-import { Save, X } from 'lucide-react';
+import { Save, X, Upload, Trash2 } from 'lucide-react';
 import type { GiftCard, GiftCardFormData } from '../types';
+import { pb } from '@/core/api/pocketbase';
 
 interface GiftCardFormProps {
   onSubmit: (data: GiftCardFormData) => void;
@@ -27,7 +28,20 @@ export function GiftCardForm({
     pin: initialData?.pin || '',
     amount: initialData?.amount || 0,
     notes: initialData?.notes || '',
+    front_image: null,
+    back_image: null,
   });
+
+  const [frontImagePreview, setFrontImagePreview] = useState<string | null>(
+    initialData?.front_image
+      ? pb.files.getURL(initialData, initialData.front_image)
+      : null
+  );
+  const [backImagePreview, setBackImagePreview] = useState<string | null>(
+    initialData?.back_image
+      ? pb.files.getURL(initialData, initialData.back_image)
+      : null
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +56,59 @@ export function GiftCardForm({
       ...prev,
       [name]: name === 'amount' ? parseFloat(value) || 0 : value,
     }));
+  };
+
+  const handleImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    imageType: 'front_image' | 'back_image'
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        alert('Please upload a valid image file (JPEG, PNG, WebP, or GIF)');
+        return;
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5242880) {
+        alert('Image size must be less than 5MB');
+        return;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        [imageType]: file,
+      }));
+
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      if (imageType === 'front_image') {
+        setFrontImagePreview(previewUrl);
+      } else {
+        setBackImagePreview(previewUrl);
+      }
+    }
+  };
+
+  const handleRemoveImage = (imageType: 'front_image' | 'back_image') => {
+    setFormData((prev) => ({
+      ...prev,
+      [imageType]: null,
+    }));
+
+    if (imageType === 'front_image') {
+      if (frontImagePreview && frontImagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(frontImagePreview);
+      }
+      setFrontImagePreview(null);
+    } else {
+      if (backImagePreview && backImagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(backImagePreview);
+      }
+      setBackImagePreview(null);
+    }
   };
 
   return (
@@ -149,6 +216,89 @@ export function GiftCardForm({
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
           placeholder="Any additional notes (optional)"
         />
+      </div>
+
+      {/* Card Images */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Front Image */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Front Image
+          </label>
+          {frontImagePreview ? (
+            <div className="relative">
+              <img
+                src={frontImagePreview}
+                alt="Front of gift card"
+                className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveImage('front_image')}
+                className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
+                title="Remove image"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-primary-500 dark:hover:border-primary-500 transition-colors">
+              <Upload className="w-8 h-8 text-gray-400 mb-2" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Upload front image
+              </span>
+              <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                (Optional, max 5MB)
+              </span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => handleImageChange(e, 'front_image')}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
+
+        {/* Back Image */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Back Image
+          </label>
+          {backImagePreview ? (
+            <div className="relative">
+              <img
+                src={backImagePreview}
+                alt="Back of gift card"
+                className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveImage('back_image')}
+                className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
+                title="Remove image"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-primary-500 dark:hover:border-primary-500 transition-colors">
+              <Upload className="w-8 h-8 text-gray-400 mb-2" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Upload back image
+              </span>
+              <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                (Optional, max 5MB)
+              </span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => handleImageChange(e, 'back_image')}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
       </div>
 
       {/* Actions */}

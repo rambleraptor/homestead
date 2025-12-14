@@ -103,8 +103,8 @@ export function getCollection<T = unknown>(name: string) {
     }>;
     getOne: (id: string, options?: unknown) => Promise<T>;
     getFirstListItem: (filter: string, options?: unknown) => Promise<T>;
-    create: (data: Partial<T>, options?: unknown) => Promise<T>;
-    update: (id: string, data: Partial<T>, options?: unknown) => Promise<T>;
+    create: (data: Partial<T> | FormData, options?: unknown) => Promise<T>;
+    update: (id: string, data: Partial<T> | FormData, options?: unknown) => Promise<T>;
     delete: (id: string) => Promise<boolean>;
     subscribe: (
       idOrFilter: string,
