@@ -12,6 +12,7 @@ import {
   subscribeToPushNotifications,
   unsubscribeFromPushNotifications,
 } from '@/core/utils/notifications';
+import { ChangePasswordForm } from './ChangePasswordForm';
 
 export function SettingsHome() {
   const { data: subscription, isLoading } = useNotificationSubscription();
@@ -219,6 +220,13 @@ export function SettingsHome() {
             </div>
           </div>
         </Card>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          Security
+        </h2>
+        <ChangePasswordForm />
       </div>
     </div>
   );
