@@ -1,27 +1,23 @@
 /// <reference path="../pb_data/types.d.ts" />
-migrate((db) => {
-  const dao = new Dao(db)
-  const collection = dao.findCollectionByNameOrId("gift_cards")
+migrate((app) => {
+  const collection = app.findCollectionByNameOrId("gift_cards");
 
   // Add archived field (boolean, default false)
-  collection.schema.addField(new SchemaField({
-    "system": false,
-    "id": "archived",
-    "name": "archived",
-    "type": "bool",
-    "required": false,
-    "presentable": false,
-    "unique": false,
-    "options": {}
-  }))
+  collection.fields.add(new BoolField({
+    name: "archived",
+    required: false,
+    presentable: false
+  }));
 
-  return dao.saveCollection(collection)
-}, (db) => {
-  const dao = new Dao(db)
-  const collection = dao.findCollectionByNameOrId("gift_cards")
+  return app.save(collection);
+}, (app) => {
+  const collection = app.findCollectionByNameOrId("gift_cards");
 
   // Remove archived field
-  collection.schema.removeField("archived")
+  const archivedField = collection.fields.getByName("archived");
+  if (archivedField) {
+    collection.fields.removeById(archivedField.id);
+  }
 
-  return dao.saveCollection(collection)
+  return app.save(collection);
 })

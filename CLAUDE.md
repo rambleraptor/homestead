@@ -70,17 +70,6 @@ cd frontend && npm run test
 
 **Why:** Validates that new changes don't break existing functionality and that new features work as expected.
 
-### 5. Migration Tests ✅
-
-PocketBase migrations must be tested and verified.
-
-```bash
-# From project root
-make test-migrations
-```
-
-**Why:** Ensures database migrations run successfully without crashing PocketBase and that schema changes are applied correctly.
-
 ## Development Workflow
 
 ### Complete Pre-Push Checklist
@@ -88,8 +77,8 @@ make test-migrations
 Before pushing any PR, run the CI command which combines all essential checks:
 
 ```bash
-# From project root - runs lint, type-check, build, and all tests
-make ci && make test-all
+# From project root - runs lint, type-check, build, and tests
+make ci && make test
 ```
 
 This single command ensures your code meets all quality standards.
@@ -194,6 +183,92 @@ src/modules/feature-name/
 - Keep functions small and focused
 - Avoid premature optimization
 
+## PocketBase Migrations
+
+### Important: Use the Correct Migration API
+
+PocketBase 0.34.2 uses the **Collection API** for migrations. **DO NOT** use the old Dao pattern.
+
+#### ✅ Correct - Collection API (Use This)
+
+```javascript
+/// <reference path="../pb_data/types.d.ts" />
+migrate((app) => {
+  const collection = app.findCollectionByNameOrId("my_collection");
+
+  // Add a field
+  collection.fields.add(new TextField({
+    name: "my_field",
+    required: false,
+    max: 255
+  }));
+
+  // Add a boolean field
+  collection.fields.add(new BoolField({
+    name: "archived",
+    required: false
+  }));
+
+  // Add a file field
+  collection.fields.add(new FileField({
+    name: "image",
+    required: false,
+    maxSelect: 1,
+    maxSize: 5242880,
+    mimeTypes: ["image/jpeg", "image/png"]
+  }));
+
+  return app.save(collection);
+}, (app) => {
+  const collection = app.findCollectionByNameOrId("my_collection");
+
+  // Remove fields safely
+  const field = collection.fields.getByName("my_field");
+  if (field) {
+    collection.fields.removeById(field.id);
+  }
+
+  return app.save(collection);
+});
+```
+
+#### ❌ Incorrect - Dao Pattern (DO NOT USE)
+
+```javascript
+// DO NOT USE THIS PATTERN
+migrate((db) => {
+  const dao = new Dao(db)
+  const collection = dao.findCollectionByNameOrId("my_collection")
+
+  collection.schema.addField(new SchemaField({
+    // ...
+  }))
+
+  return dao.saveCollection(collection)
+})
+```
+
+### Key Points
+
+- Always use `migrate((app) => ...)` NOT `migrate((db) => ...)`
+- Use `app.findCollectionByNameOrId()` NOT `new Dao(db).findCollectionByNameOrId()`
+- Use `collection.fields.add(new FieldType(...))` NOT `collection.schema.addField()`
+- Use typed field constructors: `TextField`, `BoolField`, `FileField`, etc.
+- Use `app.save(collection)` NOT `dao.saveCollection(collection)`
+- Always include rollback logic in the second function parameter
+
+### Testing Migrations Locally
+
+Test migrations by running PocketBase locally:
+
+```bash
+# Start PocketBase (will auto-apply migrations)
+./pocketbase serve
+
+# Verify collections in admin UI
+open http://127.0.0.1:8090/_/
+```
+
 ## Project Structure
 
 ### Frontend (`frontend/`)
@@ -211,7 +286,6 @@ src/modules/feature-name/
 ### Tests
 
 - **`frontend/src/**/*.test.ts(x)`** - Frontend unit/integration tests
-- **`tests/migrations/`** - Migration testing suite
 
 ## Common Commands Quick Reference
 
@@ -223,15 +297,13 @@ make install
 make dev
 
 # Run all quality checks
-make ci && make test-all
+make ci && make test
 
 # Individual checks
 make lint             # ESLint
 make type-check       # TypeScript
 make build            # Production build
-make test             # Frontend tests only
-make test-migrations  # Migration tests only
-make test-all         # All tests (frontend + migrations)
+make test             # Frontend tests
 
 # Clean build artifacts
 make clean
@@ -247,7 +319,7 @@ When working on this project:
 1. **Always run the full test suite** before marking tasks complete
 2. **Follow the modular architecture** - don't create monolithic components
 3. **Respect existing patterns** - review similar code before implementing
-4. **Test migrations thoroughly** - database changes are critical
+4. **Use correct PocketBase migration API** - Collection API (app), NOT Dao pattern (db)
 5. **Ask clarifying questions** if requirements are unclear
 6. **Document complex logic** - but prefer self-explanatory code
 7. **Security first** - validate inputs, sanitize outputs, follow OWASP guidelines
@@ -257,7 +329,7 @@ When working on this project:
 Run this command and verify all checks pass:
 
 ```bash
-make ci && make test-all
+make ci && make test
 ```
 
 Only push when all checks pass successfully.

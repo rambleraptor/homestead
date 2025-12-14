@@ -13,7 +13,8 @@
 import { spawn } from 'child_process';
 import { createWriteStream, existsSync, cpSync } from 'fs';
 import { mkdir, rm, chmod, readdir } from 'fs/promises';
-import { get } from 'https';
+import { get as httpsGet } from 'https';
+import { get as httpGet, request as httpRequest } from 'http';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -25,6 +26,13 @@ const TEST_DIR = __dirname;
 const PB_DATA_DIR = join(TEST_DIR, 'test_pb_data');
 const MIGRATIONS_SOURCE = join(TEST_DIR, '../../pb_migrations');
 const TEST_PORT = 8091; // Different from default to avoid conflicts
+
+/**
+ * Get the appropriate HTTP/HTTPS module based on URL protocol
+ */
+function getHttpModule(url) {
+  return url.startsWith('https://') ? httpsGet : httpGet;
+}
 
 /**
  * Detect OS and architecture to download correct PocketBase binary
@@ -55,6 +63,7 @@ async function downloadFile(url, destination) {
   return new Promise((resolve, reject) => {
     console.log(`📥 Downloading from ${url}...`);
     const file = createWriteStream(destination);
+    const get = getHttpModule(url);
 
     get(url, (response) => {
       if (response.statusCode === 302 || response.statusCode === 301) {
@@ -146,6 +155,9 @@ async function setupPocketBase() {
   const migrationFiles = await readdir(migrationsDir);
   console.log(`✓ Copied ${migrationFiles.length} migration(s):`);
   migrationFiles.forEach(file => console.log(`  - ${file}`));
+
+  // Create admin user before starting server
+  await createAdminUser();
 }
 
 /**
@@ -218,8 +230,10 @@ async function startPocketBase() {
 async function checkHealth() {
   return new Promise((resolve, reject) => {
     console.log('\n🏥 Checking PocketBase health...\n');
+    const url = `http://127.0.0.1:${TEST_PORT}/api/health`;
+    const get = getHttpModule(url);
 
-    get(`http://127.0.0.1:${TEST_PORT}/api/health`, (res) => {
+    get(url, (res) => {
       let data = '';
 
       res.on('data', (chunk) => {
@@ -245,13 +259,118 @@ async function checkHealth() {
 }
 
 /**
+ * Create admin user using PocketBase CLI (before server starts)
+ */
+async function createAdminUser() {
+  return new Promise((resolve, reject) => {
+    console.log('\n👤 Creating admin user via CLI...\n');
+
+    const pbBinary = process.platform === 'win32'
+      ? join(TEST_DIR, 'pocketbase.exe')
+      : join(TEST_DIR, 'pocketbase');
+
+    const adminProcess = spawn(pbBinary, [
+      'superuser',
+      'upsert',
+      'test@test.com',
+      'test1234test1234',
+      '--dir', PB_DATA_DIR
+    ]);
+
+    let output = '';
+
+    adminProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    adminProcess.stderr.on('data', (data) => {
+      output += data.toString();
+    });
+
+    adminProcess.on('close', (code) => {
+      if (code === 0 || output.includes('Successfully')) {
+        console.log('✓ Admin user created/updated');
+        resolve();
+      } else {
+        reject(new Error(`Failed to create admin: ${output}`));
+      }
+    });
+
+    adminProcess.on('error', (err) => {
+      reject(new Error(`Failed to spawn admin creation: ${err.message}`));
+    });
+  });
+}
+
+/**
+ * Authenticate as admin and get token
+ */
+async function authenticateAdmin() {
+  return new Promise((resolve, reject) => {
+    console.log('\n🔐 Authenticating admin user...\n');
+
+    const postData = JSON.stringify({
+      identity: 'test@test.com',
+      password: 'test1234test1234'
+    });
+
+    const options = {
+      hostname: '127.0.0.1',
+      port: TEST_PORT,
+      path: '/api/admins/auth-with-password',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+
+    const req = httpRequest(options, (res) => {
+      let data = '';
+
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          try {
+            const auth = JSON.parse(data);
+            console.log('✓ Admin authenticated successfully');
+            resolve(auth.token);
+          } catch (e) {
+            reject(new Error('Failed to parse auth response'));
+          }
+        } else {
+          reject(new Error(`Authentication failed: ${res.statusCode} - ${data}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(postData);
+    req.end();
+  });
+}
+
+/**
  * Verify collections were created by migrations
  */
-async function verifyCollections() {
+async function verifyCollections(authToken) {
   return new Promise((resolve, reject) => {
     console.log('\n📊 Verifying collections...\n');
 
-    get(`http://127.0.0.1:${TEST_PORT}/api/collections`, (res) => {
+    const options = {
+      hostname: '127.0.0.1',
+      port: TEST_PORT,
+      path: '/api/collections',
+      method: 'GET',
+      headers: {
+        'Authorization': authToken
+      }
+    };
+
+    const req = httpRequest(options, (res) => {
       let data = '';
 
       res.on('data', (chunk) => {
@@ -307,7 +426,10 @@ async function verifyCollections() {
           reject(new Error(`Failed to fetch collections: ${res.statusCode}`));
         }
       });
-    }).on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.end();
   });
 }
 
@@ -334,7 +456,8 @@ async function runTests() {
 
     // Run checks
     await checkHealth();
-    await verifyCollections();
+    const authToken = await authenticateAdmin();
+    await verifyCollections(authToken);
 
     // Success!
     console.log('\n' + '='.repeat(50));
