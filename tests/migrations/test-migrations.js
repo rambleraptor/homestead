@@ -13,7 +13,8 @@
 import { spawn } from 'child_process';
 import { createWriteStream, existsSync, cpSync } from 'fs';
 import { mkdir, rm, chmod, readdir } from 'fs/promises';
-import { get } from 'https';
+import { get as httpsGet } from 'https';
+import { get as httpGet } from 'http';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -25,6 +26,13 @@ const TEST_DIR = __dirname;
 const PB_DATA_DIR = join(TEST_DIR, 'test_pb_data');
 const MIGRATIONS_SOURCE = join(TEST_DIR, '../../pb_migrations');
 const TEST_PORT = 8091; // Different from default to avoid conflicts
+
+/**
+ * Get the appropriate HTTP/HTTPS module based on URL protocol
+ */
+function getHttpModule(url) {
+  return url.startsWith('https://') ? httpsGet : httpGet;
+}
 
 /**
  * Detect OS and architecture to download correct PocketBase binary
@@ -55,6 +63,7 @@ async function downloadFile(url, destination) {
   return new Promise((resolve, reject) => {
     console.log(`📥 Downloading from ${url}...`);
     const file = createWriteStream(destination);
+    const get = getHttpModule(url);
 
     get(url, (response) => {
       if (response.statusCode === 302 || response.statusCode === 301) {
@@ -218,8 +227,10 @@ async function startPocketBase() {
 async function checkHealth() {
   return new Promise((resolve, reject) => {
     console.log('\n🏥 Checking PocketBase health...\n');
+    const url = `http://127.0.0.1:${TEST_PORT}/api/health`;
+    const get = getHttpModule(url);
 
-    get(`http://127.0.0.1:${TEST_PORT}/api/health`, (res) => {
+    get(url, (res) => {
       let data = '';
 
       res.on('data', (chunk) => {
@@ -250,8 +261,10 @@ async function checkHealth() {
 async function verifyCollections() {
   return new Promise((resolve, reject) => {
     console.log('\n📊 Verifying collections...\n');
+    const url = `http://127.0.0.1:${TEST_PORT}/api/collections`;
+    const get = getHttpModule(url);
 
-    get(`http://127.0.0.1:${TEST_PORT}/api/collections`, (res) => {
+    get(url, (res) => {
       let data = '';
 
       res.on('data', (chunk) => {
