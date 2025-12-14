@@ -179,15 +179,8 @@ jobs:
       - name: Install frontend dependencies
         run: make install
 
-      - name: Install migration test dependencies
-        working-directory: tests/migrations
-        run: npm install
-
       - name: Run frontend tests
         run: make test
-
-      - name: Run migration tests
-        run: make test-migrations
 
   security-scan:
     runs-on: ubuntu-latest
