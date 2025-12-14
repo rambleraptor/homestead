@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { ArrowLeft, CreditCard, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Minus, Edit } from 'lucide-react';
 import { useCreateTransaction } from '../hooks/useCreateTransaction';
 import type { GiftCard } from '../types';
+import { pb } from '@/core/api/pocketbase';
 
 interface MerchantDetailProps {
   merchant: string;
@@ -278,6 +279,37 @@ export function MerchantDetail({
                     </p>
                   </div>
                 )}
+
+                {/* Card Images */}
+                {(card.front_image || card.back_image) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Card Images
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {card.front_image && (
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Front</p>
+                          <img
+                            src={pb.files.getURL(card, card.front_image)}
+                            alt="Front of gift card"
+                            className="w-full h-32 object-cover rounded border border-gray-200 dark:border-gray-700"
+                          />
+                        </div>
+                      )}
+                      {card.back_image && (
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Back</p>
+                          <img
+                            src={pb.files.getURL(card, card.back_image)}
+                            alt="Back of gift card"
+                            className="w-full h-32 object-cover rounded border border-gray-200 dark:border-gray-700"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))
@@ -401,6 +433,37 @@ export function MerchantDetail({
                         <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-200 dark:border-gray-700">
                           {card.notes}
                         </p>
+                      </div>
+                    )}
+
+                    {/* Card Images */}
+                    {(card.front_image || card.back_image) && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Card Images
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {card.front_image && (
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Front</p>
+                              <img
+                                src={pb.files.getURL(card, card.front_image)}
+                                alt="Front of gift card"
+                                className="w-full h-32 object-cover rounded border border-gray-200 dark:border-gray-700"
+                              />
+                            </div>
+                          )}
+                          {card.back_image && (
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Back</p>
+                              <img
+                                src={pb.files.getURL(card, card.back_image)}
+                                alt="Back of gift card"
+                                className="w-full h-32 object-cover rounded border border-gray-200 dark:border-gray-700"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

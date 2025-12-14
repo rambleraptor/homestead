@@ -12,6 +12,8 @@ export interface GiftCard {
   pin?: string;
   amount: number;
   notes?: string;
+  front_image?: string;
+  back_image?: string;
   created_by?: string;
   created: string;
   updated: string;
@@ -27,6 +29,8 @@ export interface GiftCardFormData {
   pin?: string;
   amount: number;
   notes?: string;
+  front_image?: File | null;
+  back_image?: File | null;
 }
 
 /**
