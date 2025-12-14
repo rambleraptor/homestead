@@ -1,10 +1,11 @@
-import { Bell, BellOff } from 'lucide-react';
+import { Bell, BellOff, Bug } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
 import { Spinner } from '@/shared/components/Spinner';
 import { useNotificationSubscription } from '../hooks/useNotificationSubscription';
 import { useUpdateNotificationSubscription } from '../hooks/useUpdateNotificationSubscription';
 import { useDeleteNotificationSubscription } from '../hooks/useDeleteNotificationSubscription';
+import { useSendTestNotification } from '../hooks/useSendTestNotification';
 import {
   isNotificationSupported,
   requestNotificationPermission,
@@ -16,6 +17,7 @@ export function SettingsHome() {
   const { data: subscription, isLoading } = useNotificationSubscription();
   const updateSubscription = useUpdateNotificationSubscription();
   const deleteSubscription = useDeleteNotificationSubscription();
+  const sendTestNotification = useSendTestNotification();
 
   const isBrowserSupported = isNotificationSupported();
   const isEnabled = subscription?.enabled || false;
@@ -53,6 +55,16 @@ export function SettingsHome() {
     } catch (error) {
       console.error('Failed to disable notifications:', error);
       alert('Failed to disable notifications. Please try again.');
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    try {
+      const result = await sendTestNotification.mutateAsync();
+      alert(result.message || 'Test notification sent successfully!');
+    } catch (error) {
+      console.error('Failed to send test notification:', error);
+      alert('Failed to send test notification. Make sure you have admin access.');
     }
   };
 
@@ -178,6 +190,35 @@ export function SettingsHome() {
             </div>
           </Card>
         )}
+      </div>
+
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          Debug Mode
+        </h2>
+
+        <Card>
+          <div className="flex items-start gap-4">
+            <Bug className="w-6 h-6 text-purple-500 mt-1" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                Test Push Notifications
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Send an immediate test push notification to verify that your notification system is working correctly.
+              </p>
+              <Button
+                onClick={handleSendTestNotification}
+                disabled={sendTestNotification.isPending}
+                variant="secondary"
+              >
+                {sendTestNotification.isPending
+                  ? 'Sending...'
+                  : 'Send Test Notification'}
+              </Button>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );
