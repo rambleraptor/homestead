@@ -160,6 +160,35 @@ jobs:
           path: frontend/dist/
           retention-days: 7
 
+  test:
+    runs-on: ubuntu-latest
+    name: Run Tests
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: make install
+
+      - name: Install migration test dependencies
+        working-directory: tests/migrations
+        run: npm install
+
+      - name: Run frontend tests
+        run: make test
+
+      - name: Run migration tests
+        run: make test-migrations
+
   security-scan:
     runs-on: ubuntu-latest
     name: Security Scan

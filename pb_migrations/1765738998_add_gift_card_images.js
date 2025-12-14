@@ -3,40 +3,38 @@ migrate((app) => {
   const collection = app.findCollectionByNameOrId("gift_cards");
 
   // Add front_image field (file field)
-  collection.fields.addAt(5, new Field({
-    "name": "front_image",
-    "type": "file",
-    "required": false,
-    "presentable": false,
-    "maxSelect": 1,
-    "maxSize": 5242880, // 5MB
-    "mimeTypes": [
+  collection.fields.add(new FileField({
+    name: "front_image",
+    required: false,
+    presentable: false,
+    maxSelect: 1,
+    maxSize: 5242880, // 5MB
+    mimeTypes: [
       "image/jpeg",
       "image/png",
       "image/webp",
       "image/gif"
     ],
-    "thumbs": [
+    thumbs: [
       "100x100",
       "400x400"
     ]
   }));
 
   // Add back_image field (file field)
-  collection.fields.addAt(6, new Field({
-    "name": "back_image",
-    "type": "file",
-    "required": false,
-    "presentable": false,
-    "maxSelect": 1,
-    "maxSize": 5242880, // 5MB
-    "mimeTypes": [
+  collection.fields.add(new FileField({
+    name: "back_image",
+    required: false,
+    presentable: false,
+    maxSelect: 1,
+    maxSize: 5242880, // 5MB
+    mimeTypes: [
       "image/jpeg",
       "image/png",
       "image/webp",
       "image/gif"
     ],
-    "thumbs": [
+    thumbs: [
       "100x100",
       "400x400"
     ]
@@ -47,8 +45,15 @@ migrate((app) => {
   const collection = app.findCollectionByNameOrId("gift_cards");
 
   // Remove the fields in reverse order
-  collection.fields.removeById(collection.fields.getByName("back_image").id);
-  collection.fields.removeById(collection.fields.getByName("front_image").id);
+  const backImageField = collection.fields.getByName("back_image");
+  if (backImageField) {
+    collection.fields.removeById(backImageField.id);
+  }
+
+  const frontImageField = collection.fields.getByName("front_image");
+  if (frontImageField) {
+    collection.fields.removeById(frontImageField.id);
+  }
 
   return app.save(collection);
 });
