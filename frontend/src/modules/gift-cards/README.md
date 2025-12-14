@@ -34,6 +34,7 @@ The Gift Cards module allows you to manage and track household gift cards, organ
 ### Managing Individual Cards
 
 In the merchant detail view, you can:
+
 - **View card details**: Card number and PIN are masked by default
 - **Show/Hide sensitive data**: Click the eye icon to reveal card numbers or PINs
 - **Edit cards**: Click the edit icon to update card information
@@ -56,6 +57,7 @@ The module uses a `gift_cards` collection in PocketBase with the following field
 **Migration**: `pb_migrations/1733932805_gift_cards_collection.js`
 
 **Indexes**:
+
 - `idx_merchant` - Index on merchant field for faster filtering
 - `idx_created_by` - Index on created_by field for ownership queries
 
@@ -129,7 +131,7 @@ await mutateAsync({
   merchant: 'Amazon',
   card_number: '1234-5678-9012-3456',
   pin: '1234',
-  amount: 50.00,
+  amount: 50.0,
   notes: 'Birthday gift from Mom',
 });
 ```

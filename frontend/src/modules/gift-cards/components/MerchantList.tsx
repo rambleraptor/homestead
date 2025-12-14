@@ -43,16 +43,12 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
         <div className="flex items-center gap-3">
           <div
             className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              isArchived
-                ? 'bg-gray-100 dark:bg-gray-700'
-                : 'bg-primary-100 dark:bg-primary-900'
+              isArchived ? 'bg-gray-100 dark:bg-gray-700' : 'bg-primary-100 dark:bg-primary-900'
             }`}
           >
             <Store
               className={`w-6 h-6 ${
-                isArchived
-                  ? 'text-gray-400'
-                  : 'text-primary-600 dark:text-primary-400'
+                isArchived ? 'text-gray-400' : 'text-primary-600 dark:text-primary-400'
               }`}
             />
           </div>
@@ -68,11 +64,11 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right">
-            <p className={`text-2xl font-bold ${
-              isArchived
-                ? 'text-gray-400'
-                : 'text-primary-600 dark:text-primary-400'
-            }`}>
+            <p
+              className={`text-2xl font-bold ${
+                isArchived ? 'text-gray-400' : 'text-primary-600 dark:text-primary-400'
+              }`}
+            >
               ${merchant.totalAmount.toFixed(2)}
             </p>
           </div>
@@ -98,14 +94,8 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
             onClick={() => setShowArchived(!showArchived)}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
-            {showArchived ? (
-              <ChevronUp className="w-5 h-5" />
-            ) : (
-              <ChevronDown className="w-5 h-5" />
-            )}
-            <span className="font-medium">
-              Archived Merchants ({archivedMerchants.length})
-            </span>
+            {showArchived ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            <span className="font-medium">Archived Merchants ({archivedMerchants.length})</span>
           </button>
 
           {showArchived && (

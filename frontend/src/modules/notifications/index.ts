@@ -6,8 +6,4 @@
 
 export { notificationsModule } from './module.config';
 export { notificationRoutes } from './routes';
-export type {
-  Notification,
-  NotificationType,
-  NotificationStats,
-} from './types';
+export type { Notification, NotificationType, NotificationStats } from './types';

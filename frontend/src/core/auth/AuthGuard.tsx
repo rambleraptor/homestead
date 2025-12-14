@@ -5,7 +5,6 @@
  * Redirects unauthenticated users to login page.
  */
 
-
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './useAuth';
 
@@ -23,11 +22,7 @@ interface AuthGuardProps {
   showLoading?: boolean;
 }
 
-export function AuthGuard({
-  children,
-  redirectTo = '/login',
-  showLoading = true,
-}: AuthGuardProps) {
+export function AuthGuard({ children, redirectTo = '/login', showLoading = true }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 

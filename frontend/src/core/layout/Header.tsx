@@ -4,7 +4,6 @@
  * Top navigation bar with menu toggle and breadcrumbs
  */
 
-
 import { Menu, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNotificationStats } from '../../modules/notifications/hooks/useNotificationStats';

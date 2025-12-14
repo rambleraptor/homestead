@@ -10,12 +10,7 @@ interface EventCardProps {
   showDetails?: boolean;
 }
 
-export function EventCard({
-  event,
-  onEdit,
-  onDelete,
-  showDetails = true,
-}: EventCardProps) {
+export function EventCard({ event, onEdit, onDelete, showDetails = true }: EventCardProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -35,27 +30,19 @@ export function EventCard({
             <Heart className="w-6 h-6 text-red-500 mt-1" />
           )}
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {event.title}
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {event.people_involved}
-            </p>
+            <h3 className="font-semibold text-gray-900 dark:text-white">{event.title}</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{event.people_involved}</p>
             <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
               {formatDate(event.event_date)}
               {event.recurring_yearly && ' (Recurring)'}
             </p>
             {showDetails && event.details && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                {event.details}
-              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{event.details}</p>
             )}
             {showDetails && event.notification_preferences.length > 0 && (
               <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                 Reminders:{' '}
-                {event.notification_preferences
-                  .map((p) => p.replaceAll('_', ' '))
-                  .join(', ')}
+                {event.notification_preferences.map((p) => p.replaceAll('_', ' ')).join(', ')}
               </p>
             )}
           </div>

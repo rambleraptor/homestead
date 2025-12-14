@@ -8,9 +8,7 @@ export function useMarkNotificationAsRead() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const notification = await getCollection<Notification>(
-        Collections.NOTIFICATIONS
-      ).update(id, {
+      const notification = await getCollection<Notification>(Collections.NOTIFICATIONS).update(id, {
         read: true,
         read_at: new Date().toISOString(),
       });

@@ -15,7 +15,9 @@ export function useGiftCardTransactions(giftCardId: string | null) {
     queryFn: async () => {
       if (!giftCardId) return [];
 
-      return await getCollection<GiftCardTransaction>(Collections.GIFT_CARD_TRANSACTIONS).getFullList({
+      return await getCollection<GiftCardTransaction>(
+        Collections.GIFT_CARD_TRANSACTIONS
+      ).getFullList({
         filter: `gift_card = "${giftCardId}"`,
         sort: '-created',
       });

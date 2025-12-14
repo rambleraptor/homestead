@@ -5,7 +5,18 @@
  */
 
 import { useState } from 'react';
-import { ArrowLeft, CreditCard, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Minus, Edit } from 'lucide-react';
+import {
+  ArrowLeft,
+  CreditCard,
+  Edit2,
+  Trash2,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp,
+  Minus,
+  Edit,
+} from 'lucide-react';
 import { useCreateTransaction } from '../hooks/useCreateTransaction';
 import type { GiftCard } from '../types';
 
@@ -151,7 +162,8 @@ export function MerchantDetail({
                       ${card.amount.toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Added {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
+                      Added{' '}
+                      {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
                     </p>
                   </div>
                 </div>
@@ -192,7 +204,9 @@ export function MerchantDetail({
                   />
                   <button
                     onClick={() => handleDecrementAmount(card, card.id)}
-                    disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) <= 0}
+                    disabled={
+                      !transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) <= 0
+                    }
                     className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
                     title="Subtract amount from balance"
                   >
@@ -201,7 +215,9 @@ export function MerchantDetail({
                   </button>
                   <button
                     onClick={() => handleSetAmount(card, card.id)}
-                    disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) < 0}
+                    disabled={
+                      !transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) < 0
+                    }
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
                     title="Set balance to this amount"
                   >
@@ -292,9 +308,7 @@ export function MerchantDetail({
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             {showArchived ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            <span className="font-medium">
-              Archived Cards ({archivedCards.length})
-            </span>
+            <span className="font-medium">Archived Cards ({archivedCards.length})</span>
           </button>
 
           {showArchived && (
@@ -314,7 +328,8 @@ export function MerchantDetail({
                           ${card.amount.toFixed(2)}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Archived • Added {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
+                          Archived • Added{' '}
+                          {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
                         </p>
                       </div>
                     </div>

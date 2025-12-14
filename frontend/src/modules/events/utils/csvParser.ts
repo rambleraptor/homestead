@@ -13,18 +13,9 @@ export interface CSVParseResult {
   invalidCount: number;
 }
 
-const REQUIRED_HEADERS = [
-  'event_type',
-  'title',
-  'people_involved',
-  'event_date',
-];
+const REQUIRED_HEADERS = ['event_type', 'title', 'people_involved', 'event_date'];
 
-const OPTIONAL_HEADERS = [
-  'recurring_yearly',
-  'details',
-  'notification_preferences',
-];
+const OPTIONAL_HEADERS = ['recurring_yearly', 'details', 'notification_preferences'];
 
 const ALL_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS];
 
@@ -48,7 +39,7 @@ export function parseEventsCSV(csvContent: string): CSVParseResult {
   const headers = parseCSVLine(headerLine);
 
   // Validate headers
-  const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+  const missingHeaders = REQUIRED_HEADERS.filter((h) => !headers.includes(h));
   if (missingHeaders.length > 0) {
     throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
   }
@@ -71,7 +62,7 @@ export function parseEventsCSV(csvContent: string): CSVParseResult {
     events.push(parsed);
   }
 
-  const validCount = events.filter(e => e.isValid).length;
+  const validCount = events.filter((e) => e.isValid).length;
   const invalidCount = events.length - validCount;
 
   return {
@@ -180,9 +171,9 @@ function parseEventRow(row: Record<string, string>, rowNumber: number): ParsedEv
   const notifValue = row.notification_preferences?.trim();
   if (notifValue) {
     try {
-      const parsed = notifValue.split(',').map(v => v.trim() as NotificationPreference);
+      const parsed = notifValue.split(',').map((v) => v.trim() as NotificationPreference);
       const validPrefs = ['day_of', 'day_before', 'week_before'];
-      const invalidPrefs = parsed.filter(p => !validPrefs.includes(p));
+      const invalidPrefs = parsed.filter((p) => !validPrefs.includes(p));
 
       if (invalidPrefs.length > 0) {
         errors.push(`Invalid notification preferences: ${invalidPrefs.join(', ')}`);
@@ -232,8 +223,10 @@ function isValidDate(dateString: string): boolean {
  */
 export function generateCSVTemplate(): string {
   const headers = ALL_HEADERS.join(',');
-  const example1 = 'birthday,John\'s Birthday,John Doe,2024-06-15,true,"Bring a gift",day_of,day_before';
-  const example2 = 'anniversary,Wedding Anniversary,Jane & Bob Smith,2020-08-20,true,"10th anniversary celebration",day_of,week_before';
+  const example1 =
+    'birthday,John\'s Birthday,John Doe,2024-06-15,true,"Bring a gift",day_of,day_before';
+  const example2 =
+    'anniversary,Wedding Anniversary,Jane & Bob Smith,2020-08-20,true,"10th anniversary celebration",day_of,week_before';
 
   return `${headers}\n${example1}\n${example2}`;
 }

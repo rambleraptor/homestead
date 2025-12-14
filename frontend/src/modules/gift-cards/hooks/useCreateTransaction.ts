@@ -46,13 +46,10 @@ export function useCreateTransaction() {
       });
 
       // Update the gift card with new amount and archive if needed
-      const updatedCard = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(
-        giftCardId,
-        {
-          amount: newAmount,
-          archived: newAmount === 0,
-        }
-      );
+      const updatedCard = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(giftCardId, {
+        amount: newAmount,
+        archived: newAmount === 0,
+      });
 
       return { transaction, updatedCard };
     },

@@ -32,7 +32,7 @@ export function useBulkImportEvents() {
       };
 
       // Filter out invalid events
-      const validEvents = events.filter(event => event.isValid);
+      const validEvents = events.filter((event) => event.isValid);
 
       // Import events sequentially to maintain order and capture individual errors
       for (const event of validEvents) {

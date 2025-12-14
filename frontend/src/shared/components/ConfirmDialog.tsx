@@ -36,18 +36,10 @@ export function ConfirmDialog({
       <div className="space-y-6">
         <p className="text-gray-700 dark:text-gray-300">{message}</p>
         <div className="flex gap-3 justify-end">
-          <Button
-            variant="secondary"
-            onClick={onClose}
-            disabled={isLoading}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelLabel}
           </Button>
-          <Button
-            variant={variant}
-            onClick={handleConfirm}
-            disabled={isLoading}
-          >
+          <Button variant={variant} onClick={handleConfirm} disabled={isLoading}>
             {isLoading ? 'Processing...' : confirmLabel}
           </Button>
         </div>

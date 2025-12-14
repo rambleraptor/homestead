@@ -38,8 +38,7 @@ export function NotificationsHome() {
     return <Bell className="w-5 h-5 text-gray-500" />;
   };
 
-  const unreadNotifications =
-    notifications?.filter((n) => !n.read) || [];
+  const unreadNotifications = notifications?.filter((n) => !n.read) || [];
   const readNotifications = notifications?.filter((n) => n.read) || [];
 
   if (isLoading) {
@@ -53,12 +52,8 @@ export function NotificationsHome() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Notification Center
-        </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          View and manage your notifications
-        </p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Notification Center</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">View and manage your notifications</p>
       </div>
 
       {stats && (
@@ -67,12 +62,8 @@ export function NotificationsHome() {
             <div className="flex items-center">
               <Bell className="w-8 h-8 text-blue-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total Notifications
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.total}
-                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Notifications</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
               </div>
             </div>
           </Card>
@@ -81,12 +72,8 @@ export function NotificationsHome() {
             <div className="flex items-center">
               <BellOff className="w-8 h-8 text-orange-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Unread
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.unread}
-                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Unread</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.unread}</p>
               </div>
             </div>
           </Card>
@@ -95,12 +82,8 @@ export function NotificationsHome() {
             <div className="flex items-center">
               <Check className="w-8 h-8 text-green-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Read
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.read}
-                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Read</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.read}</p>
               </div>
             </div>
           </Card>
@@ -165,12 +148,7 @@ export function NotificationsHome() {
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                       {formatDate(notification.created)}
-                      {notification.read_at && (
-                        <>
-                          {' '}
-                          • Read {formatDate(notification.read_at)}
-                        </>
-                      )}
+                      {notification.read_at && <> • Read {formatDate(notification.read_at)}</>}
                     </p>
                   </div>
                 </div>
@@ -184,9 +162,7 @@ export function NotificationsHome() {
         <Card>
           <div className="text-center py-12">
             <Bell className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">
-              No notifications yet
-            </p>
+            <p className="text-gray-600 dark:text-gray-400">No notifications yet</p>
             <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
               You'll receive notifications for upcoming events here
             </p>

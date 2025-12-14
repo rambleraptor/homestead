@@ -22,16 +22,11 @@ const styles = {
   success: 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-900 dark:text-green-100',
   error: 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-900 dark:text-red-100',
   info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-900 dark:text-blue-100',
-  warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-900 dark:text-yellow-100',
+  warning:
+    'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-900 dark:text-yellow-100',
 };
 
-export function Toast({
-  id,
-  type,
-  message,
-  duration = 5000,
-  onClose,
-}: ToastProps) {
+export function Toast({ id, type, message, duration = 5000, onClose }: ToastProps) {
   const Icon = icons[type];
 
   useEffect(() => {

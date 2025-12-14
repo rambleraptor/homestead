@@ -18,61 +18,64 @@ export function BulkImport() {
   const [parseError, setParseError] = useState<string | null>(null);
   const bulkImport = useBulkImportEvents();
 
-  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (!selectedFile) return;
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = event.target.files?.[0];
+      if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith('.csv')) {
-      setParseError('Please upload a CSV file');
-      return;
-    }
-
-    setFile(selectedFile);
-    setParseError(null);
-
-    // Parse the file
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const result = parseEventsCSV(content);
-
-        if (result.events.length === 0) {
-          setParseError('No events found in the CSV file');
-          return;
-        }
-
-        setParsedEvents(result.events);
-
-        // Select all valid events by default
-        const validEventIndices = result.events
-          .map((event, index) => (event.isValid ? index : -1))
-          .filter(index => index !== -1);
-
-        setSelectedEventIds(new Set(validEventIndices));
-
-        toast.success(`Parsed ${result.validCount} valid event(s) from CSV`);
-
-        if (result.invalidCount > 0) {
-          toast.warning(`${result.invalidCount} event(s) have errors and cannot be imported`);
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to parse CSV';
-        setParseError(errorMessage);
-        toast.error(errorMessage);
+      if (!selectedFile.name.endsWith('.csv')) {
+        setParseError('Please upload a CSV file');
+        return;
       }
-    };
 
-    reader.onerror = () => {
-      setParseError('Failed to read file');
-      toast.error('Failed to read file');
-    };
+      setFile(selectedFile);
+      setParseError(null);
 
-    reader.readAsText(selectedFile);
-  }, [toast]);
+      // Parse the file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const result = parseEventsCSV(content);
+
+          if (result.events.length === 0) {
+            setParseError('No events found in the CSV file');
+            return;
+          }
+
+          setParsedEvents(result.events);
+
+          // Select all valid events by default
+          const validEventIndices = result.events
+            .map((event, index) => (event.isValid ? index : -1))
+            .filter((index) => index !== -1);
+
+          setSelectedEventIds(new Set(validEventIndices));
+
+          toast.success(`Parsed ${result.validCount} valid event(s) from CSV`);
+
+          if (result.invalidCount > 0) {
+            toast.warning(`${result.invalidCount} event(s) have errors and cannot be imported`);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to parse CSV';
+          setParseError(errorMessage);
+          toast.error(errorMessage);
+        }
+      };
+
+      reader.onerror = () => {
+        setParseError('Failed to read file');
+        toast.error('Failed to read file');
+      };
+
+      reader.readAsText(selectedFile);
+    },
+    [toast]
+  );
 
   const handleToggleEvent = useCallback((index: number) => {
-    setSelectedEventIds(prev => {
+    setSelectedEventIds((prev) => {
       const next = new Set(prev);
       if (next.has(index)) {
         next.delete(index);
@@ -86,7 +89,7 @@ export function BulkImport() {
   const handleToggleAll = useCallback(() => {
     const validEventIndices = parsedEvents
       .map((event, index) => (event.isValid ? index : -1))
-      .filter(index => index !== -1);
+      .filter((index) => index !== -1);
 
     if (selectedEventIds.size === validEventIndices.length) {
       // Deselect all
@@ -115,26 +118,20 @@ export function BulkImport() {
     }
   }, [parsedEvents, selectedEventIds, bulkImport, navigate, toast]);
 
-  const validEvents = parsedEvents.filter(e => e.isValid);
-  const invalidEvents = parsedEvents.filter(e => !e.isValid);
+  const validEvents = parsedEvents.filter((e) => e.isValid);
+  const invalidEvents = parsedEvents.filter((e) => !e.isValid);
   const selectedCount = selectedEventIds.size;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
       {/* Header */}
       <div className="mb-6">
-        <Button
-          variant="secondary"
-          onClick={() => navigate('/events')}
-          className="mb-4"
-        >
+        <Button variant="secondary" onClick={() => navigate('/events')} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Events
         </Button>
         <h1 className="text-3xl font-bold">Bulk Import Events</h1>
-        <p className="text-muted-foreground mt-2">
-          Import multiple events from a CSV file
-        </p>
+        <p className="text-muted-foreground mt-2">Import multiple events from a CSV file</p>
       </div>
 
       {/* CSV Schema Documentation */}
@@ -149,19 +146,40 @@ export function BulkImport() {
                 <div>
                   <h3 className="font-medium mb-2">Required Headers:</h3>
                   <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                    <li><code className="bg-muted px-1 py-0.5 rounded">event_type</code> - Type of event: "birthday" or "anniversary"</li>
-                    <li><code className="bg-muted px-1 py-0.5 rounded">title</code> - Event title (max 200 characters)</li>
-                    <li><code className="bg-muted px-1 py-0.5 rounded">people_involved</code> - People involved (max 500 characters)</li>
-                    <li><code className="bg-muted px-1 py-0.5 rounded">event_date</code> - Event date in YYYY-MM-DD format</li>
+                    <li>
+                      <code className="bg-muted px-1 py-0.5 rounded">event_type</code> - Type of
+                      event: "birthday" or "anniversary"
+                    </li>
+                    <li>
+                      <code className="bg-muted px-1 py-0.5 rounded">title</code> - Event title (max
+                      200 characters)
+                    </li>
+                    <li>
+                      <code className="bg-muted px-1 py-0.5 rounded">people_involved</code> - People
+                      involved (max 500 characters)
+                    </li>
+                    <li>
+                      <code className="bg-muted px-1 py-0.5 rounded">event_date</code> - Event date
+                      in YYYY-MM-DD format
+                    </li>
                   </ul>
                 </div>
 
                 <div>
                   <h3 className="font-medium mb-2">Optional Headers:</h3>
                   <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                    <li><code className="bg-muted px-1 py-0.5 rounded">recurring_yearly</code> - Whether event recurs yearly: "true" or "false" (default: true)</li>
-                    <li><code className="bg-muted px-1 py-0.5 rounded">details</code> - Additional details (max 2000 characters)</li>
-                    <li><code className="bg-muted px-1 py-0.5 rounded">notification_preferences</code> - Comma-separated: "day_of", "day_before", "week_before" (default: "day_of")</li>
+                    <li>
+                      <code className="bg-muted px-1 py-0.5 rounded">recurring_yearly</code> -
+                      Whether event recurs yearly: "true" or "false" (default: true)
+                    </li>
+                    <li>
+                      <code className="bg-muted px-1 py-0.5 rounded">details</code> - Additional
+                      details (max 2000 characters)
+                    </li>
+                    <li>
+                      <code className="bg-muted px-1 py-0.5 rounded">notification_preferences</code>{' '}
+                      - Comma-separated: "day_of", "day_before", "week_before" (default: "day_of")
+                    </li>
                   </ul>
                 </div>
 
@@ -188,7 +206,8 @@ export function BulkImport() {
             <Upload className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Upload CSV File</h3>
             <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
-              Select a CSV file containing your events. Make sure it follows the format described above.
+              Select a CSV file containing your events. Make sure it follows the format described
+              above.
             </p>
             <input
               type="file"
@@ -271,10 +290,7 @@ export function BulkImport() {
                 Choose Different File
               </Button>
               {validEvents.length > 0 && (
-                <Button
-                  variant="secondary"
-                  onClick={handleToggleAll}
-                >
+                <Button variant="secondary" onClick={handleToggleAll}>
                   {selectedEventIds.size === validEvents.length ? 'Deselect All' : 'Select All'}
                 </Button>
               )}
@@ -284,10 +300,7 @@ export function BulkImport() {
               <span className="text-sm text-muted-foreground">
                 {selectedCount} of {validEvents.length} selected
               </span>
-              <Button
-                onClick={handleImport}
-                disabled={selectedCount === 0 || bulkImport.isPending}
-              >
+              <Button onClick={handleImport} disabled={selectedCount === 0 || bulkImport.isPending}>
                 {bulkImport.isPending ? 'Importing...' : `Import ${selectedCount} Event(s)`}
               </Button>
             </div>

@@ -40,9 +40,7 @@ export function EventsHome() {
       toast.success('Event created successfully!');
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to create event. Please try again.'
+        error instanceof Error ? error.message : 'Failed to create event. Please try again.'
       );
     }
   };
@@ -56,9 +54,7 @@ export function EventsHome() {
       toast.success('Event updated successfully!');
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to update event. Please try again.'
+        error instanceof Error ? error.message : 'Failed to update event. Please try again.'
       );
     }
   };
@@ -80,9 +76,7 @@ export function EventsHome() {
       toast.success('Event deleted successfully!');
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete event. Please try again.'
+        error instanceof Error ? error.message : 'Failed to delete event. Please try again.'
       );
     }
   };
@@ -140,9 +134,7 @@ export function EventsHome() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Events
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Events</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Track important birthdays and anniversaries
           </p>
@@ -165,9 +157,7 @@ export function EventsHome() {
             <div className="flex items-center">
               <Calendar className="w-8 h-8 text-blue-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total Events
-                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Events</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {stats.totalEvents}
                 </p>
@@ -179,9 +169,7 @@ export function EventsHome() {
             <div className="flex items-center">
               <Cake className="w-8 h-8 text-pink-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Upcoming Birthdays
-                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Upcoming Birthdays</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {stats.upcomingBirthdays}
                 </p>
@@ -193,9 +181,7 @@ export function EventsHome() {
             <div className="flex items-center">
               <Heart className="w-8 h-8 text-red-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Upcoming Anniversaries
-                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Upcoming Anniversaries</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {stats.upcomingAnniversaries}
                 </p>
@@ -230,9 +216,7 @@ export function EventsHome() {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          All Events
-        </h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">All Events</h2>
         {!events || events.length === 0 ? (
           <Card>
             <p className="text-center text-gray-600 dark:text-gray-400 py-8">
@@ -266,11 +250,7 @@ export function EventsHome() {
         />
       </Modal>
 
-      <Modal
-        isOpen={!!editingEvent}
-        onClose={() => setEditingEvent(null)}
-        title="Edit Event"
-      >
+      <Modal isOpen={!!editingEvent} onClose={() => setEditingEvent(null)} title="Edit Event">
         {editingEvent && (
           <EventForm
             initialData={editingEvent}
@@ -283,9 +263,7 @@ export function EventsHome() {
 
       <ConfirmDialog
         isOpen={deleteConfirmation.isOpen}
-        onClose={() =>
-          setDeleteConfirmation({ isOpen: false, eventId: null, eventTitle: null })
-        }
+        onClose={() => setDeleteConfirmation({ isOpen: false, eventId: null, eventTitle: null })}
         onConfirm={handleDeleteConfirm}
         title="Delete Event"
         message={`Are you sure you want to delete "${deleteConfirmation.eventTitle}"? This action cannot be undone.`}

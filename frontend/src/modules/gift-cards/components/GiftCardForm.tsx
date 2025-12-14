@@ -34,9 +34,7 @@ export function GiftCardForm({
     onSubmit(formData);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -114,9 +112,7 @@ export function GiftCardForm({
           Amount <span className="text-red-500">*</span>
         </label>
         <div className="relative">
-          <span className="absolute left-3 top-2 text-gray-500 dark:text-gray-400">
-            $
-          </span>
+          <span className="absolute left-3 top-2 text-gray-500 dark:text-gray-400">$</span>
           <input
             type="number"
             id="amount"

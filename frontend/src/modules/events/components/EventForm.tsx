@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
-import type {
-  Event,
-  EventFormData,
-  EventType,
-  NotificationPreference,
-} from '../types';
+import type { Event, EventFormData, EventType, NotificationPreference } from '../types';
 import { NOTIFICATION_PREFERENCE_OPTIONS } from '../types';
 
 interface EventFormProps {
@@ -16,12 +11,7 @@ interface EventFormProps {
   isSubmitting?: boolean;
 }
 
-export function EventForm({
-  initialData,
-  onSubmit,
-  onCancel,
-  isSubmitting,
-}: EventFormProps) {
+export function EventForm({ initialData, onSubmit, onCancel, isSubmitting }: EventFormProps) {
   const [formData, setFormData] = useState<EventFormData>({
     event_type: initialData?.event_type || 'birthday',
     title: initialData?.title || '',
@@ -29,9 +19,7 @@ export function EventForm({
     event_date: initialData?.event_date || '',
     recurring_yearly: initialData?.recurring_yearly ?? true,
     details: initialData?.details || '',
-    notification_preferences: initialData?.notification_preferences || [
-      'day_of',
-    ],
+    notification_preferences: initialData?.notification_preferences || ['day_of'],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -84,7 +72,9 @@ export function EventForm({
           id="title"
           type="text"
           value={formData.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, title: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setFormData({ ...formData, title: e.target.value })
+          }
           placeholder="e.g., John's Birthday"
           required
         />
@@ -132,9 +122,7 @@ export function EventForm({
           id="recurring_yearly"
           type="checkbox"
           checked={formData.recurring_yearly}
-          onChange={(e) =>
-            setFormData({ ...formData, recurring_yearly: e.target.checked })
-          }
+          onChange={(e) => setFormData({ ...formData, recurring_yearly: e.target.checked })}
           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
         />
         <label
@@ -155,9 +143,7 @@ export function EventForm({
         <textarea
           id="details"
           value={formData.details}
-          onChange={(e) =>
-            setFormData({ ...formData, details: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, details: e.target.value })}
           placeholder="Any additional notes or details..."
           rows={4}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
@@ -175,9 +161,7 @@ export function EventForm({
                 <input
                   id={`notification_${option.value}`}
                   type="checkbox"
-                  checked={formData.notification_preferences.includes(
-                    option.value
-                  )}
+                  checked={formData.notification_preferences.includes(option.value)}
                   onChange={() => handleNotificationToggle(option.value)}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
@@ -189,9 +173,7 @@ export function EventForm({
                 >
                   {option.label}
                 </label>
-                <p className="text-gray-500 dark:text-gray-400">
-                  {option.description}
-                </p>
+                <p className="text-gray-500 dark:text-gray-400">{option.description}</p>
               </div>
             </div>
           ))}
@@ -203,11 +185,7 @@ export function EventForm({
           Cancel
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting
-            ? 'Saving...'
-            : initialData
-              ? 'Update Event'
-              : 'Create Event'}
+          {isSubmitting ? 'Saving...' : initialData ? 'Update Event' : 'Create Event'}
         </Button>
       </div>
     </form>

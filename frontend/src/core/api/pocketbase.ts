@@ -94,7 +94,11 @@ export function subscribeToCollection<T = unknown>(
 export function getCollection<T = unknown>(name: string) {
   return pb.collection(name) as unknown as {
     getFullList: (options?: unknown) => Promise<T[]>;
-    getList: (page: number, perPage: number, options?: unknown) => Promise<{
+    getList: (
+      page: number,
+      perPage: number,
+      options?: unknown
+    ) => Promise<{
       page: number;
       perPage: number;
       totalItems: number;

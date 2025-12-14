@@ -41,12 +41,8 @@ export function useEventStats() {
 
       const stats: EventStats = {
         totalEvents: events.length,
-        upcomingBirthdays: upcomingEvents.filter(
-          (e) => e.event_type === 'birthday'
-        ).length,
-        upcomingAnniversaries: upcomingEvents.filter(
-          (e) => e.event_type === 'anniversary'
-        ).length,
+        upcomingBirthdays: upcomingEvents.filter((e) => e.event_type === 'birthday').length,
+        upcomingAnniversaries: upcomingEvents.filter((e) => e.event_type === 'anniversary').length,
       };
 
       return stats;

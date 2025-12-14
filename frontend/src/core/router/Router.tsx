@@ -4,7 +4,6 @@
  * Main application router with dynamic module routes
  */
 
-
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { AppShell } from '../layout/AppShell';
 import { getAllModules } from '../../modules/registry';

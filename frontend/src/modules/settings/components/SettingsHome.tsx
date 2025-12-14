@@ -67,18 +67,14 @@ export function SettingsHome() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Settings
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
           Manage your preferences and notifications
         </p>
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          Notifications
-        </h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Notifications</h2>
 
         {!isBrowserSupported ? (
           <Card>
@@ -89,9 +85,8 @@ export function SettingsHome() {
                   Notifications Not Supported
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Your browser does not support web push notifications. Please
-                  use a modern browser like Chrome, Firefox, or Edge to enable
-                  this feature.
+                  Your browser does not support web push notifications. Please use a modern browser
+                  like Chrome, Firefox, or Edge to enable this feature.
                 </p>
               </div>
             </div>
@@ -117,10 +112,7 @@ export function SettingsHome() {
                   {isEnabled && subscription && (
                     <div className="text-xs text-gray-500 dark:text-gray-500 mb-4">
                       <p>Status: Active</p>
-                      <p>
-                        Enabled since:{' '}
-                        {new Date(subscription.created).toLocaleDateString()}
-                      </p>
+                      <p>Enabled since: {new Date(subscription.created).toLocaleDateString()}</p>
                     </div>
                   )}
                   <div>
@@ -130,18 +122,14 @@ export function SettingsHome() {
                         onClick={handleDisableNotifications}
                         disabled={deleteSubscription.isPending}
                       >
-                        {deleteSubscription.isPending
-                          ? 'Disabling...'
-                          : 'Disable Notifications'}
+                        {deleteSubscription.isPending ? 'Disabling...' : 'Disable Notifications'}
                       </Button>
                     ) : (
                       <Button
                         onClick={handleEnableNotifications}
                         disabled={updateSubscription.isPending}
                       >
-                        {updateSubscription.isPending
-                          ? 'Enabling...'
-                          : 'Enable Notifications'}
+                        {updateSubscription.isPending ? 'Enabling...' : 'Enable Notifications'}
                       </Button>
                     )}
                   </div>
@@ -158,22 +146,10 @@ export function SettingsHome() {
                 How Notifications Work
               </h3>
               <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-                <li>
-                  • You'll receive notifications based on your event reminder
-                  preferences
-                </li>
-                <li>
-                  • Notifications can be sent the day of, day before, or week
-                  before an event
-                </li>
-                <li>
-                  • You can manage notification preferences for each event
-                  individually
-                </li>
-                <li>
-                  • All notifications are stored in the Notification Center for
-                  later review
-                </li>
+                <li>• You'll receive notifications based on your event reminder preferences</li>
+                <li>• Notifications can be sent the day of, day before, or week before an event</li>
+                <li>• You can manage notification preferences for each event individually</li>
+                <li>• All notifications are stored in the Notification Center for later review</li>
               </ul>
             </div>
           </Card>

@@ -103,10 +103,7 @@ export function invalidateUserQueries() {
 /**
  * Helper to prefetch data (useful for optimistic navigation)
  */
-export async function prefetchModuleData(
-  moduleId: string,
-  queryFn: () => Promise<unknown>
-) {
+export async function prefetchModuleData(moduleId: string, queryFn: () => Promise<unknown>) {
   await queryClient.prefetchQuery({
     queryKey: queryKeys.module(moduleId).all(),
     queryFn,

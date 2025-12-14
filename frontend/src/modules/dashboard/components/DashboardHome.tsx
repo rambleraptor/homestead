@@ -4,7 +4,6 @@
  * Main dashboard view showing overview of HomeOS system
  */
 
-
 import { useAuth } from '@/core/auth/useAuth';
 import { LayoutDashboard, Users, Activity, Clock } from 'lucide-react';
 
@@ -52,9 +51,7 @@ export function DashboardHome() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Dashboard
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
           Welcome to your Home Operating System
         </p>
@@ -102,12 +99,10 @@ export function DashboardHome() {
               1
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Explore Modules
-              </h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Explore Modules</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Check out the available modules in the sidebar. Each module provides
-                different functionality for managing your home.
+                Check out the available modules in the sidebar. Each module provides different
+                functionality for managing your home.
               </p>
             </div>
           </div>
@@ -117,12 +112,13 @@ export function DashboardHome() {
               2
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Create New Modules
-              </h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Create New Modules</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Follow the pattern in <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">src/modules/dashboard</code> to
-                create your own modules (Chores, Meal Planner, etc.).
+                Follow the pattern in{' '}
+                <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">
+                  src/modules/dashboard
+                </code>{' '}
+                to create your own modules (Chores, Meal Planner, etc.).
               </p>
             </div>
           </div>
@@ -132,12 +128,13 @@ export function DashboardHome() {
               3
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Register Your Module
-              </h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Register Your Module</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Add your module to <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">src/modules/registry.ts</code> and
-                it will automatically appear in navigation!
+                Add your module to{' '}
+                <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">
+                  src/modules/registry.ts
+                </code>{' '}
+                and it will automatically appear in navigation!
               </p>
             </div>
           </div>
@@ -146,15 +143,12 @@ export function DashboardHome() {
 
       {/* Architecture Highlights */}
       <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg shadow-md p-6 text-gray-900">
-        <h2 className="text-xl font-bold mb-4">
-          ✨ Modular Architecture
-        </h2>
+        <h2 className="text-xl font-bold mb-4">✨ Modular Architecture</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h3 className="font-semibold mb-2">Self-Contained Modules</h3>
             <p className="text-sm text-gray-700">
-              Each module has its own components, hooks, routes, and types. No
-              cross-dependencies.
+              Each module has its own components, hooks, routes, and types. No cross-dependencies.
             </p>
           </div>
           <div>

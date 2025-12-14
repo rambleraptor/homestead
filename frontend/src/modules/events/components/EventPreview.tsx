@@ -10,11 +10,8 @@ interface EventPreviewProps {
 }
 
 export function EventPreview({ event, isSelected, onToggle }: EventPreviewProps) {
-  const icon = event.event_type === 'birthday' ? (
-    <Cake className="h-5 w-5" />
-  ) : (
-    <Heart className="h-5 w-5" />
-  );
+  const icon =
+    event.event_type === 'birthday' ? <Cake className="h-5 w-5" /> : <Heart className="h-5 w-5" />;
 
   const statusIcon = event.isValid ? (
     <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -30,7 +27,7 @@ export function EventPreview({ event, isSelected, onToggle }: EventPreviewProps)
       formattedDate = date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
       });
     }
   } catch {
@@ -62,9 +59,7 @@ export function EventPreview({ event, isSelected, onToggle }: EventPreviewProps)
         </div>
 
         {/* Event Icon */}
-        <div className="flex-shrink-0 pt-1">
-          {icon}
-        </div>
+        <div className="flex-shrink-0 pt-1">{icon}</div>
 
         {/* Event Details */}
         <div className="flex-1 min-w-0">
@@ -78,31 +73,28 @@ export function EventPreview({ event, isSelected, onToggle }: EventPreviewProps)
               </p>
               <p className="text-sm text-muted-foreground">
                 {formattedDate}
-                {event.recurring_yearly && <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Recurring</span>}
+                {event.recurring_yearly && (
+                  <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                    Recurring
+                  </span>
+                )}
               </p>
             </div>
 
             {/* Status Icon */}
-            <div className="flex-shrink-0">
-              {statusIcon}
-            </div>
+            <div className="flex-shrink-0">{statusIcon}</div>
           </div>
 
           {/* Additional Details */}
           {event.details && event.isValid && (
-            <p className="text-sm text-muted-foreground mb-2 italic">
-              "{event.details}"
-            </p>
+            <p className="text-sm text-muted-foreground mb-2 italic">"{event.details}"</p>
           )}
 
           {/* Notification Preferences */}
           {event.notification_preferences.length > 0 && event.isValid && (
             <div className="flex flex-wrap gap-1 mb-2">
               {event.notification_preferences.map((pref) => (
-                <span
-                  key={pref}
-                  className="text-xs bg-muted px-2 py-1 rounded"
-                >
+                <span key={pref} className="text-xs bg-muted px-2 py-1 rounded">
                   {pref === 'day_of' && '🔔 Day of'}
                   {pref === 'day_before' && '🔔 Day before'}
                   {pref === 'week_before' && '🔔 Week before'}

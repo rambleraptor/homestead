@@ -5,7 +5,6 @@
  * based on user permissions and role.
  */
 
-
 import { NavLink } from 'react-router-dom';
 import { Home, LogOut, Settings, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
@@ -31,10 +30,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={onClose} />
       )}
 
       {/* Sidebar */}
@@ -51,9 +47,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2">
               <Home className="w-6 h-6 text-primary-600" />
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                HomeOS
-              </h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">HomeOS</h1>
             </div>
             <button
               onClick={onClose}

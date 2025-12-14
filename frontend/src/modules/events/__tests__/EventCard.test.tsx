@@ -39,14 +39,7 @@ describe('EventCard', () => {
     const onEdit = vi.fn();
     const onDelete = vi.fn();
 
-    render(
-      <EventCard
-        event={mockEvent}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        showDetails={true}
-      />
-    );
+    render(<EventCard event={mockEvent} onEdit={onEdit} onDelete={onDelete} showDetails={true} />);
 
     expect(screen.getByText('Birthday party at 3pm')).toBeInTheDocument();
     expect(screen.getByText(/Reminders:/)).toBeInTheDocument();
@@ -57,14 +50,7 @@ describe('EventCard', () => {
     const onEdit = vi.fn();
     const onDelete = vi.fn();
 
-    render(
-      <EventCard
-        event={mockEvent}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        showDetails={false}
-      />
-    );
+    render(<EventCard event={mockEvent} onEdit={onEdit} onDelete={onDelete} showDetails={false} />);
 
     expect(screen.queryByText('Birthday party at 3pm')).not.toBeInTheDocument();
     expect(screen.queryByText(/Reminders:/)).not.toBeInTheDocument();
@@ -137,9 +123,7 @@ describe('EventCard', () => {
     const onEdit = vi.fn();
     const onDelete = vi.fn();
 
-    render(
-      <EventCard event={nonRecurringEvent} onEdit={onEdit} onDelete={onDelete} />
-    );
+    render(<EventCard event={nonRecurringEvent} onEdit={onEdit} onDelete={onDelete} />);
 
     expect(screen.queryByText('(Recurring)')).not.toBeInTheDocument();
   });
@@ -148,14 +132,7 @@ describe('EventCard', () => {
     const onEdit = vi.fn();
     const onDelete = vi.fn();
 
-    render(
-      <EventCard
-        event={mockEvent}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        showDetails={true}
-      />
-    );
+    render(<EventCard event={mockEvent} onEdit={onEdit} onDelete={onDelete} showDetails={true} />);
 
     // Should replace underscores with spaces
     expect(screen.getByText(/day of, day before/)).toBeInTheDocument();

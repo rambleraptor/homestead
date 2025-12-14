@@ -6,13 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import type {
-  AuthContextValue,
-  AuthState,
-  LoginCredentials,
-  RegisterData,
-  User,
-} from './types';
+import type { AuthContextValue, AuthState, LoginCredentials, RegisterData, User } from './types';
 import { AuthContext } from './context';
 import { pb, getCurrentUser, clearAuth, onAuthChange, Collections } from '../api/pocketbase';
 import { queryClient, queryKeys } from '../api/queryClient';
@@ -105,26 +99,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Register new user
    */
-  const register = useCallback(async (data: RegisterData) => {
-    setState((prev) => ({ ...prev, isLoading: true }));
+  const register = useCallback(
+    async (data: RegisterData) => {
+      setState((prev) => ({ ...prev, isLoading: true }));
 
-    try {
-      // Create the user
-      await pb.collection(Collections.USERS).create({
-        ...data,
-        emailVisibility: true,
-      });
+      try {
+        // Create the user
+        await pb.collection(Collections.USERS).create({
+          ...data,
+          emailVisibility: true,
+        });
 
-      // Auto-login after registration
-      await login({
-        email: data.email,
-        password: data.password,
-      });
-    } catch (error) {
-      setState((prev) => ({ ...prev, isLoading: false }));
-      throw error;
-    }
-  }, [login]);
+        // Auto-login after registration
+        await login({
+          email: data.email,
+          password: data.password,
+        });
+      } catch (error) {
+        setState((prev) => ({ ...prev, isLoading: false }));
+        throw error;
+      }
+    },
+    [login]
+  );
 
   /**
    * Refresh user data from server

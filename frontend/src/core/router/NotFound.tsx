@@ -2,7 +2,6 @@
  * 404 Not Found Page
  */
 
-
 import { Link } from 'react-router-dom';
 import { Home, ArrowLeft } from 'lucide-react';
 
@@ -13,9 +12,7 @@ export function NotFound() {
         <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full mb-6">
           <Home className="w-10 h-10 text-gray-400" />
         </div>
-        <h1 className="text-6xl font-bold text-gray-900 dark:text-white mb-4">
-          404
-        </h1>
+        <h1 className="text-6xl font-bold text-gray-900 dark:text-white mb-4">404</h1>
         <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
           Page Not Found
         </h2>

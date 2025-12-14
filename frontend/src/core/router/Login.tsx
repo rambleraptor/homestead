@@ -121,14 +121,10 @@ export function Login() {
 
           {/* Demo Credentials Info */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-sm text-blue-800 font-medium mb-2">
-              First time setup:
-            </p>
+            <p className="text-sm text-blue-800 font-medium mb-2">First time setup:</p>
             <p className="text-xs text-blue-700">
               Create your admin account in PocketBase admin UI at{' '}
-              <code className="bg-blue-100 px-1 py-0.5 rounded">
-                http://127.0.0.1:8090/_/
-              </code>
+              <code className="bg-blue-100 px-1 py-0.5 rounded">http://127.0.0.1:8090/_/</code>
             </p>
           </div>
         </div>
