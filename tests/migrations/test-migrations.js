@@ -256,50 +256,47 @@ async function checkHealth() {
 }
 
 /**
- * Create admin user and authenticate
+ * Create admin user using PocketBase CLI and authenticate
  */
 async function createAdminAndAuth() {
   return new Promise((resolve, reject) => {
-    console.log('\n👤 Creating admin user and authenticating...\n');
+    console.log('\n👤 Creating admin user via CLI...\n');
 
-    const postData = JSON.stringify({
-      email: 'test@test.com',
-      password: 'test1234test1234',
-      passwordConfirm: 'test1234test1234'
+    const pbBinary = process.platform === 'win32'
+      ? join(TEST_DIR, 'pocketbase.exe')
+      : join(TEST_DIR, 'pocketbase');
+
+    const adminProcess = spawn(pbBinary, [
+      'superuser',
+      'upsert',
+      'test@test.com',
+      'test1234test1234',
+      '--dir', PB_DATA_DIR
+    ]);
+
+    let output = '';
+
+    adminProcess.stdout.on('data', (data) => {
+      output += data.toString();
     });
 
-    const options = {
-      hostname: '127.0.0.1',
-      port: TEST_PORT,
-      path: '/api/admins',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData)
+    adminProcess.stderr.on('data', (data) => {
+      output += data.toString();
+    });
+
+    adminProcess.on('close', (code) => {
+      if (code === 0 || output.includes('Successfully')) {
+        console.log('✓ Admin user created/updated');
+        // Now authenticate
+        authenticateAdmin().then(resolve).catch(reject);
+      } else {
+        reject(new Error(`Failed to create admin: ${output}`));
       }
-    };
-
-    const req = httpRequest(options, (res) => {
-      let data = '';
-
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-
-      res.on('end', () => {
-        if (res.statusCode === 200 || res.statusCode === 400) {
-          // 400 might mean admin already exists, which is fine
-          // Now authenticate
-          authenticateAdmin().then(resolve).catch(reject);
-        } else {
-          reject(new Error(`Failed to create admin: ${res.statusCode} - ${data}`));
-        }
-      });
     });
 
-    req.on('error', reject);
-    req.write(postData);
-    req.end();
+    adminProcess.on('error', (err) => {
+      reject(new Error(`Failed to spawn admin creation: ${err.message}`));
+    });
   });
 }
 
