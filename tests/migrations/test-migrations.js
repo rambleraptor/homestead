@@ -256,15 +256,123 @@ async function checkHealth() {
 }
 
 /**
+ * Create admin user and authenticate
+ */
+async function createAdminAndAuth() {
+  return new Promise((resolve, reject) => {
+    console.log('\n👤 Creating admin user and authenticating...\n');
+
+    const http = require('http');
+    const postData = JSON.stringify({
+      email: 'test@test.com',
+      password: 'test1234test1234',
+      passwordConfirm: 'test1234test1234'
+    });
+
+    const options = {
+      hostname: '127.0.0.1',
+      port: TEST_PORT,
+      path: '/api/admins',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      res.on('end', () => {
+        if (res.statusCode === 200 || res.statusCode === 400) {
+          // 400 might mean admin already exists, which is fine
+          // Now authenticate
+          authenticateAdmin().then(resolve).catch(reject);
+        } else {
+          reject(new Error(`Failed to create admin: ${res.statusCode} - ${data}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(postData);
+    req.end();
+  });
+}
+
+/**
+ * Authenticate as admin and get token
+ */
+async function authenticateAdmin() {
+  return new Promise((resolve, reject) => {
+    const http = require('http');
+    const postData = JSON.stringify({
+      identity: 'test@test.com',
+      password: 'test1234test1234'
+    });
+
+    const options = {
+      hostname: '127.0.0.1',
+      port: TEST_PORT,
+      path: '/api/admins/auth-with-password',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          try {
+            const auth = JSON.parse(data);
+            console.log('✓ Admin authenticated successfully');
+            resolve(auth.token);
+          } catch (e) {
+            reject(new Error('Failed to parse auth response'));
+          }
+        } else {
+          reject(new Error(`Authentication failed: ${res.statusCode} - ${data}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(postData);
+    req.end();
+  });
+}
+
+/**
  * Verify collections were created by migrations
  */
-async function verifyCollections() {
+async function verifyCollections(authToken) {
   return new Promise((resolve, reject) => {
     console.log('\n📊 Verifying collections...\n');
-    const url = `http://127.0.0.1:${TEST_PORT}/api/collections`;
-    const get = getHttpModule(url);
+    const http = require('http');
 
-    get(url, (res) => {
+    const options = {
+      hostname: '127.0.0.1',
+      port: TEST_PORT,
+      path: '/api/collections',
+      method: 'GET',
+      headers: {
+        'Authorization': authToken
+      }
+    };
+
+    const req = http.request(options, (res) => {
       let data = '';
 
       res.on('data', (chunk) => {
@@ -320,7 +428,10 @@ async function verifyCollections() {
           reject(new Error(`Failed to fetch collections: ${res.statusCode}`));
         }
       });
-    }).on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.end();
   });
 }
 
@@ -347,7 +458,8 @@ async function runTests() {
 
     // Run checks
     await checkHealth();
-    await verifyCollections();
+    const authToken = await createAdminAndAuth();
+    await verifyCollections(authToken);
 
     // Success!
     console.log('\n' + '='.repeat(50));
