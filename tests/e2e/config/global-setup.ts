@@ -35,14 +35,15 @@ async function globalSetup() {
   const pb = new PocketBase(pbUrl);
 
   try {
-    // Try to authenticate as admin
-    const authData = await pb.admins.authWithPassword('admin@test.local', 'TestAdmin123!');
+    // Authenticate using the _superusers collection (new API)
+    // The old pb.admins.* methods are deprecated
+    const authData = await pb.collection('_superusers').authWithPassword('admin@test.local', 'TestAdmin123!');
     console.log('✅ Admin authentication successful\n');
-    console.log(`   Admin ID: ${authData.admin?.id}\n`);
+    console.log(`   Admin ID: ${authData.record?.id}\n`);
     pb.authStore.clear();
   } catch (error: any) {
     console.error('❌ Admin authentication failed:', error);
-    console.error(`   Endpoint: ${pbUrl}/api/admins/auth-with-password`);
+    console.error(`   Endpoint: ${pbUrl}/api/collections/_superusers/auth-with-password`);
     console.error(`   Status: ${error.status}`);
     console.error(`   Message: ${error.message}\n`);
 

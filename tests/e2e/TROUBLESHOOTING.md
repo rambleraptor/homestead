@@ -1,6 +1,6 @@
 # E2E Tests Troubleshooting
 
-## Current Issue: Admin Authentication 404
+## ~~Current Issue: Admin Authentication 404~~ ✅ RESOLVED
 
 ### Problem
 ```
@@ -9,15 +9,40 @@ url: 'http://127.0.0.1:8092/api/admins/auth-with-password'
 message: "The requested resource wasn't found."
 ```
 
-### What We Know
+### Root Cause
+The admin authentication endpoint changed in PocketBase. The old endpoint `/api/admins/auth-with-password` was replaced with `/api/collections/_superusers/auth-with-password`.
+
+### Solution
+Use the new `_superusers` collection API instead of the deprecated `pb.admins.*` methods:
+
+**✅ Correct (New API):**
+```typescript
+await pb.collection('_superusers').authWithPassword('admin@test.local', 'TestAdmin123!');
+```
+
+**❌ Deprecated (Old API):**
+```typescript
+await pb.admins.authWithPassword('admin@test.local', 'TestAdmin123!');
+```
+
+### What Changed
+- Fixed `tests/e2e/config/global-setup.ts` to use new authentication method
+- Fixed `tests/e2e/fixtures/pocketbase.fixture.ts` to use new authentication method
+- Tests should now pass without 404 errors
+
+---
+
+## Historical Context
+
+### What We Knew
 ✅ **Admin user created successfully via CLI**
 ```
 Successfully saved superuser "admin@test.local"!
 Admin creation exited with code: 0
 ```
 
-❌ **But API endpoint returns 404**
-- The `/api/admins/auth-with-password` endpoint doesn't exist
+❌ **But API endpoint returned 404**
+- The old `/api/admins/auth-with-password` endpoint no longer exists
 - PocketBase is running (server started successfully)
 - Admin user exists in database
 

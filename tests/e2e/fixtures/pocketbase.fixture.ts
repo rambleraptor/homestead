@@ -32,8 +32,9 @@ export const test = base.extend<PocketBaseFixtures>({
   pocketbase: async ({}, use) => {
     const pb = new PocketBase(getPocketBaseUrl());
 
-    // Authenticate as admin to allow user creation
-    await pb.admins.authWithPassword('admin@test.local', 'TestAdmin123!');
+    // Authenticate as admin using the _superusers collection (new API)
+    // The old pb.admins.* methods are deprecated
+    await pb.collection('_superusers').authWithPassword('admin@test.local', 'TestAdmin123!');
 
     await use(pb);
     pb.authStore.clear();
@@ -64,7 +65,7 @@ export const test = base.extend<PocketBaseFixtures>({
     try {
       // Re-authenticate as admin if needed for deletion
       if (!pocketbase.authStore.isValid) {
-        await pocketbase.admins.authWithPassword('admin@test.local', 'TestAdmin123!');
+        await pocketbase.collection('_superusers').authWithPassword('admin@test.local', 'TestAdmin123!');
       }
       await pocketbase.collection('users').delete(user.id);
     } catch (e) {
