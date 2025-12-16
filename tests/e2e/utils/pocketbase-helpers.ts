@@ -82,28 +82,50 @@ export async function createMultipleEvents(
 
 /**
  * Delete all gift cards (family-wide, not filtered by user)
+ * Silently handles cases where collection doesn't exist or no access
  */
 export async function deleteAllGiftCards(pb: PocketBase) {
-  const records = await pb.collection('gift_cards').getFullList();
+  try {
+    const records = await pb.collection('gift_cards').getFullList();
 
-  const promises = records.map(record =>
-    pb.collection('gift_cards').delete(record.id)
-  );
-
-  await Promise.all(promises);
+    if (records.length > 0) {
+      const promises = records.map(record =>
+        pb.collection('gift_cards').delete(record.id)
+      );
+      await Promise.all(promises);
+    }
+  } catch (error: any) {
+    // If collection doesn't exist or no access (admin auth vs user auth),
+    // silently skip - this is expected for fresh test runs
+    if (error.status === 404 || error.status === 403) {
+      return;
+    }
+    throw error;
+  }
 }
 
 /**
  * Delete all events (family-wide, not filtered by user)
+ * Silently handles cases where collection doesn't exist or no access
  */
 export async function deleteAllEvents(pb: PocketBase) {
-  const records = await pb.collection('events').getFullList();
+  try {
+    const records = await pb.collection('events').getFullList();
 
-  const promises = records.map(record =>
-    pb.collection('events').delete(record.id)
-  );
-
-  await Promise.all(promises);
+    if (records.length > 0) {
+      const promises = records.map(record =>
+        pb.collection('events').delete(record.id)
+      );
+      await Promise.all(promises);
+    }
+  } catch (error: any) {
+    // If collection doesn't exist or no access (admin auth vs user auth),
+    // silently skip - this is expected for fresh test runs
+    if (error.status === 404 || error.status === 403) {
+      return;
+    }
+    throw error;
+  }
 }
 
 /**
