@@ -158,6 +158,9 @@ async function createAdminUser(): Promise<void> {
   return new Promise((resolve, reject) => {
     const pbBinary = join(e2eDir, process.platform === 'win32' ? 'pocketbase.exe' : 'pocketbase');
 
+    console.log(`👤 Creating admin user with binary: ${pbBinary}`);
+    console.log(`   Data directory: ${pbDataDir}`);
+
     const adminProcess = spawn(pbBinary, [
       'superuser',
       'upsert',
@@ -169,22 +172,30 @@ async function createAdminUser(): Promise<void> {
     let output = '';
 
     adminProcess.stdout.on('data', (data) => {
-      output += data.toString();
+      const text = data.toString();
+      output += text;
+      console.log(`   [stdout] ${text.trim()}`);
     });
 
     adminProcess.stderr.on('data', (data) => {
-      output += data.toString();
+      const text = data.toString();
+      output += text;
+      console.log(`   [stderr] ${text.trim()}`);
     });
 
     adminProcess.on('close', (code) => {
+      console.log(`   Admin creation exited with code: ${code}`);
       if (code === 0 || output.includes('Successfully')) {
+        console.log('✅ Admin user created successfully\n');
         resolve();
       } else {
-        reject(new Error(`Failed to create admin: ${output}`));
+        console.error('❌ Admin creation failed\n');
+        reject(new Error(`Failed to create admin (exit code ${code}): ${output}`));
       }
     });
 
     adminProcess.on('error', (err) => {
+      console.error('❌ Failed to spawn admin creation process\n');
       reject(new Error(`Failed to spawn admin creation: ${err.message}`));
     });
   });
