@@ -81,15 +81,10 @@ export async function createMultipleEvents(
 }
 
 /**
- * Delete all gift cards for the current user
+ * Delete all gift cards (family-wide, not filtered by user)
  */
 export async function deleteAllGiftCards(pb: PocketBase) {
-  const userId = pb.authStore.model?.id;
-  if (!userId) return;
-
-  const records = await pb.collection('gift_cards').getFullList({
-    filter: `created_by = "${userId}"`,
-  });
+  const records = await pb.collection('gift_cards').getFullList();
 
   const promises = records.map(record =>
     pb.collection('gift_cards').delete(record.id)
@@ -99,15 +94,10 @@ export async function deleteAllGiftCards(pb: PocketBase) {
 }
 
 /**
- * Delete all events for the current user
+ * Delete all events (family-wide, not filtered by user)
  */
 export async function deleteAllEvents(pb: PocketBase) {
-  const userId = pb.authStore.model?.id;
-  if (!userId) return;
-
-  const records = await pb.collection('events').getFullList({
-    filter: `created_by = "${userId}"`,
-  });
+  const records = await pb.collection('events').getFullList();
 
   const promises = records.map(record =>
     pb.collection('events').delete(record.id)
@@ -117,7 +107,7 @@ export async function deleteAllEvents(pb: PocketBase) {
 }
 
 /**
- * Clean up all test data for a user
+ * Clean up all test data (for the entire family, not just one user)
  */
 export async function cleanupUserData(pb: PocketBase) {
   await Promise.all([
