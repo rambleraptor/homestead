@@ -42,13 +42,17 @@ export const test = base.extend<PocketBaseFixtures>({
 
   /**
    * Create a test user and provide it to the test
+   * Each test gets a unique user to avoid conflicts
    */
   testUser: async ({ pocketbase }, use) => {
     const userData = testUsers.user1;
 
+    // Generate unique email for this test to avoid conflicts
+    const uniqueEmail = `test-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`;
+
     // Create user via PocketBase API (as admin)
     const user = await pocketbase.collection('users').create({
-      email: userData.email,
+      email: uniqueEmail,
       password: userData.password,
       passwordConfirm: userData.passwordConfirm,
       name: userData.name,
@@ -56,7 +60,7 @@ export const test = base.extend<PocketBaseFixtures>({
 
     await use({
       id: user.id,
-      email: userData.email,
+      email: uniqueEmail,
       password: userData.password,
       name: userData.name,
     });
@@ -69,7 +73,8 @@ export const test = base.extend<PocketBaseFixtures>({
       }
       await pocketbase.collection('users').delete(user.id);
     } catch (e) {
-      // User might already be deleted
+      // User might already be deleted, log but don't fail
+      console.warn(`Failed to cleanup test user ${user.id}:`, e);
     }
   },
 

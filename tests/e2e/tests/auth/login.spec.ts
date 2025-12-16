@@ -24,16 +24,10 @@ test.describe('Login', () => {
     await dashboardPage.expectToBeOnDashboard();
   });
 
-  test('should show error with invalid email', async ({ page, pocketbase }) => {
-    // Create a test user first
-    await pocketbase.collection('users').create({
-      email: testUsers.user1.email,
-      password: testUsers.user1.password,
-      passwordConfirm: testUsers.user1.passwordConfirm,
-    });
-
+  test('should show error with invalid email', async ({ page, testUser }) => {
+    // Use testUser fixture instead of manually creating
     await loginPage.goto();
-    await loginPage.login('wrong@test.local', testUsers.user1.password);
+    await loginPage.login('wrong@test.local', testUser.password);
 
     // Should show error
     await loginPage.expectLoginError(/invalid|incorrect|failed/i);
