@@ -4,8 +4,8 @@
  * Creates a transaction for a gift card and updates the card balance
  */
 
-import { useMutation } from '@tanstack/react-query';
-import { queryClient, queryKeys } from '@/core/api/queryClient';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/core/api/queryClient';
 import { Collections, getCollection, getCurrentUser } from '@/core/api/pocketbase';
 import type { GiftCard, GiftCardTransaction, TransactionFormData } from '../types';
 
@@ -16,6 +16,8 @@ interface CreateTransactionParams {
 }
 
 export function useCreateTransaction() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ giftCardId, currentAmount, data }: CreateTransactionParams) => {
       // Calculate the new amount based on transaction type

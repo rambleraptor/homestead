@@ -1,4 +1,5 @@
 import type { EventFormData, EventType, NotificationPreference } from '../types';
+import { logger } from '@/core/utils/logger';
 
 export interface ParsedEvent extends EventFormData {
   rowNumber: number;
@@ -189,7 +190,8 @@ function parseEventRow(row: Record<string, string>, rowNumber: number): ParsedEv
       } else {
         notificationPreferences = parsed;
       }
-    } catch {
+    } catch (error) {
+      logger.error('Failed to parse notification preferences', error, { rowNumber, notifValue });
       errors.push('notification_preferences must be comma-separated values');
     }
   }

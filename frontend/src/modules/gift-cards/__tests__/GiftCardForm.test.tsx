@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GiftCardForm } from '../components/GiftCardForm';
+import { ToastProvider } from '@/shared/components/ToastProvider';
 import type { GiftCard } from '../types';
 
 // Mock pb.files.getURL
@@ -17,12 +18,17 @@ vi.mock('@/core/api/pocketbase', () => ({
   },
 }));
 
+// Helper to render with ToastProvider
+const renderWithToast = (ui: React.ReactElement) => {
+  return render(<ToastProvider>{ui}</ToastProvider>);
+};
+
 describe('GiftCardForm', () => {
   it('should render form fields correctly', () => {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
 
     expect(screen.getByLabelText(/Merchant/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Card Number/i)).toBeInTheDocument();
@@ -47,7 +53,7 @@ describe('GiftCardForm', () => {
       updated: '2024-01-01',
     };
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} initialData={initialData} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} initialData={initialData} />);
 
     expect(screen.getByLabelText(/Merchant/i)).toHaveValue('Amazon');
     expect(screen.getByLabelText(/Card Number/i)).toHaveValue('1234-5678');
@@ -61,7 +67,7 @@ describe('GiftCardForm', () => {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
 
     await user.type(screen.getByLabelText(/Merchant/i), 'Target');
     await user.type(screen.getByLabelText(/Card Number/i), '9876-5432');
@@ -89,7 +95,7 @@ describe('GiftCardForm', () => {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
 
     const cancelButton = screen.getByRole('button', { name: '' }); // Cancel button has X icon, no text
     await user.click(cancelButton);
@@ -102,7 +108,7 @@ describe('GiftCardForm', () => {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
 
     // Create a mock file
     const file = new File(['image content'], 'front.png', { type: 'image/png' });
@@ -126,7 +132,7 @@ describe('GiftCardForm', () => {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
 
     // Create a mock file
     const file = new File(['image content'], 'back.png', { type: 'image/png' });
@@ -150,7 +156,7 @@ describe('GiftCardForm', () => {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} />);
 
     // Upload a front image
     const file = new File(['image content'], 'front.png', { type: 'image/png' });
@@ -187,7 +193,7 @@ describe('GiftCardForm', () => {
       updated: '2024-01-01',
     };
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} initialData={initialData} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} initialData={initialData} />);
 
     expect(screen.getByAltText('Front of gift card')).toBeInTheDocument();
     expect(screen.getByAltText('Back of gift card')).toBeInTheDocument();
@@ -197,7 +203,7 @@ describe('GiftCardForm', () => {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
 
-    render(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={true} />);
+    renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={true} />);
 
     const submitButton = screen.getByRole('button', { name: /Saving.../i });
     expect(submitButton).toBeDisabled();

@@ -2,6 +2,7 @@ import { Cake, Heart, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Checkbox } from '@/shared/components/Checkbox';
 import type { ParsedEvent } from '../utils/csvParser';
+import { logger } from '@/core/utils/logger';
 
 interface EventPreviewProps {
   event: ParsedEvent;
@@ -33,7 +34,8 @@ export function EventPreview({ event, isSelected, onToggle }: EventPreviewProps)
         day: 'numeric'
       });
     }
-  } catch {
+  } catch (error) {
+    logger.warn('Failed to format event date', { error, eventDate: event.event_date });
     // Keep original format if parsing fails
   }
 

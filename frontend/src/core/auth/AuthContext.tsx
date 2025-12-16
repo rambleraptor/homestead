@@ -16,6 +16,7 @@ import type {
 import { AuthContext } from './context';
 import { pb, getCurrentUser, clearAuth, onAuthChange, Collections } from '../api/pocketbase';
 import { queryClient, queryKeys } from '../api/queryClient';
+import { logger } from '../utils/logger';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -141,7 +142,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       await queryClient.invalidateQueries({ queryKey: queryKeys.auth.user() });
     } catch (error) {
-      console.error('Failed to refresh user:', error);
+      logger.error('Failed to refresh user', error);
       // If refresh fails, user might be deleted or token invalid
       logout();
     }

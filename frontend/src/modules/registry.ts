@@ -35,8 +35,6 @@ import { giftCardsModule } from './gift-cards/module.config';
 import { eventsModule } from './events/module.config';
 import { notificationsModule } from './notifications/module.config';
 import { settingsModule } from './settings/module.config';
-// import { choresModule } from './chores/module.config';
-// import { mealsModule } from './meals/module.config';
 
 // =============================================================================
 // REGISTER MODULES HERE
@@ -52,9 +50,6 @@ const MODULES: HomeModule[] = [
   eventsModule,
   notificationsModule,
   settingsModule,
-  // choresModule,
-  // mealsModule,
-
   // Add your modules here...
 ];
 

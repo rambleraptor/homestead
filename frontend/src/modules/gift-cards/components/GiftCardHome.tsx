@@ -13,6 +13,8 @@ import { useDeleteGiftCard } from '../hooks/useDeleteGiftCard';
 import { MerchantList } from './MerchantList';
 import { MerchantDetail } from './MerchantDetail';
 import { GiftCardForm } from './GiftCardForm';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { logger } from '@/core/utils/logger';
 import type { GiftCard, GiftCardFormData } from '../types';
 
 type View = 'list' | 'detail' | 'form';
@@ -21,6 +23,8 @@ export function GiftCardHome() {
   const [view, setView] = useState<View>('list');
   const [selectedMerchant, setSelectedMerchant] = useState<string | null>(null);
   const [editingCard, setEditingCard] = useState<GiftCard | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState<string | null>(null);
 
   const { stats, isLoading, isError, error } = useMerchantSummaries();
   const createMutation = useCreateGiftCard();
@@ -47,9 +51,16 @@ export function GiftCardHome() {
     setView('form');
   };
 
-  const handleDeleteCard = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this gift card?')) {
-      await deleteMutation.mutateAsync(id);
+  const handleDeleteCard = (id: string) => {
+    setCardToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (cardToDelete) {
+      await deleteMutation.mutateAsync(cardToDelete);
+      setDeleteConfirmOpen(false);
+      setCardToDelete(null);
     }
   };
 
@@ -63,7 +74,7 @@ export function GiftCardHome() {
       setView('list');
       setEditingCard(null);
     } catch (err) {
-      console.error('Failed to save gift card:', err);
+      logger.error('Failed to save gift card', err);
     }
   };
 
@@ -216,6 +227,18 @@ export function GiftCardHome() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Gift Card"
+        message="Are you sure you want to delete this gift card? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

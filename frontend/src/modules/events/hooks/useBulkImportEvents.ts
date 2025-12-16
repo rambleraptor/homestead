@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCollection, pb, Collections } from '@/core/api/pocketbase';
 import { queryKeys } from '@/core/api/queryClient';
+import { logger } from '@/core/utils/logger';
 import type { EventFormData } from '../types';
 
 interface BulkImportEvent extends EventFormData {
@@ -57,7 +58,7 @@ export function useBulkImportEvents() {
       }
 
       if (results.failed > 0) {
-        console.error('Bulk import errors:', results.errors);
+        logger.error('Bulk import errors', { errors: results.errors });
       }
 
       return results;

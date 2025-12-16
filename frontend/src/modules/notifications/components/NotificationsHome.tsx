@@ -5,6 +5,7 @@ import { Spinner } from '@/shared/components/Spinner';
 import { useNotifications } from '../hooks/useNotifications';
 import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
 import { useNotificationStats } from '../hooks/useNotificationStats';
+import { logger } from '@/core/utils/logger';
 import type { Notification } from '../types';
 
 export function NotificationsHome() {
@@ -16,7 +17,7 @@ export function NotificationsHome() {
     try {
       await markAsRead.mutateAsync(id);
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      logger.error('Failed to mark notification as read', error);
     }
   };
 

@@ -13,8 +13,11 @@ import {
   unsubscribeFromPushNotifications,
 } from '@/core/utils/notifications';
 import { ChangePasswordForm } from './ChangePasswordForm';
+import { useToast } from '@/shared/components/ToastProvider';
+import { logger } from '@/core/utils/logger';
 
 export function SettingsHome() {
+  const toast = useToast();
   const { data: subscription, isLoading } = useNotificationSubscription();
   const updateSubscription = useUpdateNotificationSubscription();
   const deleteSubscription = useDeleteNotificationSubscription();
@@ -28,7 +31,7 @@ export function SettingsHome() {
       // Request permission
       const granted = await requestNotificationPermission();
       if (!granted) {
-        alert('Notification permission was denied. Please enable it in your browser settings.');
+        toast.error('Notification permission was denied. Please enable it in your browser settings.');
         return;
       }
 
@@ -41,8 +44,8 @@ export function SettingsHome() {
         enabled: true,
       });
     } catch (error) {
-      console.error('Failed to enable notifications:', error);
-      alert('Failed to enable notifications. Please try again.');
+      logger.error('Failed to enable notifications', error);
+      toast.error('Failed to enable notifications. Please try again.');
     }
   };
 
@@ -54,18 +57,18 @@ export function SettingsHome() {
       // Delete subscription from database
       await deleteSubscription.mutateAsync();
     } catch (error) {
-      console.error('Failed to disable notifications:', error);
-      alert('Failed to disable notifications. Please try again.');
+      logger.error('Failed to disable notifications', error);
+      toast.error('Failed to disable notifications. Please try again.');
     }
   };
 
   const handleSendTestNotification = async () => {
     try {
       const result = await sendTestNotification.mutateAsync();
-      alert(result.message || 'Test notification sent successfully!');
+      toast.success(result.message || 'Test notification sent successfully!');
     } catch (error) {
-      console.error('Failed to send test notification:', error);
-      alert('Failed to send test notification. Make sure you have admin access.');
+      logger.error('Failed to send test notification', error);
+      toast.error('Failed to send test notification. Make sure you have admin access.');
     }
   };
 

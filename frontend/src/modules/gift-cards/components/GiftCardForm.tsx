@@ -8,6 +8,8 @@ import { useState } from 'react';
 import { Save, X, Upload, Trash2 } from 'lucide-react';
 import type { GiftCard, GiftCardFormData } from '../types';
 import { pb } from '@/core/api/pocketbase';
+import { useToast } from '@/shared/components/ToastProvider';
+import { validateImageFile } from '@/shared/utils/fileValidation';
 
 interface GiftCardFormProps {
   onSubmit: (data: GiftCardFormData) => void;
@@ -22,6 +24,7 @@ export function GiftCardForm({
   initialData,
   isSubmitting = false,
 }: GiftCardFormProps) {
+  const toast = useToast();
   const [formData, setFormData] = useState<GiftCardFormData>({
     merchant: initialData?.merchant || '',
     card_number: initialData?.card_number || '',
@@ -64,16 +67,10 @@ export function GiftCardForm({
   ) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-      if (!validTypes.includes(file.type)) {
-        alert('Please upload a valid image file (JPEG, PNG, WebP, or GIF)');
-        return;
-      }
-
-      // Validate file size (5MB max)
-      if (file.size > 5242880) {
-        alert('Image size must be less than 5MB');
+      // Validate file
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        toast.error(validation.error!);
         return;
       }
 

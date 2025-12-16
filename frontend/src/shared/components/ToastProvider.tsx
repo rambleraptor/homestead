@@ -3,8 +3,7 @@ import { createContext, useContext, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { toast as sonnerToast } from 'sonner';
 import { Toaster } from '@/shared/components/ui/sonner';
-
-export type ToastType = 'success' | 'error' | 'info' | 'warning';
+import type { ToastType } from '@/shared/types/toast';
 
 interface ToastContextValue {
   showToast: (type: ToastType, message: string, duration?: number) => void;

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCollection, pb, Collections } from '@/core/api/pocketbase';
 import { queryKeys } from '@/core/api/queryClient';
+import { logger } from '@/core/utils/logger';
 import type { NotificationSubscription } from '../types';
 
 export function useNotificationSubscription() {
@@ -19,7 +20,7 @@ export function useNotificationSubscription() {
 
         return subscriptions.length > 0 ? subscriptions[0] : null;
       } catch (error) {
-        console.error('Failed to fetch notification subscription:', error);
+        logger.error('Failed to fetch notification subscription', error);
         return null;
       }
     },
