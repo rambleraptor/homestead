@@ -19,7 +19,7 @@ export function AppShell() {
 
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+      <div className="flex h-screen overflow-hidden bg-gray-50">
         {/* Sidebar */}
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 

@@ -114,7 +114,7 @@ export function GiftCardForm({
       <div>
         <label
           htmlFor="merchant"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-medium text-gray-700 mb-1"
         >
           Merchant <span className="text-red-500">*</span>
         </label>
@@ -125,7 +125,7 @@ export function GiftCardForm({
           value={formData.merchant}
           onChange={handleChange}
           required
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           placeholder="e.g., Amazon, Starbucks, Target"
         />
       </div>
@@ -134,7 +134,7 @@ export function GiftCardForm({
       <div>
         <label
           htmlFor="card_number"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-medium text-gray-700 mb-1"
         >
           Card Number <span className="text-red-500">*</span>
         </label>
@@ -145,7 +145,7 @@ export function GiftCardForm({
           value={formData.card_number}
           onChange={handleChange}
           required
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono"
           placeholder="Enter card number"
         />
       </div>
@@ -154,7 +154,7 @@ export function GiftCardForm({
       <div>
         <label
           htmlFor="pin"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-medium text-gray-700 mb-1"
         >
           PIN
         </label>
@@ -164,7 +164,7 @@ export function GiftCardForm({
           name="pin"
           value={formData.pin}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono"
           placeholder="Enter PIN (optional)"
         />
       </div>
@@ -173,12 +173,12 @@ export function GiftCardForm({
       <div>
         <label
           htmlFor="amount"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-medium text-gray-700 mb-1"
         >
           Amount <span className="text-red-500">*</span>
         </label>
         <div className="relative">
-          <span className="absolute left-3 top-2 text-gray-500 dark:text-gray-400">
+          <span className="absolute left-3 top-2 text-gray-500">
             $
           </span>
           <input
@@ -190,7 +190,7 @@ export function GiftCardForm({
             required
             min="0"
             step="0.01"
-            className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             placeholder="0.00"
           />
         </div>
@@ -200,7 +200,7 @@ export function GiftCardForm({
       <div>
         <label
           htmlFor="notes"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-medium text-gray-700 mb-1"
         >
           Notes
         </label>
@@ -210,7 +210,7 @@ export function GiftCardForm({
           value={formData.notes}
           onChange={handleChange}
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
           placeholder="Any additional notes (optional)"
         />
       </div>
@@ -219,7 +219,7 @@ export function GiftCardForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Front Image */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Front Image
           </label>
           {frontImagePreview ? (
@@ -227,7 +227,7 @@ export function GiftCardForm({
               <img
                 src={frontImagePreview}
                 alt="Front of gift card"
-                className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                className="w-full h-48 object-cover rounded-lg border border-gray-300"
               />
               <button
                 type="button"
@@ -239,12 +239,12 @@ export function GiftCardForm({
               </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-primary-500 dark:hover:border-primary-500 transition-colors">
+            <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
               <Upload className="w-8 h-8 text-gray-400 mb-2" />
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-gray-500">
                 Upload front image
               </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              <span className="text-xs text-gray-400 mt-1">
                 (Optional, max 5MB)
               </span>
               <input
@@ -259,7 +259,7 @@ export function GiftCardForm({
 
         {/* Back Image */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Back Image
           </label>
           {backImagePreview ? (
@@ -267,7 +267,7 @@ export function GiftCardForm({
               <img
                 src={backImagePreview}
                 alt="Back of gift card"
-                className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                className="w-full h-48 object-cover rounded-lg border border-gray-300"
               />
               <button
                 type="button"
@@ -279,12 +279,12 @@ export function GiftCardForm({
               </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-primary-500 dark:hover:border-primary-500 transition-colors">
+            <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
               <Upload className="w-8 h-8 text-gray-400 mb-2" />
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-gray-500">
                 Upload back image
               </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              <span className="text-xs text-gray-400 mt-1">
                 (Optional, max 5MB)
               </span>
               <input
@@ -312,7 +312,7 @@ export function GiftCardForm({
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors disabled:opacity-50"
+          className="px-4 py-2 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors disabled:opacity-50"
         >
           <X className="w-4 h-4" />
         </button>

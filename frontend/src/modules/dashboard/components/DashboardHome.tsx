@@ -52,10 +52,10 @@ export function DashboardHome() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-3xl font-bold text-gray-900">
           Dashboard
         </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
+        <p className="mt-2 text-gray-600">
           Welcome to your Home Operating System
         </p>
       </div>
@@ -67,14 +67,14 @@ export function DashboardHome() {
           return (
             <div
               key={stat.title}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700"
+              className="bg-white rounded-lg shadow-md p-6 border border-gray-200"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <p className="text-sm font-medium text-gray-600">
                     {stat.title}
                   </p>
-                  <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="mt-2 text-2xl font-bold text-gray-900">
                     {stat.value}
                   </p>
                 </div>
@@ -92,8 +92,8 @@ export function DashboardHome() {
       </div>
 
       {/* Quick Start Guide */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">
           🚀 Getting Started with HomeOS
         </h2>
         <div className="space-y-4">
@@ -102,10 +102,10 @@ export function DashboardHome() {
               1
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
+              <h3 className="font-semibold text-gray-900">
                 Explore Modules
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-600">
                 Check out the available modules in the sidebar. Each module provides
                 different functionality for managing your home.
               </p>
@@ -117,11 +117,11 @@ export function DashboardHome() {
               2
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
+              <h3 className="font-semibold text-gray-900">
                 Create New Modules
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Follow the pattern in <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">src/modules/dashboard</code> to
+              <p className="text-sm text-gray-600">
+                Follow the pattern in <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">src/modules/dashboard</code> to
                 create your own modules (Chores, Meal Planner, etc.).
               </p>
             </div>
@@ -132,11 +132,11 @@ export function DashboardHome() {
               3
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
+              <h3 className="font-semibold text-gray-900">
                 Register Your Module
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Add your module to <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">src/modules/registry.ts</code> and
+              <p className="text-sm text-gray-600">
+                Add your module to <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">src/modules/registry.ts</code> and
                 it will automatically appear in navigation!
               </p>
             </div>

@@ -22,9 +22,9 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
 
   if (merchants.length === 0) {
     return (
-      <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
         <Store className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-gray-600">
           No gift cards yet. Add your first card to get started!
         </p>
       </div>
@@ -35,7 +35,7 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
     <button
       key={merchant.merchant}
       onClick={() => onMerchantClick(merchant.merchant)}
-      className={`w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow text-left group ${
+      className={`w-full bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow text-left group ${
         isArchived ? 'opacity-60' : ''
       }`}
     >
@@ -44,23 +44,23 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
           <div
             className={`w-12 h-12 rounded-lg flex items-center justify-center ${
               isArchived
-                ? 'bg-gray-100 dark:bg-gray-700'
-                : 'bg-primary-100 dark:bg-primary-900'
+                ? 'bg-gray-100'
+                : 'bg-primary-100'
             }`}
           >
             <Store
               className={`w-6 h-6 ${
                 isArchived
                   ? 'text-gray-400'
-                  : 'text-primary-600 dark:text-primary-400'
+                  : 'text-primary-600'
               }`}
             />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               {merchant.merchant}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-600">
               {merchant.cardCount} {merchant.cardCount === 1 ? 'card' : 'cards'}
               {isArchived && ' • Archived'}
             </p>
@@ -71,12 +71,12 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
             <p className={`text-2xl font-bold ${
               isArchived
                 ? 'text-gray-400'
-                : 'text-primary-600 dark:text-primary-400'
+                : 'text-primary-600'
             }`}>
               ${merchant.totalAmount.toFixed(2)}
             </p>
           </div>
-          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
         </div>
       </div>
     </button>
@@ -96,7 +96,7 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
         <div className="space-y-3">
           <button
             onClick={() => setShowArchived(!showArchived)}
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             {showArchived ? (
               <ChevronUp className="w-5 h-5" />

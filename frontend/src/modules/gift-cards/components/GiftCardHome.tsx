@@ -93,14 +93,14 @@ export function GiftCardHome() {
 
   if (isError) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
         <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+          <AlertCircle className="w-6 h-6 text-red-600" />
           <div>
-            <h3 className="font-semibold text-red-900 dark:text-red-200">
+            <h3 className="font-semibold text-red-900">
               Failed to load gift cards
             </h3>
-            <p className="text-sm text-red-700 dark:text-red-300">
+            <p className="text-sm text-red-700">
               {error instanceof Error ? error.message : 'An error occurred'}
             </p>
           </div>
@@ -120,10 +120,10 @@ export function GiftCardHome() {
         <>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-3xl font-bold text-gray-900">
                 Gift Cards
               </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">
+              <p className="mt-2 text-gray-600">
                 Manage your household gift cards
               </p>
             </div>
@@ -139,50 +139,50 @@ export function GiftCardHome() {
           {/* Stats Overview */}
           {stats && stats.totalCards > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-600">
                       Total Balance
                     </p>
-                    <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                    <p className="mt-2 text-3xl font-bold text-gray-900">
                       ${stats.totalAmount.toFixed(2)}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                    <Gift className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Gift className="w-6 h-6 text-green-600" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-600">
                       Total Cards
                     </p>
-                    <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                    <p className="mt-2 text-3xl font-bold text-gray-900">
                       {stats.totalCards}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                    <Gift className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Gift className="w-6 h-6 text-blue-600" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-600">
                       Merchants
                     </p>
-                    <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                    <p className="mt-2 text-3xl font-bold text-gray-900">
                       {stats.merchantCount}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                    <Gift className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Gift className="w-6 h-6 text-purple-600" />
                   </div>
                 </div>
               </div>
@@ -214,10 +214,10 @@ export function GiftCardHome() {
       {/* Form View */}
       {view === 'form' && (
         <div className="max-w-2xl">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
             {editingCard ? 'Edit Gift Card' : 'Add New Gift Card'}
           </h2>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
             <GiftCardForm
               onSubmit={handleFormSubmit}
               onCancel={handleFormCancel}

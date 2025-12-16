@@ -83,16 +83,16 @@ export function SettingsHome() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-3xl font-bold text-gray-900">
           Settings
         </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
+        <p className="mt-2 text-gray-600">
           Manage your preferences and notifications
         </p>
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Notifications
         </h2>
 
@@ -101,10 +101,10 @@ export function SettingsHome() {
             <div className="flex items-start gap-4">
               <BellOff className="w-6 h-6 text-gray-400 mt-1" />
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                <h3 className="font-semibold text-gray-900 mb-2">
                   Notifications Not Supported
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600">
                   Your browser does not support web push notifications. Please
                   use a modern browser like Chrome, Firefox, or Edge to enable
                   this feature.
@@ -122,16 +122,16 @@ export function SettingsHome() {
                   <BellOff className="w-6 h-6 text-gray-400 mt-1" />
                 )}
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  <h3 className="font-semibold text-gray-900 mb-2">
                     Web Push Notifications
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  <p className="text-sm text-gray-600 mb-4">
                     {isEnabled
                       ? 'You will receive push notifications for important events and reminders.'
                       : 'Enable notifications to receive reminders for birthdays, anniversaries, and other important events.'}
                   </p>
                   {isEnabled && subscription && (
-                    <div className="text-xs text-gray-500 dark:text-gray-500 mb-4">
+                    <div className="text-xs text-gray-500 mb-4">
                       <p>Status: Active</p>
                       <p>
                         Enabled since:{' '}
@@ -170,10 +170,10 @@ export function SettingsHome() {
         {isBrowserSupported && (
           <Card>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+              <h3 className="font-semibold text-gray-900 mb-2">
                 How Notifications Work
               </h3>
-              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+              <ul className="text-sm text-gray-600 space-y-2">
                 <li>
                   • You'll receive notifications based on your event reminder
                   preferences
@@ -197,7 +197,7 @@ export function SettingsHome() {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Debug Mode
         </h2>
 
@@ -205,10 +205,10 @@ export function SettingsHome() {
           <div className="flex items-start gap-4">
             <Bug className="w-6 h-6 text-purple-500 mt-1" />
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+              <h3 className="font-semibold text-gray-900 mb-2">
                 Test Push Notifications
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              <p className="text-sm text-gray-600 mb-4">
                 Send an immediate test push notification to verify that your notification system is working correctly.
               </p>
               <Button
@@ -226,7 +226,7 @@ export function SettingsHome() {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Security
         </h2>
         <ChangePasswordForm />

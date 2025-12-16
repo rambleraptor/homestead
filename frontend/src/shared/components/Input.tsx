@@ -18,12 +18,12 @@ export function Input({ label, error, className = '', ...props }: InputProps) {
       )}
       <ShadcnInput
         className={cn(
-          error && 'border-red-500 focus-visible:ring-red-500 dark:border-red-500 dark:focus-visible:ring-red-500',
+          error && 'border-red-500 focus-visible:ring-red-500',
           className
         )}
         {...props}
       />
-      {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

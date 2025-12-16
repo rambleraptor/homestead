@@ -52,7 +52,7 @@ export function EventForm({
       <div>
         <label
           htmlFor="event_type"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          className="block text-sm font-medium text-gray-700 mb-2"
         >
           Event Type
         </label>
@@ -65,7 +65,7 @@ export function EventForm({
               event_type: e.target.value as EventType,
             })
           }
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           required
         >
           <option value="birthday">Birthday</option>
@@ -76,7 +76,7 @@ export function EventForm({
       <div>
         <label
           htmlFor="title"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          className="block text-sm font-medium text-gray-700 mb-2"
         >
           Title
         </label>
@@ -93,7 +93,7 @@ export function EventForm({
       <div>
         <label
           htmlFor="people_involved"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          className="block text-sm font-medium text-gray-700 mb-2"
         >
           People Involved
         </label>
@@ -112,7 +112,7 @@ export function EventForm({
       <div>
         <label
           htmlFor="event_date"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          className="block text-sm font-medium text-gray-700 mb-2"
         >
           Date
         </label>
@@ -139,7 +139,7 @@ export function EventForm({
         />
         <label
           htmlFor="recurring_yearly"
-          className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+          className="ml-2 block text-sm text-gray-700"
         >
           Recurring yearly
         </label>
@@ -148,7 +148,7 @@ export function EventForm({
       <div>
         <label
           htmlFor="details"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          className="block text-sm font-medium text-gray-700 mb-2"
         >
           Additional Details (Optional)
         </label>
@@ -160,12 +160,12 @@ export function EventForm({
           }
           placeholder="Any additional notes or details..."
           rows={4}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           Notification Preferences
         </label>
         <div className="space-y-2">
@@ -185,11 +185,11 @@ export function EventForm({
               <div className="ml-3 text-sm">
                 <label
                   htmlFor={`notification_${option.value}`}
-                  className="font-medium text-gray-700 dark:text-gray-300"
+                  className="font-medium text-gray-700"
                 >
                   {option.label}
                 </label>
-                <p className="text-gray-500 dark:text-gray-400">
+                <p className="text-gray-500">
                   {option.description}
                 </p>
               </div>

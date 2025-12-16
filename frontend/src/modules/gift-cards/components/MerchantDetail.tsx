@@ -107,7 +107,7 @@ export function MerchantDetail({
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Back to Merchants</span>
@@ -133,25 +133,25 @@ export function MerchantDetail({
 
       {/* Active Gift Cards */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Active Cards</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Active Cards</h3>
         {activeCards.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">No active cards</p>
+          <p className="text-gray-500 text-center py-8">No active cards</p>
         ) : (
           activeCards.map((card) => (
             <div
               key={card.id}
-              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5"
+              className="bg-white rounded-lg border border-gray-200 p-5"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center">
-                    <CreditCard className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <CreditCard className="w-6 h-6 text-primary-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <p className="text-2xl font-bold text-gray-900">
                       ${card.amount.toFixed(2)}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-gray-500">
                       Added {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
                     </p>
                   </div>
@@ -159,14 +159,14 @@ export function MerchantDetail({
                 <div className="flex gap-2">
                   <button
                     onClick={() => onEdit(card)}
-                    className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     title="Edit card"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => onDelete(card.id)}
-                    className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    className="p-2 text-red-600 hover:bg-red-50/20 rounded-lg transition-colors"
                     title="Delete card"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -175,8 +175,8 @@ export function MerchantDetail({
               </div>
 
               {/* Transaction Controls */}
-              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Quick Transaction
                 </label>
                 <div className="flex gap-2">
@@ -189,7 +189,7 @@ export function MerchantDetail({
                       setTransactionAmount((prev) => ({ ...prev, [card.id]: e.target.value }))
                     }
                     placeholder="Amount"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                   <button
                     onClick={() => handleDecrementAmount(card, card.id)}
@@ -217,12 +217,12 @@ export function MerchantDetail({
                 {/* Card Number */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="text-sm font-medium text-gray-700">
                       Card Number
                     </label>
                     <button
                       onClick={() => toggleNumberVisibility(card.id)}
-                      className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                      className="text-xs text-primary-600 hover:underline flex items-center gap-1"
                     >
                       {visibleNumbers.has(card.id) ? (
                         <>
@@ -235,7 +235,7 @@ export function MerchantDetail({
                       )}
                     </button>
                   </div>
-                  <p className="font-mono text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-200 dark:border-gray-700">
+                  <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
                     {maskString(card.card_number, visibleNumbers.has(card.id))}
                   </p>
                 </div>
@@ -244,12 +244,12 @@ export function MerchantDetail({
                 {card.pin && (
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label className="text-sm font-medium text-gray-700">
                         PIN
                       </label>
                       <button
                         onClick={() => togglePinVisibility(card.id)}
-                        className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                        className="text-xs text-primary-600 hover:underline flex items-center gap-1"
                       >
                         {visiblePins.has(card.id) ? (
                           <>
@@ -262,7 +262,7 @@ export function MerchantDetail({
                         )}
                       </button>
                     </div>
-                    <p className="font-mono text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-200 dark:border-gray-700">
+                    <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
                       {maskString(card.pin, visiblePins.has(card.id))}
                     </p>
                   </div>
@@ -271,10 +271,10 @@ export function MerchantDetail({
                 {/* Notes */}
                 {card.notes && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Notes
                     </label>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-200 dark:border-gray-700">
+                    <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border border-gray-200">
                       {card.notes}
                     </p>
                   </div>
@@ -283,27 +283,27 @@ export function MerchantDetail({
                 {/* Card Images */}
                 {(card.front_image || card.back_image) && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Card Images
                     </label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {card.front_image && (
                         <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Front</p>
+                          <p className="text-xs text-gray-500 mb-1">Front</p>
                           <img
                             src={pb.files.getURL(card, card.front_image)}
                             alt="Front of gift card"
-                            className="w-full h-32 object-cover rounded border border-gray-200 dark:border-gray-700"
+                            className="w-full h-32 object-cover rounded border border-gray-200"
                           />
                         </div>
                       )}
                       {card.back_image && (
                         <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Back</p>
+                          <p className="text-xs text-gray-500 mb-1">Back</p>
                           <img
                             src={pb.files.getURL(card, card.back_image)}
                             alt="Back of gift card"
-                            className="w-full h-32 object-cover rounded border border-gray-200 dark:border-gray-700"
+                            className="w-full h-32 object-cover rounded border border-gray-200"
                           />
                         </div>
                       )}
@@ -321,7 +321,7 @@ export function MerchantDetail({
         <div className="space-y-4">
           <button
             onClick={() => setShowArchived(!showArchived)}
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             {showArchived ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             <span className="font-medium">
@@ -334,18 +334,18 @@ export function MerchantDetail({
               {archivedCards.map((card) => (
                 <div
                   key={card.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 opacity-60"
+                  className="bg-white rounded-lg border border-gray-200 p-5 opacity-60"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
                         <CreditCard className="w-6 h-6 text-gray-400" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <p className="text-2xl font-bold text-gray-900">
                           ${card.amount.toFixed(2)}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-gray-500">
                           Archived • Added {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
                         </p>
                       </div>
@@ -353,14 +353,14 @@ export function MerchantDetail({
                     <div className="flex gap-2">
                       <button
                         onClick={() => onEdit(card)}
-                        className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Edit card"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => onDelete(card.id)}
-                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-2 text-red-600 hover:bg-red-50/20 rounded-lg transition-colors"
                         title="Delete card"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -373,12 +373,12 @@ export function MerchantDetail({
                     {/* Card Number */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label className="text-sm font-medium text-gray-700">
                           Card Number
                         </label>
                         <button
                           onClick={() => toggleNumberVisibility(card.id)}
-                          className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                          className="text-xs text-primary-600 hover:underline flex items-center gap-1"
                         >
                           {visibleNumbers.has(card.id) ? (
                             <>
@@ -391,7 +391,7 @@ export function MerchantDetail({
                           )}
                         </button>
                       </div>
-                      <p className="font-mono text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-200 dark:border-gray-700">
+                      <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
                         {maskString(card.card_number, visibleNumbers.has(card.id))}
                       </p>
                     </div>
@@ -400,12 +400,12 @@ export function MerchantDetail({
                     {card.pin && (
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <label className="text-sm font-medium text-gray-700">
                             PIN
                           </label>
                           <button
                             onClick={() => togglePinVisibility(card.id)}
-                            className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                            className="text-xs text-primary-600 hover:underline flex items-center gap-1"
                           >
                             {visiblePins.has(card.id) ? (
                               <>
@@ -418,7 +418,7 @@ export function MerchantDetail({
                             )}
                           </button>
                         </div>
-                        <p className="font-mono text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-200 dark:border-gray-700">
+                        <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
                           {maskString(card.pin, visiblePins.has(card.id))}
                         </p>
                       </div>
@@ -427,10 +427,10 @@ export function MerchantDetail({
                     {/* Notes */}
                     {card.notes && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
                           Notes
                         </label>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-200 dark:border-gray-700">
+                        <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border border-gray-200">
                           {card.notes}
                         </p>
                       </div>
@@ -439,27 +439,27 @@ export function MerchantDetail({
                     {/* Card Images */}
                     {(card.front_image || card.back_image) && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Card Images
                         </label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {card.front_image && (
                             <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Front</p>
+                              <p className="text-xs text-gray-500 mb-1">Front</p>
                               <img
                                 src={pb.files.getURL(card, card.front_image)}
                                 alt="Front of gift card"
-                                className="w-full h-32 object-cover rounded border border-gray-200 dark:border-gray-700"
+                                className="w-full h-32 object-cover rounded border border-gray-200"
                               />
                             </div>
                           )}
                           {card.back_image && (
                             <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Back</p>
+                              <p className="text-xs text-gray-500 mb-1">Back</p>
                               <img
                                 src={pb.files.getURL(card, card.back_image)}
                                 alt="Back of gift card"
-                                className="w-full h-32 object-cover rounded border border-gray-200 dark:border-gray-700"
+                                className="w-full h-32 object-cover rounded border border-gray-200"
                               />
                             </div>
                           )}

@@ -140,10 +140,10 @@ export function EventsHome() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-gray-900">
             Events
           </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-gray-600">
             Track important birthdays and anniversaries
           </p>
         </div>
@@ -165,10 +165,10 @@ export function EventsHome() {
             <div className="flex items-center">
               <Calendar className="w-8 h-8 text-blue-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600">
                   Total Events
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-gray-900">
                   {stats.totalEvents}
                 </p>
               </div>
@@ -179,10 +179,10 @@ export function EventsHome() {
             <div className="flex items-center">
               <Cake className="w-8 h-8 text-pink-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600">
                   Upcoming Birthdays
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-gray-900">
                   {stats.upcomingBirthdays}
                 </p>
               </div>
@@ -193,10 +193,10 @@ export function EventsHome() {
             <div className="flex items-center">
               <Heart className="w-8 h-8 text-red-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600">
                   Upcoming Anniversaries
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-gray-900">
                   {stats.upcomingAnniversaries}
                 </p>
               </div>
@@ -206,12 +206,12 @@ export function EventsHome() {
       )}
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Upcoming Events (Next 30 Days)
         </h2>
         {upcomingEvents.length === 0 ? (
           <Card>
-            <p className="text-center text-gray-600 dark:text-gray-400 py-8">
+            <p className="text-center text-gray-600 py-8">
               No upcoming events in the next 30 days
             </p>
           </Card>
@@ -230,12 +230,12 @@ export function EventsHome() {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
           All Events
         </h2>
         {!events || events.length === 0 ? (
           <Card>
-            <p className="text-center text-gray-600 dark:text-gray-400 py-8">
+            <p className="text-center text-gray-600 py-8">
               No events yet. Add your first event to get started!
             </p>
           </Card>
