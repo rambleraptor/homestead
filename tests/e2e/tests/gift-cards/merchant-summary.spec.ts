@@ -9,16 +9,16 @@ import { createMultipleGiftCards, deleteAllGiftCards } from '../../utils/pocketb
 test.describe('Merchant Summaries', () => {
   let giftCardsPage: GiftCardsPage;
 
-  test.beforeEach(async ({ authenticatedPage, pocketbase }) => {
+  test.beforeEach(async ({ authenticatedPage, userPocketbase }) => {
     giftCardsPage = new GiftCardsPage(authenticatedPage);
 
     // Clean up any existing gift cards
-    await deleteAllGiftCards(pocketbase);
+    await deleteAllGiftCards(userPocketbase);
 
     await giftCardsPage.goto();
   });
 
-  test('should calculate merchant summary correctly for multiple cards', async ({ pocketbase }) => {
+  test('should calculate merchant summary correctly for multiple cards', async ({ userPocketbase }) => {
     // Create multiple cards for same merchant
     const amazonCards = [
       { merchant: 'Amazon', amount: 50 },
@@ -26,7 +26,7 @@ test.describe('Merchant Summaries', () => {
       { merchant: 'Amazon', amount: 20 },
     ];
 
-    await createMultipleGiftCards(pocketbase, amazonCards);
+    await createMultipleGiftCards(userPocketbase, amazonCards);
 
     await giftCardsPage.goto();
 
@@ -37,7 +37,7 @@ test.describe('Merchant Summaries', () => {
     await giftCardsPage.expectGiftCardInList('Amazon');
   });
 
-  test('should show separate summaries for different merchants', async ({ pocketbase }) => {
+  test('should show separate summaries for different merchants', async ({ userPocketbase }) => {
     const cards = [
       { merchant: 'Amazon', amount: 50 },
       { merchant: 'Amazon', amount: 30 },
@@ -45,7 +45,7 @@ test.describe('Merchant Summaries', () => {
       { merchant: 'Target', amount: 100 },
     ];
 
-    await createMultipleGiftCards(pocketbase, cards);
+    await createMultipleGiftCards(userPocketbase, cards);
 
     await giftCardsPage.goto();
 

@@ -10,11 +10,11 @@ import { createGiftCard, createMultipleGiftCards, deleteAllGiftCards } from '../
 test.describe('Gift Cards CRUD', () => {
   let giftCardsPage: GiftCardsPage;
 
-  test.beforeEach(async ({ authenticatedPage, pocketbase }) => {
+  test.beforeEach(async ({ authenticatedPage, userPocketbase }) => {
     giftCardsPage = new GiftCardsPage(authenticatedPage);
 
     // Clean up any existing gift cards
-    await deleteAllGiftCards(pocketbase);
+    await deleteAllGiftCards(userPocketbase);
 
     await giftCardsPage.goto();
   });
@@ -39,9 +39,9 @@ test.describe('Gift Cards CRUD', () => {
     }
   });
 
-  test('should edit existing gift card', async ({ pocketbase }) => {
+  test('should edit existing gift card', async ({ userPocketbase }) => {
     // Create a gift card via API
-    await createGiftCard(pocketbase, testGiftCards[0]);
+    await createGiftCard(userPocketbase, testGiftCards[0]);
 
     await giftCardsPage.goto();
 
@@ -53,9 +53,9 @@ test.describe('Gift Cards CRUD', () => {
     await giftCardsPage.expectGiftCardInList(testGiftCards[0].merchant, newAmount);
   });
 
-  test('should delete a gift card', async ({ pocketbase }) => {
+  test('should delete a gift card', async ({ userPocketbase }) => {
     // Create a gift card via API
-    await createGiftCard(pocketbase, testGiftCards[0]);
+    await createGiftCard(userPocketbase, testGiftCards[0]);
 
     await giftCardsPage.goto();
 
@@ -66,10 +66,10 @@ test.describe('Gift Cards CRUD', () => {
     await giftCardsPage.expectGiftCardNotInList(testGiftCards[0].merchant);
   });
 
-  test('should display multiple cards from same merchant', async ({ pocketbase }) => {
+  test('should display multiple cards from same merchant', async ({ userPocketbase }) => {
     // Create multiple cards for Amazon
     const amazonCards = testGiftCards.filter(card => card.merchant === 'Amazon');
-    await createMultipleGiftCards(pocketbase, amazonCards);
+    await createMultipleGiftCards(userPocketbase, amazonCards);
 
     await giftCardsPage.goto();
 

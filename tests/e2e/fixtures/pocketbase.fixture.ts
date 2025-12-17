@@ -19,6 +19,7 @@ type TestUser = {
 type PocketBaseFixtures = {
   pocketbase: PocketBase;
   testUser: TestUser;
+  userPocketbase: PocketBase;
   authenticatedPage: Page;
 };
 
@@ -76,6 +77,20 @@ export const test = base.extend<PocketBaseFixtures>({
       // User might already be deleted, log but don't fail
       console.warn(`Failed to cleanup test user ${user.id}:`, e);
     }
+  },
+
+  /**
+   * PocketBase client authenticated as the test user
+   * Use this for operations on user collections (events, gift_cards, etc.)
+   */
+  userPocketbase: async ({ testUser }, use) => {
+    const pb = new PocketBase(getPocketBaseUrl());
+
+    // Authenticate as the test user
+    await pb.collection('users').authWithPassword(testUser.email, testUser.password);
+
+    await use(pb);
+    pb.authStore.clear();
   },
 
   /**

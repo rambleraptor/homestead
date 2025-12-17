@@ -10,11 +10,11 @@ import { createEvent, deleteAllEvents } from '../../utils/pocketbase-helpers';
 test.describe('Events CRUD', () => {
   let eventsPage: EventsPage;
 
-  test.beforeEach(async ({ authenticatedPage, pocketbase }) => {
+  test.beforeEach(async ({ authenticatedPage, userPocketbase }) => {
     eventsPage = new EventsPage(authenticatedPage);
 
     // Clean up any existing events
-    await deleteAllEvents(pocketbase);
+    await deleteAllEvents(userPocketbase);
 
     await eventsPage.goto();
   });
@@ -46,9 +46,9 @@ test.describe('Events CRUD', () => {
     await eventsPage.expectEventInList(eventData.name);
   });
 
-  test('should edit existing event', async ({ pocketbase }) => {
+  test('should edit existing event', async ({ userPocketbase }) => {
     // Create an event via API
-    await createEvent(pocketbase, {
+    await createEvent(userPocketbase, {
       name: 'Original Event',
       date: getFutureDate(20),
     });
@@ -65,9 +65,9 @@ test.describe('Events CRUD', () => {
     await eventsPage.expectEventNotInList('Original Event');
   });
 
-  test('should delete an event', async ({ pocketbase }) => {
+  test('should delete an event', async ({ userPocketbase }) => {
     // Create an event via API
-    await createEvent(pocketbase, {
+    await createEvent(userPocketbase, {
       name: 'Event to Delete',
       date: getFutureDate(15),
     });
