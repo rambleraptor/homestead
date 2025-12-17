@@ -74,7 +74,15 @@ export class GiftCardsPage {
   }
 
   async getGiftCardRow(merchant: string): Promise<Locator> {
-    return this.page.getByRole('row').filter({ hasText: merchant }).first();
+    // Gift cards are displayed as card components, not table rows
+    // Find by looking for the merchant amount heading
+    return this.page.locator('.bg-white.rounded-lg.border').filter({ hasText: /\$\d+\.\d{2}/ }).first();
+  }
+
+  async clickMerchant(merchant: string) {
+    // Click on a merchant card to view its gift cards
+    await this.page.getByText(merchant).click();
+    await this.page.waitForTimeout(300);
   }
 
   async editGiftCard(merchant: string, newData: Partial<{
@@ -83,9 +91,15 @@ export class GiftCardsPage {
     card_number: string;
     pin: string;
     notes: string;
-  }>) {
-    const row = await this.getGiftCardRow(merchant);
-    await row.getByRole('button', { name: /edit/i }).click();
+  }>, cardAmount?: number) {
+    // Use aria-label to find the edit button for a specific card
+    // Format: "Edit Amazon card ($50.00)"
+    if (cardAmount !== undefined) {
+      await this.page.getByRole('button', { name: `Edit ${merchant} card ($${cardAmount.toFixed(2)})` }).first().click();
+    } else {
+      // Fall back to finding any edit button with the merchant name
+      await this.page.getByRole('button', { name: new RegExp(`Edit ${merchant}`, 'i') }).first().click();
+    }
 
     if (newData.merchant) {
       await this.page.locator('#merchant').fill(newData.merchant);
@@ -113,9 +127,15 @@ export class GiftCardsPage {
     await this.page.waitForTimeout(500);
   }
 
-  async deleteGiftCard(merchant: string) {
-    const row = await this.getGiftCardRow(merchant);
-    await row.getByRole('button', { name: /delete|remove/i }).click();
+  async deleteGiftCard(merchant: string, cardAmount?: number) {
+    // Use aria-label to find the delete button for a specific card
+    // Format: "Delete Amazon card ($50.00)"
+    if (cardAmount !== undefined) {
+      await this.page.getByRole('button', { name: `Delete ${merchant} card ($${cardAmount.toFixed(2)})` }).first().click();
+    } else {
+      // Fall back to finding any delete button with the merchant name
+      await this.page.getByRole('button', { name: new RegExp(`Delete ${merchant}`, 'i') }).first().click();
+    }
 
     // Confirm deletion if there's a confirmation dialog
     const confirmButton = this.page.getByRole('button', { name: /confirm|yes|delete/i });

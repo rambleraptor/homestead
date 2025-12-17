@@ -74,7 +74,9 @@ export class EventsPage {
   }
 
   async expectEventInList(eventName: string) {
-    await expect(this.page.getByText(eventName)).toBeVisible();
+    // Events can appear in multiple places (Upcoming Events and All Events sections)
+    // Just check that at least one instance is visible
+    await expect(this.page.getByText(eventName).first()).toBeVisible();
   }
 
   async expectEventNotInList(eventName: string) {
@@ -83,8 +85,10 @@ export class EventsPage {
     });
   }
 
-  async getEventRow(eventName: string): Promise<Locator> {
-    return this.page.getByRole('row').filter({ hasText: eventName }).first();
+  async getEventCard(eventName: string): Promise<Locator> {
+    // Events are displayed as cards, not table rows
+    // Find the card by looking for an h3 heading with the event name, then get the card container
+    return this.page.getByRole('heading', { name: eventName, level: 3 }).locator('..').locator('..').locator('..');
   }
 
   async editEvent(eventName: string, newData: Partial<{
@@ -95,8 +99,8 @@ export class EventsPage {
     event_type: 'birthday' | 'anniversary';
     people_involved: string;
   }>) {
-    const row = await this.getEventRow(eventName);
-    await row.getByRole('button', { name: /edit/i }).click();
+    // Buttons have aria-labels like "Edit Test Event"
+    await this.page.getByRole('button', { name: `Edit ${eventName}` }).first().click();
 
     if (newData.event_type) {
       await this.page.locator('#event_type').selectOption(newData.event_type);
@@ -135,8 +139,8 @@ export class EventsPage {
   }
 
   async deleteEvent(eventName: string) {
-    const row = await this.getEventRow(eventName);
-    await row.getByRole('button', { name: /delete|remove/i }).click();
+    // Buttons have aria-labels like "Delete Test Event"
+    await this.page.getByRole('button', { name: `Delete ${eventName}` }).first().click();
 
     // Confirm deletion if there's a confirmation dialog
     const confirmButton = this.page.getByRole('button', { name: /confirm|yes|delete/i });

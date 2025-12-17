@@ -152,8 +152,11 @@ export async function setupPocketBase(): Promise<void> {
   const migrationsFiles = fs.readdirSync(migrationsDir);
   console.log(`   Found ${migrationsFiles.length} migration files:`, migrationsFiles.filter(f => f.endsWith('.js')).join(', '));
 
-  // Create admin user
+  // Create admin user FIRST (this initializes the database)
   await createAdminUser();
+
+  // Run migrations AFTER database is initialized
+  await runMigrations();
 }
 
 /**
@@ -204,6 +207,59 @@ async function createAdminUser(): Promise<void> {
     adminProcess.on('error', (err) => {
       console.error('❌ Failed to spawn admin creation process\n');
       reject(new Error(`Failed to spawn admin creation: ${err.message}`));
+    });
+  });
+}
+
+/**
+ * Run migrations explicitly using PocketBase CLI
+ */
+async function runMigrations(): Promise<void> {
+  const { e2eDir, pbDataDir } = getTestDirs();
+
+  return new Promise((resolve, reject) => {
+    const pbBinary = join(e2eDir, process.platform === 'win32' ? 'pocketbase.exe' : 'pocketbase');
+    const migrationsDir = join(pbDataDir, 'pb_migrations');
+
+    console.log(`🔄 Running migrations with binary: ${pbBinary}`);
+    console.log(`   Data directory: ${pbDataDir}`);
+    console.log(`   Migrations directory: ${migrationsDir}`);
+
+    const migrateProcess = spawn(pbBinary, [
+      'migrate',
+      '--dir', pbDataDir,
+      '--migrationsDir', migrationsDir
+    ]);
+
+    let output = '';
+
+    migrateProcess.stdout.on('data', (data) => {
+      const text = data.toString();
+      output += text;
+      console.log(`   [stdout] ${text.trim()}`);
+    });
+
+    migrateProcess.stderr.on('data', (data) => {
+      const text = data.toString();
+      output += text;
+      console.log(`   [stderr] ${text.trim()}`);
+    });
+
+    migrateProcess.on('close', (code) => {
+      console.log(`   Migration process exited with code: ${code}`);
+      if (code === 0) {
+        console.log('✅ Migrations completed successfully\n');
+        resolve();
+      } else {
+        console.error('❌ Migrations failed\n');
+        console.error(`   Output: ${output}`);
+        reject(new Error(`Failed to run migrations (exit code ${code}): ${output}`));
+      }
+    });
+
+    migrateProcess.on('error', (err) => {
+      console.error('❌ Failed to spawn migration process\n');
+      reject(new Error(`Failed to spawn migrations: ${err.message}`));
     });
   });
 }

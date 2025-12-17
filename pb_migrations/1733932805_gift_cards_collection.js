@@ -10,78 +10,76 @@ migrate((app) => {
     // Collection doesn't exist, continue with creation
   }
 
-  // Get the users collection ID (if it exists)
-  let usersCollectionId;
+  const collection = new Collection();
+  collection.name = "gift_cards";
+  collection.type = "base";
+  collection.system = false;
+
+  // Add fields using typed field constructors
+  collection.fields.add(new TextField({
+    name: "merchant",
+    required: true,
+    presentable: false,
+    max: 200
+  }));
+
+  collection.fields.add(new TextField({
+    name: "card_number",
+    required: true,
+    presentable: false,
+    max: 100
+  }));
+
+  collection.fields.add(new TextField({
+    name: "pin",
+    required: false,
+    presentable: false,
+    max: 50
+  }));
+
+  collection.fields.add(new NumberField({
+    name: "amount",
+    required: true,
+    presentable: false,
+    min: 0
+  }));
+
+  collection.fields.add(new TextField({
+    name: "notes",
+    required: false,
+    presentable: false,
+    max: 1000
+  }));
+
+  // Add created_by relation if users collection exists
   try {
     const usersCollection = app.findCollectionByNameOrId("users");
-    usersCollectionId = usersCollection.id;
+    collection.fields.add(new RelationField({
+      name: "created_by",
+      required: false,
+      presentable: false,
+      collectionId: usersCollection.id,
+      cascadeDelete: false,
+      maxSelect: 1
+    }));
   } catch (e) {
-    // Users collection doesn't exist yet - create relation without specific collection
-    // This will be fixed when users collection is created
     console.log("Users collection not found, creating gift_cards without user relation");
   }
 
-  const collection = new Collection({
-    "name": "gift_cards",
-    "type": "base",
-    "system": false,
-    "fields": [
-      {
-        "name": "merchant",
-        "type": "text",
-        "required": true,
-        "presentable": false,
-        "max": 200
-      },
-      {
-        "name": "card_number",
-        "type": "text",
-        "required": true,
-        "presentable": false,
-        "max": 100
-      },
-      {
-        "name": "pin",
-        "type": "text",
-        "required": false,
-        "presentable": false,
-        "max": 50
-      },
-      {
-        "name": "amount",
-        "type": "number",
-        "required": true,
-        "presentable": false,
-        "min": 0
-      },
-      {
-        "name": "notes",
-        "type": "text",
-        "required": false,
-        "presentable": false,
-        "max": 1000
-      }
-    ].concat(usersCollectionId ? [{
-      "name": "created_by",
-      "type": "relation",
-      "required": false,
-      "presentable": false,
-      "collectionId": usersCollectionId,
-      "cascadeDelete": false,
-      "maxSelect": 1
-    }] : []),
-    "indexes": [
-      "CREATE INDEX IF NOT EXISTS idx_gift_cards_merchant ON gift_cards (merchant)",
-      "CREATE INDEX IF NOT EXISTS idx_gift_cards_created_by ON gift_cards (created_by)"
-    ],
-    "listRule": "@request.auth.id != ''",
-    "viewRule": "@request.auth.id != ''",
-    "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != '' && (created_by = @request.auth.id || @request.auth.role = 'admin')",
-    "deleteRule": "@request.auth.id != '' && (created_by = @request.auth.id || @request.auth.role = 'admin')"
-  });
+  // Set indexes
+  collection.indexes = [
+    "CREATE INDEX IF NOT EXISTS idx_gift_cards_merchant ON gift_cards (merchant)",
+    "CREATE INDEX IF NOT EXISTS idx_gift_cards_created_by ON gift_cards (created_by)"
+  ];
 
-  app.save(collection);
+  // Set rules
+  collection.listRule = "@request.auth.id != ''";
+  collection.viewRule = "@request.auth.id != ''";
+  collection.createRule = "@request.auth.id != ''";
+  collection.updateRule = "@request.auth.id != '' && (created_by = @request.auth.id || @request.auth.role = 'admin')";
+  collection.deleteRule = "@request.auth.id != '' && (created_by = @request.auth.id || @request.auth.role = 'admin')";
+
+  return app.save(collection);
 }, (app) => {
   const collection = app.findCollectionByNameOrId("gift_cards");
   app.delete(collection);

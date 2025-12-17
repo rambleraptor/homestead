@@ -161,6 +161,7 @@ export function MerchantDetail({
                     onClick={() => onEdit(card)}
                     className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     title="Edit card"
+                    aria-label={`Edit ${merchant} card ($${card.amount.toFixed(2)})`}
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -168,6 +169,7 @@ export function MerchantDetail({
                     onClick={() => onDelete(card.id)}
                     className="p-2 text-red-600 hover:bg-red-50/20 rounded-lg transition-colors"
                     title="Delete card"
+                    aria-label={`Delete ${merchant} card ($${card.amount.toFixed(2)})`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -355,6 +357,7 @@ export function MerchantDetail({
                         onClick={() => onEdit(card)}
                         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Edit card"
+                        aria-label={`Edit ${merchant} card ($${card.amount.toFixed(2)})`}
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -362,6 +365,7 @@ export function MerchantDetail({
                         onClick={() => onDelete(card.id)}
                         className="p-2 text-red-600 hover:bg-red-50/20 rounded-lg transition-colors"
                         title="Delete card"
+                        aria-label={`Delete ${merchant} card ($${card.amount.toFixed(2)})`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
