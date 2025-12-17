@@ -143,10 +143,10 @@ export class GiftCardsPage {
     // Wait for network to be idle to ensure mutation completed
     await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
-    // Reload the page to force fresh data fetch (React Query might be using stale cache)
-    await this.page.reload();
+    // Navigate back to main gift cards list view
+    await this.goto();
 
-    // Wait for the page to fully load after reload
+    // Wait for the main list to fully load
     await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
   }
 

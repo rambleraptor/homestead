@@ -147,10 +147,10 @@ export class EventsPage {
     // Wait for network to be idle to ensure mutation completed
     await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
-    // Reload the page to force fresh data fetch (React Query might be using stale cache)
-    await this.page.reload();
+    // Navigate back to main events view to force fresh data fetch
+    await this.goto();
 
-    // Wait for the page to fully load after reload
+    // Wait for the main list to fully load
     await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
   }
 
