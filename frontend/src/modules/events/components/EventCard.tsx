@@ -52,7 +52,7 @@ export function EventCard({
                 {event.details}
               </p>
             )}
-            {showDetails && event.notification_preferences.length > 0 && (
+            {showDetails && event.notification_preferences?.length > 0 && (
               <p className="text-xs text-gray-500 mt-2">
                 Reminders:{' '}
                 {event.notification_preferences

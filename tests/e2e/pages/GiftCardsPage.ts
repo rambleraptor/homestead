@@ -40,7 +40,7 @@ export class GiftCardsPage {
   }
 
   async submitGiftCardForm() {
-    await this.page.getByRole('button', { name: /save|submit|create/i }).click();
+    await this.page.getByRole('button', { name: /add card|update|saving/i }).click();
   }
 
   async createGiftCard(data: {
@@ -92,6 +92,14 @@ export class GiftCardsPage {
     pin: string;
     notes: string;
   }>, cardAmount?: number) {
+    // First, ensure we're viewing the merchant's cards
+    // Click on the merchant if we're on the list view
+    await this.expectGiftCardInList(merchant);
+    await this.clickMerchant(merchant);
+
+    // Wait for the merchant detail view to load
+    await this.page.waitForTimeout(500);
+
     // Use aria-label to find the edit button for a specific card
     // Format: "Edit Amazon card ($50.00)"
     if (cardAmount !== undefined) {
@@ -128,6 +136,14 @@ export class GiftCardsPage {
   }
 
   async deleteGiftCard(merchant: string, cardAmount?: number) {
+    // First, ensure we're viewing the merchant's cards
+    // Click on the merchant if we're on the list view
+    await this.expectGiftCardInList(merchant);
+    await this.clickMerchant(merchant);
+
+    // Wait for the merchant detail view to load
+    await this.page.waitForTimeout(500);
+
     // Use aria-label to find the delete button for a specific card
     // Format: "Delete Amazon card ($50.00)"
     if (cardAmount !== undefined) {

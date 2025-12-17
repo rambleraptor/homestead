@@ -56,7 +56,7 @@ export class EventsPage {
   }
 
   async submitEventForm() {
-    await this.page.getByRole('button', { name: /save|submit|create/i }).click();
+    await this.page.getByRole('button', { name: /create event|update event|saving/i }).click();
   }
 
   async createEvent(data: {
@@ -99,6 +99,9 @@ export class EventsPage {
     event_type: 'birthday' | 'anniversary';
     people_involved: string;
   }>) {
+    // Wait for the event to be visible on the page first
+    await this.expectEventInList(eventName);
+
     // Buttons have aria-labels like "Edit Test Event"
     await this.page.getByRole('button', { name: `Edit ${eventName}` }).first().click();
 
@@ -139,6 +142,9 @@ export class EventsPage {
   }
 
   async deleteEvent(eventName: string) {
+    // Wait for the event to be visible on the page first
+    await this.expectEventInList(eventName);
+
     // Buttons have aria-labels like "Delete Test Event"
     await this.page.getByRole('button', { name: `Delete ${eventName}` }).first().click();
 
