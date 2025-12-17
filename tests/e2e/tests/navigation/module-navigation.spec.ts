@@ -54,7 +54,7 @@ test.describe('Module Navigation', () => {
 
     // Should show 404 or Not Found
     await expect(
-      authenticatedPage.getByText(/not found|404/i)
+      authenticatedPage.getByText(/not found|404/i).first()
     ).toBeVisible({ timeout: 5000 });
   });
 

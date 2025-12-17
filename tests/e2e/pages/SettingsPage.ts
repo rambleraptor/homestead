@@ -23,16 +23,26 @@ export class SettingsPage {
   }
 
   async expectPasswordChangeSuccess() {
-    const successMessage = this.page.locator('[role="status"], [role="alert"]').filter({ hasText: /password.*updated|success/i });
-    await expect(successMessage).toBeVisible({ timeout: 5000 });
+    // Sonner toast with success message
+    // Toasts typically appear with data attributes like [data-sonner-toast]
+    // and contain the success text "Password changed successfully"
+    const successToast = this.page.getByText(/password.*changed.*successfully/i);
+    await expect(successToast).toBeVisible({ timeout: 5000 });
   }
 
   async expectPasswordChangeError(message?: string | RegExp) {
-    const errorElement = this.page.locator('[role="alert"], .error').first();
-    await expect(errorElement).toBeVisible();
+    // Error can appear either as inline error or as toast
+    // Inline error: <div className="p-3 text-sm bg-red-50/20 text-red-600 rounded-md">
+    // Toast error: Sonner toast with error type
 
     if (message) {
-      await expect(errorElement).toContainText(message);
+      // Look for text matching the error message pattern
+      const errorText = this.page.getByText(message).first();
+      await expect(errorText).toBeVisible({ timeout: 5000 });
+    } else {
+      // Look for any error indicator
+      const errorElement = this.page.locator('.text-red-600, [data-type="error"]').first();
+      await expect(errorElement).toBeVisible({ timeout: 5000 });
     }
   }
 }

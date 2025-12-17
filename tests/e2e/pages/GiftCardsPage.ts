@@ -135,13 +135,19 @@ export class GiftCardsPage {
 
     await this.submitGiftCardForm();
 
-    // Wait for the form to close and data to reload
+    // Wait for the form to close
     await this.page.waitForTimeout(500);
 
     // Wait for network to be idle to ensure data has reloaded
     await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {
       // If networkidle timeout, that's ok - continue anyway
     });
+
+    // Navigate back to main gift cards view to see the updated data
+    await this.goto();
+
+    // Give React Query time to refetch and update the UI
+    await this.page.waitForTimeout(1000);
   }
 
   async deleteGiftCard(merchant: string, cardAmount?: number) {

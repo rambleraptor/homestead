@@ -19,10 +19,13 @@ export async function createGiftCard(
     notes?: string;
   }
 ) {
+  // Generate a random card number if not provided (required field)
+  const cardNumber = data.card_number || `TEST-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
   return await pb.collection('gift_cards').create({
     merchant: data.merchant,
     amount: data.amount,
-    card_number: data.card_number || '',
+    card_number: cardNumber,
     pin: data.pin || '',
     notes: data.notes || '',
     created_by: pb.authStore.model?.id,
