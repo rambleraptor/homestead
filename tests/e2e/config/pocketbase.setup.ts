@@ -142,7 +142,7 @@ export async function setupPocketBase(): Promise<void> {
 
   // Create data directory and copy migrations
   await mkdir(pbDataDir, { recursive: true });
-  const migrationsDir = join(pbDataDir, 'migrations');
+  const migrationsDir = join(pbDataDir, 'pb_migrations');
   cpSync(migrationsSource, migrationsDir, { recursive: true });
 
   // Create admin user
