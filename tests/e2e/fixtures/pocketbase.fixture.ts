@@ -108,6 +108,28 @@ export const test = base.extend<PocketBaseFixtures>({
    * Authenticated page with logged-in user
    */
   authenticatedPage: async ({ page, testUser }, use) => {
+    // Listen to browser console messages
+    page.on('console', msg => {
+      const type = msg.type();
+      const text = msg.text();
+
+      // Forward browser console to test console with prefix
+      if (type === 'error') {
+        console.error(`[Browser Console Error] ${text}`);
+      } else if (type === 'warning') {
+        console.warn(`[Browser Console Warning] ${text}`);
+      } else if (text.includes('[')) {
+        // Only log our debug messages (those with [brackets])
+        console.log(`[Browser] ${text}`);
+      }
+    });
+
+    // Listen to page errors
+    page.on('pageerror', error => {
+      console.error(`[Browser Page Error] ${error.message}`);
+      console.error(error.stack);
+    });
+
     // Navigate to login page
     await page.goto('/login');
 
