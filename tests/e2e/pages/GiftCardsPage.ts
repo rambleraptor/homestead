@@ -111,13 +111,16 @@ export class GiftCardsPage {
       await this.page.getByRole('button', { name: new RegExp(`Edit ${merchant}`, 'i') }).first().click();
     }
 
+    // Wait for the form to be visible and ready
+    await this.page.locator('#merchant').waitFor({ state: 'visible', timeout: 5000 });
+    await this.page.locator('#amount').waitFor({ state: 'visible', timeout: 5000 });
+
     if (newData.merchant) {
       await this.page.locator('#merchant').fill(newData.merchant);
     }
 
     if (newData.amount !== undefined) {
       const amountField = this.page.locator('#amount');
-      await amountField.clear();
       await amountField.fill(newData.amount.toString());
     }
 

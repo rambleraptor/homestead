@@ -65,15 +65,22 @@ export function GiftCardHome() {
   };
 
   const handleFormSubmit = async (data: GiftCardFormData) => {
+    console.log('[GiftCardHome] handleFormSubmit called with data:', data);
+    console.log('[GiftCardHome] editingCard:', editingCard);
     try {
       if (editingCard) {
+        console.log('[GiftCardHome] Updating gift card:', editingCard.id, data);
         await updateMutation.mutateAsync({ id: editingCard.id, data });
+        console.log('[GiftCardHome] Update completed successfully');
       } else {
+        console.log('[GiftCardHome] Creating gift card:', data);
         await createMutation.mutateAsync(data);
+        console.log('[GiftCardHome] Create completed successfully');
       }
       setView('list');
       setEditingCard(null);
     } catch (err) {
+      console.error('[GiftCardHome] Failed to save gift card:', err);
       logger.error('Failed to save gift card', err);
     }
   };

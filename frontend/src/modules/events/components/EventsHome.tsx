@@ -48,13 +48,21 @@ export function EventsHome() {
   };
 
   const handleUpdateEvent = async (data: EventFormData) => {
-    if (!editingEvent) return;
+    console.log('[EventsHome] handleUpdateEvent called with data:', data);
+    console.log('[EventsHome] editingEvent:', editingEvent);
+    if (!editingEvent) {
+      console.error('[EventsHome] No editing event set, returning early');
+      return;
+    }
 
     try {
+      console.log('[EventsHome] Updating event:', editingEvent.id, data);
       await updateEvent.mutateAsync({ id: editingEvent.id, data });
+      console.log('[EventsHome] Update completed successfully');
       setEditingEvent(null);
       toast.success('Event updated successfully!');
     } catch (error) {
+      console.error('[EventsHome] Failed to update event:', error);
       toast.error(
         error instanceof Error
           ? error.message

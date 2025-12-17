@@ -105,13 +105,16 @@ export class EventsPage {
     // Buttons have aria-labels like "Edit Test Event"
     await this.page.getByRole('button', { name: `Edit ${eventName}` }).first().click();
 
+    // Wait for the modal/form to be visible and ready
+    await this.page.locator('#title').waitFor({ state: 'visible', timeout: 5000 });
+    await this.page.locator('#event_date').waitFor({ state: 'visible', timeout: 5000 });
+
     if (newData.event_type) {
       await this.page.locator('#event_type').selectOption(newData.event_type);
     }
 
     if (newData.name) {
       const nameField = this.page.locator('#title');
-      await nameField.clear();
       await nameField.fill(newData.name);
     }
 
