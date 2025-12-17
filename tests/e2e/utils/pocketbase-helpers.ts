@@ -54,7 +54,7 @@ export async function createEvent(
     people_involved?: string;
   }
 ) {
-  return await pb.collection('events').create({
+  const eventData = {
     title: data.name,
     event_date: data.date,
     recurring_yearly: data.recurring || false,
@@ -62,7 +62,28 @@ export async function createEvent(
     event_type: data.event_type || 'birthday',
     people_involved: data.people_involved || 'Test Person',
     created_by: pb.authStore.model?.id,
+  };
+
+  console.log('[createEvent] Attempting to create event:', eventData);
+  console.log('[createEvent] Auth state:', {
+    isValid: pb.authStore.isValid,
+    recordId: pb.authStore.model?.id,
+    recordEmail: pb.authStore.model?.email,
   });
+
+  try {
+    const result = await pb.collection('events').create(eventData);
+    console.log('[createEvent] Event created successfully:', result.id);
+    return result;
+  } catch (error) {
+    console.error('[createEvent] Failed to create event:', error);
+    console.error('[createEvent] Error details:', {
+      status: (error as any).status,
+      message: (error as any).message,
+      data: (error as any).data,
+    });
+    throw error;
+  }
 }
 
 /**

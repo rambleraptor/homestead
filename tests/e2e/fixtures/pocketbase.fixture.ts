@@ -87,7 +87,18 @@ export const test = base.extend<PocketBaseFixtures>({
     const pb = new PocketBase(getPocketBaseUrl());
 
     // Authenticate as the test user
-    await pb.collection('users').authWithPassword(testUser.email, testUser.password);
+    console.log(`[userPocketbase] Authenticating as user: ${testUser.email}`);
+    try {
+      const authData = await pb.collection('users').authWithPassword(testUser.email, testUser.password);
+      console.log(`[userPocketbase] Authentication successful!`, {
+        userId: authData.record.id,
+        email: authData.record.email,
+        isValid: pb.authStore.isValid,
+      });
+    } catch (error) {
+      console.error(`[userPocketbase] Authentication FAILED:`, error);
+      throw error;
+    }
 
     await use(pb);
     pb.authStore.clear();
