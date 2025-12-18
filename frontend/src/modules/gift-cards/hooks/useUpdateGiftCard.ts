@@ -30,6 +30,11 @@ export function useUpdateGiftCard() {
         });
         const result = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(id, formData);
         console.log('[useUpdateGiftCard] Update successful (FormData):', result);
+
+        // VERIFY: Fetch from database to confirm
+        const verified = await getCollection<GiftCard>(Collections.GIFT_CARDS).getOne(id);
+        console.log('[useUpdateGiftCard] Database verification (FormData):', verified);
+
         return result;
       } else {
         console.log('[useUpdateGiftCard] Using plain object (no files)');
@@ -40,6 +45,11 @@ export function useUpdateGiftCard() {
         console.log('[useUpdateGiftCard] updateData:', updateData);
         const result = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(id, updateData);
         console.log('[useUpdateGiftCard] Update successful (plain object):', result);
+
+        // VERIFY: Fetch from database to confirm
+        const verified = await getCollection<GiftCard>(Collections.GIFT_CARDS).getOne(id);
+        console.log('[useUpdateGiftCard] Database verification (plain object):', verified);
+
         return result;
       }
     },
