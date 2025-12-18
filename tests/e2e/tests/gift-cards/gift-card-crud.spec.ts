@@ -45,9 +45,14 @@ test.describe('Gift Cards CRUD', () => {
 
     await giftCardsPage.goto();
 
-    // Edit it
+    // Edit it - pass the original amount so the exact edit button can be found
+    const originalAmount = testGiftCards[0].amount;
     const newAmount = 75.00;
-    await giftCardsPage.editGiftCard(testGiftCards[0].merchant, { amount: newAmount });
+    await giftCardsPage.editGiftCard(
+      testGiftCards[0].merchant,
+      { amount: newAmount },
+      originalAmount
+    );
 
     // Verify the update actually saved to the database
     const updated = await userPocketbase.collection('gift_cards').getOne(created.id);
@@ -63,8 +68,8 @@ test.describe('Gift Cards CRUD', () => {
 
     await giftCardsPage.goto();
 
-    // Delete it
-    await giftCardsPage.deleteGiftCard(testGiftCards[0].merchant);
+    // Delete it - pass the amount so the exact delete button can be found
+    await giftCardsPage.deleteGiftCard(testGiftCards[0].merchant, testGiftCards[0].amount);
 
     // Verify it's removed
     await giftCardsPage.expectGiftCardNotInList(testGiftCards[0].merchant);
