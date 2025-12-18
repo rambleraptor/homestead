@@ -74,21 +74,6 @@ export class GiftCardsPage {
     }
   }
 
-  async waitForCardToLoad(merchant: string, amount: number) {
-    // Wait for the merchant summary to appear with the correct total amount
-    // This ensures the card has been fetched from the database and is rendered
-    const formattedAmount = `$${amount.toFixed(2)}`;
-    console.log(`[GiftCardsPage] Waiting for ${merchant} with ${formattedAmount} to appear`);
-
-    // Wait for merchant name
-    await expect(this.page.getByText(merchant).first()).toBeVisible({ timeout: 10000 });
-
-    // Wait for the amount
-    await expect(this.page.getByText(formattedAmount).first()).toBeVisible({ timeout: 10000 });
-
-    console.log(`[GiftCardsPage] Found ${merchant} with ${formattedAmount}`);
-  }
-
   async expectGiftCardNotInList(merchant: string) {
     await expect(this.page.getByText(merchant).first()).not.toBeVisible({ timeout: 2000 }).catch(() => {
       // If the element doesn't exist at all, that's also fine
