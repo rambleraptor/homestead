@@ -8,7 +8,7 @@ import type { Event } from '@/modules/events/types';
  */
 export function useUpcomingEvents() {
   return useQuery({
-    queryKey: queryKeys.module('dashboard').list(['events', 'upcoming']),
+    queryKey: queryKeys.module('dashboard').list({ type: 'events-upcoming' }),
     queryFn: async () => {
       const today = new Date();
       const thirtyDaysFromNow = new Date();

@@ -8,7 +8,7 @@ import type { Notification } from '../types';
  */
 export function useUnreadNotifications() {
   return useQuery({
-    queryKey: queryKeys.module('dashboard').list(['notifications', 'unread']),
+    queryKey: queryKeys.module('dashboard').list({ type: 'notifications-unread' }),
     queryFn: async () => {
       const notifications = await getCollection<Notification>(Collections.NOTIFICATIONS).getFullList({
         filter: 'read = false',
