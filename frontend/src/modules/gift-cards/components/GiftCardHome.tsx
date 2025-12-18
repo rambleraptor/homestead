@@ -5,7 +5,8 @@
  */
 
 import { useState } from 'react';
-import { Plus, Gift, Loader2, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Gift, Loader2, AlertCircle, Upload } from 'lucide-react';
 import { useMerchantSummaries } from '../hooks/useMerchantSummaries';
 import { useCreateGiftCard } from '../hooks/useCreateGiftCard';
 import { useUpdateGiftCard } from '../hooks/useUpdateGiftCard';
@@ -20,6 +21,7 @@ import type { GiftCard, GiftCardFormData } from '../types';
 type View = 'list' | 'detail' | 'form';
 
 export function GiftCardHome() {
+  const navigate = useNavigate();
   const [view, setView] = useState<View>('list');
   const [selectedMerchant, setSelectedMerchant] = useState<string | null>(null);
   const [editingCard, setEditingCard] = useState<GiftCard | null>(null);
@@ -127,14 +129,24 @@ export function GiftCardHome() {
                 Manage your household gift cards
               </p>
             </div>
-            <button
-              onClick={handleAddCard}
-              data-testid="add-gift-card-button"
-              className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-gray-900 rounded-lg font-medium transition-colors shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              Add Gift Card
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate('/gift-cards/import')}
+                data-testid="import-gift-cards-button"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-lg font-medium transition-colors shadow-md"
+              >
+                <Upload className="w-4 h-4" />
+                Import
+              </button>
+              <button
+                onClick={handleAddCard}
+                data-testid="add-gift-card-button"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-gray-900 rounded-lg font-medium transition-colors shadow-md"
+              >
+                <Plus className="w-5 h-5" />
+                Add Gift Card
+              </button>
+            </div>
           </div>
 
           {/* Stats Overview */}

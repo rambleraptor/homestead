@@ -1,6 +1,6 @@
 import type { RouteObject } from 'react-router-dom';
 import { EventsHome } from './components/EventsHome';
-import { BulkImport } from './components/BulkImport';
+import { EventsBulkImport } from './bulk-import';
 
 export const eventRoutes: RouteObject[] = [
   {
@@ -9,6 +9,6 @@ export const eventRoutes: RouteObject[] = [
   },
   {
     path: 'import',
-    element: <BulkImport />,
+    element: <EventsBulkImport />,
   },
 ];
