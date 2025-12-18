@@ -46,42 +46,41 @@ test.describe('Gift Cards CRUD', () => {
     await giftCardsPage.fillGiftCardForm(testGiftCards[0]);
     await giftCardsPage.submitGiftCardForm();
 
-    // Wait for the form to close (button becomes hidden when form closes)
-    await page.getByRole('button', { name: /add card|update|saving/i })
-      .waitFor({ state: 'hidden', timeout: 10000 })
-      .catch(() => {});
-
-    // Wait for network to settle after refetch
-    await page.waitForLoadState('networkidle', { timeout: 10000 });
-
-    // Verify it was created in the UI
+    // FIRST: Check PocketBase to see if card was actually created
     const originalAmount = testGiftCards[0].amount;
-    await giftCardsPage.expectGiftCardInList(testGiftCards[0].merchant, originalAmount);
+    console.log(`[TEST] Checking PocketBase for card with merchant: ${testGiftCards[0].merchant}`);
 
-    // Verify it was created in PocketBase
     const cardsBeforeEdit = await userPocketbase.collection('gift_cards').getFullList({
       filter: `merchant = "${testGiftCards[0].merchant}"`
     });
-    console.log(`[TEST] Found ${cardsBeforeEdit.length} card(s) for ${testGiftCards[0].merchant} before edit`);
+    console.log(`[TEST] Found ${cardsBeforeEdit.length} card(s) for ${testGiftCards[0].merchant} in PocketBase`);
     expect(cardsBeforeEdit.length).toBe(1);
     const createdCard = cardsBeforeEdit[0];
-    console.log(`[TEST] Created card ID: ${createdCard.id}, amount: ${createdCard.amount}`);
+    console.log(`[TEST] Card in DB - ID: ${createdCard.id}, amount: ${createdCard.amount}, merchant: ${createdCard.merchant}`);
     expect(createdCard.amount).toBe(originalAmount);
+
+    // THEN: Check if it appears in the UI
+    console.log(`[TEST] Card exists in DB, now checking if it appears in UI...`);
+    await giftCardsPage.expectGiftCardInList(testGiftCards[0].merchant, originalAmount);
 
     // Edit it - pass the original amount so the exact edit button can be found
     const newAmount = 75.00;
+    console.log(`[TEST] About to edit card ${createdCard.id} from $${originalAmount} to $${newAmount}`);
+
     await giftCardsPage.editGiftCard(
       testGiftCards[0].merchant,
       { amount: newAmount },
       originalAmount
     );
 
-    // Verify the update in PocketBase
+    // FIRST: Check PocketBase to verify the update happened
+    console.log(`[TEST] Checking PocketBase for updated card ${createdCard.id}...`);
     const updatedCard = await userPocketbase.collection('gift_cards').getOne(createdCard.id);
-    console.log(`[TEST] After edit, card ${updatedCard.id} has amount: ${updatedCard.amount}`);
+    console.log(`[TEST] Card in DB after edit - ID: ${updatedCard.id}, amount: ${updatedCard.amount}`);
     expect(updatedCard.amount).toBe(newAmount);
 
-    // Verify the updated amount is visible in the UI
+    // THEN: Verify the updated amount is visible in the UI
+    console.log(`[TEST] Card updated in DB, now checking if new amount appears in UI...`);
     await giftCardsPage.expectGiftCardInList(testGiftCards[0].merchant, newAmount);
   });
 
