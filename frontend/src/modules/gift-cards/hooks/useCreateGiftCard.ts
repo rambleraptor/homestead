@@ -42,7 +42,9 @@ export function useCreateGiftCard() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      // Use refetchQueries instead of invalidateQueries to immediately refetch
+      // This ensures the UI updates without requiring a component remount
+      queryClient.refetchQueries({
         queryKey: queryKeys.module('gift-cards').all(),
       });
     },

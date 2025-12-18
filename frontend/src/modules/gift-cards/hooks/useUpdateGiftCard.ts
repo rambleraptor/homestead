@@ -54,8 +54,10 @@ export function useUpdateGiftCard() {
       }
     },
     onSuccess: () => {
-      console.log('[useUpdateGiftCard] onSuccess called, invalidating queries');
-      queryClient.invalidateQueries({
+      console.log('[useUpdateGiftCard] onSuccess called, refetching queries');
+      // Use refetchQueries instead of invalidateQueries to immediately refetch
+      // This ensures the UI updates without requiring a component remount
+      queryClient.refetchQueries({
         queryKey: queryKeys.module('gift-cards').all(),
       });
     },
