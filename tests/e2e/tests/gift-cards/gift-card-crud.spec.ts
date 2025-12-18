@@ -42,6 +42,7 @@ test.describe('Gift Cards CRUD', () => {
   test('should edit existing gift card', async ({ userPocketbase }) => {
     // Create a gift card via API
     const created = await createGiftCard(userPocketbase, testGiftCards[0]);
+    console.log(`[TEST] Created gift card with ID: ${created.id}, amount: ${created.amount}`);
 
     await giftCardsPage.goto();
 
@@ -56,6 +57,7 @@ test.describe('Gift Cards CRUD', () => {
 
     // Verify the update actually saved to the database
     const updated = await userPocketbase.collection('gift_cards').getOne(created.id);
+    console.log(`[TEST] Queried gift card ${created.id}, got amount: ${updated.amount}`);
     expect(updated.amount).toBe(newAmount);
 
     // Verify the updated amount is visible in the UI

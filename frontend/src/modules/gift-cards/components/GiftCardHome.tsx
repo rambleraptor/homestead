@@ -69,9 +69,9 @@ export function GiftCardHome() {
     console.log('[GiftCardHome] editingCard:', editingCard);
     try {
       if (editingCard) {
-        console.log('[GiftCardHome] Updating gift card:', editingCard.id, data);
+        console.log(`[GiftCardHome] ⚠️ EDITING GIFT CARD ID: ${editingCard.id} - OLD AMOUNT: ${editingCard.amount} - NEW AMOUNT: ${data.amount}`);
         await updateMutation.mutateAsync({ id: editingCard.id, data });
-        console.log('[GiftCardHome] Update completed successfully');
+        console.log(`[GiftCardHome] ✅ Update completed successfully for ID: ${editingCard.id}`);
       } else {
         console.log('[GiftCardHome] Creating gift card:', data);
         await createMutation.mutateAsync(data);
