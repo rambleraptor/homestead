@@ -46,8 +46,11 @@ test.describe('Gift Cards CRUD', () => {
     await giftCardsPage.fillGiftCardForm(testGiftCards[0]);
     await giftCardsPage.submitGiftCardForm();
 
-    // Wait for form to close
-    await page.waitForTimeout(1000);
+    // Wait for the form to close and network to settle
+    await page.waitForLoadState('networkidle');
+
+    // Give React Query time to refetch after mutation and re-render
+    await page.waitForTimeout(3000);
 
     // Verify it was created in the UI
     const originalAmount = testGiftCards[0].amount;
