@@ -5,19 +5,21 @@
  */
 
 import { useState } from 'react';
-import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2, Image } from 'lucide-react';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
 import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
 import { useUpdateGroceryItem } from '../hooks/useUpdateGroceryItem';
 import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
 import { GroceryList } from './GroceryList';
 import { GroceryItemForm } from './GroceryItemForm';
+import { ImageUploadDialog } from './ImageUploadDialog';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { logger } from '@/core/utils/logger';
 import type { GroceryItemFormData } from '../types';
 
 export function GroceriesHome() {
   const [showForm, setShowForm] = useState(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
@@ -106,14 +108,24 @@ export function GroceriesHome() {
         </div>
 
         {!showForm && (
-          <button
-            onClick={handleAddItem}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
-            data-testid="add-grocery-item-button"
-          >
-            <Plus className="w-5 h-5" />
-            Add Item
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowImageUpload(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2"
+              data-testid="upload-grocery-list-button"
+            >
+              <Image className="w-5 h-5" />
+              Upload List
+            </button>
+            <button
+              onClick={handleAddItem}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+              data-testid="add-grocery-item-button"
+            >
+              <Plus className="w-5 h-5" />
+              Add Item
+            </button>
+          </div>
         )}
       </div>
 
@@ -132,6 +144,12 @@ export function GroceriesHome() {
         onToggleItem={handleToggleItem}
         onDeleteItem={handleDeleteItem}
         isUpdating={isUpdating}
+      />
+
+      {/* Image Upload Dialog */}
+      <ImageUploadDialog
+        isOpen={showImageUpload}
+        onClose={() => setShowImageUpload(false)}
       />
 
       {/* Delete Confirmation Dialog */}
