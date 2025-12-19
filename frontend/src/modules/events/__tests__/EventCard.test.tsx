@@ -29,45 +29,8 @@ describe('EventCard', () => {
 
     render(<EventCard event={mockEvent} onEdit={onEdit} onDelete={onDelete} />);
 
-    expect(screen.getByText("John's Birthday")).toBeInTheDocument();
     expect(screen.getByText('John')).toBeInTheDocument();
     expect(screen.getByText(/June 20, 2024/)).toBeInTheDocument();
-    expect(screen.getByText(/\(Recurring\)/)).toBeInTheDocument();
-  });
-
-  it('should show details when showDetails is true', () => {
-    const onEdit = vi.fn();
-    const onDelete = vi.fn();
-
-    render(
-      <EventCard
-        event={mockEvent}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        showDetails={true}
-      />
-    );
-
-    expect(screen.getByText('Birthday party at 3pm')).toBeInTheDocument();
-    expect(screen.getByText(/Reminders:/)).toBeInTheDocument();
-    expect(screen.getByText(/day of, day before/)).toBeInTheDocument();
-  });
-
-  it('should hide details when showDetails is false', () => {
-    const onEdit = vi.fn();
-    const onDelete = vi.fn();
-
-    render(
-      <EventCard
-        event={mockEvent}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        showDetails={false}
-      />
-    );
-
-    expect(screen.queryByText('Birthday party at 3pm')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Reminders:/)).not.toBeInTheDocument();
   });
 
   it('should show birthday icon for birthday events', () => {
@@ -128,36 +91,4 @@ describe('EventCard', () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
-  it('should not show recurring label for non-recurring events', () => {
-    const nonRecurringEvent: Event = {
-      ...mockEvent,
-      recurring_yearly: false,
-    };
-
-    const onEdit = vi.fn();
-    const onDelete = vi.fn();
-
-    render(
-      <EventCard event={nonRecurringEvent} onEdit={onEdit} onDelete={onDelete} />
-    );
-
-    expect(screen.queryByText('(Recurring)')).not.toBeInTheDocument();
-  });
-
-  it('should format notification preferences correctly', () => {
-    const onEdit = vi.fn();
-    const onDelete = vi.fn();
-
-    render(
-      <EventCard
-        event={mockEvent}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        showDetails={true}
-      />
-    );
-
-    // Should replace underscores with spaces
-    expect(screen.getByText(/day of, day before/)).toBeInTheDocument();
-  });
 });

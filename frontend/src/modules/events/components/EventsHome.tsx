@@ -249,7 +249,6 @@ export function EventsHome() {
                 event={event}
                 onEdit={setEditingEvent}
                 onDelete={handleDeleteClick}
-                showDetails={false}
               />
             ))}
           </div>
