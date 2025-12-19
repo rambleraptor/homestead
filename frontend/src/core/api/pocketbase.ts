@@ -33,6 +33,7 @@ export const Collections = {
   EVENTS: 'events',
   NOTIFICATIONS: 'notifications',
   NOTIFICATION_SUBSCRIPTIONS: 'notification_subscriptions',
+  GROCERIES: 'groceries',
 } as const;
 
 /**

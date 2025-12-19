@@ -1,0 +1,122 @@
+/**
+ * Grocery Item Form Component
+ *
+ * Form for adding grocery items
+ */
+
+import { useState } from 'react';
+import { Plus, X, Loader2 } from 'lucide-react';
+import type { GroceryItemFormData } from '../types';
+
+interface GroceryItemFormProps {
+  onSubmit: (data: GroceryItemFormData) => void;
+  onCancel: () => void;
+  isSubmitting?: boolean;
+}
+
+export function GroceryItemForm({
+  onSubmit,
+  onCancel,
+  isSubmitting = false,
+}: GroceryItemFormProps) {
+  const [formData, setFormData] = useState<GroceryItemFormData>({
+    name: '',
+    notes: '',
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) return;
+    onSubmit(formData);
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg border p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Add Grocery Item</h3>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="p-1 hover:bg-gray-100 rounded"
+          aria-label="Cancel"
+          data-testid="grocery-form-cancel"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          Item Name *
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          placeholder="e.g., Milk, Apples, Chicken Breast"
+          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          required
+          autoFocus
+          disabled={isSubmitting}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+          Notes
+        </label>
+        <textarea
+          id="notes"
+          name="notes"
+          value={formData.notes}
+          onChange={handleChange}
+          placeholder="e.g., 2 gallons, organic only"
+          rows={2}
+          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          disabled={isSubmitting}
+        />
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={isSubmitting || !formData.name.trim()}
+          className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          data-testid="grocery-form-submit"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Adding...
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4" />
+              Add Item
+            </>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={isSubmitting}
+          className="px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}

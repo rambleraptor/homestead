@@ -101,3 +101,16 @@ export function formatDate(dateString: string): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Test grocery items
+ */
+export const testGroceryItems = [
+  { name: 'Milk', notes: '2% organic', category: 'Dairy & Eggs' },
+  { name: 'Apples', notes: 'Honeycrisp', category: 'Produce' },
+  { name: 'Chicken Breast', notes: '2 lbs', category: 'Meat & Seafood' },
+  { name: 'Bread', notes: 'Whole wheat', category: 'Bakery' },
+  { name: 'Yogurt', notes: 'Greek yogurt', category: 'Dairy & Eggs' },
+  { name: 'Bananas', category: 'Produce' },
+  { name: 'Cereal', category: 'Pantry & Canned Goods' },
+];

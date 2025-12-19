@@ -165,11 +165,73 @@ export async function deleteAllEvents(pb: PocketBase) {
 }
 
 /**
+ * Create a grocery item via PocketBase API
+ */
+export async function createGroceryItem(
+  pb: PocketBase,
+  data: {
+    name: string;
+    notes?: string;
+    checked?: boolean;
+    category?: string;
+  }
+) {
+  return await pb.collection('groceries').create({
+    name: data.name,
+    notes: data.notes || '',
+    checked: data.checked || false,
+    category: data.category || 'Other',
+    created_by: pb.authStore.model?.id,
+  });
+}
+
+/**
+ * Create multiple grocery items
+ */
+export async function createMultipleGroceryItems(
+  pb: PocketBase,
+  items: Array<{ name: string; notes?: string; checked?: boolean; category?: string }>
+) {
+  // Create sequentially to avoid PocketBase auto-cancellation
+  const results = [];
+  for (const item of items) {
+    const result = await createGroceryItem(pb, item);
+    results.push(result);
+  }
+  return results;
+}
+
+/**
+ * Delete all grocery items (family-wide, not filtered by user)
+ * Silently handles cases where collection doesn't exist or no access
+ */
+export async function deleteAllGroceryItems(pb: PocketBase) {
+  try {
+    const records = await pb.collection('groceries').getFullList();
+
+    if (records.length > 0) {
+      const promises = records.map(record =>
+        pb.collection('groceries').delete(record.id)
+      );
+      await Promise.all(promises);
+    }
+  } catch (error: any) {
+    // If collection doesn't exist or no access (admin auth vs user auth),
+    // silently skip - this is expected for fresh test runs
+    if (error.status === 404 || error.status === 403) {
+      return;
+    }
+    throw error;
+  }
+}
+
+/**
  * Clean up all test data (for the entire family, not just one user)
  */
 export async function cleanupUserData(pb: PocketBase) {
   await Promise.all([
     deleteAllGiftCards(pb),
     deleteAllEvents(pb),
+    deleteAllGroceryItems(pb),
   ]);
 }

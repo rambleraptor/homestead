@@ -12,6 +12,7 @@
     "test:chromium": "playwright test --project=chromium",
     "test:auth": "playwright test tests/auth/",
     "test:gift-cards": "playwright test tests/gift-cards/",
+    "test:groceries": "playwright test tests/groceries/",
     "test:events": "playwright test tests/events/",
     "test:settings": "playwright test tests/settings/",
     "test:navigation": "playwright test tests/navigation/",
