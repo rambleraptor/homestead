@@ -54,7 +54,7 @@ export function Login() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
                 Email
               </label>
               <div className="relative">
@@ -75,7 +75,7 @@ export function Login() {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -106,7 +106,7 @@ export function Login() {
             <button
               type="submit"
               disabled={loading || isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-lg text-base font-bold text-white bg-slate-800 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading || isLoading ? (
                 <span className="flex items-center gap-2">
@@ -118,19 +118,6 @@ export function Login() {
               )}
             </button>
           </form>
-
-          {/* Demo Credentials Info */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-sm text-blue-800 font-medium mb-2">
-              First time setup:
-            </p>
-            <p className="text-xs text-blue-700">
-              Create your admin account in PocketBase admin UI at{' '}
-              <code className="bg-blue-100 px-1 py-0.5 rounded">
-                http://127.0.0.1:8090/_/
-              </code>
-            </p>
-          </div>
         </div>
       </div>
     </div>

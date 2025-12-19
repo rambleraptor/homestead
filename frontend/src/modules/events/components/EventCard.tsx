@@ -7,18 +7,18 @@ interface EventCardProps {
   event: Event;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
-  showDetails?: boolean;
 }
 
 export function EventCard({
   event,
   onEdit,
   onDelete,
-  showDetails = true,
 }: EventCardProps) {
   const formatDate = (dateString: string) => {
+    // Extract just the date portion (YYYY-MM-DD) from PocketBase format (YYYY-MM-DD HH:MM:SS.sssZ)
+    const datePortion = dateString.substring(0, 10);
     // Parse the date string to avoid timezone issues
-    const [year, month, day] = dateString.split('-').map(Number);
+    const [year, month, day] = datePortion.split('-').map(Number);
     const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', {
       month: 'long',
@@ -38,28 +38,11 @@ export function EventCard({
           )}
           <div>
             <h3 className="font-semibold text-gray-900">
-              {event.title}
-            </h3>
-            <p className="text-sm text-gray-600">
               {event.people_involved}
-            </p>
+            </h3>
             <p className="text-sm text-gray-500 mt-1">
               {formatDate(event.event_date)}
-              {event.recurring_yearly && ' (Recurring)'}
             </p>
-            {showDetails && event.details && (
-              <p className="text-sm text-gray-600 mt-2">
-                {event.details}
-              </p>
-            )}
-            {showDetails && event.notification_preferences?.length > 0 && (
-              <p className="text-xs text-gray-500 mt-2">
-                Reminders:{' '}
-                {event.notification_preferences
-                  .map((p) => p.replaceAll('_', ' '))
-                  .join(', ')}
-              </p>
-            )}
           </div>
         </div>
         <div className="flex gap-2">

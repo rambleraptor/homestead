@@ -4,7 +4,7 @@ set -e
 # PocketBase Installation Script
 # Downloads and installs PocketBase
 
-POCKETBASE_VERSION="${POCKETBASE_VERSION:-0.22.0}"
+POCKETBASE_VERSION="${POCKETBASE_VERSION:-0.34.2}"
 ARCH=$(uname -m)
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 
