@@ -50,7 +50,7 @@ export function EventCard({
             variant="secondary"
             size="sm"
             onClick={() => onEdit(event)}
-            aria-label={`Edit ${event.title}`}
+            aria-label={`Edit ${event.people_involved}`}
           >
             <Edit className="w-4 h-4" />
           </Button>
@@ -58,7 +58,7 @@ export function EventCard({
             variant="secondary"
             size="sm"
             onClick={() => onDelete(event)}
-            aria-label={`Delete ${event.title}`}
+            aria-label={`Delete ${event.people_involved}`}
           >
             <Trash2 className="w-4 h-4" />
           </Button>

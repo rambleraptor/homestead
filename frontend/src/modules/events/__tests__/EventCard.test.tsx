@@ -70,7 +70,7 @@ describe('EventCard', () => {
 
     render(<EventCard event={mockEvent} onEdit={onEdit} onDelete={onDelete} />);
 
-    const editButton = screen.getByLabelText(`Edit ${mockEvent.title}`);
+    const editButton = screen.getByLabelText(`Edit ${mockEvent.people_involved}`);
     await user.click(editButton);
 
     expect(onEdit).toHaveBeenCalledWith(mockEvent);
@@ -84,7 +84,7 @@ describe('EventCard', () => {
 
     render(<EventCard event={mockEvent} onEdit={onEdit} onDelete={onDelete} />);
 
-    const deleteButton = screen.getByLabelText(`Delete ${mockEvent.title}`);
+    const deleteButton = screen.getByLabelText(`Delete ${mockEvent.people_involved}`);
     await user.click(deleteButton);
 
     expect(onDelete).toHaveBeenCalledWith(mockEvent);
