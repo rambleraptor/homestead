@@ -41,7 +41,7 @@ export function PersonCard({
             <h3 className="font-semibold text-gray-900">{person.name}</h3>
             {person.birthday && (
               <div className="flex items-center gap-2 mt-1">
-                <Cake className="w-5 h-5 text-pink-500" />
+                <Cake className="w-5 h-5 text-pink-500" aria-label="Cake icon" />
                 <p className="text-sm text-gray-500">
                   {formatDate(person.birthday)}
                 </p>
@@ -49,7 +49,7 @@ export function PersonCard({
             )}
             {person.anniversary && (
               <div className="flex items-center gap-2 mt-1">
-                <Heart className="w-5 h-5 text-red-500" />
+                <Heart className="w-5 h-5 text-red-500" aria-label="Heart icon" />
                 <p className="text-sm text-gray-500">
                   {formatDate(person.anniversary)}
                 </p>
@@ -57,7 +57,7 @@ export function PersonCard({
             )}
             {person.address && (
               <div className="flex items-center gap-2 mt-1">
-                <MapPin className="w-5 h-5 text-blue-500" />
+                <MapPin className="w-5 h-5 text-blue-500" aria-label="Map pin icon" />
                 <a
                   href={googleMapsUrl}
                   target="_blank"
