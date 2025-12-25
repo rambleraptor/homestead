@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Cake, Heart, Plus, Upload } from 'lucide-react';
+import { Users, Cake, Heart, Plus, Upload, Search } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
+import { Input } from '@/shared/components/Input';
 import { Modal } from '@/shared/components/Modal';
 import { Spinner } from '@/shared/components/Spinner';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -27,6 +28,7 @@ export function PeopleHome() {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [nameFilter, setNameFilter] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     personId: string | null;
@@ -137,6 +139,18 @@ export function PeopleHome() {
 
   const upcomingPeople = getUpcomingPeople();
 
+  const filteredPeople = people?.filter((person) => {
+    if (!nameFilter.trim()) return true;
+
+    const searchTerms = nameFilter.toLowerCase().trim().split(/\s+/);
+    const nameWords = person.name.toLowerCase().split(/\s+/);
+
+    // Match if every search term matches at least one word in the name
+    return searchTerms.every(searchTerm =>
+      nameWords.some(nameWord => nameWord.includes(searchTerm))
+    );
+  }) || [];
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -242,15 +256,34 @@ export function PeopleHome() {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           All People
         </h2>
+        <div className="mb-4 relative">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-gray-400" />
+          </div>
+          <Input
+            type="text"
+            placeholder="Search people by name..."
+            value={nameFilter}
+            onChange={(e) => setNameFilter(e.target.value)}
+            className="pl-10"
+            data-testid="people-name-filter"
+          />
+        </div>
         {!people || people.length === 0 ? (
           <Card>
             <p className="text-center text-gray-600 py-8">
               No people yet. Add your first person to get started!
             </p>
           </Card>
+        ) : filteredPeople.length === 0 ? (
+          <Card>
+            <p className="text-center text-gray-600 py-8">
+              No people found matching "{nameFilter}"
+            </p>
+          </Card>
         ) : (
           <div className="space-y-3">
-            {people.map((person) => (
+            {filteredPeople.map((person) => (
               <PersonCard
                 key={person.id}
                 person={person}
