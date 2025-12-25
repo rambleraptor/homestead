@@ -139,9 +139,17 @@ export function PeopleHome() {
 
   const upcomingPeople = getUpcomingPeople();
 
-  const filteredPeople = people?.filter((person) =>
-    person.name.toLowerCase().includes(nameFilter.toLowerCase())
-  ) || [];
+  const filteredPeople = people?.filter((person) => {
+    if (!nameFilter.trim()) return true;
+
+    const searchTerms = nameFilter.toLowerCase().trim().split(/\s+/);
+    const nameWords = person.name.toLowerCase().split(/\s+/);
+
+    // Match if every search term matches at least one word in the name
+    return searchTerms.every(searchTerm =>
+      nameWords.some(nameWord => nameWord.includes(searchTerm))
+    );
+  }) || [];
 
   if (isLoading) {
     return (
