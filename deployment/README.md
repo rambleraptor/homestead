@@ -4,6 +4,7 @@ This guide will help you deploy HomeOS on a local machine accessible via Tailsca
 
 ## 📋 Table of Contents
 
+- [Auto-Deployment](#auto-deployment)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Detailed Setup](#detailed-setup)
@@ -12,6 +13,35 @@ This guide will help you deploy HomeOS on a local machine accessible via Tailsca
 - [Tailscale Access](#tailscale-access)
 - [Updating](#updating)
 - [Troubleshooting](#troubleshooting)
+
+## Auto-Deployment
+
+**NEW:** HomeOS now supports automatic deployment with GitHub Actions!
+
+When you push to your main branch:
+- ✅ Automatically runs CI checks (lint, type-check, build, tests)
+- ✅ Deploys to your production server via SSH
+- ✅ Automatically applies PocketBase migrations
+- ✅ Creates database backups before migrations
+- ✅ Rolls back on failure
+
+**👉 [See Auto-Deployment Setup Guide](AUTO_DEPLOY.md)**
+
+To set up auto-deployment, you'll need:
+1. A production server running HomeOS
+2. SSH access configured
+3. GitHub repository secrets configured
+
+**Quick Auto-Deploy Setup:**
+```bash
+# 1. Set up your server (follow Quick Start below)
+# 2. Generate SSH key for GitHub Actions
+ssh-keygen -t ed25519 -C "github-actions@homeOS" -f ~/.ssh/github_deploy_key -N ""
+cat ~/.ssh/github_deploy_key.pub >> ~/.ssh/authorized_keys
+
+# 3. Add secrets to GitHub (see AUTO_DEPLOY.md)
+# 4. Push to main branch - automatic deployment! 🚀
+```
 
 ## Prerequisites
 

@@ -1,0 +1,14 @@
+[Unit]
+Description=HomeOS Auto-Update Timer
+Requires=homeos-auto-update.service
+
+[Timer]
+# Check for updates every 10 minutes
+OnBootSec=2min
+OnUnitActiveSec=10min
+
+# Run even if last run was missed (e.g., server was off)
+Persistent=true
+
+[Install]
+WantedBy=timers.target
