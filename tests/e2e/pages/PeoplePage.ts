@@ -30,7 +30,8 @@ export class PeoplePage {
     await this.page.locator('#name').fill(data.name);
 
     if (data.address) {
-      await this.page.locator('#address').fill(data.address);
+      // Address is now split into multiple fields, use line1 for simple string addresses
+      await this.page.locator('#address_line1').fill(data.address);
     }
     if (data.birthday) {
       await this.page.locator('#birthday').fill(data.birthday);
@@ -94,7 +95,8 @@ export class PeoplePage {
       await this.page.locator('#name').fill(newData.name);
     }
     if (newData.address) {
-      await this.page.locator('#address').fill(newData.address);
+      // Address is now split into multiple fields, use line1 for simple string addresses
+      await this.page.locator('#address_line1').fill(newData.address);
     }
     if (newData.birthday) {
       await this.page.locator('#birthday').fill(newData.birthday);
