@@ -1,4 +1,4 @@
-import { Cake, Heart, Edit, Trash2, MapPin } from 'lucide-react';
+import { Cake, Heart, Edit, Trash2, MapPin, Users } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
 import type { Person } from '../types';
@@ -14,6 +14,8 @@ export function PersonCard({
   onEdit,
   onDelete,
 }: PersonCardProps) {
+  const partner = person.partner;
+
   const formatDate = (dateString: string) => {
     // Extract just the date portion (YYYY-MM-DD) from PocketBase format (YYYY-MM-DD HH:MM:SS.sssZ)
     const datePortion = dateString.substring(0, 10);
@@ -38,7 +40,15 @@ export function PersonCard({
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
           <div>
-            <h3 className="font-semibold text-gray-900">{person.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900">{person.name}</h3>
+              {partner && (
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <Users className="w-3 h-3" aria-label="Partner icon" />
+                  <span>{partner.name}</span>
+                </div>
+              )}
+            </div>
             {person.birthday && (
               <div className="flex items-center gap-2 mt-1">
                 <Cake className="w-5 h-5 text-pink-500" aria-label="Cake icon" />
@@ -52,6 +62,9 @@ export function PersonCard({
                 <Heart className="w-5 h-5 text-red-500" aria-label="Heart icon" />
                 <p className="text-sm text-gray-500">
                   {formatDate(person.anniversary)}
+                  {partner && (
+                    <span className="ml-1 text-xs text-gray-400">(shared)</span>
+                  )}
                 </p>
               </div>
             )}
@@ -65,6 +78,9 @@ export function PersonCard({
                   className="text-sm text-blue-500 hover:underline"
                 >
                   {person.address}
+                  {partner && (
+                    <span className="ml-1 text-xs text-gray-400">(shared)</span>
+                  )}
                 </a>
               </div>
             )}

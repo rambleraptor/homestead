@@ -60,17 +60,27 @@ export async function createPerson(
     anniversary?: string;
   }
 ) {
-  const personData = {
-    name: data.name,
-    address: data.address || '',
-    birthday: data.birthday,
-    anniversary: data.anniversary,
-    created_by: pb.authStore.model?.id,
-  };
-
   try {
-    const result = await pb.collection('people').create(personData);
-    return result;
+    // Create person record (without address/anniversary - those go in shared_data)
+    const person = await pb.collection('people').create({
+      name: data.name,
+      birthday: data.birthday,
+      notification_preferences: ['day_of'],
+      created_by: pb.authStore.model?.id,
+    });
+
+    // Create shared data if address or anniversary provided
+    if (data.address || data.anniversary) {
+      await pb.collection('person_shared_data').create({
+        person_a: person.id,
+        person_b: null,
+        address: data.address || '',
+        anniversary: data.anniversary,
+        created_by: pb.authStore.model?.id,
+      });
+    }
+
+    return person;
   } catch (error) {
     console.error('[createPerson] Failed to create person:', error);
     throw error;
@@ -115,6 +125,23 @@ export async function deleteAllGiftCards(pb: PocketBase) {
   } catch (error: any) {
     if (error.status === 404 || error.status === 403) {
       return;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get shared data for a person
+ */
+export async function getPersonSharedData(pb: PocketBase, personId: string) {
+  try {
+    const filter = `person_a = "${personId}" || person_b = "${personId}"`;
+    const sharedData = await pb.collection('person_shared_data').getFirstListItem(filter);
+    return sharedData;
+  } catch (error: any) {
+    // No shared data found
+    if (error.status === 404) {
+      return null;
     }
     throw error;
   }

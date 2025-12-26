@@ -31,6 +31,7 @@ export const Collections = {
   GIFT_CARDS: 'gift_cards',
   GIFT_CARD_TRANSACTIONS: 'gift_card_transactions',
   PEOPLE: 'people',
+  PERSON_SHARED_DATA: 'person_shared_data',
   NOTIFICATIONS: 'notifications',
   NOTIFICATION_SUBSCRIPTIONS: 'notification_subscriptions',
   GROCERIES: 'groceries',

@@ -5,7 +5,7 @@
 import { test, expect } from '../../fixtures/pocketbase.fixture';
 import { PeoplePage } from '../../pages/PeoplePage';
 import { testPeople } from '../../fixtures/test-data';
-import { createPerson, deleteAllPeople } from '../../utils/pocketbase-helpers';
+import { createPerson, deleteAllPeople, getPersonSharedData } from '../../utils/pocketbase-helpers';
 
 test.describe('People CRUD', () => {
   let peoplePage: PeoplePage;
@@ -44,9 +44,13 @@ test.describe('People CRUD', () => {
       address: '456 New Ave',
     });
 
+    // Check person record
     const updated = await userPocketbase.collection('people').getOne(created.id);
     expect(updated.name).toBe('Updated Name');
-    expect(updated.address).toBe('456 New Ave');
+
+    // Check shared data
+    const sharedData = await getPersonSharedData(userPocketbase, created.id);
+    expect(sharedData?.address).toBe('456 New Ave');
 
     await peoplePage.expectPersonInList('Updated Name');
     await peoplePage.expectPersonNotInList('Original Name');

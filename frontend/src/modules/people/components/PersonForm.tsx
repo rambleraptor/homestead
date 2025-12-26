@@ -7,6 +7,7 @@ import type {
   NotificationPreference,
 } from '../types';
 import { NOTIFICATION_PREFERENCE_OPTIONS } from '../types';
+import { usePeople } from '../hooks/usePeople';
 
 interface PersonFormProps {
   initialData?: Person;
@@ -32,6 +33,8 @@ export function PersonForm({
   onCancel,
   isSubmitting,
 }: PersonFormProps) {
+  const { data: people = [] } = usePeople();
+
   const [formData, setFormData] = useState<PersonFormData>({
     name: initialData?.name || '',
     address: initialData?.address || '',
@@ -40,7 +43,11 @@ export function PersonForm({
     notification_preferences: initialData?.notification_preferences || [
       'day_of',
     ],
+    partner_id: initialData?.partner?.id || '',
   });
+
+  // Filter out the current person from partner options
+  const availablePartners = people.filter(p => p.id !== initialData?.id);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,10 +83,39 @@ export function PersonForm({
 
       <div>
         <label
+          htmlFor="partner"
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
+          Partner (Optional)
+        </label>
+        <select
+          id="partner"
+          value={formData.partner_id || ''}
+          onChange={(e) =>
+            setFormData({ ...formData, partner_id: e.target.value || undefined })
+          }
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">No partner</option>
+          {availablePartners.map((person) => (
+            <option key={person.id} value={person.id}>
+              {person.name}
+            </option>
+          ))}
+        </select>
+        {formData.partner_id && (
+          <p className="mt-1 text-xs text-gray-500">
+            Address and anniversary will be shared with your partner
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label
           htmlFor="address"
           className="block text-sm font-medium text-gray-700 mb-2"
         >
-          Address (Optional)
+          Address {formData.partner_id && '(Shared)'}
         </label>
         <Input
           id="address"
@@ -114,7 +150,7 @@ export function PersonForm({
           htmlFor="anniversary"
           className="block text-sm font-medium text-gray-700 mb-2"
         >
-          Anniversary (Optional)
+          Anniversary {formData.partner_id && '(Shared)'}
         </label>
         <Input
           id="anniversary"
