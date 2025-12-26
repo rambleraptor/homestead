@@ -48,9 +48,14 @@ test.describe('People CRUD', () => {
     const updated = await userPocketbase.collection('people').getOne(created.id);
     expect(updated.name).toBe('Updated Name');
 
-    // Check shared data
+    // Check shared data and address
     const sharedData = await getPersonSharedData(userPocketbase, created.id);
-    expect(sharedData?.address).toBe('456 New Ave');
+    if (sharedData?.address_id) {
+      const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id);
+      expect(address.line1).toBe('456 New Ave');
+    } else {
+      throw new Error('Expected shared data with address_id');
+    }
 
     await peoplePage.expectPersonInList('Updated Name');
     await peoplePage.expectPersonNotInList('Original Name');

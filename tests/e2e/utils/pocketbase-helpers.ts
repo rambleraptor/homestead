@@ -69,12 +69,24 @@ export async function createPerson(
       created_by: pb.authStore.model?.id,
     });
 
-    // Create shared data if address or anniversary provided
+    // Create address and shared data if needed
     if (data.address || data.anniversary) {
+      let addressId = null;
+
+      // Create address if provided
+      if (data.address) {
+        const address = await pb.collection('addresses').create({
+          line1: data.address,
+          created_by: pb.authStore.model?.id,
+        });
+        addressId = address.id;
+      }
+
+      // Create shared data with address_id
       await pb.collection('person_shared_data').create({
         person_a: person.id,
         person_b: null,
-        address: data.address || '',
+        address_id: addressId,
         anniversary: data.anniversary,
         created_by: pb.authStore.model?.id,
       });
@@ -170,6 +182,28 @@ export async function deleteAllPeople(pb: PocketBase) {
 }
 
 /**
+ * Delete all addresses (family-wide, not filtered by user)
+ * Silently handles cases where collection doesn't exist or no access
+ */
+export async function deleteAllAddresses(pb: PocketBase) {
+  try {
+    const records = await pb.collection('addresses').getFullList();
+
+    if (records.length > 0) {
+      const promises = records.map(record =>
+        pb.collection('addresses').delete(record.id)
+      );
+      await Promise.all(promises);
+    }
+  } catch (error: any) {
+    if (error.status === 404 || error.status === 403) {
+      return;
+    }
+    throw error;
+  }
+}
+
+/**
  * Create a grocery item via PocketBase API
  */
 export async function createGroceryItem(
@@ -235,6 +269,7 @@ export async function cleanupUserData(pb: PocketBase) {
   await Promise.all([
     deleteAllGiftCards(pb),
     deleteAllPeople(pb),
+    deleteAllAddresses(pb),
     deleteAllGroceryItems(pb),
   ]);
 }
