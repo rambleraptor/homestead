@@ -2,12 +2,28 @@ export type PersonEventType = 'birthday' | 'anniversary';
 
 export type NotificationPreference = 'day_of' | 'day_before' | 'week_before';
 
+// Address type
+export interface Address {
+  id: string;
+  line1: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  wifi_network?: string;
+  wifi_password?: string;
+  created_by: string;
+  created: string;
+  updated: string;
+}
+
 // Internal type for shared data (not exposed to UI)
 export interface PersonSharedData {
   id: string;
   person_a: string;
   person_b?: string;
-  address?: string;
+  address_id?: string;
   anniversary?: string;
   created_by: string;
   created: string;
@@ -18,7 +34,7 @@ export interface PersonSharedData {
 export interface Person {
   id: string;
   name: string;
-  address?: string;
+  address?: Address;
   birthday?: string;
   anniversary?: string;
   notification_preferences: NotificationPreference[];
@@ -30,7 +46,16 @@ export interface Person {
 
 export interface PersonFormData {
   name: string;
-  address?: string;
+  address?: {
+    line1: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
+    wifi_network?: string;
+    wifi_password?: string;
+  };
   birthday?: string;
   anniversary?: string;
   notification_preferences: NotificationPreference[];

@@ -130,9 +130,12 @@ function parsePersonRow(row: Record<string, string>, rowNumber: number): ParsedP
     errors.push('name must be 200 characters or less');
   }
 
-  // Parse address (optional)
-  const address = row.address?.trim() || undefined;
-  if (address && address.length > 500) {
+  // Parse address (optional) - convert string to address object for backwards compatibility with CSV
+  const addressString = row.address?.trim() || undefined;
+  const address = addressString
+    ? { line1: addressString }
+    : undefined;
+  if (addressString && addressString.length > 500) {
     errors.push('address must be 500 characters or less');
   }
 

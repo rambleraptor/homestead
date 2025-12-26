@@ -82,7 +82,12 @@ export function PersonPreview({ item, isSelected, onToggle }: PersonPreviewProps
               </h3>
               {person.address && (
                 <p className="text-sm text-muted-foreground mb-1">
-                  {person.address}
+                  {person.address.line1}
+                  {person.address.line2 && `, ${person.address.line2}`}
+                  {person.address.city && `, ${person.address.city}`}
+                  {person.address.state && `, ${person.address.state}`}
+                  {person.address.postal_code && ` ${person.address.postal_code}`}
+                  {person.address.country && `, ${person.address.country}`}
                 </p>
               )}
               {person.birthday && (

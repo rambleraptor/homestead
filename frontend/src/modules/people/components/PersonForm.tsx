@@ -37,7 +37,18 @@ export function PersonForm({
 
   const [formData, setFormData] = useState<PersonFormData>({
     name: initialData?.name || '',
-    address: initialData?.address || '',
+    address: initialData?.address
+      ? {
+          line1: initialData.address.line1,
+          line2: initialData.address.line2,
+          city: initialData.address.city,
+          state: initialData.address.state,
+          postal_code: initialData.address.postal_code,
+          country: initialData.address.country,
+          wifi_network: initialData.address.wifi_network,
+          wifi_password: initialData.address.wifi_password,
+        }
+      : undefined,
     birthday: formatDateForInput(initialData?.birthday),
     anniversary: formatDateForInput(initialData?.anniversary),
     notification_preferences: initialData?.notification_preferences || [
@@ -110,22 +121,164 @@ export function PersonForm({
         )}
       </div>
 
-      <div>
-        <label
-          htmlFor="address"
-          className="block text-sm font-medium text-gray-700 mb-2"
-        >
+      <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+        <h3 className="text-sm font-medium text-gray-700">
           Address {formData.partner_id && '(Shared)'}
-        </label>
-        <Input
-          id="address"
-          type="text"
-          value={formData.address}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setFormData({ ...formData, address: e.target.value })
-          }
-          placeholder="e.g., 123 Main St, Anytown, USA"
-        />
+        </h3>
+
+        <div>
+          <label htmlFor="address_line1" className="block text-sm text-gray-700 mb-1">
+            Street Address
+          </label>
+          <Input
+            id="address_line1"
+            type="text"
+            value={formData.address?.line1 || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setFormData({
+                ...formData,
+                address: { ...formData.address, line1: e.target.value } as PersonFormData['address']
+              })
+            }
+            placeholder="123 Main St"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="address_line2" className="block text-sm text-gray-700 mb-1">
+            Apt, Suite, etc. (Optional)
+          </label>
+          <Input
+            id="address_line2"
+            type="text"
+            value={formData.address?.line2 || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setFormData({
+                ...formData,
+                address: { ...formData.address, line2: e.target.value } as PersonFormData['address']
+              })
+            }
+            placeholder="Apt 4B"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="address_city" className="block text-sm text-gray-700 mb-1">
+              City
+            </label>
+            <Input
+              id="address_city"
+              type="text"
+              value={formData.address?.city || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, city: e.target.value } as PersonFormData['address']
+                })
+              }
+              placeholder="Anytown"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="address_state" className="block text-sm text-gray-700 mb-1">
+              State/Province
+            </label>
+            <Input
+              id="address_state"
+              type="text"
+              value={formData.address?.state || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, state: e.target.value } as PersonFormData['address']
+                })
+              }
+              placeholder="CA"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="address_postal_code" className="block text-sm text-gray-700 mb-1">
+              Postal Code
+            </label>
+            <Input
+              id="address_postal_code"
+              type="text"
+              value={formData.address?.postal_code || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, postal_code: e.target.value } as PersonFormData['address']
+                })
+              }
+              placeholder="12345"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="address_country" className="block text-sm text-gray-700 mb-1">
+              Country
+            </label>
+            <Input
+              id="address_country"
+              type="text"
+              value={formData.address?.country || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, country: e.target.value } as PersonFormData['address']
+                })
+              }
+              placeholder="USA"
+            />
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-gray-200">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">WiFi Information (Optional)</h4>
+
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="wifi_network" className="block text-sm text-gray-700 mb-1">
+                Network Name
+              </label>
+              <Input
+                id="wifi_network"
+                type="text"
+                value={formData.address?.wifi_network || ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({
+                    ...formData,
+                    address: { ...formData.address, wifi_network: e.target.value } as PersonFormData['address']
+                  })
+                }
+                placeholder="MyHomeWiFi"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="wifi_password" className="block text-sm text-gray-700 mb-1">
+                Password
+              </label>
+              <Input
+                id="wifi_password"
+                type="text"
+                value={formData.address?.wifi_password || ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({
+                    ...formData,
+                    address: { ...formData.address, wifi_password: e.target.value } as PersonFormData['address']
+                  })
+                }
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div>

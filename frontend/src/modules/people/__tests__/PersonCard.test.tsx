@@ -12,7 +12,15 @@ describe('PersonCard', () => {
   const mockPerson: Person = {
     id: '1',
     name: 'John Doe',
-    address: '123 Main St, Anytown, USA',
+    address: {
+      id: 'addr-1',
+      line1: '123 Main St',
+      city: 'Anytown',
+      state: 'USA',
+      created_by: 'user-1',
+      created: '2024-01-01T00:00:00Z',
+      updated: '2024-01-01T00:00:00Z',
+    },
     birthday: '1990-06-20',
     anniversary: '2015-10-25',
     notification_preferences: ['day_of', 'day_before'],
@@ -59,7 +67,7 @@ describe('PersonCard', () => {
     expect(mapLink.closest('a')).toHaveAttribute(
       'href',
       `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        mockPerson.address || ''
+        '123 Main St, Anytown, USA'
       )}`
     );
     expect(screen.getByLabelText('Map pin icon')).toBeInTheDocument(); // Assuming map pin icon has a default accessible name

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCollection, Collections } from '@/core/api/pocketbase';
 import { queryKeys } from '@/core/api/queryClient';
-import type { Person, NotificationPreference } from '../types';
+import type { Person, NotificationPreference, Address } from '../types';
 import { findSharedDataForPerson } from '../utils/sharedDataSync';
 
 interface PersonRecord {
@@ -21,6 +21,16 @@ export function usePersonById(id: string) {
       const record = await getCollection<PersonRecord>(Collections.PEOPLE).getOne(id);
       const sharedData = await findSharedDataForPerson(id);
 
+      // Fetch address if shared data has address_id
+      let address: Address | undefined;
+      if (sharedData?.address_id) {
+        try {
+          address = await getCollection<Address>(Collections.ADDRESSES).getOne(sharedData.address_id);
+        } catch {
+          // Address not found, continue without it
+        }
+      }
+
       // Find partner if shared data exists
       let partner: Person | undefined;
       if (sharedData) {
@@ -29,7 +39,7 @@ export function usePersonById(id: string) {
           const partnerRecord = await getCollection<PersonRecord>(Collections.PEOPLE).getOne(partnerId);
           partner = {
             ...partnerRecord,
-            address: sharedData.address,
+            address,
             anniversary: sharedData.anniversary,
             partner: undefined,
           };
@@ -38,7 +48,7 @@ export function usePersonById(id: string) {
 
       const person: Person = {
         ...record,
-        address: sharedData?.address,
+        address,
         anniversary: sharedData?.anniversary,
         partner,
       };

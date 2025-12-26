@@ -71,7 +71,7 @@ export function useUpdatePerson() {
         }
       } else if (oldSharedData) {
         // Partner didn't change, just update shared fields
-        await updateSharedData(oldSharedData.id, {
+        await updateSharedData(oldSharedData.id, oldSharedData.address_id, {
           address: data.address,
           anniversary: data.anniversary,
         });
@@ -84,16 +84,32 @@ export function useUpdatePerson() {
         });
       }
 
-      return personRecord;
+      return { personRecord, oldPartnerId, newPartnerId };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
       console.log('[useUpdatePerson] onSuccess called, invalidating queries');
+
+      // Always invalidate the list and the person being updated
       queryClient.invalidateQueries({
         queryKey: queryKeys.module('people').list(),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.module('people').detail(variables.id),
       });
+
+      // Invalidate new partner's cache (if partner was added or changed)
+      if (result.newPartnerId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.module('people').detail(result.newPartnerId),
+        });
+      }
+
+      // Invalidate old partner's cache (if partner was removed or changed)
+      if (result.oldPartnerId && result.oldPartnerId !== result.newPartnerId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.module('people').detail(result.oldPartnerId),
+        });
+      }
     },
     onError: (error) => {
       console.error('[useUpdatePerson] onError called:', error);

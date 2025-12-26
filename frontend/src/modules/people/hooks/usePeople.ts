@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCollection, Collections } from '@/core/api/pocketbase';
 import { queryKeys } from '@/core/api/queryClient';
-import type { Person, NotificationPreference } from '../types';
-import { findSharedDataForPerson } from '../utils/sharedDataSync';
+import type { Person, NotificationPreference, PersonSharedData, Address } from '../types';
 
 interface PersonRecord {
   id: string;
@@ -23,37 +22,58 @@ export function usePeople() {
         sort: 'name',
       });
 
-      // Enrich with shared data
-      const people: Person[] = await Promise.all(
-        peopleRecords.map(async (record) => {
-          const sharedData = await findSharedDataForPerson(record.id);
+      // Fetch ALL shared data in a single query (fixes N+1 problem)
+      const allSharedData = await getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA).getFullList();
 
-          // Find partner if shared data exists
-          let partner: Person | undefined;
-          const partnerId = sharedData
-            ? (sharedData.person_a === record.id ? sharedData.person_b : sharedData.person_a)
-            : undefined;
+      // Fetch ALL addresses in a single query
+      const allAddresses = await getCollection<Address>(Collections.ADDRESSES).getFullList();
 
-          if (partnerId) {
-            const partnerRecord = peopleRecords.find(p => p.id === partnerId);
-            if (partnerRecord) {
-              partner = {
-                ...partnerRecord,
-                address: sharedData?.address,
-                anniversary: sharedData?.anniversary,
-                partner: undefined, // Avoid circular reference
-              };
-            }
+      // Create lookup maps for O(1) access
+      const sharedDataByPersonA = new Map<string, PersonSharedData>();
+      const sharedDataByPersonB = new Map<string, PersonSharedData>();
+      const addressesById = new Map<string, Address>();
+
+      for (const sharedData of allSharedData) {
+        sharedDataByPersonA.set(sharedData.person_a, sharedData);
+        if (sharedData.person_b) {
+          sharedDataByPersonB.set(sharedData.person_b, sharedData);
+        }
+      }
+
+      for (const address of allAddresses) {
+        addressesById.set(address.id, address);
+      }
+
+      // Enrich with shared data (no async calls needed)
+      const people: Person[] = peopleRecords.map((record) => {
+        const sharedData = sharedDataByPersonA.get(record.id) || sharedDataByPersonB.get(record.id);
+        const address = sharedData?.address_id ? addressesById.get(sharedData.address_id) : undefined;
+
+        // Find partner if shared data exists
+        let partner: Person | undefined;
+        const partnerId = sharedData
+          ? (sharedData.person_a === record.id ? sharedData.person_b : sharedData.person_a)
+          : undefined;
+
+        if (partnerId) {
+          const partnerRecord = peopleRecords.find(p => p.id === partnerId);
+          if (partnerRecord) {
+            partner = {
+              ...partnerRecord,
+              address,
+              anniversary: sharedData?.anniversary,
+              partner: undefined, // Avoid circular reference
+            };
           }
+        }
 
-          return {
-            ...record,
-            address: sharedData?.address,
-            anniversary: sharedData?.anniversary,
-            partner,
-          };
-        })
-      );
+        return {
+          ...record,
+          address,
+          anniversary: sharedData?.anniversary,
+          partner,
+        };
+      });
 
       return people;
     },

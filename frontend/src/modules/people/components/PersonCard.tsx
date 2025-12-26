@@ -29,10 +29,22 @@ export function PersonCard({
     });
   };
 
-  const googleMapsUrl = person.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        person.address
-      )}`
+  const formatAddress = (address: typeof person.address): string => {
+    if (!address) return '';
+    const parts = [
+      address.line1,
+      address.line2,
+      address.city,
+      address.state,
+      address.postal_code,
+      address.country,
+    ].filter(Boolean);
+    return parts.join(', ');
+  };
+
+  const addressString = formatAddress(person.address);
+  const googleMapsUrl = addressString
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressString)}`
     : '';
 
   return (
@@ -69,19 +81,29 @@ export function PersonCard({
               </div>
             )}
             {person.address && (
-              <div className="flex items-center gap-2 mt-1">
-                <MapPin className="w-5 h-5 text-blue-500" aria-label="Map pin icon" />
-                <a
-                  href={googleMapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-500 hover:underline"
-                >
-                  {person.address}
-                  {partner && (
-                    <span className="ml-1 text-xs text-gray-400">(shared)</span>
-                  )}
-                </a>
+              <div className="mt-1">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-blue-500" aria-label="Map pin icon" />
+                  <a
+                    href={googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-500 hover:underline"
+                  >
+                    {addressString}
+                    {partner && (
+                      <span className="ml-1 text-xs text-gray-400">(shared)</span>
+                    )}
+                  </a>
+                </div>
+                {person.address.wifi_network && (
+                  <div className="ml-7 mt-1 text-xs text-gray-600">
+                    <span className="font-medium">WiFi:</span> {person.address.wifi_network}
+                    {person.address.wifi_password && (
+                      <span className="ml-2 font-mono">{person.address.wifi_password}</span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
