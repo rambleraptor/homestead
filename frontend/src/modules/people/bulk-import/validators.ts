@@ -49,7 +49,44 @@ export const validateAddress: FieldValidator<string | undefined> = (value) => {
 };
 
 /**
- * Validates birthday field (YYYY-MM-DD format)
+ * Parses a date string in either YYYY-MM-DD or MM/DD/YYYY format
+ * Returns the date in YYYY-MM-DD format if valid, or null if invalid
+ */
+function parseDate(dateString: string): string | null {
+  const trimmed = dateString.trim();
+
+  // Check for YYYY-MM-DD format
+  const isoRegex = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const isoMatch = trimmed.match(isoRegex);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const date = new Date(`${year}-${month}-${day}T00:00:00`);
+    if (!isNaN(date.getTime()) && date.toISOString().startsWith(`${year}-${month}-${day}`)) {
+      return `${year}-${month}-${day}`;
+    }
+    return null;
+  }
+
+  // Check for MM/DD/YYYY format
+  const usRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const usMatch = trimmed.match(usRegex);
+  if (usMatch) {
+    const [, month, day, year] = usMatch;
+    const paddedMonth = month.padStart(2, '0');
+    const paddedDay = day.padStart(2, '0');
+    const isoDate = `${year}-${paddedMonth}-${paddedDay}`;
+    const date = new Date(`${isoDate}T00:00:00`);
+    if (!isNaN(date.getTime()) && date.toISOString().startsWith(isoDate)) {
+      return isoDate;
+    }
+    return null;
+  }
+
+  return null;
+}
+
+/**
+ * Validates birthday field (YYYY-MM-DD or MM/DD/YYYY format)
  */
 export const validateBirthday: FieldValidator<string | undefined> = (value) => {
   const birthday = value.trim();
@@ -58,36 +95,19 @@ export const validateBirthday: FieldValidator<string | undefined> = (value) => {
     return { value: undefined };
   }
 
-  const regex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!regex.test(birthday)) {
+  const parsedDate = parseDate(birthday);
+  if (!parsedDate) {
     return {
       value: birthday,
-      error: 'birthday must be in YYYY-MM-DD format',
+      error: 'birthday must be in YYYY-MM-DD or MM/DD/YYYY format',
     };
   }
 
-  const date = new Date(birthday);
-  const timestamp = date.getTime();
-
-  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-    return {
-      value: birthday,
-      error: 'birthday must be a valid date',
-    };
-  }
-
-  if (!date.toISOString().startsWith(birthday)) {
-    return {
-      value: birthday,
-      error: 'birthday must be a valid date',
-    };
-  }
-
-  return { value: birthday };
+  return { value: parsedDate };
 };
 
 /**
- * Validates anniversary field (YYYY-MM-DD format)
+ * Validates anniversary field (YYYY-MM-DD or MM/DD/YYYY format)
  */
 export const validateAnniversary: FieldValidator<string | undefined> = (value) => {
   const anniversary = value.trim();
@@ -96,32 +116,15 @@ export const validateAnniversary: FieldValidator<string | undefined> = (value) =
     return { value: undefined };
   }
 
-  const regex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!regex.test(anniversary)) {
+  const parsedDate = parseDate(anniversary);
+  if (!parsedDate) {
     return {
       value: anniversary,
-      error: 'anniversary must be in YYYY-MM-DD format',
+      error: 'anniversary must be in YYYY-MM-DD or MM/DD/YYYY format',
     };
   }
 
-  const date = new Date(anniversary);
-  const timestamp = date.getTime();
-
-  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-    return {
-      value: anniversary,
-      error: 'anniversary must be a valid date',
-    };
-  }
-
-  if (!date.toISOString().startsWith(anniversary)) {
-    return {
-      value: anniversary,
-      error: 'anniversary must be a valid date',
-    };
-  }
-
-  return { value: anniversary };
+  return { value: parsedDate };
 };
 
 

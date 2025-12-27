@@ -117,8 +117,7 @@ Person Too Long Name ${'X'.repeat(200)},1980-06-30,Invalid Name`,
 
   // Validation errors
   validationErrors: `name,birthday,anniversary
-Missing Name,,
+,1985-01-01,
 Valid Name,invalid-date,2020-01-01
 Another Name,1990-01-01,not-a-date`,
 };
-

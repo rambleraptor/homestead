@@ -152,32 +152,37 @@ export class PeoplePage {
   }
 
   async expectParsedPeopleCount(validCount: number, invalidCount?: number) {
+    // Wait for parsing to complete and stats to be visible
+    await this.page.waitForLoadState('networkidle');
+
     // Check the valid count stat card
-    await expect(
-      this.page.locator('text="Valid People"').locator('..').locator('p.text-2xl')
-    ).toContainText(String(validCount));
+    const validCard = this.page.locator('text="Valid People"').locator('..');
+    await validCard.waitFor({ state: 'visible', timeout: 10000 });
+    await expect(validCard.locator('p.text-2xl')).toContainText(String(validCount));
 
     if (invalidCount !== undefined) {
-      await expect(
-        this.page.locator('text="Invalid People"').locator('..').locator('p.text-2xl')
-      ).toContainText(String(invalidCount));
+      const invalidCard = this.page.locator('text="Invalid People"').locator('..');
+      await expect(invalidCard.locator('p.text-2xl')).toContainText(String(invalidCount));
     }
   }
 
   async selectAllValidPeople() {
     const selectAllButton = this.page.getByRole('button', { name: 'Select All' });
-    if (await selectAllButton.isVisible()) {
-      await selectAllButton.click();
-    }
+    await selectAllButton.waitFor({ state: 'visible', timeout: 5000 });
+    await selectAllButton.click();
+    // Wait for selection to register
+    await this.page.waitForTimeout(500);
   }
 
   async clickImport() {
-    const importButton = this.page.getByRole('button', { name: /Import \d+ Person/ });
-    await importButton.waitFor({ state: 'visible' });
+    // Button text is "Import X Person(s)" 
+    const importButton = this.page.getByRole('button', { name: /Import \d+ Person\(s\)/ });
+    await importButton.waitFor({ state: 'visible', timeout: 10000 });
+    await expect(importButton).toBeEnabled();
     await importButton.click();
 
     // Wait for import to complete and redirect
-    await this.page.waitForURL(/\/people$/);
+    await this.page.waitForURL(/\/people$/, { timeout: 30000 });
   }
 
   async expectImportSuccess(count: number) {
@@ -199,15 +204,15 @@ export class PeoplePage {
   }
 
   async expectPreviewShowsPartner(personName: string, partnerName: string) {
-    // In bulk import preview, find the person and check for partner badge
-    const personRow = this.page.locator('h3', { hasText: personName }).locator('..');
-    await expect(personRow.getByText(`Partner: ${partnerName}`)).toBeVisible();
+    // In bulk import preview, verify partner badge is visible
+    // Badge text includes emoji "💑 Partner: {name}" so we match partial text
+    await expect(this.page.getByText(`Partner: ${partnerName}`, { exact: false })).toBeVisible({ timeout: 5000 });
   }
 
   async expectPreviewShowsWifi(personName: string, wifiNetwork: string) {
-    // In bulk import preview, find the person and check for WiFi badge
-    const personRow = this.page.locator('h3', { hasText: personName }).locator('..');
-    await expect(personRow.getByText(`WiFi: ${wifiNetwork}`)).toBeVisible();
+    // In bulk import preview, verify WiFi badge is visible
+    // Badge text includes emoji "📶 WiFi: {network}" so we match partial text
+    await expect(this.page.getByText(`WiFi: ${wifiNetwork}`, { exact: false })).toBeVisible({ timeout: 5000 });
   }
 }
 

@@ -122,13 +122,13 @@ export const peopleImportSchema: BulkImportSchema<PersonFormData> = {
       name: 'birthday',
       required: false,
       validator: validateBirthday,
-      description: 'Birthday in YYYY-MM-DD format',
+      description: 'Birthday (YYYY-MM-DD or MM/DD/YYYY format)',
     },
     {
       name: 'anniversary',
       required: false,
       validator: validateAnniversary,
-      description: 'Anniversary in YYYY-MM-DD format',
+      description: 'Anniversary (YYYY-MM-DD or MM/DD/YYYY format)',
     },
     {
       name: 'notification_preferences',

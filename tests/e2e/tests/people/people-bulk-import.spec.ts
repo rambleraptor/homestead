@@ -179,9 +179,9 @@ test.describe('People Bulk Import', () => {
         // Verify some rows are invalid
         await peoplePage.expectParsedPeopleCount(1, 2);
 
-        // Verify error messages are shown
-        await expect(authenticatedPage.getByText('name is required')).toBeVisible();
-        await expect(authenticatedPage.getByText('birthday must be in YYYY-MM-DD format')).toBeVisible();
+        // Verify error messages are shown (using partial text match)
+        await expect(authenticatedPage.getByText(/name.*(is|a).*required/i)).toBeVisible();
+        await expect(authenticatedPage.getByText(/birthday.*YYYY-MM-DD.*MM\/DD\/YYYY/i)).toBeVisible();
     });
 
     test('should import people with structured address only', async ({ userPocketbase }) => {

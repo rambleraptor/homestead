@@ -164,8 +164,8 @@ export function BulkImport() {
                     <li><code className="bg-muted px-1 py-0.5 rounded">address_country</code> - Country</li>
                     <li><code className="bg-muted px-1 py-0.5 rounded">wifi_network</code> - WiFi network name</li>
                     <li><code className="bg-muted px-1 py-0.5 rounded">wifi_password</code> - WiFi password</li>
-                    <li><code className="bg-muted px-1 py-0.5 rounded">birthday</code> - Birthday in YYYY-MM-DD format</li>
-                    <li><code className="bg-muted px-1 py-0.5 rounded">anniversary</code> - Anniversary in YYYY-MM-DD format</li>
+                    <li><code className="bg-muted px-1 py-0.5 rounded">birthday</code> - Birthday (YYYY-MM-DD or MM/DD/YYYY)</li>
+                    <li><code className="bg-muted px-1 py-0.5 rounded">anniversary</code> - Anniversary (YYYY-MM-DD or MM/DD/YYYY)</li>
                     <li><code className="bg-muted px-1 py-0.5 rounded">notification_preferences</code> - Comma-separated: "day_of", "day_before", "week_before"</li>
                     <li><code className="bg-muted px-1 py-0.5 rounded">partner_name</code> - Partner's name (matched with other people in import or existing database)</li>
                   </ul>
