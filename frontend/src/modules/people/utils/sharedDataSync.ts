@@ -12,18 +12,16 @@ function isValidRecordId(id: string): boolean {
 /**
  * Creates or updates an address.
  */
+// Simplified address input - just the full address string and optional wifi
+interface AddressInput {
+  line1: string;
+  wifi_network?: string;
+  wifi_password?: string;
+}
+
 async function upsertAddress(
   addressId: string | undefined,
-  addressData: {
-    line1: string;
-    line2?: string;
-    city?: string;
-    state?: string;
-    postal_code?: string;
-    country?: string;
-    wifi_network?: string;
-    wifi_password?: string;
-  } | undefined
+  addressData: AddressInput | undefined
 ): Promise<string | undefined> {
   if (!addressData || !addressData.line1) {
     return undefined;
@@ -80,16 +78,7 @@ export async function findSharedDataForPerson(
  */
 export async function createSharedData(data: {
   personId: string;
-  address?: {
-    line1: string;
-    line2?: string;
-    city?: string;
-    state?: string;
-    postal_code?: string;
-    country?: string;
-    wifi_network?: string;
-    wifi_password?: string;
-  };
+  address?: AddressInput;
   anniversary?: string;
 }): Promise<PersonSharedData> {
   const currentUser = getCurrentUser();
@@ -114,16 +103,7 @@ export async function updateSharedData(
   sharedDataId: string,
   currentAddressId: string | undefined,
   data: {
-    address?: {
-      line1: string;
-      line2?: string;
-      city?: string;
-      state?: string;
-      postal_code?: string;
-      country?: string;
-      wifi_network?: string;
-      wifi_password?: string;
-    };
+    address?: AddressInput;
     anniversary?: string;
   }
 ): Promise<PersonSharedData> {
@@ -145,16 +125,7 @@ export async function setPartner(
   personId: string,
   partnerId: string,
   sharedData?: {
-    address?: {
-      line1: string;
-      line2?: string;
-      city?: string;
-      state?: string;
-      postal_code?: string;
-      country?: string;
-      wifi_network?: string;
-      wifi_password?: string;
-    };
+    address?: AddressInput;
     anniversary?: string;
   }
 ): Promise<PersonSharedData> {

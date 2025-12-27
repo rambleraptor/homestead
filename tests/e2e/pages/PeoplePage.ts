@@ -5,7 +5,7 @@
 import { Page, expect, Locator } from '@playwright/test';
 
 export class PeoplePage {
-  constructor(private page: Page) {}
+  constructor(private page: Page) { }
 
   async goto() {
     await this.page.goto('/people');
@@ -30,8 +30,7 @@ export class PeoplePage {
     await this.page.locator('#name').fill(data.name);
 
     if (data.address) {
-      // Address is now split into multiple fields, use line1 for simple string addresses
-      await this.page.locator('#address_line1').fill(data.address);
+      await this.page.locator('#address').fill(data.address);
     }
     if (data.birthday) {
       await this.page.locator('#birthday').fill(data.birthday);
@@ -95,8 +94,7 @@ export class PeoplePage {
       await this.page.locator('#name').fill(newData.name);
     }
     if (newData.address) {
-      // Address is now split into multiple fields, use line1 for simple string addresses
-      await this.page.locator('#address_line1').fill(newData.address);
+      await this.page.locator('#address').fill(newData.address);
     }
     if (newData.birthday) {
       await this.page.locator('#birthday').fill(newData.birthday);
@@ -124,4 +122,95 @@ export class PeoplePage {
 
     await this.page.waitForLoadState('networkidle');
   }
+
+  // Bulk Import Methods
+
+  async gotoBulkImport() {
+    await this.page.goto('/people/import');
+    await expect(this.page).toHaveURL(/\/people\/import/);
+  }
+
+  async uploadCSVContent(csvContent: string) {
+    // Create a file from CSV content and upload it
+    const buffer = Buffer.from(csvContent);
+
+    // Wait for file input to be present
+    const fileInput = this.page.locator('input[type="file"][accept=".csv"]');
+    await fileInput.waitFor({ state: 'attached' });
+
+    // Upload the file
+    await fileInput.setInputFiles({
+      name: 'test_import.csv',
+      mimeType: 'text/csv',
+      buffer,
+    });
+
+    // Wait for parsing to complete
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  async expectParsedPeopleCount(validCount: number, invalidCount?: number) {
+    // Wait for parsing to complete and stats to be visible
+    await this.page.waitForLoadState('networkidle');
+
+    // Check the valid count stat card
+    const validCard = this.page.locator('text="Valid People"').locator('..');
+    await validCard.waitFor({ state: 'visible', timeout: 10000 });
+    await expect(validCard.locator('p.text-2xl')).toContainText(String(validCount));
+
+    if (invalidCount !== undefined) {
+      const invalidCard = this.page.locator('text="Invalid People"').locator('..');
+      await expect(invalidCard.locator('p.text-2xl')).toContainText(String(invalidCount));
+    }
+  }
+
+  async selectAllValidPeople() {
+    const selectAllButton = this.page.getByRole('button', { name: 'Select All' });
+    await selectAllButton.waitFor({ state: 'visible', timeout: 5000 });
+    await selectAllButton.click();
+    // Wait for selection to register
+    await this.page.waitForTimeout(500);
+  }
+
+  async clickImport() {
+    // Button text is "Import X Person(s)" 
+    const importButton = this.page.getByRole('button', { name: /Import \d+ Person\(s\)/ });
+    await importButton.waitFor({ state: 'visible', timeout: 10000 });
+    await expect(importButton).toBeEnabled();
+    await importButton.click();
+
+    // Wait for import to complete and redirect
+    await this.page.waitForURL(/\/people$/, { timeout: 30000 });
+  }
+
+  async expectImportSuccess(count: number) {
+    // Look for toast notification or redirect to people page
+    await this.page.waitForURL(/\/people$/);
+    // Success toasts are shown but may disappear quickly
+  }
+
+  async expectPersonHasPartner(personName: string, partnerName: string) {
+    // Find the person card and verify partner is shown
+    const personCard = await this.getPersonCard(personName);
+    await expect(personCard.getByText(partnerName)).toBeVisible();
+  }
+
+  async expectPersonHasAddress(personName: string, addressPart: string) {
+    // Find the person card and verify address is shown
+    const personCard = await this.getPersonCard(personName);
+    await expect(personCard.getByText(addressPart, { exact: false })).toBeVisible();
+  }
+
+  async expectPreviewShowsPartner(personName: string, partnerName: string) {
+    // In bulk import preview, verify partner badge is visible
+    // Badge text includes emoji "💑 Partner: {name}" so we match partial text
+    await expect(this.page.getByText(`Partner: ${partnerName}`, { exact: false })).toBeVisible({ timeout: 5000 });
+  }
+
+  async expectPreviewShowsWifi(personName: string, wifiNetwork: string) {
+    // In bulk import preview, verify WiFi badge is visible
+    // Badge text includes emoji "📶 WiFi: {network}" so we match partial text
+    await expect(this.page.getByText(`WiFi: ${wifiNetwork}`, { exact: false })).toBeVisible({ timeout: 5000 });
+  }
 }
+

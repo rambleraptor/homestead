@@ -50,6 +50,14 @@ export function useUpdatePerson() {
       const newPartnerId = data.partner_id;
       const partnerChanged = oldPartnerId !== newPartnerId;
 
+      // Build address data from flat fields
+      const hasAddressData = data.address || data.wifi_network;
+      const addressData = hasAddressData ? {
+        line1: data.address || '',
+        wifi_network: data.wifi_network,
+        wifi_password: data.wifi_password,
+      } : undefined;
+
       if (partnerChanged) {
         // Partner changed
         if (oldPartnerId && !newPartnerId) {
@@ -58,28 +66,28 @@ export function useUpdatePerson() {
         } else if (!oldPartnerId && newPartnerId) {
           // Adding partner
           await setPartner(id, newPartnerId, {
-            address: data.address,
+            address: addressData,
             anniversary: data.anniversary,
           });
         } else if (oldPartnerId && newPartnerId && oldPartnerId !== newPartnerId) {
           // Changing partner
           await removePartner(id, oldPartnerId);
           await setPartner(id, newPartnerId, {
-            address: data.address,
+            address: addressData,
             anniversary: data.anniversary,
           });
         }
       } else if (oldSharedData) {
         // Partner didn't change, just update shared fields
         await updateSharedData(oldSharedData.id, oldSharedData.address_id, {
-          address: data.address,
+          address: addressData,
           anniversary: data.anniversary,
         });
-      } else if (data.address || data.anniversary) {
+      } else if (addressData || data.anniversary) {
         // No shared data exists, create it
         await createSharedData({
           personId: id,
-          address: data.address,
+          address: addressData,
           anniversary: data.anniversary,
         });
       }

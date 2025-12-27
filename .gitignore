@@ -38,3 +38,6 @@ tests/migrations/pocketbase
 tests/migrations/pocketbase.exe
 tests/migrations/pocketbase.zip
 tests/migrations/test_pb_data/
+
+# Pocketbase
+pocketbase/

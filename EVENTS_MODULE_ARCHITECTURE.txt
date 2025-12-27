@@ -1,0 +1,237 @@
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                    EVENTS MODULE ARCHITECTURE OVERVIEW                      ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  FRONTEND LAYER - React Components & Hooks                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  EventsHome.tsx (Main Dashboard)                                     │  │
+│  ├──────────────────────────────────────────────────────────────────────┤  │
+│  │  • Stats Cards (total, birthdays, anniversaries)                    │  │
+│  │  • Upcoming Events (next 30 days)                                   │  │
+│  │  • All Events List                                                 │  │
+│  │  • Add/Edit/Delete Actions                                         │  │
+│  │  • Modal State Management                                          │  │
+│  │  • Confirmation Dialogs                                            │  │
+│  └────────┬─────────────────┬─────────────────────┬────────────────────┘  │
+│           │                 │                     │                        │
+│      ┌────▼────┐    ┌──────▼──────┐    ┌────────▼─────────┐              │
+│      │EventForm│    │  EventCard  │    │ConfirmDialog     │              │
+│      ├─────────┤    ├─────────────┤    ├──────────────────┤              │
+│      │• CRUD   │    │• Display    │    │• Delete confirm  │              │
+│      │  form   │    │• Icons      │    │• Safety check    │              │
+│      │• Fields │    │• Actions    │    │                  │              │
+│      └─────────┘    └─────────────┘    └──────────────────┘              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  DATA FETCHING & MUTATIONS - React Query Hooks                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  useEvents()              useEventStats()         useEventById()           │
+│  ├─ Query: list           ├─ useMemo calc        ├─ Query: detail         │
+│  ├─ Sort: event_date      ├─ Upcoming 30 days    ├─ By ID                 │
+│  └─ Returns: Event[]      └─ Returns: Stats      └─ Returns: Event        │
+│                                                                              │
+│  useCreateEvent()         useUpdateEvent()       useDeleteEvent()         │
+│  ├─ Mutation              ├─ Mutation             ├─ Mutation            │
+│  ├─ Add created_by        ├─ Update fields        ├─ Delete record       │
+│  ├─ Invalidate: list      ├─ Invalidate: list     ├─ Invalidate: list    │
+│  └─ Returns: Event        │  & detail             └─ Returns: void       │
+│                           └─ Returns: Event                               │
+│                                                                              │
+│  useBulkImportEvents()                                                      │
+│  ├─ Wrapper for shared bulk import                                         │
+│  ├─ Takes: ParsedEvent[]                                                   │
+│  └─ Invalidates: list query                                               │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  BULK IMPORT SYSTEM                                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  BulkImport Component          CSV Parser           Import Validators      │
+│  ├─ File upload                ├─ parseEventsCSV  ├─ validateEventType   │
+│  ├─ Format docs                ├─ parseCSVLine    ├─ validateTitle       │
+│  ├─ Preview list               ├─ parseEventRow   ├─ validateDate        │
+│  ├─ Stats (valid/invalid)      ├─ isValidDate     ├─ validateRecurring  │
+│  ├─ Select/deselect            └─ generateTemplate├─ validateDetails     │
+│  └─ Import button                                  └─ validateNotifPrefs │
+│                                                                              │
+│  EventPreview Component                                                     │
+│  ├─ Shows each parsed event                                                 │
+│  ├─ Validation status (✓ or ✗)                                             │
+│  ├─ Error messages (if invalid)                                            │
+│  ├─ Checkbox for selection                                                 │
+│  └─ All event details displayed                                            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  POCKETBASE BACKEND LAYER                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  events Collection                                                          │
+│  ├─ Fields:                                                                 │
+│  │  ├─ event_type (Select: birthday|anniversary)                           │
+│  │  ├─ title (Text, max 200)                                               │
+│  │  ├─ people_involved (Text, max 500)                                     │
+│  │  ├─ event_date (Date)                                                   │
+│  │  ├─ recurring_yearly (Boolean)                                          │
+│  │  ├─ details (Text, max 2000)                                            │
+│  │  ├─ notification_preferences (JSON array)                               │
+│  │  └─ created_by (Relation: users)                                        │
+│  │                                                                           │
+│  ├─ Indexes:                                                               │
+│  │  ├─ idx_events_event_type                                               │
+│  │  ├─ idx_events_event_date                                               │
+│  │  └─ idx_events_created_by                                               │
+│  │                                                                           │
+│  └─ API Rules (Auth):                                                       │
+│     ├─ listRule:   @request.auth.id != ''                                   │
+│     ├─ viewRule:   @request.auth.id != ''                                   │
+│     ├─ createRule: @request.auth.id != ''                                   │
+│     ├─ updateRule: @request.auth.id != ''                                   │
+│     └─ deleteRule: @request.auth.id != ''                                   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  DATA FLOW - User Actions                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  CREATE EVENT:                                                              │
+│  User Fill Form → EventForm → handleCreateEvent() → useCreateEvent         │
+│       ↓                                                   ↓                  │
+│       └─────────────────────────────────────→ PocketBase.create()         │
+│                                                    ↓                        │
+│                                          queryClient.invalidate()          │
+│                                                    ↓                        │
+│                                          useEvents refetch                  │
+│                                                    ↓                        │
+│                                          EventsHome re-render              │
+│                                                                              │
+│  UPDATE EVENT:                                                              │
+│  User Click Edit → EventForm (pre-fill) → handleUpdateEvent()              │
+│       ↓                                         ↓                           │
+│       └─────────────────────────────────→ useUpdateEvent() mutation        │
+│                                                    ↓                        │
+│                                          PocketBase.update(id, data)       │
+│                                                    ↓                        │
+│                                          invalidate list + detail queries   │
+│                                                                              │
+│  DELETE EVENT:                                                              │
+│  User Click Delete → ConfirmDialog → handleDeleteConfirm()                 │
+│       ↓                                        ↓                            │
+│       └────────────────────────────────→ useDeleteEvent() mutation        │
+│                                                    ↓                        │
+│                                          PocketBase.delete(id)             │
+│                                                    ↓                        │
+│                                          invalidate list query              │
+│                                                                              │
+│  BULK IMPORT:                                                               │
+│  Upload CSV → parseEventsCSV() → EventPreview (show validation)             │
+│       ↓                                        ↓                            │
+│       └─────────────────────────────────────────┘                          │
+│                    ↓                                                         │
+│  Select Events → useBulkImportEvents.mutate()                              │
+│       ↓                                                                      │
+│  Create multiple records via PocketBase API                                │
+│       ↓                                                                      │
+│  Invalidate queries, redirect to /events                                   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  TESTING PYRAMID                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│                          E2E Tests                                          │
+│              ┌──────────────────────────────────┐                          │
+│              │ • CRUD operations via UI          │                          │
+│              │ • EventsPage POM                  │                          │
+│              │ • Form filling & submission       │                          │
+│              │ • Database verification           │                          │
+│              │ • Tests: create, edit, delete     │                          │
+│              └──────────────────────────────────┘                          │
+│                                                                              │
+│                    Unit / Integration Tests                                │
+│              ┌──────────────────────────────────┐                          │
+│              │ • EventCard rendering             │                          │
+│              │ • useEventStats calculations      │                          │
+│              │ • Mocked hooks                    │                          │
+│              │ • Callback verification           │                          │
+│              └──────────────────────────────────┘                          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  KEY ALGORITHMS                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Upcoming Events Filter (EventsHome.getUpcomingEvents):                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │ For each event:                                                     │  │
+│  │   if recurring_yearly:                                              │  │
+│  │     nextOccurrence = new Date(now.year, event.month, event.day)    │  │
+│  │     if nextOccurrence < now:                                        │  │
+│  │       nextOccurrence = new Date(now.year+1, event.month, day)      │  │
+│  │     if nextOccurrence in [now, now+30days]:                         │  │
+│  │       include in upcoming                                            │  │
+│  │   else (non-recurring):                                             │  │
+│  │     if event_date in [now, now+30days]:                             │  │
+│  │       include in upcoming                                            │  │
+│  │                                                                      │  │
+│  │ Sort by date ascending                                              │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  Event Stats Calculation (useEventStats):                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │ totalEvents = all events count                                      │  │
+│  │ upcomingBirthdays = count(upcoming events where type='birthday')    │  │
+│  │ upcomingAnniversaries = count(upcoming events where type='ann')     │  │
+│  │                                                                      │  │
+│  │ Re-calculates whenever events array changes (useMemo)               │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  CSV Parsing Edge Cases:                                                   │
+│  • Quoted values: "John, Jr." treated as single field                      │
+│  • Escaped quotes: 'Say "hello"' → Say "hello"                            │
+│  • Date validation: strict YYYY-MM-DD format                               │
+│  • Boolean variants: true/false/yes/no/1/0 all accepted                   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ROUTING & NAVIGATION                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Routes:                          Module Config:                            │
+│  ├─ /events               →  EventsHome          ├─ id: 'events'           │
+│  └─ /events/import        →  EventsBulkImport    ├─ name: 'Events'        │
+│                                                   ├─ icon: Calendar        │
+│  Navigation:                                      ├─ navOrder: 3           │
+│  ├─ Main: Calendar icon in sidebar                └─ enabled: true        │
+│  ├─ Action: "Import" button in EventsHome                                  │
+│  └─ Bulk: "Back to Events" button in BulkImport                           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                     TRANSFORMATION FOR PEOPLE MODULE                        ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+Keep (Architecture):           Change (Data & Logic):
+├─ Module structure            ├─ Data model (remove birthday/anniversary types)
+├─ CRUD hooks pattern          ├─ Remove recurring_yearly
+├─ Component organization      ├─ Remove notification_preferences
+├─ E2E test setup             ├─ Change statistics (different metrics)
+├─ POM approach               ├─ Update form fields
+├─ Query key structure        ├─ Different validation rules
+├─ Error handling patterns    ├─ CSV import schema
+├─ Modal/confirmation pattern ├─ Test data & fixtures
+└─ Bulk import framework      └─ Page object methods (if bulk import used)

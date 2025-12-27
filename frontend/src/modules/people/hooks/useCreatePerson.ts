@@ -30,18 +30,26 @@ export function useCreatePerson() {
           created_by: currentUser?.id,
         });
 
+        // Build address data from flat fields
+        const hasAddressData = data.address || data.wifi_network;
+        const addressData = hasAddressData ? {
+          line1: data.address || '',
+          wifi_network: data.wifi_network,
+          wifi_password: data.wifi_password,
+        } : undefined;
+
         // Handle shared data
         if (data.partner_id) {
           // Create shared data with partner
           await setPartner(personRecord.id, data.partner_id, {
-            address: data.address,
+            address: addressData,
             anniversary: data.anniversary,
           });
-        } else if (data.address || data.anniversary) {
+        } else if (addressData || data.anniversary) {
           // Create shared data for individual person
           await createSharedData({
             personId: personRecord.id,
-            address: data.address,
+            address: addressData,
             anniversary: data.anniversary,
           });
         }

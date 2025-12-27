@@ -2,16 +2,12 @@
  * People Bulk Import Component
  */
 
-import { BulkImportContainer, useBulkImport } from '@/shared/bulk-import';
-import { Collections } from '@/core/api/pocketbase';
-import { queryKeys } from '@/core/api/queryClient';
+import { BulkImportContainer } from '@/shared/bulk-import';
 import { peopleImportSchema } from './schema';
+import { useBulkImportPeople } from '../hooks/useBulkImportPeople';
 
 export function PeopleBulkImport() {
-  const bulkImport = useBulkImport({
-    collection: Collections.PEOPLE,
-    queryKey: queryKeys.module('people').list(),
-  });
+  const bulkImport = useBulkImportPeople();
 
   return (
     <BulkImportContainer
