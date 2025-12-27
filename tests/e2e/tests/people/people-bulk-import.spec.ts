@@ -29,8 +29,10 @@ test.describe('People Bulk Import', () => {
         await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
         await expect(authenticatedPage.getByText('3', { exact: true }).first()).toBeVisible();
 
-        // Click Select All button
-        await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
+        // Items are auto-selected on upload, so we can import directly
+        // Wait for the import button to be enabled with the correct count
+        await expect(authenticatedPage.getByTestId('import-button')).toBeEnabled({ timeout: 5000 });
+        await expect(authenticatedPage.getByTestId('import-button')).toContainText('Import 3 People(s)');
 
         // Click the import button (which shows selected count)
         await authenticatedPage.getByTestId('import-button').click();
@@ -53,8 +55,8 @@ test.describe('People Bulk Import', () => {
         // Wait for stats to appear
         await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
 
-        // Click Select All and Import
-        await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
+        // Items are auto-selected on upload, import directly
+        await expect(authenticatedPage.getByTestId('import-button')).toBeEnabled({ timeout: 5000 });
         await authenticatedPage.getByTestId('import-button').click();
 
         // Wait for redirect
@@ -89,8 +91,8 @@ test.describe('People Bulk Import', () => {
         // Wait for stats to appear
         await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
 
-        // Click Select All and Import
-        await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
+        // Items are auto-selected on upload, import directly
+        await expect(authenticatedPage.getByTestId('import-button')).toBeEnabled({ timeout: 5000 });
         await authenticatedPage.getByTestId('import-button').click();
 
         // Wait for redirect
@@ -126,8 +128,8 @@ test.describe('People Bulk Import', () => {
         // Wait for stats to appear
         await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
 
-        // Click Select All and Import
-        await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
+        // Items are auto-selected on upload, import directly
+        await expect(authenticatedPage.getByTestId('import-button')).toBeEnabled({ timeout: 5000 });
         await authenticatedPage.getByTestId('import-button').click();
 
         // Wait for redirect
@@ -157,8 +159,8 @@ test.describe('People Bulk Import', () => {
         await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
         await expect(authenticatedPage.getByText('Invalid People', { exact: true })).toBeVisible();
 
-        // Click Select All and Import (only valid will be selected)
-        await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
+        // Items are auto-selected on upload (only valid will be selected)
+        await expect(authenticatedPage.getByTestId('import-button')).toBeEnabled({ timeout: 5000 });
         await authenticatedPage.getByTestId('import-button').click();
 
         // Wait for redirect
