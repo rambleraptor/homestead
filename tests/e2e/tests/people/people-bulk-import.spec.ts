@@ -25,7 +25,7 @@ test.describe('People Bulk Import', () => {
         // Upload CSV with basic data
         await peoplePage.uploadCSVContent(testBulkImportCSV.basicImport);
 
-        // Wait for stats to appear and verify count
+        // Wait for stats to appear and verify count (UI shows "Valid People" from moduleName)
         await expect(authenticatedPage.getByText('Valid People')).toBeVisible({ timeout: 10000 });
         await expect(authenticatedPage.getByText('3', { exact: true }).first()).toBeVisible();
 

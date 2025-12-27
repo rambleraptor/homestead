@@ -4,6 +4,7 @@ import { queryKeys } from '@/core/api/queryClient';
 import type { PersonFormData, NotificationPreference } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
 import { logger } from '@/core/utils/logger';
+import type { ParsedItem, BulkImportResult } from '@/shared/bulk-import/types';
 
 interface PersonRecord {
   id: string;
@@ -20,37 +21,82 @@ interface CreatedPersonInfo {
   partnerName?: string;
 }
 
+/**
+ * Custom bulk import hook for people that handles:
+ * - Creating person records
+ * - Creating shared_data with address and anniversary
+ * - Establishing partner relationships by name matching
+ */
 export function useBulkImportPeople() {
   const queryClient = useQueryClient();
   const currentUser = getCurrentUser();
 
   return useMutation({
-    mutationFn: async (people: PersonFormData[]) => {
+    mutationFn: async (items: ParsedItem<PersonFormData>[]): Promise<BulkImportResult> => {
+      const results: BulkImportResult = {
+        successful: 0,
+        failed: 0,
+        errors: [],
+      };
+
+      // Filter to only valid items
+      const validItems = items.filter(item => item.isValid);
+
       // First pass: Create all people and their shared data (without partner relationships)
       const createdPeople: CreatedPersonInfo[] = [];
 
-      for (const personData of people) {
-        // Create person record (without address/anniversary - those go in shared_data)
-        const personRecord = await getCollection<PersonRecord>(Collections.PEOPLE).create({
-          name: personData.name,
-          birthday: personData.birthday,
-          notification_preferences: personData.notification_preferences,
-          created_by: currentUser?.id,
-        });
+      for (const item of validItems) {
+        const personData = item.data;
 
-        // Create shared data if address or anniversary provided (without partner for now)
-        if (personData.address || personData.anniversary) {
-          await createSharedData({
-            personId: personRecord.id,
-            address: personData.address,
-            anniversary: personData.anniversary,
+        try {
+          // Create person record (without address/anniversary - those go in shared_data)
+          const personRecord = await getCollection<PersonRecord>(Collections.PEOPLE).create({
+            name: personData.name,
+            birthday: personData.birthday,
+            notification_preferences: personData.notification_preferences ?? ['day_of'],
+            created_by: currentUser?.id,
+          });
+
+          // Build address object from flat fields if wifi_network or address is present
+          // Address can be a string (from CSV) or an object (from form)
+          const addressString = typeof personData.address === 'string'
+            ? personData.address
+            : personData.address?.line1 || '';
+          const wifiNetwork = personData.wifi_network ||
+            (typeof personData.address === 'object' ? personData.address?.wifi_network : undefined);
+          const wifiPassword = personData.wifi_password ||
+            (typeof personData.address === 'object' ? personData.address?.wifi_password : undefined);
+
+          const hasAddressData = addressString || wifiNetwork;
+          const addressData = hasAddressData ? {
+            line1: addressString,
+            wifi_network: wifiNetwork,
+            wifi_password: wifiPassword,
+          } : undefined;
+
+          // Create shared data if address or anniversary provided (without partner for now)
+          if (addressData || personData.anniversary) {
+            await createSharedData({
+              personId: personRecord.id,
+              address: addressData,
+              anniversary: personData.anniversary,
+            });
+          }
+
+          createdPeople.push({
+            record: personRecord,
+            partnerName: personData.partner_name,
+          });
+
+          results.successful++;
+        } catch (error) {
+          results.failed++;
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          results.errors.push({
+            rowNumber: item.rowNumber,
+            error: errorMessage,
           });
         }
-
-        createdPeople.push({
-          record: personRecord,
-          partnerName: personData.partner_name,
-        });
       }
 
       // Second pass: Resolve partner relationships by name
@@ -62,12 +108,16 @@ export function useBulkImportPeople() {
       }
 
       // Also fetch existing people from the database for matching
-      const existingPeople = await getCollection<PersonRecord>(Collections.PEOPLE).getFullList();
-      for (const person of existingPeople) {
-        // Only add if not already in the map (newly created people take precedence)
-        if (!nameToIdMap.has(person.name.toLowerCase())) {
-          nameToIdMap.set(person.name.toLowerCase(), person.id);
+      try {
+        const existingPeople = await getCollection<PersonRecord>(Collections.PEOPLE).getFullList();
+        for (const person of existingPeople) {
+          // Only add if not already in the map (newly created people take precedence)
+          if (!nameToIdMap.has(person.name.toLowerCase())) {
+            nameToIdMap.set(person.name.toLowerCase(), person.id);
+          }
         }
+      } catch (error) {
+        logger.warn('Failed to fetch existing people for partner matching', { error });
       }
 
       // Now resolve partner relationships
@@ -108,7 +158,11 @@ export function useBulkImportPeople() {
         }
       }
 
-      return createdPeople.map(p => p.record);
+      if (results.failed > 0) {
+        logger.error('Bulk import errors', { errors: results.errors });
+      }
+
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
