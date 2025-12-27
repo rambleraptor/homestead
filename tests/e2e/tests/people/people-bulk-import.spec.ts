@@ -26,7 +26,7 @@ test.describe('People Bulk Import', () => {
         await peoplePage.uploadCSVContent(testBulkImportCSV.basicImport);
 
         // Wait for stats to appear and verify count (UI shows "Valid People" from moduleName)
-        await expect(authenticatedPage.getByText('Valid People')).toBeVisible({ timeout: 10000 });
+        await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
         await expect(authenticatedPage.getByText('3', { exact: true }).first()).toBeVisible();
 
         // Click Select All button
@@ -51,7 +51,7 @@ test.describe('People Bulk Import', () => {
         await peoplePage.uploadCSVContent(testBulkImportCSV.fullDataImport);
 
         // Wait for stats to appear
-        await expect(authenticatedPage.getByText('Valid People')).toBeVisible({ timeout: 10000 });
+        await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
 
         // Click Select All and Import
         await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
@@ -87,7 +87,7 @@ test.describe('People Bulk Import', () => {
         await peoplePage.uploadCSVContent(testBulkImportCSV.partnerImport);
 
         // Wait for stats to appear
-        await expect(authenticatedPage.getByText('Valid People')).toBeVisible({ timeout: 10000 });
+        await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
 
         // Click Select All and Import
         await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
@@ -124,7 +124,7 @@ test.describe('People Bulk Import', () => {
         await peoplePage.uploadCSVContent(testBulkImportCSV.wifiInfoImport);
 
         // Wait for stats to appear
-        await expect(authenticatedPage.getByText('Valid People')).toBeVisible({ timeout: 10000 });
+        await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
 
         // Click Select All and Import
         await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
@@ -154,8 +154,8 @@ test.describe('People Bulk Import', () => {
         await peoplePage.uploadCSVContent(testBulkImportCSV.mixedValidInvalid);
 
         // Wait for stats to appear and verify counts
-        await expect(authenticatedPage.getByText('Valid People')).toBeVisible({ timeout: 10000 });
-        await expect(authenticatedPage.getByText('Invalid People')).toBeVisible();
+        await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
+        await expect(authenticatedPage.getByText('Invalid People', { exact: true })).toBeVisible();
 
         // Click Select All and Import (only valid will be selected)
         await authenticatedPage.getByRole('button', { name: 'Select All' }).click();
@@ -176,8 +176,8 @@ test.describe('People Bulk Import', () => {
         await peoplePage.uploadCSVContent(testBulkImportCSV.validationErrors);
 
         // Wait for stats to appear
-        await expect(authenticatedPage.getByText('Valid People')).toBeVisible({ timeout: 10000 });
-        await expect(authenticatedPage.getByText('Invalid People')).toBeVisible();
+        await expect(authenticatedPage.getByText('Valid People', { exact: true })).toBeVisible({ timeout: 10000 });
+        await expect(authenticatedPage.getByText('Invalid People', { exact: true })).toBeVisible();
 
         // Verify error messages are shown somewhere on the page
         await expect(authenticatedPage.getByText(/name.*required/i)).toBeVisible();
