@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCollection, getCurrentUser, Collections } from '@/core/api/pocketbase';
 import { queryKeys } from '@/core/api/queryClient';
+import { logger } from '@/core/utils/logger';
 import type { PersonFormData, NotificationPreference } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
 
@@ -56,8 +57,7 @@ export function useCreatePerson() {
 
         return personRecord;
       } catch (error) {
-        console.error('Failed to create person:', error);
-        console.error('Person data:', data);
+        logger.error('Failed to create person', error, { personData: data });
         throw error;
       }
     },
@@ -67,7 +67,7 @@ export function useCreatePerson() {
       });
     },
     onError: (error) => {
-      console.error('Mutation error:', error);
+      logger.error('Person creation mutation error', error);
     },
   });
 }

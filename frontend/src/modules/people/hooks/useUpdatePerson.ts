@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCollection, Collections } from '@/core/api/pocketbase';
 import { queryKeys } from '@/core/api/queryClient';
+import { logger } from '@/core/utils/logger';
 import type { PersonFormData, NotificationPreference } from '../types';
 import {
   findSharedDataForPerson,
@@ -30,7 +31,7 @@ export function useUpdatePerson() {
 
   return useMutation({
     mutationFn: async ({ id, data }: UpdatePersonData) => {
-      console.log('[useUpdatePerson] mutationFn called with:', { id, data });
+      logger.debug('Person update mutation called', { id, data });
 
       // Get current shared data to determine old partner
       const oldSharedData = await findSharedDataForPerson(id);
@@ -44,7 +45,7 @@ export function useUpdatePerson() {
         birthday: data.birthday,
         notification_preferences: data.notification_preferences,
       });
-      console.log('[useUpdatePerson] Update successful:', personRecord);
+      logger.debug('Person update successful', { id, personRecord });
 
       // Handle shared data updates
       const newPartnerId = data.partner_id;
@@ -95,7 +96,7 @@ export function useUpdatePerson() {
       return { personRecord, oldPartnerId, newPartnerId };
     },
     onSuccess: (result, variables) => {
-      console.log('[useUpdatePerson] onSuccess called, invalidating queries');
+      logger.debug('Person update successful, invalidating queries');
 
       // Always invalidate the list and the person being updated
       queryClient.invalidateQueries({
@@ -120,7 +121,7 @@ export function useUpdatePerson() {
       }
     },
     onError: (error) => {
-      console.error('[useUpdatePerson] onError called:', error);
+      logger.error('Person update mutation error', error);
     },
   });
 }

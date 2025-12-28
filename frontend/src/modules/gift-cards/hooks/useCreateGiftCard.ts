@@ -7,6 +7,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/core/api/queryClient';
 import { Collections, getCollection, getCurrentUser } from '@/core/api/pocketbase';
+import { logger } from '@/core/utils/logger';
 import type { GiftCard, GiftCardFormData } from '../types';
 import { buildGiftCardFormData, buildGiftCardData } from '../utils/formData';
 
@@ -35,9 +36,10 @@ export function useCreateGiftCard() {
           return await getCollection<GiftCard>(Collections.GIFT_CARDS).create(cardData);
         }
       } catch (error) {
-        console.error('Failed to create gift card:', error);
-        console.error('Gift card data:', data);
-        console.error('Current user:', getCurrentUser());
+        logger.error('Failed to create gift card', error, {
+          giftCardData: data,
+          currentUser: getCurrentUser()
+        });
         throw error;
       }
     },
@@ -53,7 +55,7 @@ export function useCreateGiftCard() {
       });
     },
     onError: (error) => {
-      console.error('Mutation error:', error);
+      logger.error('Gift card creation mutation error', error);
     },
   });
 }

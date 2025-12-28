@@ -24,6 +24,7 @@
  */
 
 import type { HomeModule, ModuleRegistry } from './types';
+import { logger } from '@/core/utils/logger';
 
 // =============================================================================
 // IMPORT YOUR MODULES HERE
@@ -81,18 +82,21 @@ class ModuleRegistryImpl implements ModuleRegistry {
 
     for (const module of this.modules) {
       if (ids.has(module.id)) {
-        console.warn(`Duplicate module ID detected: ${module.id}`);
+        logger.warn(`Duplicate module ID detected: ${module.id}`, { moduleId: module.id });
       }
       ids.add(module.id);
 
       if (paths.has(module.basePath)) {
-        console.warn(`Duplicate base path detected: ${module.basePath}`);
+        logger.warn(`Duplicate base path detected: ${module.basePath}`, { basePath: module.basePath });
       }
       paths.add(module.basePath);
 
       // Validate base path starts with /
       if (!module.basePath.startsWith('/')) {
-        console.warn(`Module "${module.id}" base path should start with /`);
+        logger.warn(`Module "${module.id}" base path should start with /`, {
+          moduleId: module.id,
+          basePath: module.basePath
+        });
       }
     }
   }

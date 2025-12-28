@@ -2,10 +2,12 @@
  * Utility functions for managing web push notifications
  */
 
+import { logger } from './logger';
+
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 if (!VAPID_PUBLIC_KEY) {
-  console.error(
+  logger.error(
     'VITE_VAPID_PUBLIC_KEY is not set. Web push notifications will not work. ' +
       'Please set this environment variable in your .env file. ' +
       'You can generate VAPID keys using: npx web-push generate-vapid-keys'
@@ -115,7 +117,7 @@ export async function getCurrentPushSubscription(): Promise<PushSubscription | n
  */
 export function showNotification(title: string, options?: NotificationOptions): void {
   if (!isNotificationSupported()) {
-    console.warn('Notifications are not supported');
+    logger.warn('Notifications are not supported');
     return;
   }
 

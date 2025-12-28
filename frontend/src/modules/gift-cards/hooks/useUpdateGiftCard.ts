@@ -7,6 +7,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/core/api/queryClient';
 import { Collections, getCollection } from '@/core/api/pocketbase';
+import { logger } from '@/core/utils/logger';
 import type { GiftCard, GiftCardFormData } from '../types';
 import { buildGiftCardFormData, buildGiftCardData } from '../utils/formData';
 
@@ -15,7 +16,7 @@ export function useUpdateGiftCard() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: GiftCardFormData }) => {
-      console.log('[useUpdateGiftCard] mutationFn called with:', { id, data });
+      logger.debug('Gift card update mutation called', { id, data });
       // Automatically archive if amount is 0
       const archived = data.amount === 0;
 
@@ -23,38 +24,38 @@ export function useUpdateGiftCard() {
       const hasFiles = data.front_image || data.back_image;
 
       if (hasFiles) {
-        console.log('[useUpdateGiftCard] Using FormData (has files)');
+        logger.debug('Using FormData for gift card update (has files)', { id });
         const formData = buildGiftCardFormData({
           data,
           archived,
         });
         const result = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(id, formData);
-        console.log('[useUpdateGiftCard] Update successful (FormData):', result);
+        logger.debug('Gift card update successful (FormData)', { id, result });
 
         // VERIFY: Fetch from database to confirm
         const verified = await getCollection<GiftCard>(Collections.GIFT_CARDS).getOne(id);
-        console.log('[useUpdateGiftCard] Database verification (FormData):', verified);
+        logger.debug('Database verification (FormData)', { id, verified });
 
         return result;
       } else {
-        console.log('[useUpdateGiftCard] Using plain object (no files)');
+        logger.debug('Using plain object for gift card update (no files)', { id });
         const updateData = buildGiftCardData({
           data,
           archived,
         });
-        console.log('[useUpdateGiftCard] updateData:', updateData);
+        logger.debug('Gift card update data prepared', { id, updateData });
         const result = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(id, updateData);
-        console.log('[useUpdateGiftCard] Update successful (plain object):', result);
+        logger.debug('Gift card update successful (plain object)', { id, result });
 
         // VERIFY: Fetch from database to confirm
         const verified = await getCollection<GiftCard>(Collections.GIFT_CARDS).getOne(id);
-        console.log('[useUpdateGiftCard] Database verification (plain object):', verified);
+        logger.debug('Database verification (plain object)', { id, verified });
 
         return result;
       }
     },
     onSuccess: async () => {
-      console.log('[useUpdateGiftCard] onSuccess called, refetching queries');
+      logger.debug('Gift card update successful, refetching queries');
       // Invalidate and refetch gift cards queries
       // invalidateQueries marks as stale, refetchQueries triggers immediate refetch
       // Both together ensure data is fresh before mutation resolves
@@ -66,7 +67,7 @@ export function useUpdateGiftCard() {
       });
     },
     onError: (error) => {
-      console.error('[useUpdateGiftCard] onError called:', error);
+      logger.error('Gift card update mutation error', error);
     },
   });
 }

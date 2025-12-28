@@ -8,6 +8,7 @@ import { Modal } from '@/shared/components/Modal';
 import { Spinner } from '@/shared/components/Spinner';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { useToast } from '@/shared/components/ToastProvider';
+import { getNextOccurrence, isUpcoming } from '@/shared/utils/dateUtils';
 import { usePeople } from '../hooks/usePeople';
 import { useCreatePerson } from '../hooks/useCreatePerson';
 import { useUpdatePerson } from '../hooks/useUpdatePerson';
@@ -94,14 +95,10 @@ export function PeopleHome() {
   const getUpcomingPeople = () => {
     if (!people) return [];
 
-    const now = new Date();
-    const oneMonthFromNow = new Date(now);
-    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
-
     return people
       .filter((person) => {
-        const hasUpcomingBirthday = person.birthday && isUpcoming(new Date(person.birthday));
-        const hasUpcomingAnniversary = person.anniversary && isUpcoming(new Date(person.anniversary));
+        const hasUpcomingBirthday = person.birthday && isUpcoming(new Date(person.birthday), 30);
+        const hasUpcomingAnniversary = person.anniversary && isUpcoming(new Date(person.anniversary), 30);
         return hasUpcomingBirthday || hasUpcomingAnniversary;
       })
       .sort((a, b) => {
@@ -110,32 +107,6 @@ export function PeopleHome() {
         return nextA.getTime() - nextB.getTime();
       });
   };
-
-  const isUpcoming = (date: Date) => {
-    const nextOccurrence = getNextOccurrence(date);
-    const now = new Date();
-    const oneMonthFromNow = new Date(now);
-    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
-    return nextOccurrence >= now && nextOccurrence <= oneMonthFromNow;
-  }
-
-  const getNextOccurrence = (date: Date) => {
-    const now = new Date();
-    let nextOccurrence = new Date(
-      now.getFullYear(),
-      date.getMonth(),
-      date.getDate()
-    );
-
-    if (nextOccurrence < now) {
-      nextOccurrence = new Date(
-        now.getFullYear() + 1,
-        date.getMonth(),
-        date.getDate()
-      );
-    }
-    return nextOccurrence;
-  }
 
   const upcomingPeople = getUpcomingPeople();
 
