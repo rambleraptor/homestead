@@ -4,13 +4,14 @@
  * Main gift card management interface
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Gift, Loader2, AlertCircle, Upload } from 'lucide-react';
 import { useMerchantSummaries } from '../hooks/useMerchantSummaries';
 import { useCreateGiftCard } from '../hooks/useCreateGiftCard';
 import { useUpdateGiftCard } from '../hooks/useUpdateGiftCard';
 import { useDeleteGiftCard } from '../hooks/useDeleteGiftCard';
+import { useMerchantLogo } from '../hooks/useMerchantLogo';
 import { MerchantList } from './MerchantList';
 import { MerchantDetail } from './MerchantDetail';
 import { GiftCardForm } from './GiftCardForm';
@@ -27,11 +28,29 @@ export function GiftCardHome() {
   const [editingCard, setEditingCard] = useState<GiftCard | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
+  const fetchedLogosRef = useRef<Set<string>>(new Set());
 
   const { stats, isLoading, isError, error } = useMerchantSummaries();
   const createMutation = useCreateGiftCard();
   const updateMutation = useUpdateGiftCard();
   const deleteMutation = useDeleteGiftCard();
+  const fetchLogoMutation = useMerchantLogo();
+
+  // Auto-fetch logos for merchants that don't have them
+  useEffect(() => {
+    if (stats?.merchants) {
+      stats.merchants.forEach((merchant) => {
+        // Skip if merchant already has a logo, is archived, or we've already tried fetching
+        if (!merchant.logo_url && !merchant.archived && !fetchedLogosRef.current.has(merchant.merchant)) {
+          // Mark as fetched before making the request
+          fetchedLogosRef.current.add(merchant.merchant);
+          // Fetch logo in the background (fire and forget)
+          fetchLogoMutation.mutate(merchant.merchant);
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats?.merchants]);
 
   const handleAddCard = () => {
     setEditingCard(null);

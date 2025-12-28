@@ -64,6 +64,18 @@ export interface TransactionFormData {
 }
 
 /**
+ * Merchant record from PocketBase
+ */
+export interface Merchant {
+  id: string;
+  name: string;
+  domain?: string;
+  logo_url?: string;
+  created: string;
+  updated: string;
+}
+
+/**
  * Merchant summary with total amount
  */
 export interface MerchantSummary {
@@ -72,6 +84,7 @@ export interface MerchantSummary {
   cardCount: number;
   cards: GiftCard[];
   archived?: boolean;
+  logo_url?: string;
 }
 
 /**

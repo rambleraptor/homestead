@@ -42,19 +42,39 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
-            className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+            className={`w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden ${
               isArchived
                 ? 'bg-gray-100'
                 : 'bg-primary-100'
             }`}
           >
-            <Store
-              className={`w-6 h-6 ${
-                isArchived
-                  ? 'text-gray-400'
-                  : 'text-primary-600'
-              }`}
-            />
+            {merchant.logo_url ? (
+              <img
+                src={merchant.logo_url}
+                alt={`${merchant.merchant} logo`}
+                className="w-full h-full object-contain p-1"
+                onError={(e) => {
+                  // Fallback to Store icon if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    const icon = document.createElement('div');
+                    icon.innerHTML = `<svg class="w-6 h-6 ${
+                      isArchived ? 'text-gray-400' : 'text-primary-600'
+                    }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>`;
+                    parent.appendChild(icon.firstElementChild!);
+                  }
+                }}
+              />
+            ) : (
+              <Store
+                className={`w-6 h-6 ${
+                  isArchived
+                    ? 'text-gray-400'
+                    : 'text-primary-600'
+                }`}
+              />
+            )}
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
