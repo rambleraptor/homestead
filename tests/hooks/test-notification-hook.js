@@ -80,9 +80,9 @@ async function runTests() {
     const requiredFunctions = [
       'shouldSendNotification',
       'isSameDay',
-      'formatEventDate',
-      'sendEventNotifications',
-      'checkAndSendEventNotifications',
+      'formatDate',
+      'sendPersonNotifications',
+      'checkAndSendPeopleNotifications',
     ];
 
     const missingFunctions = requiredFunctions.filter(
@@ -96,7 +96,7 @@ async function runTests() {
 
   // Test 5: Contains PocketBase hooks
   allTestsPassed &= runTest('Contains PocketBase hooks', () => {
-    const requiredHooks = ['onAfterBootstrap', 'cronAdd', 'routerAdd'];
+    const requiredHooks = ['onBootstrap', 'cronAdd', 'routerAdd'];
 
     const missingHooks = requiredHooks.filter(
       (hook) => !hookContent.includes(hook)
@@ -172,10 +172,10 @@ async function runTests() {
     }
   });
 
-  // Test 11: Handles recurring events
-  allTestsPassed &= runTest('Handles recurring yearly events', () => {
-    if (!hookContent.includes('recurring_yearly')) {
-      throw new Error('recurring_yearly handling not found');
+  // Test 11: Handles people birthdays and anniversaries
+  allTestsPassed &= runTest('Handles birthdays and anniversaries', () => {
+    if (!hookContent.includes('birthday') || !hookContent.includes('anniversary')) {
+      throw new Error('birthday or anniversary handling not found');
     }
   });
 
@@ -184,8 +184,8 @@ async function runTests() {
     if (!hookContent.includes('notifications')) {
       throw new Error('notifications collection not referenced');
     }
-    if (!hookContent.includes('saveRecord')) {
-      throw new Error('saveRecord not called');
+    if (!hookContent.includes('$app.save(notification)')) {
+      throw new Error('$app.save(notification) not called (using correct PocketBase 0.34.2 API)');
     }
   });
 

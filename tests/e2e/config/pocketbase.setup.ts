@@ -33,6 +33,7 @@ export function getTestDirs() {
     e2eDir,
     pbDataDir: join(e2eDir, 'pb_test_data'),
     migrationsSource: join(getProjectRoot(), 'pb_migrations'),
+    hooksSource: join(getProjectRoot(), 'pb_hooks'),
   };
 }
 
@@ -151,6 +152,17 @@ export async function setupPocketBase(): Promise<void> {
   const fs = await import('fs');
   const migrationsFiles = fs.readdirSync(migrationsDir);
   console.log(`   Found ${migrationsFiles.length} migration files:`, migrationsFiles.filter(f => f.endsWith('.js')).join(', '));
+
+  // Copy hooks directory
+  const hooksSource = join(getProjectRoot(), 'pb_hooks');
+  const hooksDir = join(pbDataDir, 'pb_hooks');
+
+  console.log(`🪝 Copying hooks from ${hooksSource} to ${hooksDir}`);
+  cpSync(hooksSource, hooksDir, { recursive: true });
+
+  // Verify hooks were copied
+  const hooksFiles = fs.readdirSync(hooksDir);
+  console.log(`   Found ${hooksFiles.length} hook files:`, hooksFiles.filter(f => f.endsWith('.pb.js')).join(', '));
 
   // Create admin user FIRST (this initializes the database)
   await createAdminUser();

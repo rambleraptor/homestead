@@ -82,11 +82,12 @@ function formatDate(dateStr) {
 function sendPersonNotifications(person, eventType, eventDate, webpush) {
   try {
     // Get all active notification subscriptions
-    const subscriptions = $app.dao().findRecordsByFilter(
+    const subscriptions = $app.findRecordsByFilter(
       'notification_subscriptions',
       'enabled = true',
       '-created',
-      500
+      500,
+      0
     );
 
     if (subscriptions.length === 0) {
@@ -128,9 +129,8 @@ function sendPersonNotifications(person, eventType, eventDate, webpush) {
             sentCount++;
 
             // Create notification record
-            const notification = new Record(
-              $app.dao().findCollectionByNameOrId('notifications')
-            );
+            const notificationsCollection = $app.findCollectionByNameOrId('notifications');
+            const notification = new Record(notificationsCollection);
             notification.set('user_id', sub.get('user_id'));
             notification.set('person_id', person.getId());
             notification.set('title', title);
@@ -138,7 +138,7 @@ function sendPersonNotifications(person, eventType, eventDate, webpush) {
             notification.set('read', false);
             notification.set('sent_at', new Date().toISOString());
 
-            $app.dao().saveRecord(notification);
+            $app.save(notification);
           })
           .catch((error) => {
             // Handle subscription errors
@@ -146,7 +146,7 @@ function sendPersonNotifications(person, eventType, eventDate, webpush) {
               // Subscription expired or invalid
               expiredCount++;
               try {
-                $app.dao().deleteRecord(sub);
+                $app.delete(sub);
                 console.log(`Deleted expired subscription for user ${sub.get('user_id')}`);
               } catch (deleteError) {
                 console.error('Error deleting expired subscription:', deleteError);
@@ -186,11 +186,12 @@ function checkAndSendPeopleNotifications(webpush) {
     console.log(`[${now.toISOString()}] Checking for people needing notifications...`);
 
     // Get all people
-    const people = $app.dao().findRecordsByFilter(
+    const people = $app.findRecordsByFilter(
       'people',
-      '', 
+      '',
       '-created',
-      1000
+      1000,
+      0
     );
 
     if (people.length === 0) {
@@ -247,7 +248,7 @@ function checkAndSendPeopleNotifications(webpush) {
 /**
  * Initialize the notification system
  */
-onAfterBootstrap((e) => {
+onBootstrap((e) => {
   try {
     // Check for required environment variables
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;

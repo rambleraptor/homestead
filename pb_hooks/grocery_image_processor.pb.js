@@ -145,7 +145,7 @@ async function categorizeGroceryItems(items, genAI) {
 /**
  * Initialize Gemini API on bootstrap
  */
-onAfterBootstrap((e) => {
+onBootstrap((e) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
 

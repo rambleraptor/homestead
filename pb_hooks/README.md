@@ -110,10 +110,10 @@ When PocketBase starts, you should see:
 
 1. Create a new `.pb.js` file in this directory
 2. Use PocketBase hook APIs:
-   - `onModelBeforeCreate`, `onModelAfterCreate`
-   - `onModelBeforeUpdate`, `onModelAfterUpdate`
-   - `onModelBeforeDelete`, `onModelAfterDelete`
-   - `onAfterBootstrap` - runs when PocketBase starts
+   - `onRecordCreate`, `onRecordAfterCreateSuccess`
+   - `onRecordUpdate`, `onRecordAfterUpdateSuccess`
+   - `onRecordDelete`, `onRecordAfterDeleteSuccess`
+   - `onBootstrap` - runs when PocketBase starts
    - `cronAdd` - schedule recurring tasks
    - `routerAdd` - add custom endpoints
 
@@ -124,7 +124,7 @@ When PocketBase starts, you should see:
 ```javascript
 /// <reference path="../pb_data/types.d.ts" />
 
-onAfterBootstrap((e) => {
+onBootstrap((e) => {
   console.log('My hook loaded!');
 
   // Add cron job
@@ -138,9 +138,9 @@ onAfterBootstrap((e) => {
   });
 });
 
-// Listen to model events
-onModelAfterCreate((e) => {
-  console.log('Record created:', e.model.tableName());
+// Listen to record events
+onRecordAfterCreateSuccess((e) => {
+  console.log('Record created:', e.record.tableName());
 }, 'events'); // Optional: filter by collection
 ```
 
