@@ -15,8 +15,6 @@ RestartSec=5s
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
-ReadOnlyPaths=/path/to/homeOS/frontend/dist
 
 # Environment
 Environment="NODE_ENV=production"

@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=homeosuser
 WorkingDirectory=/path/to/homeOS/pocketbase
-ExecStart=/path/to/homeOS/pocketbase/pocketbase serve --http=127.0.0.1:8090
+ExecStart=/path/to/homeOS/pocketbase/pocketbase serve --http=0.0.0.0:8090
 Restart=on-failure
 RestartSec=5s
 
@@ -14,8 +14,6 @@ RestartSec=5s
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/path/to/homeOS/pocketbase
 
 # Environment
 Environment="HOME=/path/to/homeOS/pocketbase"
