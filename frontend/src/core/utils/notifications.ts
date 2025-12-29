@@ -31,27 +31,16 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 /**
- * Check if the browser supports notifications
- */
-export function isNotificationSupported(): boolean {
-  return 'Notification' in window && 'serviceWorker' in navigator;
-}
-
-/**
  * Check if notification permission is granted
  */
 export function isNotificationPermissionGranted(): boolean {
-  return isNotificationSupported() && Notification.permission === 'granted';
+  return Notification.permission === 'granted';
 }
 
 /**
  * Request notification permission from the user
  */
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (!isNotificationSupported()) {
-    throw new Error('Notifications are not supported in this browser');
-  }
-
   const permission = await Notification.requestPermission();
   return permission === 'granted';
 }
@@ -60,10 +49,6 @@ export async function requestNotificationPermission(): Promise<boolean> {
  * Register service worker and subscribe to push notifications
  */
 export async function subscribeToPushNotifications(): Promise<PushSubscription> {
-  if (!isNotificationSupported()) {
-    throw new Error('Notifications are not supported in this browser');
-  }
-
   // Register service worker
   const registration = await navigator.serviceWorker.register('/sw.js');
   await navigator.serviceWorker.ready;
@@ -81,10 +66,6 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription> 
  * Unsubscribe from push notifications
  */
 export async function unsubscribeFromPushNotifications(): Promise<void> {
-  if (!isNotificationSupported()) {
-    return;
-  }
-
   const registration = await navigator.serviceWorker.getRegistration();
   if (!registration) {
     return;
@@ -100,10 +81,6 @@ export async function unsubscribeFromPushNotifications(): Promise<void> {
  * Get the current push subscription
  */
 export async function getCurrentPushSubscription(): Promise<PushSubscription | null> {
-  if (!isNotificationSupported()) {
-    return null;
-  }
-
   const registration = await navigator.serviceWorker.getRegistration();
   if (!registration) {
     return null;
@@ -116,11 +93,6 @@ export async function getCurrentPushSubscription(): Promise<PushSubscription | n
  * Show a notification (fallback for browsers without push support)
  */
 export function showNotification(title: string, options?: NotificationOptions): void {
-  if (!isNotificationSupported()) {
-    logger.warn('Notifications are not supported');
-    return;
-  }
-
   if (Notification.permission === 'granted') {
     new Notification(title, options);
   }
