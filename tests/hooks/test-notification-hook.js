@@ -96,7 +96,7 @@ async function runTests() {
 
   // Test 5: Contains PocketBase hooks
   allTestsPassed &= runTest('Contains PocketBase hooks', () => {
-    const requiredHooks = ['onAfterBootstrap', 'cronAdd', 'routerAdd'];
+    const requiredHooks = ['onBootstrap', 'cronAdd', 'routerAdd'];
 
     const missingHooks = requiredHooks.filter(
       (hook) => !hookContent.includes(hook)

@@ -248,7 +248,7 @@ function checkAndSendPeopleNotifications(webpush) {
 /**
  * Initialize the notification system
  */
-onAfterBootstrap((e) => {
+onBootstrap((e) => {
   try {
     // Check for required environment variables
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
