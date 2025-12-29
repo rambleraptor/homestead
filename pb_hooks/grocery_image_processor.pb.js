@@ -182,7 +182,7 @@ onBootstrap((e) => {
 routerAdd('POST', '/api/groceries/categorize', (c) => {
   try {
     // Verify user authentication
-    const authRecord = c.get('authRecord');
+    const authRecord = c.auth;
     if (!authRecord) {
       return c.json(401, { error: 'Unauthorized - authentication required' });
     }
@@ -253,7 +253,7 @@ routerAdd('POST', '/api/groceries/categorize', (c) => {
       message: 'Error occurred, defaulted to Other',
     });
   }
-});
+}, $apis.requireAuth());
 
 /**
  * API Endpoint: Process Grocery List Image
@@ -267,7 +267,7 @@ routerAdd('POST', '/api/groceries/categorize', (c) => {
 routerAdd('POST', '/api/groceries/process-image', (c) => {
   try {
     // Verify user authentication
-    const authRecord = c.get('authRecord');
+    const authRecord = c.auth;
     if (!authRecord) {
       return c.json(401, { error: 'Unauthorized - authentication required' });
     }
@@ -316,7 +316,7 @@ routerAdd('POST', '/api/groceries/process-image', (c) => {
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    console.log(`Processing grocery image for user ${authRecord.getId()}`);
+    console.log(`Processing grocery image for user ${authRecord.id}`);
 
     // Process the image (async operations)
     const processImage = async () => {
@@ -369,4 +369,4 @@ routerAdd('POST', '/api/groceries/process-image', (c) => {
       message: error.message,
     });
   }
-});
+}, $apis.requireAuth());
