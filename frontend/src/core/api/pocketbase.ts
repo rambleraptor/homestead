@@ -8,7 +8,10 @@
 import PocketBase from 'pocketbase';
 import type { User } from '../auth/types';
 
-const PB_URL = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
+// Use the Next.js proxy by default (/api/pb)
+// This avoids CORS issues and Cloudflare Access blocking
+// The proxy is configured in next.config.ts
+const PB_URL = process.env.NEXT_PUBLIC_POCKETBASE_URL || '/api/pb';
 
 /**
  * Typed PocketBase client with User type
