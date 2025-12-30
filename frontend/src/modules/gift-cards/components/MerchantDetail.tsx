@@ -183,7 +183,7 @@ export function MerchantDetail({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Quick Transaction
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="number"
                     step="0.01"
@@ -193,26 +193,28 @@ export function MerchantDetail({
                       setTransactionAmount((prev) => ({ ...prev, [card.id]: e.target.value }))
                     }
                     placeholder="Amount"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full sm:flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
-                  <button
-                    onClick={() => handleDecrementAmount(card, card.id)}
-                    disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) <= 0}
-                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-                    title="Subtract amount from balance"
-                  >
-                    <Minus className="w-4 h-4" />
-                    Use
-                  </button>
-                  <button
-                    onClick={() => handleSetAmount(card, card.id)}
-                    disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) < 0}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-                    title="Set balance to this amount"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Set
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleDecrementAmount(card, card.id)}
+                      disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) <= 0}
+                      className="flex-1 sm:flex-none px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                      title="Subtract amount from balance"
+                    >
+                      <Minus className="w-4 h-4" />
+                      Use
+                    </button>
+                    <button
+                      onClick={() => handleSetAmount(card, card.id)}
+                      disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) < 0}
+                      className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                      title="Set balance to this amount"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Set
+                    </button>
+                  </div>
                 </div>
               </div>
 
