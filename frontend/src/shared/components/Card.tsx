@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { Card as ShadcnCard, CardContent } from '@/shared/components/ui/card';
 

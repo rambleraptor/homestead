@@ -55,7 +55,7 @@ jobs:
             PR NUMBER: ${{ steps.pr.outputs.number }}
 
             This is a modular HomeOS application built with:
-            - React 19 + TypeScript + Vite
+            - React 19 + TypeScript + Next.js
             - PocketBase backend
             - Module Registry pattern for extensibility
             - Role-Based Access Control (RBAC)
@@ -151,13 +151,13 @@ jobs:
         working-directory: frontend
         run: |
           echo "Build completed successfully"
-          ls -la dist/
+          ls -la .next/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: frontend/dist/
+          name: build
+          path: frontend/.next/
           retention-days: 7
 
   test:

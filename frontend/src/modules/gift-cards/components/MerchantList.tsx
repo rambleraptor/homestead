@@ -6,7 +6,7 @@
  * Displays list of merchants with total amounts
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ChevronRight, Store, ChevronDown, ChevronUp } from 'lucide-react';
 import type { MerchantSummary } from '../types';
 

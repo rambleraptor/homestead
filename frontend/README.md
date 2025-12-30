@@ -1,73 +1,115 @@
-# React + TypeScript + Vite
+# HomeOS Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend application for HomeOS, built with Next.js, React, and TypeScript.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Framework**: Next.js 15
+- **UI Library**: React 19
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: TanStack Query (React Query)
+- **Testing**: Vitest + React Testing Library
+- **Icons**: Lucide React
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+# Install dependencies
+npm install
 
-## Expanding the ESLint configuration
+# Run development server
+npm run dev
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# Build for production
+npm run build
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Start production server
+npm start
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Run tests
+npm test
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Run linter
+npm run lint
+
+# Run type checker
+npm run type-check
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment Variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Copy `.env.example` to `.env` and configure:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+NEXT_PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090
+NEXT_PUBLIC_APP_NAME=HomeOS
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=your_vapid_public_key
 ```
+
+**Note**: Environment variables in Next.js must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser.
+
+## Project Structure
+
+```
+src/
+├── app/              # Next.js App Router pages
+├── core/             # Core infrastructure
+│   ├── auth/         # Authentication
+│   ├── api/          # PocketBase client
+│   ├── layout/       # Layout components
+│   └── router/       # Routing configuration
+├── modules/          # Feature modules
+│   ├── registry.ts   # Module registry
+│   ├── dashboard/    # Dashboard module
+│   ├── gift-cards/   # Gift cards module
+│   └── ...           # Other modules
+├── shared/           # Shared components and utilities
+└── test/             # Test setup and utilities
+```
+
+## Adding a New Module
+
+1. Create module folder in `src/modules/`
+2. Define `module.config.ts` with metadata
+3. Create routes and components
+4. Register in `src/modules/registry.ts`
+
+See the [Module Guide](../docs/MODULE_GUIDE.md) for detailed instructions.
+
+## Testing
+
+This project uses Vitest for unit and integration testing:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+## Code Quality
+
+Before committing, ensure all checks pass:
+
+```bash
+# Run all checks
+cd .. && make ci && make test
+```
+
+This runs:
+- ESLint
+- TypeScript type checking
+- Build verification
+- All tests
+
+## Learn More
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [React Documentation](https://react.dev)
+- [Tailwind CSS](https://tailwindcss.com)
+- [TanStack Query](https://tanstack.com/query)

@@ -137,7 +137,7 @@ sudo tailscale up
 tailscale ip -4
 
 # 3. Update frontend/.env (optional)
-VITE_POCKETBASE_URL=http://YOUR_TAILSCALE_IP:8090
+NEXT_PUBLIC_POCKETBASE_URL=http://YOUR_TAILSCALE_IP:8090
 
 # 4. Rebuild and restart
 ./deployment/build.sh
@@ -153,9 +153,9 @@ http://YOUR_TAILSCALE_IP:3000
 
 Edit `frontend/.env`:
 ```bash
-VITE_POCKETBASE_URL=http://127.0.0.1:8090  # Or Tailscale URL
-VITE_APP_NAME=HomeOS
-VITE_VAPID_PUBLIC_KEY=YOUR_VAPID_PUBLIC_KEY_HERE
+NEXT_PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090  # Or Tailscale URL
+NEXT_PUBLIC_APP_NAME=HomeOS
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=YOUR_VAPID_PUBLIC_KEY_HERE
 ```
 
 Generate VAPID keys:

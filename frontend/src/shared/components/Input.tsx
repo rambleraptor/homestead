@@ -1,3 +1,4 @@
+import React from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { Input as ShadcnInput } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';

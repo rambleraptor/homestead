@@ -6,7 +6,7 @@ A self-hosted, modular web application for managing your home. Built with React,
 
 - **🧩 Modular Architecture** - Add new features by creating self-contained modules
 - **🔐 Authentication** - Secure user authentication with PocketBase
-- **⚡ Fast & Modern** - Built with Vite, React 19, and TypeScript
+- **⚡ Fast & Modern** - Built with Next.js, React 19, and TypeScript
 - **🎨 Beautiful UI** - Tailwind CSS with dark mode support
 - **💾 Self-Hosted** - Your data stays on your server with PocketBase
 - **📱 Responsive** - Works seamlessly on desktop and mobile devices
@@ -33,10 +33,10 @@ Every feature is a **module** with its own:
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | **Frontend** | React 19 + TypeScript | Type-safe UI components |
-| **Build Tool** | Vite | Lightning-fast development |
+| **Framework** | Next.js 15 | Production-ready React framework |
 | **Styling** | Tailwind CSS | Utility-first styling |
 | **State** | TanStack Query | Async state & caching |
-| **Routing** | React Router v7 | Client-side routing |
+| **Routing** | Next.js App Router | Server & client routing |
 | **Backend** | PocketBase | SQLite database + Auth + API |
 | **Icons** | Lucide React | Beautiful icons |
 
@@ -106,7 +106,7 @@ Edit `.env` if needed (default PocketBase URL is already set).
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:3000` in your browser.
 
 7. **Create your first user**
 

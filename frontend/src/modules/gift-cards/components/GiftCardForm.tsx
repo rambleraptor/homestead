@@ -6,7 +6,7 @@
  * Form for creating and editing gift cards
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Save, X, Upload, Trash2 } from 'lucide-react';
 import type { GiftCard, GiftCardFormData } from '../types';
 import { pb } from '@/core/api/pocketbase';

@@ -1,3 +1,4 @@
+import React from 'react';
 import { forwardRef } from 'react';
 import type { ComponentPropsWithoutRef, ElementRef } from 'react';
 import { Checkbox as ShadcnCheckbox } from '@/shared/components/ui/checkbox';

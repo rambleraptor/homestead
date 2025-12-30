@@ -75,12 +75,11 @@ homeOS/
 │   │   ├── App.tsx                           # Root App component
 │   │   ├── main.tsx                          # Entry point
 │   │   ├── index.css                         # Global styles + Tailwind
-│   │   └── vite-env.d.ts
-│   ├── index.html
+│   │   └── next-env.d.ts
 │   ├── package.json
 │   ├── tsconfig.json
-│   ├── tsconfig.node.json
-│   ├── vite.config.ts
+│   ├── next.config.ts
+│   ├── vitest.config.ts
 │   ├── tailwind.config.js
 │   ├── postcss.config.js
 │   └── .env.example

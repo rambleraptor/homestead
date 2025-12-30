@@ -34,7 +34,7 @@ export default defineConfig({
   /* Shared settings for all projects */
   use: {
     /* Base URL for navigation */
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
@@ -72,14 +72,16 @@ export default defineConfig({
     {
       command: 'npm run dev',
       cwd: '../../frontend',
-      url: 'http://localhost:5173',
+      url: 'http://localhost:3000',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
       stdout: 'pipe',
       stderr: 'pipe',
       env: {
         // Point frontend to test PocketBase instance on port 8092
-        VITE_POCKETBASE_URL: 'http://127.0.0.1:8092',
+        NEXT_PUBLIC_POCKETBASE_URL: 'http://127.0.0.1:8092',
+        // Disable Next.js dev overlay to prevent it from blocking test interactions
+        __NEXT_DISABLE_OVERLAY: '1',
       },
     },
   ],
