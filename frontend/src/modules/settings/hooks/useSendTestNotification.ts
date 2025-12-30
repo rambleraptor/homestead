@@ -10,12 +10,19 @@ interface TestNotificationResponse {
 export function useSendTestNotification() {
   return useMutation({
     mutationFn: async () => {
-      const response = await pb.send<TestNotificationResponse>(
-        '/api/send-test-notification',
-        {
-          method: 'POST',
-        }
-      );
+      const token = pb.authStore.token;
+      const res = await fetch('/api/notifications/send-test', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      const response = await res.json() as TestNotificationResponse;
       return response;
     },
   });

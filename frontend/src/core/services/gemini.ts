@@ -30,16 +30,21 @@ export type GroceryCategory = typeof GROCERY_CATEGORIES[number];
  */
 export async function categorizeGroceryItem(itemName: string): Promise<GroceryCategory> {
   try {
-    const response = await pb.send<{ name: string; category: GroceryCategory; message?: string }>(
-      '/api/groceries/categorize',
-      {
-        method: 'POST',
-        body: JSON.stringify({ name: itemName }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const token = pb.authStore.token;
+    const res = await fetch('/api/groceries/categorize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: itemName }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    const response = await res.json() as { name: string; category: GroceryCategory; message?: string };
 
     if (response.message) {
       logger.warn(response.message);
@@ -116,19 +121,27 @@ export async function extractGroceryItemsFromImage(
     const base64Image = await fileToBase64(imageFile);
 
     // Send to backend API
-    const response = await pb.send<{
-      items: ExtractedGroceryItem[];
-      message: string;
-    }>('/api/groceries/process-image', {
+    const token = pb.authStore.token;
+    const res = await fetch('/api/groceries/process-image', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify({
         image: base64Image,
         mimeType: imageFile.type,
       }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
     });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    const response = await res.json() as {
+      items: ExtractedGroceryItem[];
+      message: string;
+    };
 
     logger.info(response.message);
     return response.items;
