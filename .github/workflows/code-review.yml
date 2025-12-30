@@ -151,13 +151,13 @@ jobs:
         working-directory: frontend
         run: |
           echo "Build completed successfully"
-          ls -la dist/
+          ls -la .next/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: frontend/dist/
+          name: build
+          path: frontend/.next/
           retention-days: 7
 
   test:
