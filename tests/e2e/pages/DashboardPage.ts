@@ -20,9 +20,10 @@ export class DashboardPage {
   }
 
   async logout() {
-    // Look for logout button or user menu
-    const logoutButton = this.page.getByRole('button', { name: /logout|sign out/i });
-    await logoutButton.click();
+    // Use data-testid for reliable selection (preferred method)
+    const logoutButton = this.page.getByTestId('logout-button');
+    // Use force: true to bypass Next.js dev overlay that may intercept clicks
+    await logoutButton.click({ force: true });
   }
 
   async navigateToModule(moduleName: string | RegExp) {

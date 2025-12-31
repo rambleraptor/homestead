@@ -105,6 +105,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              data-testid="logout-button"
             >
               <LogOut className="w-5 h-5" />
               <span className="font-medium">Logout</span>
