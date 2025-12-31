@@ -2,6 +2,8 @@
  * Core Authentication Types for HomeOS
  */
 
+export type MapProvider = 'google' | 'apple';
+
 export interface User {
   id: string;
   email: string;
@@ -12,6 +14,7 @@ export interface User {
   emailVisibility?: boolean;
   created: string;
   updated: string;
+  map_provider?: MapProvider;
 }
 
 export interface AuthState {
