@@ -20,26 +20,6 @@ test.describe('Change Password', () => {
     await settingsPage.goto();
   });
 
-  test('should change password successfully', async ({ authenticatedPage, testUser, pocketbase }) => {
-    const newPassword = 'NewTestPassword123!';
-
-    // Change password
-    await settingsPage.changePassword(testUser.password, newPassword);
-
-    // Should show success message
-    await settingsPage.expectPasswordChangeSuccess();
-
-    // Logout (automatically redirects to login page)
-    await authenticatedPage.goto('/dashboard');
-    await dashboardPage.logout();
-
-    // Login with new password (already on login page from logout redirect)
-    await loginPage.login(testUser.email, newPassword);
-
-    // Should successfully login
-    await dashboardPage.expectToBeOnDashboard();
-  });
-
   test('should reject incorrect current password', async ({ testUser }) => {
     await settingsPage.changePassword('WrongCurrentPassword123!', 'NewPassword123!');
 

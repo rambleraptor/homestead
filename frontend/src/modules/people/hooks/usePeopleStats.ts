@@ -9,43 +9,47 @@ export function usePeopleStats() {
     if (!people) return undefined;
 
     const now = new Date();
-    const oneMonthFromNow = new Date(now);
+    // Normalize to start of day for accurate comparison
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const oneMonthFromNow = new Date(startOfToday);
     oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
 
     const upcomingBirthdays = people.filter((person) => {
       if (!person.birthday) return false;
       const eventDate = new Date(person.birthday);
       let nextOccurrence = new Date(
-        now.getFullYear(),
+        startOfToday.getFullYear(),
         eventDate.getMonth(),
         eventDate.getDate()
       );
-      if (nextOccurrence < now) {
+      if (nextOccurrence < startOfToday) {
         nextOccurrence = new Date(
-          now.getFullYear() + 1,
+          startOfToday.getFullYear() + 1,
           eventDate.getMonth(),
           eventDate.getDate()
         );
       }
-      return nextOccurrence >= now && nextOccurrence <= oneMonthFromNow;
+      return nextOccurrence >= startOfToday && nextOccurrence <= oneMonthFromNow;
     });
 
     const upcomingAnniversaries = people.filter((person) => {
       if (!person.anniversary) return false;
       const eventDate = new Date(person.anniversary);
       let nextOccurrence = new Date(
-        now.getFullYear(),
+        startOfToday.getFullYear(),
         eventDate.getMonth(),
         eventDate.getDate()
       );
-      if (nextOccurrence < now) {
+      if (nextOccurrence < startOfToday) {
         nextOccurrence = new Date(
-          now.getFullYear() + 1,
+          startOfToday.getFullYear() + 1,
           eventDate.getMonth(),
           eventDate.getDate()
         );
       }
-      return nextOccurrence >= now && nextOccurrence <= oneMonthFromNow;
+      return nextOccurrence >= startOfToday && nextOccurrence <= oneMonthFromNow;
     });
 
     return {

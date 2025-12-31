@@ -79,16 +79,20 @@ export function isSameDay(date1: string | Date, date2: string | Date): boolean {
  */
 export function getNextOccurrence(date: Date): Date {
   const now = new Date();
+  // Normalize to start of day for accurate comparison
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
   let nextOccurrence = new Date(
-    now.getFullYear(),
+    startOfToday.getFullYear(),
     date.getMonth(),
     date.getDate()
   );
 
   // If the date has already passed this year, use next year
-  if (nextOccurrence < now) {
+  if (nextOccurrence < startOfToday) {
     nextOccurrence = new Date(
-      now.getFullYear() + 1,
+      startOfToday.getFullYear() + 1,
       date.getMonth(),
       date.getDate()
     );
@@ -164,13 +168,17 @@ export function getUpcomingEvents(
 ): Array<{ type: 'Birthday' | 'Anniversary'; date: Date }> {
   const events: Array<{ type: 'Birthday' | 'Anniversary'; date: Date }> = [];
   const now = new Date();
-  const futureDate = new Date(now);
-  futureDate.setDate(now.getDate() + days);
+  // Normalize to start of day for accurate comparison
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const futureDate = new Date(startOfToday);
+  futureDate.setDate(startOfToday.getDate() + days);
 
   if (birthday && birthday.trim() !== '') {
     const birthdayDate = parseDateString(birthday);
     const nextBirthday = getNextOccurrence(birthdayDate);
-    if (nextBirthday >= now && nextBirthday <= futureDate) {
+    if (nextBirthday >= startOfToday && nextBirthday <= futureDate) {
       events.push({ type: 'Birthday', date: nextBirthday });
     }
   }
@@ -178,7 +186,7 @@ export function getUpcomingEvents(
   if (anniversary && anniversary.trim() !== '') {
     const anniversaryDate = parseDateString(anniversary);
     const nextAnniversary = getNextOccurrence(anniversaryDate);
-    if (nextAnniversary >= now && nextAnniversary <= futureDate) {
+    if (nextAnniversary >= startOfToday && nextAnniversary <= futureDate) {
       events.push({ type: 'Anniversary', date: nextAnniversary });
     }
   }
