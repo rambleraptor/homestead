@@ -40,6 +40,13 @@ log() {
 log "${BLUE}🚀 HomeOS Deployment${NC}"
 cd "$PROJECT_ROOT"
 
+# Validate we're in a git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+  log "${RED}❌ Not a git repository${NC}"
+  log "${RED}This script must be run from within the HomeOS git repository${NC}"
+  exit 1
+fi
+
 # Get current commit
 PREVIOUS_COMMIT=$(git rev-parse HEAD)
 log "${BLUE}Current:${NC} $PREVIOUS_COMMIT"
@@ -47,7 +54,21 @@ log "${BLUE}Current:${NC} $PREVIOUS_COMMIT"
 # Check for updates if in auto mode
 if [ "$AUTO_MODE" = true ]; then
   log "${BLUE}🔍 Checking for updates...${NC}"
-  git fetch origin "$BRANCH" 2>&1 | tee -a "$LOG_FILE"
+
+  # Fetch with error handling
+  if ! git fetch origin "$BRANCH" 2>&1 | tee -a "$LOG_FILE"; then
+    log "${RED}❌ Failed to fetch from remote${NC}"
+    log "${YELLOW}Continuing with current version${NC}"
+    exit 0
+  fi
+
+  # Validate branch exists
+  if ! git rev-parse --verify "origin/$BRANCH" > /dev/null 2>&1; then
+    log "${RED}❌ Branch 'origin/$BRANCH' does not exist${NC}"
+    log "${YELLOW}Available remote branches:${NC}"
+    git branch -r | tee -a "$LOG_FILE"
+    exit 1
+  fi
 
   REMOTE_COMMIT=$(git rev-parse origin/$BRANCH)
   log "${BLUE}Remote:${NC} $REMOTE_COMMIT"
@@ -91,13 +112,27 @@ fi
 # Install dependencies if needed
 if [ "$DEPS_CHANGED" = true ]; then
   log "${BLUE}📦 Installing dependencies...${NC}"
-  cd frontend && npm ci 2>&1 | tee -a "$LOG_FILE" && cd ..
+  if ! cd frontend && npm ci 2>&1 | tee -a "$LOG_FILE"; then
+    log "${RED}❌ Failed to install dependencies${NC}"
+    log "${YELLOW}⏮️  Rolling back...${NC}"
+    cd "$PROJECT_ROOT"
+    git reset --hard "$PREVIOUS_COMMIT" 2>&1 | tee -a "$LOG_FILE"
+    exit 1
+  fi
+  cd "$PROJECT_ROOT"
 fi
 
 # Build frontend if needed
 if [ "$FRONTEND_CHANGED" = true ] || [ "$FORCE_BUILD" = true ]; then
   log "${BLUE}🔨 Building frontend...${NC}"
-  cd frontend && npm run build 2>&1 | tee -a "$LOG_FILE" && cd ..
+  if ! cd frontend && npm run build 2>&1 | tee -a "$LOG_FILE"; then
+    log "${RED}❌ Frontend build failed${NC}"
+    log "${YELLOW}⏮️  Rolling back...${NC}"
+    cd "$PROJECT_ROOT"
+    git reset --hard "$PREVIOUS_COMMIT" 2>&1 | tee -a "$LOG_FILE"
+    exit 1
+  fi
+  cd "$PROJECT_ROOT"
 fi
 
 # Stop frontend

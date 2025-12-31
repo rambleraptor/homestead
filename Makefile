@@ -1,4 +1,4 @@
-.PHONY: help install clean lint type-check build test test-migrations test-hooks test-e2e test-all dev start audit format all ci deploy setup-services start-services stop restart status logs
+.PHONY: help install clean lint type-check build test test-migrations test-hooks test-auto-update test-e2e test-all dev start audit format all ci deploy setup-services start-services stop restart status logs
 
 # Default target
 .DEFAULT_GOAL := help
@@ -54,6 +54,10 @@ test-hooks: ## Run PocketBase hook validation tests
 	@echo "Running hook validation tests..."
 	node tests/hooks/test-notification-hook.js
 
+test-auto-update: ## Run auto-update script tests
+	@echo "Running auto-update tests..."
+	@./tests/deployment/test-auto-update.sh
+
 test-e2e: ## Run end-to-end tests with Playwright
 	@echo "Running e2e tests..."
 	cd tests/e2e && npm install && npx playwright install --with-deps chromium && npm test
@@ -62,7 +66,7 @@ test-e2e-ui: ## Run e2e tests in UI mode
 	@echo "Running e2e tests in UI mode..."
 	cd tests/e2e && npm run test:ui
 
-test-all: test test-migrations test-hooks ## Run all tests (frontend + migrations + hooks)
+test-all: test test-migrations test-hooks test-auto-update ## Run all tests (frontend + migrations + hooks + auto-update)
 	@echo "All tests completed!"
 
 audit: ## Run security audit

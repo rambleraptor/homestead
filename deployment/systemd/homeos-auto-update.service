@@ -1,3 +1,11 @@
+# HomeOS Auto-Update Service Template
+#
+# NOTE: This is a TEMPLATE/EXAMPLE file only and is NOT used directly.
+# The actual service file is generated dynamically by setup-auto-update.sh
+# and installed to /etc/systemd/system/homeos-auto-update.service
+#
+# This file shows the structure of the generated service file for reference.
+
 [Unit]
 Description=HomeOS Auto-Update Service
 After=network-online.target
@@ -5,13 +13,13 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=homeosuser
-WorkingDirectory=/path/to/homeOS
-ExecStart=/path/to/homeOS/deployment/deploy.sh --auto
+User=<CURRENT_USER>
+WorkingDirectory=<PROJECT_ROOT>
+ExecStart=<PROJECT_ROOT>/deployment/deploy.sh --auto
 
 # Environment
 Environment="DEPLOY_BRANCH=main"
-Environment="DEPLOY_LOG_FILE=/path/to/homeOS/deployment.log"
+Environment="DEPLOY_LOG_FILE=<PROJECT_ROOT>/deployment.log"
 
 # Security hardening
 NoNewPrivileges=true
