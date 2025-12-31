@@ -4,9 +4,6 @@ const nextConfig: NextConfig = {
   // Enable React strict mode
   reactStrictMode: true,
 
-  // Output standalone build for Docker deployment
-  output: 'standalone',
-
   // Transpile specific packages if needed
   transpilePackages: [],
 
