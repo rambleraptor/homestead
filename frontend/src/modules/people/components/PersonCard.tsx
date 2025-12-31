@@ -4,6 +4,8 @@ import React from 'react';
 import { Cake, Heart, Edit, Trash2, MapPin, Users } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
+import { useAuth } from '@/core/auth/useAuth';
+import { getMapUrl } from '../utils/mapUtils';
 import type { Person } from '../types';
 
 interface PersonCardProps {
@@ -17,6 +19,7 @@ export function PersonCard({
   onEdit,
   onDelete,
 }: PersonCardProps) {
+  const { user } = useAuth();
   const partner = person.partner;
 
   const formatDate = (dateString: string) => {
@@ -46,9 +49,8 @@ export function PersonCard({
   };
 
   const addressString = formatAddress(person.address);
-  const googleMapsUrl = addressString
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressString)}`
-    : '';
+  const mapProvider = user?.map_provider || 'google';
+  const mapsUrl = getMapUrl(addressString, mapProvider);
 
   return (
     <Card>
@@ -88,7 +90,7 @@ export function PersonCard({
                 <div className="flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-blue-500" aria-label="Map pin icon" />
                   <a
-                    href={googleMapsUrl}
+                    href={mapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-blue-500 hover:underline"
