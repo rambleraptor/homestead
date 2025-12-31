@@ -29,12 +29,11 @@ test.describe('Change Password', () => {
     // Should show success message
     await settingsPage.expectPasswordChangeSuccess();
 
-    // Logout
+    // Logout (automatically redirects to login page)
     await authenticatedPage.goto('/dashboard');
     await dashboardPage.logout();
 
-    // Login with new password
-    await loginPage.goto();
+    // Login with new password (already on login page from logout redirect)
     await loginPage.login(testUser.email, newPassword);
 
     // Should successfully login

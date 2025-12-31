@@ -24,6 +24,8 @@ export class DashboardPage {
     const logoutButton = this.page.getByTestId('logout-button');
     // Use force: true to bypass Next.js dev overlay that may intercept clicks
     await logoutButton.click({ force: true });
+    // Wait for logout to redirect to login page
+    await this.page.waitForURL(/\/login/, { timeout: 10000 });
   }
 
   async navigateToModule(moduleName: string | RegExp) {
