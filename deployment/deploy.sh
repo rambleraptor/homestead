@@ -9,6 +9,9 @@ set -e
 #   ./deploy.sh --auto    - Check for updates, deploy if available (for systemd timer)
 #   ./deploy.sh --force   - Force rebuild even if no changes detected
 
+# Ensure Node.js is in PATH (needed for npm commands)
+export PATH="/opt/node22/bin:$PATH"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -136,7 +139,8 @@ fi
 # Install dependencies if needed
 if [ "$DEPS_CHANGED" = true ]; then
   log "${BLUE}📦 Installing dependencies...${NC}"
-  if ! cd frontend && npm ci 2>&1 | tee -a "$LOG_FILE"; then
+  cd frontend
+  if ! npm ci 2>&1 | tee -a "$LOG_FILE"; then
     log "${RED}❌ Failed to install dependencies${NC}"
     log "${YELLOW}⏮️  Rolling back...${NC}"
     cd "$PROJECT_ROOT"
@@ -155,7 +159,8 @@ fi
 # Build frontend if needed
 if [ "$FRONTEND_CHANGED" = true ] || [ "$DEPS_CHANGED" = true ] || [ "$FORCE_BUILD" = true ]; then
   log "${BLUE}🔨 Building frontend...${NC}"
-  if ! cd frontend && npm run build 2>&1 | tee -a "$LOG_FILE"; then
+  cd frontend
+  if ! npm run build 2>&1 | tee -a "$LOG_FILE"; then
     log "${RED}❌ Frontend build failed${NC}"
     log "${YELLOW}⏮️  Rolling back...${NC}"
     cd "$PROJECT_ROOT"

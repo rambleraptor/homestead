@@ -4,6 +4,9 @@ set -e
 # HomeOS Build Script
 # This script builds the frontend application for production
 
+# Ensure Node.js is in PATH
+export PATH="/opt/node22/bin:$PATH"
+
 echo "🏗️  Building HomeOS for production..."
 
 # Navigate to project root
