@@ -15,7 +15,9 @@ describe('PersonCard', () => {
     name: 'John Doe',
     addresses: [{
       id: 'addr-1',
-      address: '123 Main St, Anytown, USA',
+      line1: '123 Main St',
+      city: 'Anytown',
+      state: 'USA',
       created_by: 'user-1',
       created: '2024-01-01T00:00:00Z',
       updated: '2024-01-01T00:00:00Z',

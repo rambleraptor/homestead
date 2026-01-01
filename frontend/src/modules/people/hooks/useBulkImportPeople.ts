@@ -60,7 +60,7 @@ export function useBulkImportPeople() {
           // Build address data from flat fields
           const hasAddressData = personData.address || personData.wifi_network;
           const addresses = hasAddressData ? [{
-            address: personData.address || '',
+            line1: personData.address || '',
             wifi_network: personData.wifi_network,
             wifi_password: personData.wifi_password,
           }] : [];

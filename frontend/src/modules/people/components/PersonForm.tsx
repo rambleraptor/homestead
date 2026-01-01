@@ -42,7 +42,12 @@ export function PersonForm({
   // Convert existing addresses to form data format
   const initialAddresses: AddressFormData[] = initialData?.addresses?.map(addr => ({
     id: addr.id,
-    address: addr.address,
+    line1: addr.line1,
+    line2: addr.line2,
+    city: addr.city,
+    state: addr.state,
+    postal_code: addr.postal_code,
+    country: addr.country,
     wifi_network: addr.wifi_network,
     wifi_password: addr.wifi_password,
   })) || [];

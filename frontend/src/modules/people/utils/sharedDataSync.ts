@@ -21,7 +21,12 @@ async function upsertAddress(
   const addressesCollection = getCollection<Address>(Collections.ADDRESSES);
 
   const addressPayload = {
-    address: addressData.address,
+    line1: addressData.line1,
+    line2: addressData.line2,
+    city: addressData.city,
+    state: addressData.state,
+    postal_code: addressData.postal_code,
+    country: addressData.country,
     wifi_network: addressData.wifi_network,
     wifi_password: addressData.wifi_password,
     shared_data_id: shared_data_id || undefined,
@@ -51,7 +56,7 @@ async function syncAddresses(
 ): Promise<string | undefined> {
   // Filter out empty addresses
   const validAddresses = addresses.filter(
-    addr => addr.address && addr.address.trim() !== ''
+    addr => addr.line1 && addr.line1.trim() !== ''
   );
 
   if (validAddresses.length === 0) {
@@ -108,7 +113,7 @@ export async function createSharedData(data: {
 
   // Filter valid addresses
   const validAddresses = data.addresses?.filter(
-    addr => addr.address && addr.address.trim() !== ''
+    addr => addr.line1 && addr.line1.trim() !== ''
   ) || [];
 
   // Create primary address if any
@@ -226,7 +231,7 @@ export async function setPartner(
     // Neither has shared data - create new
     // Filter valid addresses
     const validAddresses = sharedData?.addresses?.filter(
-      addr => addr.address && addr.address.trim() !== ''
+      addr => addr.line1 && addr.line1.trim() !== ''
     ) || [];
 
     // Create primary address if any

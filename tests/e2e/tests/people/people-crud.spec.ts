@@ -52,7 +52,7 @@ test.describe('People CRUD', () => {
     const sharedData = await getPersonSharedData(userPocketbase, created.id);
     if (sharedData?.address_id) {
       const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id);
-      expect(address.address).toBe('456 New Ave');
+      expect(address.line1).toBe('456 New Ave');
     } else {
       throw new Error('Expected shared data with address_id');
     }

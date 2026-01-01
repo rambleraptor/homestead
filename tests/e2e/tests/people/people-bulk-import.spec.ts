@@ -77,7 +77,7 @@ test.describe('People Bulk Import', () => {
 
         if (sharedData?.address_id) {
             const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id);
-            expect(address.address).toContain('123 Main St');
+            expect(address.line1).toContain('123 Main St');
             expect(address.wifi_network).toBe('HomeNetwork');
         }
     });

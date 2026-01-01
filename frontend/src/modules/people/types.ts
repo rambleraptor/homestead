@@ -5,7 +5,12 @@ export type NotificationPreference = 'day_of' | 'day_before' | 'week_before';
 // Address type
 export interface Address {
   id: string;
-  address: string;
+  line1: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
   wifi_network?: string;
   wifi_password?: string;
   shared_data_id?: string; // Optional link to person_shared_data for additional addresses
@@ -43,7 +48,12 @@ export interface Person {
 // Form data for address input (can be new or existing)
 export interface AddressFormData {
   id?: string; // If editing existing address
-  address: string;
+  line1: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
   wifi_network?: string;
   wifi_password?: string;
 }
