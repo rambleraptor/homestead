@@ -13,7 +13,7 @@ describe('PersonCard', () => {
   const mockPerson: Person = {
     id: '1',
     name: 'John Doe',
-    address: {
+    addresses: [{
       id: 'addr-1',
       line1: '123 Main St',
       city: 'Anytown',
@@ -21,7 +21,7 @@ describe('PersonCard', () => {
       created_by: 'user-1',
       created: '2024-01-01T00:00:00Z',
       updated: '2024-01-01T00:00:00Z',
-    },
+    }],
     birthday: '1990-06-20',
     anniversary: '2015-10-25',
     notification_preferences: ['day_of', 'day_before'],

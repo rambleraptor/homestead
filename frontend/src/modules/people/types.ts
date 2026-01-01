@@ -23,18 +23,18 @@ export interface PersonSharedData {
   id: string;
   person_a: string;
   person_b?: string;
-  address_id?: string;
+  address_id?: string[]; // Array of address IDs (supports multiple addresses)
   anniversary?: string;
   created_by: string;
   created: string;
   updated: string;
 }
 
-// Person - address and anniversary come from shared_data table (abstracted)
+// Person - addresses and anniversary come from shared_data table (abstracted)
 export interface Person {
   id: string;
   name: string;
-  address?: Address;
+  addresses: Address[]; // Array of addresses (can be empty)
   birthday?: string;
   anniversary?: string;
   notification_preferences: NotificationPreference[];
@@ -44,11 +44,22 @@ export interface Person {
   updated: string;
 }
 
-export interface PersonFormData {
-  name: string;
-  address?: string; // Single address field
+// Form data for address input (can be new or existing)
+export interface AddressFormData {
+  id?: string; // If editing existing address
+  line1: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
   wifi_network?: string;
   wifi_password?: string;
+}
+
+export interface PersonFormData {
+  name: string;
+  addresses: AddressFormData[]; // Array of addresses
   birthday?: string;
   anniversary?: string;
   notification_preferences: NotificationPreference[];

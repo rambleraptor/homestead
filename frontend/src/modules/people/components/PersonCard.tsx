@@ -35,8 +35,7 @@ export function PersonCard({
     });
   };
 
-  const formatAddress = (address: typeof person.address): string => {
-    if (!address) return '';
+  const formatAddress = (address: Person['addresses'][0]): string => {
     const parts = [
       address.line1,
       address.line2,
@@ -48,9 +47,7 @@ export function PersonCard({
     return parts.join(', ');
   };
 
-  const addressString = formatAddress(person.address);
   const mapProvider = user?.map_provider || 'google';
-  const mapsUrl = getMapUrl(addressString, mapProvider);
 
   return (
     <Card>
@@ -82,27 +79,36 @@ export function PersonCard({
                 </p>
               </div>
             )}
-            {person.address && (
-              <div className="mt-1">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-blue-500" aria-label="Map pin icon" />
-                  <a
-                    href={mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-500 hover:underline"
-                  >
-                    {addressString}
-                  </a>
-                </div>
-                {person.address.wifi_network && (
-                  <div className="ml-7 mt-1 text-xs text-gray-600">
-                    <span className="font-medium">WiFi:</span> {person.address.wifi_network}
-                    {person.address.wifi_password && (
-                      <span className="ml-2 font-mono">{person.address.wifi_password}</span>
-                    )}
-                  </div>
-                )}
+            {person.addresses && person.addresses.length > 0 && (
+              <div className="mt-1 space-y-2">
+                {person.addresses.map((address, index) => {
+                  const addressString = formatAddress(address);
+                  const mapsUrl = getMapUrl(addressString, mapProvider);
+
+                  return (
+                    <div key={address.id || index}>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-blue-500" aria-label="Map pin icon" />
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-500 hover:underline"
+                        >
+                          {addressString}
+                        </a>
+                      </div>
+                      {address.wifi_network && (
+                        <div className="ml-7 mt-1 text-xs text-gray-600">
+                          <span className="font-medium">WiFi:</span> {address.wifi_network}
+                          {address.wifi_password && (
+                            <span className="ml-2 font-mono">{address.wifi_password}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

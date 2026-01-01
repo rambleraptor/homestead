@@ -7,9 +7,11 @@ import type {
   Person,
   PersonFormData,
   NotificationPreference,
+  AddressFormData,
 } from '../types';
 import { NOTIFICATION_PREFERENCE_OPTIONS } from '../types';
 import { usePeople } from '../hooks/usePeople';
+import { AddressesInput } from './AddressesInput';
 
 interface PersonFormProps {
   initialData?: Person;
@@ -37,11 +39,22 @@ export function PersonForm({
 }: PersonFormProps) {
   const { data: people = [] } = usePeople();
 
+  // Convert existing addresses to form data format
+  const initialAddresses: AddressFormData[] = initialData?.addresses?.map(addr => ({
+    id: addr.id,
+    line1: addr.line1,
+    line2: addr.line2,
+    city: addr.city,
+    state: addr.state,
+    postal_code: addr.postal_code,
+    country: addr.country,
+    wifi_network: addr.wifi_network,
+    wifi_password: addr.wifi_password,
+  })) || [];
+
   const [formData, setFormData] = useState<PersonFormData>({
     name: initialData?.name || '',
-    address: initialData?.address?.line1 || '',
-    wifi_network: initialData?.address?.wifi_network || '',
-    wifi_password: initialData?.address?.wifi_password || '',
+    addresses: initialAddresses,
     birthday: formatDateForInput(initialData?.birthday),
     anniversary: formatDateForInput(initialData?.anniversary),
     notification_preferences: initialData?.notification_preferences || [
@@ -131,58 +144,22 @@ export function PersonForm({
         </p>
       </div>
 
-      {/* Shared fields - shown with indication if partner is selected */}
-      <div className="space-y-4 border-t pt-4">
-        <h3 className="text-sm font-medium text-gray-700">
-          Address {formData.partner_id && '(Shared)'}
-        </h3>
-
-        <div>
-          <label htmlFor="address" className="block text-sm text-gray-700 mb-1">
-            Full Address
-          </label>
-          <Input
-            id="address"
-            type="text"
-            value={formData.address || ''}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setFormData({ ...formData, address: e.target.value })
-            }
-            placeholder="123 Main St, City, State 12345"
-          />
+      {/* Addresses - shown with indication if partner is selected */}
+      <div className="border-t pt-4">
+        <div className="mb-2">
+          <h3 className="text-sm font-medium text-gray-700">
+            Addresses {formData.partner_id && '(Shared with Partner)'}
+          </h3>
+          {formData.partner_id && (
+            <p className="text-sm text-gray-500 mt-1">
+              Partners share addresses. Changes will affect both people.
+            </p>
+          )}
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="wifi_network" className="block text-sm text-gray-700 mb-1">
-              WiFi Network
-            </label>
-            <Input
-              id="wifi_network"
-              type="text"
-              value={formData.wifi_network || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setFormData({ ...formData, wifi_network: e.target.value })
-              }
-              placeholder="Network name"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="wifi_password" className="block text-sm text-gray-700 mb-1">
-              WiFi Password
-            </label>
-            <Input
-              id="wifi_password"
-              type="text"
-              value={formData.wifi_password || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setFormData({ ...formData, wifi_password: e.target.value })
-              }
-              placeholder="Password"
-            />
-          </div>
-        </div>
+        <AddressesInput
+          addresses={formData.addresses}
+          onChange={(addresses) => setFormData({ ...formData, addresses })}
+        />
       </div>
 
       {/* Shared Anniversary */}

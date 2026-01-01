@@ -59,17 +59,17 @@ export function useBulkImportPeople() {
 
           // Build address data from flat fields
           const hasAddressData = personData.address || personData.wifi_network;
-          const addressData = hasAddressData ? {
+          const addresses = hasAddressData ? [{
             line1: personData.address || '',
             wifi_network: personData.wifi_network,
             wifi_password: personData.wifi_password,
-          } : undefined;
+          }] : [];
 
           // Create shared data if address or anniversary provided (without partner for now)
-          if (addressData || personData.anniversary) {
+          if (addresses.length > 0 || personData.anniversary) {
             await createSharedData({
               personId: personRecord.id,
-              address: addressData,
+              addresses: addresses,
               anniversary: personData.anniversary,
             });
           }

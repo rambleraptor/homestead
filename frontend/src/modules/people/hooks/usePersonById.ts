@@ -21,13 +21,16 @@ export function usePersonById(id: string) {
       const record = await getCollection<PersonRecord>(Collections.PEOPLE).getOne(id);
       const sharedData = await findSharedDataForPerson(id);
 
-      // Fetch address if shared data has address_id
-      let address: Address | undefined;
-      if (sharedData?.address_id) {
-        try {
-          address = await getCollection<Address>(Collections.ADDRESSES).getOne(sharedData.address_id);
-        } catch {
-          // Address not found, continue without it
+      // Fetch all addresses if shared data has address_id array
+      const addresses: Address[] = [];
+      if (sharedData?.address_id && Array.isArray(sharedData.address_id)) {
+        for (const addressId of sharedData.address_id) {
+          try {
+            const address = await getCollection<Address>(Collections.ADDRESSES).getOne(addressId);
+            addresses.push(address);
+          } catch {
+            // Address not found, continue without it
+          }
         }
       }
 
@@ -39,7 +42,7 @@ export function usePersonById(id: string) {
           const partnerRecord = await getCollection<PersonRecord>(Collections.PEOPLE).getOne(partnerId);
           partner = {
             ...partnerRecord,
-            address,
+            addresses, // Partners share addresses
             anniversary: sharedData.anniversary,
             partner: undefined,
           };
@@ -48,7 +51,7 @@ export function usePersonById(id: string) {
 
       const person: Person = {
         ...record,
-        address,
+        addresses,
         anniversary: sharedData?.anniversary,
         partner,
       };

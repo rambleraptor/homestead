@@ -73,6 +73,7 @@ export function useUpcomingPeople() {
       // Enrich with anniversary data and calculate upcoming events
       const people: Person[] = allPeopleRecords.map(record => ({
         ...record,
+        addresses: [], // Addresses not needed for upcoming events view
         anniversary: sharedDataMap.get(record.id)?.anniversary,
       }));
 
