@@ -36,15 +36,7 @@ export function PersonCard({
   };
 
   const formatAddress = (address: Person['addresses'][0]): string => {
-    const parts = [
-      address.line1,
-      address.line2,
-      address.city,
-      address.state,
-      address.postal_code,
-      address.country,
-    ].filter(Boolean);
-    return parts.join(', ');
+    return address.address;
   };
 
   const mapProvider = user?.map_provider || 'google';

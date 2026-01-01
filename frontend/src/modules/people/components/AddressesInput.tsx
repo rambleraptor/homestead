@@ -11,12 +11,7 @@ export function AddressesInput({ addresses, onChange }: AddressesInputProps) {
     onChange([
       ...addresses,
       {
-        line1: '',
-        line2: '',
-        city: '',
-        state: '',
-        postal_code: '',
-        country: '',
+        address: '',
         wifi_network: '',
         wifi_password: '',
       },
@@ -79,112 +74,22 @@ export function AddressesInput({ addresses, onChange }: AddressesInputProps) {
                 </button>
               </div>
 
-              {/* Street Address Line 1 */}
+              {/* Address */}
               <div>
                 <label
-                  htmlFor={`address-${index}-line1`}
+                  htmlFor={`address-${index}-address`}
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Street Address <span className="text-red-500">*</span>
+                  Address <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  id={`address-${index}-line1`}
-                  value={address.line1}
-                  onChange={(e) => handleAddressChange(index, 'line1', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="123 Main St"
+                <textarea
+                  id={`address-${index}-address`}
+                  value={address.address}
+                  onChange={(e) => handleAddressChange(index, 'address', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                  placeholder="123 Main St&#10;Apt 4B&#10;San Francisco, CA 94102&#10;United States"
+                  rows={4}
                   required
-                />
-              </div>
-
-              {/* Street Address Line 2 */}
-              <div>
-                <label
-                  htmlFor={`address-${index}-line2`}
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Apt, Suite, Unit (optional)
-                </label>
-                <input
-                  type="text"
-                  id={`address-${index}-line2`}
-                  value={address.line2 || ''}
-                  onChange={(e) => handleAddressChange(index, 'line2', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Apt 4B"
-                />
-              </div>
-
-              {/* City, State, Postal Code */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label
-                    htmlFor={`address-${index}-city`}
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    id={`address-${index}-city`}
-                    value={address.city || ''}
-                    onChange={(e) => handleAddressChange(index, 'city', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="San Francisco"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor={`address-${index}-state`}
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    State/Province
-                  </label>
-                  <input
-                    type="text"
-                    id={`address-${index}-state`}
-                    value={address.state || ''}
-                    onChange={(e) => handleAddressChange(index, 'state', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="CA"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor={`address-${index}-postal-code`}
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    ZIP/Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    id={`address-${index}-postal-code`}
-                    value={address.postal_code || ''}
-                    onChange={(e) => handleAddressChange(index, 'postal_code', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="94102"
-                  />
-                </div>
-              </div>
-
-              {/* Country */}
-              <div>
-                <label
-                  htmlFor={`address-${index}-country`}
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Country
-                </label>
-                <input
-                  type="text"
-                  id={`address-${index}-country`}
-                  value={address.country || ''}
-                  onChange={(e) => handleAddressChange(index, 'country', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="United States"
                 />
               </div>
 

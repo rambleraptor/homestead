@@ -76,7 +76,7 @@ export async function createPerson(
       // Create address if provided
       if (data.address) {
         const address = await pb.collection('addresses').create({
-          line1: data.address,
+          address: data.address,
           created_by: pb.authStore.model?.id,
         });
         addressId = address.id;

@@ -31,7 +31,7 @@ export class PeoplePage {
 
     if (data.address) {
       // Check if there's already an address input visible
-      const firstAddressInput = this.page.locator('#address-0-line1');
+      const firstAddressInput = this.page.locator('#address-0-address');
       const isAddressInputVisible = await firstAddressInput.isVisible({ timeout: 1000 }).catch(() => false);
 
       if (!isAddressInputVisible) {
@@ -42,8 +42,8 @@ export class PeoplePage {
         await this.page.waitForLoadState('networkidle');
       }
 
-      // Fill in the first address line1 field
-      await this.page.locator('#address-0-line1').fill(data.address);
+      // Fill in the first address field
+      await this.page.locator('#address-0-address').fill(data.address);
     }
     if (data.birthday) {
       await this.page.locator('#birthday').fill(data.birthday);
@@ -108,7 +108,7 @@ export class PeoplePage {
     }
     if (newData.address) {
       // Check if there's already an address input visible
-      const firstAddressInput = this.page.locator('#address-0-line1');
+      const firstAddressInput = this.page.locator('#address-0-address');
       const isAddressInputVisible = await firstAddressInput.isVisible({ timeout: 1000 }).catch(() => false);
 
       if (!isAddressInputVisible) {
@@ -119,9 +119,9 @@ export class PeoplePage {
         await this.page.waitForLoadState('networkidle');
       }
 
-      // Clear and fill the first address line1 field
-      await this.page.locator('#address-0-line1').clear();
-      await this.page.locator('#address-0-line1').fill(newData.address);
+      // Clear and fill the first address field
+      await this.page.locator('#address-0-address').clear();
+      await this.page.locator('#address-0-address').fill(newData.address);
     }
     if (newData.birthday) {
       await this.page.locator('#birthday').fill(newData.birthday);
