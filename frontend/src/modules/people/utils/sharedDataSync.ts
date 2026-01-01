@@ -11,64 +11,67 @@ function isValidRecordId(id: string): boolean {
 
 /**
  * Creates or updates a single address.
+ * If shared_data_id is provided, links the address to that shared data.
  */
 async function upsertAddress(
-  addressData: AddressFormData
+  addressData: AddressFormData,
+  shared_data_id?: string
 ): Promise<string> {
   const currentUser = getCurrentUser();
   const addressesCollection = getCollection<Address>(Collections.ADDRESSES);
 
+  const addressPayload = {
+    line1: addressData.line1,
+    line2: addressData.line2,
+    city: addressData.city,
+    state: addressData.state,
+    postal_code: addressData.postal_code,
+    country: addressData.country,
+    wifi_network: addressData.wifi_network,
+    wifi_password: addressData.wifi_password,
+    shared_data_id: shared_data_id || undefined,
+    created_by: currentUser?.id,
+  };
+
   if (addressData.id) {
     // Update existing address
-    await addressesCollection.update(addressData.id, {
-      line1: addressData.line1,
-      line2: addressData.line2,
-      city: addressData.city,
-      state: addressData.state,
-      postal_code: addressData.postal_code,
-      country: addressData.country,
-      wifi_network: addressData.wifi_network,
-      wifi_password: addressData.wifi_password,
-      created_by: currentUser?.id,
-    });
+    await addressesCollection.update(addressData.id, addressPayload);
     return addressData.id;
   } else {
     // Create new address
-    const newAddress = await addressesCollection.create({
-      line1: addressData.line1,
-      line2: addressData.line2,
-      city: addressData.city,
-      state: addressData.state,
-      postal_code: addressData.postal_code,
-      country: addressData.country,
-      wifi_network: addressData.wifi_network,
-      wifi_password: addressData.wifi_password,
-      created_by: currentUser?.id,
-    });
+    const newAddress = await addressesCollection.create(addressPayload);
     return newAddress.id;
   }
 }
 
 /**
- * Upserts multiple addresses and returns their IDs.
- * Filters out empty addresses (no line1).
+ * Synchronizes addresses for shared data.
+ * - First address becomes the primary (address_id on shared data)
+ * - Additional addresses get linked via shared_data_id
+ * Returns the primary address ID or undefined if no addresses.
  */
-async function upsertAddresses(
-  addresses: AddressFormData[]
-): Promise<string[]> {
-  const addressIds: string[] = [];
+async function syncAddresses(
+  addresses: AddressFormData[],
+  sharedDataId: string
+): Promise<string | undefined> {
+  // Filter out empty addresses
+  const validAddresses = addresses.filter(
+    addr => addr.line1 && addr.line1.trim() !== ''
+  );
 
-  for (const addressData of addresses) {
-    // Skip empty addresses
-    if (!addressData.line1 || addressData.line1.trim() === '') {
-      continue;
-    }
-
-    const addressId = await upsertAddress(addressData);
-    addressIds.push(addressId);
+  if (validAddresses.length === 0) {
+    return undefined;
   }
 
-  return addressIds;
+  // 1. Upsert primary address (first one, no shared_data_id)
+  const primaryAddressId = await upsertAddress(validAddresses[0]);
+
+  // 2. Upsert additional addresses with shared_data_id link
+  for (let i = 1; i < validAddresses.length; i++) {
+    await upsertAddress(validAddresses[i], sharedDataId);
+  }
+
+  return primaryAddressId;
 }
 
 /**
@@ -108,16 +111,32 @@ export async function createSharedData(data: {
   const currentUser = getCurrentUser();
   const sharedDataCollection = getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA);
 
-  // Create or update addresses if provided
-  const addressIds = data.addresses ? await upsertAddresses(data.addresses) : [];
+  // Filter valid addresses
+  const validAddresses = data.addresses?.filter(
+    addr => addr.line1 && addr.line1.trim() !== ''
+  ) || [];
 
-  return await sharedDataCollection.create({
+  // Create primary address if any
+  let primaryAddressId: string | undefined;
+  if (validAddresses.length > 0) {
+    primaryAddressId = await upsertAddress(validAddresses[0]);
+  }
+
+  // Create shared data with primary address
+  const sharedData = await sharedDataCollection.create({
     person_a: data.personId,
     person_b: undefined,
-    address_id: addressIds.length > 0 ? addressIds : undefined,
+    address_id: primaryAddressId,
     anniversary: data.anniversary,
     created_by: currentUser?.id,
   });
+
+  // Create additional addresses with shared_data_id link
+  for (let i = 1; i < validAddresses.length; i++) {
+    await upsertAddress(validAddresses[i], sharedData.id);
+  }
+
+  return sharedData;
 }
 
 /**
@@ -132,11 +151,13 @@ export async function updateSharedData(
 ): Promise<PersonSharedData> {
   const sharedDataCollection = getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA);
 
-  // Update or create addresses if provided
-  const addressIds = data.addresses ? await upsertAddresses(data.addresses) : undefined;
+  // Sync addresses if provided
+  const primaryAddressId = data.addresses
+    ? await syncAddresses(data.addresses, sharedDataId)
+    : undefined;
 
   return await sharedDataCollection.update(sharedDataId, {
-    address_id: addressIds,
+    address_id: primaryAddressId,
     anniversary: data.anniversary,
   });
 }
@@ -163,45 +184,42 @@ export async function setPartner(
 
   if (existingSharedData && !partnerSharedData) {
     // Person has shared data, partner doesn't - add partner to person's shared data
-    // Use provided addresses, or keep existing ones
-    const addressIds = sharedData?.addresses
-      ? await upsertAddresses(sharedData.addresses)
+    // Sync addresses if provided, otherwise keep existing
+    const primaryAddressId = sharedData?.addresses
+      ? await syncAddresses(sharedData.addresses, existingSharedData.id)
       : existingSharedData.address_id;
 
     return await sharedDataCollection.update(existingSharedData.id, {
       person_b: partnerId,
-      address_id: addressIds,
+      address_id: primaryAddressId,
       anniversary: sharedData?.anniversary || existingSharedData.anniversary,
     });
   } else if (!existingSharedData && partnerSharedData) {
     // Partner has shared data, person doesn't - add person to partner's shared data
-    const addressIds = sharedData?.addresses
-      ? await upsertAddresses(sharedData.addresses)
+    const primaryAddressId = sharedData?.addresses
+      ? await syncAddresses(sharedData.addresses, partnerSharedData.id)
       : partnerSharedData.address_id;
 
     return await sharedDataCollection.update(partnerSharedData.id, {
       person_b: personId,
-      address_id: addressIds,
+      address_id: primaryAddressId,
       anniversary: sharedData?.anniversary || partnerSharedData.anniversary,
     });
   } else if (existingSharedData && partnerSharedData) {
     // Both have shared data - merge into one (keep person's, delete partner's)
-    // Merge address arrays: prefer provided, then combine existing and partner's (deduped)
-    let mergedAddressIds: string[] | undefined;
+    let primaryAddressId: string | undefined;
+
     if (sharedData?.addresses) {
-      mergedAddressIds = await upsertAddresses(sharedData.addresses);
+      // Use provided addresses
+      primaryAddressId = await syncAddresses(sharedData.addresses, existingSharedData.id);
     } else {
-      // Combine both address arrays (remove duplicates)
-      const combinedIds = [
-        ...(existingSharedData.address_id || []),
-        ...(partnerSharedData.address_id || [])
-      ];
-      mergedAddressIds = Array.from(new Set(combinedIds));
+      // Keep existing primary address (no merge needed with new approach)
+      primaryAddressId = existingSharedData.address_id;
     }
 
     const mergedData = await sharedDataCollection.update(existingSharedData.id, {
       person_b: partnerId,
-      address_id: mergedAddressIds,
+      address_id: primaryAddressId,
       anniversary: sharedData?.anniversary || existingSharedData.anniversary || partnerSharedData.anniversary,
     });
 
@@ -211,15 +229,32 @@ export async function setPartner(
     return mergedData;
   } else {
     // Neither has shared data - create new
-    const addressIds = sharedData?.addresses ? await upsertAddresses(sharedData.addresses) : undefined;
+    // Filter valid addresses
+    const validAddresses = sharedData?.addresses?.filter(
+      addr => addr.line1 && addr.line1.trim() !== ''
+    ) || [];
 
-    return await sharedDataCollection.create({
+    // Create primary address if any
+    let primaryAddressId: string | undefined;
+    if (validAddresses.length > 0) {
+      primaryAddressId = await upsertAddress(validAddresses[0]);
+    }
+
+    // Create shared data
+    const newSharedData = await sharedDataCollection.create({
       person_a: personId,
       person_b: partnerId,
-      address_id: addressIds,
+      address_id: primaryAddressId,
       anniversary: sharedData?.anniversary,
       created_by: currentUser?.id,
     });
+
+    // Create additional addresses with shared_data_id link
+    for (let i = 1; i < validAddresses.length; i++) {
+      await upsertAddress(validAddresses[i], newSharedData.id);
+    }
+
+    return newSharedData;
   }
 }
 

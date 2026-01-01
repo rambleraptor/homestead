@@ -21,16 +21,34 @@ export function usePersonById(id: string) {
       const record = await getCollection<PersonRecord>(Collections.PEOPLE).getOne(id);
       const sharedData = await findSharedDataForPerson(id);
 
-      // Fetch all addresses if shared data has address_id array
+      // Fetch addresses from both sources (primary + additional)
       const addresses: Address[] = [];
-      if (sharedData?.address_id && Array.isArray(sharedData.address_id)) {
-        for (const addressId of sharedData.address_id) {
+
+      if (sharedData) {
+        // 1. Get primary address from address_id
+        if (sharedData.address_id) {
           try {
-            const address = await getCollection<Address>(Collections.ADDRESSES).getOne(addressId);
-            addresses.push(address);
+            const primaryAddress = await getCollection<Address>(Collections.ADDRESSES).getOne(sharedData.address_id);
+            addresses.push(primaryAddress);
           } catch {
-            // Address not found, continue without it
+            // Primary address not found, continue without it
           }
+        }
+
+        // 2. Get additional addresses where shared_data_id matches
+        try {
+          const additionalAddresses = await getCollection<Address>(Collections.ADDRESSES).getFullList({
+            filter: `shared_data_id = "${sharedData.id}"`,
+          });
+
+          // Avoid duplicates (exclude primary address)
+          for (const address of additionalAddresses) {
+            if (address.id !== sharedData.address_id) {
+              addresses.push(address);
+            }
+          }
+        } catch {
+          // No additional addresses found
         }
       }
 

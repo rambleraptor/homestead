@@ -48,12 +48,21 @@ export function usePeople() {
       const people: Person[] = peopleRecords.map((record) => {
         const sharedData = sharedDataByPersonA.get(record.id) || sharedDataByPersonB.get(record.id);
 
-        // Map address IDs to Address objects (handle multiple addresses)
+        // Get addresses from both sources (primary + additional)
         const addresses: Address[] = [];
-        if (sharedData?.address_id) {
-          for (const addressId of sharedData.address_id) {
-            const address = addressesById.get(addressId);
-            if (address) {
+
+        if (sharedData) {
+          // 1. Get primary address from address_id
+          if (sharedData.address_id) {
+            const primaryAddress = addressesById.get(sharedData.address_id);
+            if (primaryAddress) {
+              addresses.push(primaryAddress);
+            }
+          }
+
+          // 2. Get additional addresses where shared_data_id matches
+          for (const address of allAddresses) {
+            if (address.shared_data_id === sharedData.id && address.id !== sharedData.address_id) {
               addresses.push(address);
             }
           }

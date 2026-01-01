@@ -13,6 +13,7 @@ export interface Address {
   country?: string;
   wifi_network?: string;
   wifi_password?: string;
+  shared_data_id?: string; // Optional link to person_shared_data for additional addresses
   created_by: string;
   created: string;
   updated: string;
@@ -23,7 +24,7 @@ export interface PersonSharedData {
   id: string;
   person_a: string;
   person_b?: string;
-  address_id?: string[]; // Array of address IDs (supports multiple addresses)
+  address_id?: string; // Primary address ID (single)
   anniversary?: string;
   created_by: string;
   created: string;
