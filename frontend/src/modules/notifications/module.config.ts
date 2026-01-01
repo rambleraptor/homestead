@@ -15,7 +15,7 @@ export const notificationsModule: HomeModule = {
   icon: Bell,
   basePath: '/notifications',
   routes: [{ path: '', index: true }],
-  showInNav: true,
+  showInNav: false,
   navOrder: 4,
   enabled: true,
 };
