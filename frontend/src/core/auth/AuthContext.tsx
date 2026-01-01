@@ -131,14 +131,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Refresh user data from server
    */
   const refreshUser = useCallback(async () => {
-    if (!state.user?.id) return;
+    if (!pb.authStore.isValid) return;
 
     try {
-      const user = await pb.collection(Collections.USERS).getOne(state.user.id);
-      setState((prev) => ({
-        ...prev,
-        user: user as unknown as User,
-      }));
+      // Use authRefresh to update both authStore and token with latest user data
+      // This automatically triggers onAuthChange which updates React state
+      await pb.collection(Collections.USERS).authRefresh();
 
       await queryClient.invalidateQueries({ queryKey: queryKeys.auth.user() });
     } catch (error) {
@@ -146,7 +144,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // If refresh fails, user might be deleted or token invalid
       logout();
     }
-  }, [state.user, logout]);
+  }, [logout]);
 
   const value: AuthContextValue = {
     ...state,
