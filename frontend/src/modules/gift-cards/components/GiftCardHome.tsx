@@ -154,7 +154,7 @@ export function GiftCardHome() {
 
           {/* Stats Overview */}
           {stats && stats.totalCards > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
@@ -183,22 +183,6 @@ export function GiftCardHome() {
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                     <Gift className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Merchants
-                    </p>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">
-                      {stats.merchantCount}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Gift className="w-6 h-6 text-purple-600" />
                   </div>
                 </div>
               </div>
