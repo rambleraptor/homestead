@@ -74,9 +74,12 @@ test.describe('People Bulk Import', () => {
         const sharedData = await getPersonSharedData(userPocketbase, john!.id);
         expect(sharedData).toBeDefined();
         expect(sharedData?.address_id).toBeDefined();
+        expect(Array.isArray(sharedData?.address_id)).toBe(true);
+        expect(sharedData?.address_id?.length).toBeGreaterThan(0);
 
-        if (sharedData?.address_id) {
-            const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id);
+        if (sharedData?.address_id && sharedData.address_id.length > 0) {
+            // address_id is now an array, get the first address
+            const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id[0]);
             expect(address.line1).toContain('123 Main St');
             expect(address.wifi_network).toBe('HomeNetwork');
         }
@@ -141,9 +144,12 @@ test.describe('People Bulk Import', () => {
 
         const sharedData = await getPersonSharedData(userPocketbase, david!.id);
         expect(sharedData?.address_id).toBeDefined();
+        expect(Array.isArray(sharedData?.address_id)).toBe(true);
+        expect(sharedData?.address_id?.length).toBeGreaterThan(0);
 
-        if (sharedData?.address_id) {
-            const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id);
+        if (sharedData?.address_id && sharedData.address_id.length > 0) {
+            // address_id is now an array, get the first address
+            const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id[0]);
             expect(address.wifi_network).toBe('OfficeWiFi');
             expect(address.wifi_password).toBe('secure123');
         }

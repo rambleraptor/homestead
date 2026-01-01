@@ -30,7 +30,20 @@ export class PeoplePage {
     await this.page.locator('#name').fill(data.name);
 
     if (data.address) {
-      await this.page.locator('#address').fill(data.address);
+      // Check if there's already an address input visible
+      const firstAddressInput = this.page.locator('#address-0-line1');
+      const isAddressInputVisible = await firstAddressInput.isVisible({ timeout: 1000 }).catch(() => false);
+
+      if (!isAddressInputVisible) {
+        // Click "Add Address" button to create the first address
+        const addAddressButton = this.page.getByRole('button', { name: /add address/i });
+        await addAddressButton.waitFor({ state: 'visible' });
+        await addAddressButton.click();
+        await this.page.waitForLoadState('networkidle');
+      }
+
+      // Fill in the first address line1 field
+      await this.page.locator('#address-0-line1').fill(data.address);
     }
     if (data.birthday) {
       await this.page.locator('#birthday').fill(data.birthday);
@@ -94,7 +107,21 @@ export class PeoplePage {
       await this.page.locator('#name').fill(newData.name);
     }
     if (newData.address) {
-      await this.page.locator('#address').fill(newData.address);
+      // Check if there's already an address input visible
+      const firstAddressInput = this.page.locator('#address-0-line1');
+      const isAddressInputVisible = await firstAddressInput.isVisible({ timeout: 1000 }).catch(() => false);
+
+      if (!isAddressInputVisible) {
+        // Click "Add Address" button to create the first address
+        const addAddressButton = this.page.getByRole('button', { name: /add address/i });
+        await addAddressButton.waitFor({ state: 'visible' });
+        await addAddressButton.click();
+        await this.page.waitForLoadState('networkidle');
+      }
+
+      // Clear and fill the first address line1 field
+      await this.page.locator('#address-0-line1').clear();
+      await this.page.locator('#address-0-line1').fill(newData.address);
     }
     if (newData.birthday) {
       await this.page.locator('#birthday').fill(newData.birthday);
