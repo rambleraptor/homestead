@@ -11,6 +11,7 @@ import { ArrowLeft, CreditCard, Edit2, Trash2, Eye, EyeOff, ChevronDown, Chevron
 import { useCreateTransaction } from '../hooks/useCreateTransaction';
 import type { GiftCard } from '../types';
 import { pb } from '@/core/api/pocketbase';
+import { formatCurrency } from '@/shared/utils/currencyUtils';
 
 interface MerchantDetailProps {
   merchant: string;
@@ -128,7 +129,7 @@ export function MerchantDetail({
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-700 mb-1">Total Balance</p>
-            <p className="text-4xl font-bold">${totalAmount.toFixed(2)}</p>
+            <p className="text-4xl font-bold">{formatCurrency(totalAmount)}</p>
           </div>
         </div>
       </div>
@@ -151,7 +152,7 @@ export function MerchantDetail({
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
-                      ${card.amount.toFixed(2)}
+                      {formatCurrency(card.amount)}
                     </p>
                     <p className="text-xs text-gray-500">
                       Added {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
@@ -163,7 +164,7 @@ export function MerchantDetail({
                     onClick={() => onEdit(card)}
                     className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     title="Edit card"
-                    aria-label={`Edit ${merchant} card ($${card.amount.toFixed(2)})`}
+                    aria-label={`Edit ${merchant} card (${formatCurrency(card.amount)})`}
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -171,7 +172,7 @@ export function MerchantDetail({
                     onClick={() => onDelete(card.id)}
                     className="p-2 text-red-600 hover:bg-red-50/20 rounded-lg transition-colors"
                     title="Delete card"
-                    aria-label={`Delete ${merchant} card ($${card.amount.toFixed(2)})`}
+                    aria-label={`Delete ${merchant} card (${formatCurrency(card.amount)})`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -349,7 +350,7 @@ export function MerchantDetail({
                       </div>
                       <div>
                         <p className="text-2xl font-bold text-gray-900">
-                          ${card.amount.toFixed(2)}
+                          {formatCurrency(card.amount)}
                         </p>
                         <p className="text-xs text-gray-500">
                           Archived • Added {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
@@ -361,7 +362,7 @@ export function MerchantDetail({
                         onClick={() => onEdit(card)}
                         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Edit card"
-                        aria-label={`Edit ${merchant} card ($${card.amount.toFixed(2)})`}
+                        aria-label={`Edit ${merchant} card (${formatCurrency(card.amount)})`}
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -369,7 +370,7 @@ export function MerchantDetail({
                         onClick={() => onDelete(card.id)}
                         className="p-2 text-red-600 hover:bg-red-50/20 rounded-lg transition-colors"
                         title="Delete card"
-                        aria-label={`Delete ${merchant} card ($${card.amount.toFixed(2)})`}
+                        aria-label={`Delete ${merchant} card (${formatCurrency(card.amount)})`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

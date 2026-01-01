@@ -5,6 +5,7 @@
 import { CreditCard, CheckCircle2, XCircle, AlertCircle, Archive } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Checkbox } from '@/shared/components/Checkbox';
+import { formatCurrency } from '@/shared/utils/currencyUtils';
 import type { ParsedItem } from '@/shared/bulk-import';
 import type { GiftCardImportData } from './schema';
 
@@ -29,8 +30,8 @@ export function GiftCardPreview({
 
   // Format amount with currency
   const formattedAmount = giftCard.amount
-    ? `$${giftCard.amount.toFixed(2)}`
-    : '$0.00';
+    ? formatCurrency(giftCard.amount)
+    : formatCurrency(0);
 
   return (
     <Card

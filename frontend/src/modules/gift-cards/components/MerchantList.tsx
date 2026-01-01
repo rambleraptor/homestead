@@ -9,6 +9,7 @@
 import React, { useState } from 'react';
 import { ChevronRight, Store, ChevronDown, ChevronUp } from 'lucide-react';
 import type { MerchantSummary } from '../types';
+import { formatCurrency } from '@/shared/utils/currencyUtils';
 
 interface MerchantListProps {
   merchants: MerchantSummary[];
@@ -75,7 +76,7 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
                 ? 'text-gray-400'
                 : 'text-primary-600'
             }`}>
-              ${merchant.totalAmount.toFixed(2)}
+              {formatCurrency(merchant.totalAmount)}
             </p>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />

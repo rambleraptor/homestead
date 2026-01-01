@@ -18,6 +18,7 @@ import { MerchantDetail } from './MerchantDetail';
 import { GiftCardForm } from './GiftCardForm';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { logger } from '@/core/utils/logger';
+import { formatCurrency } from '@/shared/utils/currencyUtils';
 import type { GiftCard, GiftCardFormData } from '../types';
 
 type View = 'list' | 'detail' | 'form';
@@ -161,7 +162,7 @@ export function GiftCardHome() {
                       Total Balance
                     </p>
                     <p className="mt-2 text-3xl font-bold text-gray-900">
-                      ${stats.totalAmount.toFixed(2)}
+                      {formatCurrency(stats.totalAmount)}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
