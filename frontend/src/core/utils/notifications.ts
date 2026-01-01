@@ -6,10 +6,11 @@ import { logger } from './logger';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 
-if (!VAPID_PUBLIC_KEY) {
+if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === 'YOUR_VAPID_PUBLIC_KEY_HERE') {
   logger.error(
-    'NEXT_PUBLIC_VAPID_PUBLIC_KEY is not set. Web push notifications will not work. ' +
-      'Please set this environment variable in your .env.local file. ' +
+    'NEXT_PUBLIC_VAPID_PUBLIC_KEY is not set or is using the placeholder value. ' +
+      'Web push notifications will not work. ' +
+      'Please set this environment variable in your .env.local file with a valid VAPID public key. ' +
       'You can generate VAPID keys using: npx web-push generate-vapid-keys'
   );
 }
@@ -64,17 +65,34 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription> 
     throw new Error('Notifications are not supported in this browser');
   }
 
+  if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === 'YOUR_VAPID_PUBLIC_KEY_HERE') {
+    throw new Error(
+      'VAPID public key is not configured. Please set NEXT_PUBLIC_VAPID_PUBLIC_KEY in your .env.local file. ' +
+        'Generate keys using: npx web-push generate-vapid-keys'
+    );
+  }
+
   // Register service worker
   const registration = await navigator.serviceWorker.register('/sw.js');
   await navigator.serviceWorker.ready;
 
-  // Subscribe to push notifications
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
-  });
+  try {
+    // Subscribe to push notifications
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
+    });
 
-  return subscription;
+    return subscription;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('applicationServerKey')) {
+      throw new Error(
+        'Invalid VAPID public key. Please ensure NEXT_PUBLIC_VAPID_PUBLIC_KEY is set to a valid key. ' +
+          'Generate new keys using: npx web-push generate-vapid-keys'
+      );
+    }
+    throw error;
+  }
 }
 
 /**
