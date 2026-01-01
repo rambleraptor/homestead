@@ -9,6 +9,9 @@ set -e
 #   ./deploy.sh --auto    - Check for updates, deploy if available (for systemd timer)
 #   ./deploy.sh --force   - Force rebuild even if no changes detected
 
+# Ensure Node.js is in PATH (needed for npm commands)
+export PATH="/opt/node22/bin:$PATH"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -93,6 +96,7 @@ FRONTEND_CHANGED=false
 DEPS_CHANGED=false
 
 if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ] || [ "$FORCE_BUILD" = true ]; then
+  # Auto mode - check committed changes between commits
   if git diff --name-only $PREVIOUS_COMMIT..$NEW_COMMIT | grep -q "pb_migrations/"; then
     MIGRATIONS_CHANGED=true
     log "${YELLOW}🔄 Migrations detected${NC}"
@@ -107,12 +111,36 @@ if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ] || [ "$FORCE_BUILD" = true ]; then
     DEPS_CHANGED=true
     log "${YELLOW}📦 Dependencies changed${NC}"
   fi
+elif [ "$AUTO_MODE" = false ]; then
+  # Manual mode - check for uncommitted changes in working directory
+  log "${BLUE}🔍 Checking for uncommitted changes...${NC}"
+
+  if git diff --name-only HEAD | grep -q "pb_migrations/" || \
+     git diff --cached --name-only | grep -q "pb_migrations/" || \
+     git ls-files --others --exclude-standard | grep -q "pb_migrations/"; then
+    MIGRATIONS_CHANGED=true
+    log "${YELLOW}🔄 Uncommitted migrations detected${NC}"
+  fi
+
+  if git diff --name-only HEAD | grep -q "frontend/" || \
+     git diff --cached --name-only | grep -q "frontend/" || \
+     git ls-files --others --exclude-standard | grep -q "frontend/"; then
+    FRONTEND_CHANGED=true
+    log "${YELLOW}🔄 Uncommitted frontend changes detected${NC}"
+  fi
+
+  if git diff --name-only HEAD | grep -q "frontend/package.json" || \
+     git diff --cached --name-only | grep -q "frontend/package.json"; then
+    DEPS_CHANGED=true
+    log "${YELLOW}📦 Uncommitted dependency changes detected${NC}"
+  fi
 fi
 
 # Install dependencies if needed
 if [ "$DEPS_CHANGED" = true ]; then
   log "${BLUE}📦 Installing dependencies...${NC}"
-  if ! cd frontend && npm ci 2>&1 | tee -a "$LOG_FILE"; then
+  cd frontend
+  if ! npm ci 2>&1 | tee -a "$LOG_FILE"; then
     log "${RED}❌ Failed to install dependencies${NC}"
     log "${YELLOW}⏮️  Rolling back...${NC}"
     cd "$PROJECT_ROOT"
@@ -122,16 +150,17 @@ if [ "$DEPS_CHANGED" = true ]; then
   cd "$PROJECT_ROOT"
 fi
 
-# Check if dist directory exists
-if [ ! -d "$PROJECT_ROOT/frontend/dist" ]; then
-  log "${YELLOW}⚠️  Frontend dist directory missing${NC}"
+# Check if .next build directory exists (Next.js builds to .next, not dist)
+if [ ! -d "$PROJECT_ROOT/frontend/.next" ]; then
+  log "${YELLOW}⚠️  Frontend build directory (.next) missing${NC}"
   FRONTEND_CHANGED=true
 fi
 
 # Build frontend if needed
 if [ "$FRONTEND_CHANGED" = true ] || [ "$DEPS_CHANGED" = true ] || [ "$FORCE_BUILD" = true ]; then
   log "${BLUE}🔨 Building frontend...${NC}"
-  if ! cd frontend && npm run build 2>&1 | tee -a "$LOG_FILE"; then
+  cd frontend
+  if ! npm run build 2>&1 | tee -a "$LOG_FILE"; then
     log "${RED}❌ Frontend build failed${NC}"
     log "${YELLOW}⏮️  Rolling back...${NC}"
     cd "$PROJECT_ROOT"

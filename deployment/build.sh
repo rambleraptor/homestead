@@ -4,6 +4,9 @@ set -e
 # HomeOS Build Script
 # This script builds the frontend application for production
 
+# Ensure Node.js is in PATH
+export PATH="/opt/node22/bin:$PATH"
+
 echo "🏗️  Building HomeOS for production..."
 
 # Navigate to project root
@@ -21,7 +24,7 @@ fi
 echo "🔨 Building frontend..."
 npm run build
 
-echo "✅ Build complete! Frontend built to: frontend/dist/"
+echo "✅ Build complete! Frontend built to: frontend/.next/"
 echo ""
 echo "Next steps:"
 echo "  1. Set up PocketBase: ./deployment/install-pocketbase.sh"
