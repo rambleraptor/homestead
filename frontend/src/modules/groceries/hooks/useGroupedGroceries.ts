@@ -1,65 +1,122 @@
 /**
  * Grouped Groceries Hook
  *
- * Groups grocery items by category and provides statistics
+ * Groups grocery items by store and category, and provides statistics
  */
 
 import { useMemo } from 'react';
 import { GROCERY_CATEGORIES } from '@/core/services/gemini';
 import type { GroceryCategory } from '@/core/services/gemini';
 import { useGroceries } from './useGroceries';
-import type { GroupedGroceries, GroceryStats } from '../types';
+import { useStores } from './useStores';
+import type { GroupedGroceries, StoreGroupedGroceries, GroceryStats } from '../types';
 
 export function useGroupedGroceries() {
-  const { data: items = [], isLoading, isError, error } = useGroceries();
+  const { data: items = [], isLoading: itemsLoading, isError: itemsError, error: itemsErrorMsg } = useGroceries();
+  const { data: stores = [], isLoading: storesLoading, isError: storesError, error: storesErrorMsg } = useStores();
 
   const stats = useMemo<GroceryStats>(() => {
-    // Group items by category
-    const categoryMap = new Map<GroceryCategory | 'Uncategorized', GroupedGroceries>();
+    // Group items by store first
+    const storeMap = new Map<string | null, StoreGroupedGroceries>();
 
-    // Initialize all known categories
-    GROCERY_CATEGORIES.forEach((category) => {
-      categoryMap.set(category, {
-        category,
-        items: [],
+    // Initialize all stores
+    stores.forEach((store) => {
+      storeMap.set(store.id, {
+        store,
+        categories: [],
         checkedCount: 0,
         totalCount: 0,
       });
     });
 
-    // Add uncategorized group
-    categoryMap.set('Uncategorized', {
-      category: 'Uncategorized',
-      items: [],
+    // Initialize "No Store" group
+    storeMap.set(null, {
+      store: null,
+      categories: [],
       checkedCount: 0,
       totalCount: 0,
     });
 
-    // Sort items into categories
+    // Group items by store, then by category
     items.forEach((item) => {
-      const category = item.category || 'Uncategorized';
-      const group = categoryMap.get(category);
+      const storeId = item.store || null;
+      const storeGroup = storeMap.get(storeId);
 
-      if (group) {
-        group.items.push(item);
-        group.totalCount++;
+      if (storeGroup) {
+        storeGroup.totalCount++;
         if (item.checked) {
-          group.checkedCount++;
+          storeGroup.checkedCount++;
         }
       }
     });
 
-    // Filter out empty categories and sort
-    const categories = Array.from(categoryMap.values())
+    // For each store, group items by category
+    storeMap.forEach((storeGroup, storeId) => {
+      const categoryMap = new Map<GroceryCategory | 'Uncategorized', GroupedGroceries>();
+
+      // Initialize all known categories
+      GROCERY_CATEGORIES.forEach((category) => {
+        categoryMap.set(category, {
+          category,
+          items: [],
+          checkedCount: 0,
+          totalCount: 0,
+        });
+      });
+
+      // Add uncategorized group
+      categoryMap.set('Uncategorized', {
+        category: 'Uncategorized',
+        items: [],
+        checkedCount: 0,
+        totalCount: 0,
+      });
+
+      // Sort items into categories for this store
+      items
+        .filter((item) => (item.store || null) === storeId)
+        .forEach((item) => {
+          const category = item.category || 'Uncategorized';
+          const group = categoryMap.get(category);
+
+          if (group) {
+            group.items.push(item);
+            group.totalCount++;
+            if (item.checked) {
+              group.checkedCount++;
+            }
+          }
+        });
+
+      // Filter out empty categories and sort
+      storeGroup.categories = Array.from(categoryMap.values())
+        .filter((group) => group.totalCount > 0)
+        .sort((a, b) => {
+          // Unchecked items first, then by category name
+          const aUnchecked = a.totalCount - a.checkedCount;
+          const bUnchecked = b.totalCount - b.checkedCount;
+          if (aUnchecked !== bUnchecked) {
+            return bUnchecked - aUnchecked;
+          }
+          return a.category.localeCompare(b.category);
+        });
+    });
+
+    // Filter out empty stores and sort by sort_order
+    const storesList = Array.from(storeMap.values())
       .filter((group) => group.totalCount > 0)
       .sort((a, b) => {
-        // Unchecked items first, then by category name
-        const aUnchecked = a.totalCount - a.checkedCount;
-        const bUnchecked = b.totalCount - b.checkedCount;
-        if (aUnchecked !== bUnchecked) {
-          return bUnchecked - aUnchecked;
+        // No Store group last
+        if (a.store === null) return 1;
+        if (b.store === null) return -1;
+
+        // Sort by sort_order, then by name
+        const aSortOrder = a.store.sort_order ?? 0;
+        const bSortOrder = b.store.sort_order ?? 0;
+        if (aSortOrder !== bSortOrder) {
+          return aSortOrder - bSortOrder;
         }
-        return a.category.localeCompare(b.category);
+        return a.store.name.localeCompare(b.store.name);
       });
 
     const totalItems = items.length;
@@ -69,14 +126,14 @@ export function useGroupedGroceries() {
       totalItems,
       checkedItems,
       uncheckedItems: totalItems - checkedItems,
-      categories,
+      stores: storesList,
     };
-  }, [items]);
+  }, [items, stores]);
 
   return {
     stats,
-    isLoading,
-    isError,
-    error,
+    isLoading: itemsLoading || storesLoading,
+    isError: itemsError || storesError,
+    error: itemsErrorMsg || storesErrorMsg,
   };
 }

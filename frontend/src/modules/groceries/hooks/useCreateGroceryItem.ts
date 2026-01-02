@@ -21,6 +21,7 @@ export function useCreateGroceryItem() {
       const item = await getCollection<GroceryItem>(Collections.GROCERIES).create({
         name: data.name,
         notes: data.notes || '',
+        store: data.store || '',
         checked: false,
       });
 

@@ -5,6 +5,18 @@
 import type { GroceryCategory } from '@/core/services/gemini';
 
 /**
+ * Store record from PocketBase
+ */
+export interface Store {
+  id: string;
+  name: string;
+  sort_order?: number;
+  created_by?: string;
+  created: string;
+  updated: string;
+}
+
+/**
  * Grocery item record from PocketBase
  */
 export interface GroceryItem {
@@ -13,6 +25,7 @@ export interface GroceryItem {
   checked: boolean;
   category?: GroceryCategory;
   notes?: string;
+  store?: string; // Store ID
   created_by?: string;
   created: string;
   updated: string;
@@ -24,6 +37,7 @@ export interface GroceryItem {
 export interface GroceryItemFormData {
   name: string;
   notes?: string;
+  store?: string;
 }
 
 /**
@@ -37,11 +51,21 @@ export interface GroupedGroceries {
 }
 
 /**
+ * Grocery items grouped by category within a store
+ */
+export interface StoreGroupedGroceries {
+  store: Store | null; // null for items without a store
+  categories: GroupedGroceries[];
+  checkedCount: number;
+  totalCount: number;
+}
+
+/**
  * Grocery list statistics
  */
 export interface GroceryStats {
   totalItems: number;
   checkedItems: number;
   uncheckedItems: number;
-  categories: GroupedGroceries[];
+  stores: StoreGroupedGroceries[];
 }

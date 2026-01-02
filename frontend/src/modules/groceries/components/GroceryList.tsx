@@ -3,26 +3,26 @@
 /**
  * Grocery List Component
  *
- * Displays grocery items grouped by category
+ * Displays grocery items grouped by store and category
  */
 
-import { Trash2 } from 'lucide-react';
-import type { GroupedGroceries, GroceryItem } from '../types';
+import { Trash2, Store as StoreIcon } from 'lucide-react';
+import type { StoreGroupedGroceries, GroceryItem } from '../types';
 
 interface GroceryListProps {
-  groups: GroupedGroceries[];
+  storeGroups: StoreGroupedGroceries[];
   onToggleItem: (id: string, checked: boolean) => void;
   onDeleteItem: (id: string) => void;
   isUpdating?: boolean;
 }
 
 export function GroceryList({
-  groups,
+  storeGroups,
   onToggleItem,
   onDeleteItem,
   isUpdating = false,
 }: GroceryListProps) {
-  if (groups.length === 0) {
+  if (storeGroups.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
         <p>No items in your grocery list.</p>
@@ -32,27 +32,45 @@ export function GroceryList({
   }
 
   return (
-    <div className="space-y-6">
-      {groups.map((group) => (
-        <div key={group.category} className="bg-white rounded-lg border">
-          <div className="px-4 py-3 border-b bg-gray-50">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">{group.category}</h3>
-              <span className="text-sm text-gray-600">
-                {group.checkedCount} / {group.totalCount} checked
-              </span>
-            </div>
+    <div className="space-y-8">
+      {storeGroups.map((storeGroup) => (
+        <div key={storeGroup.store?.id || 'no-store'} className="space-y-4">
+          {/* Store header */}
+          <div className="flex items-center gap-2 px-2">
+            <StoreIcon className="w-5 h-5 text-gray-600" />
+            <h2 className="text-xl font-bold text-gray-900">
+              {storeGroup.store?.name || 'No Store'}
+            </h2>
+            <span className="ml-auto text-sm text-gray-600">
+              {storeGroup.checkedCount} / {storeGroup.totalCount} checked
+            </span>
           </div>
 
-          <div className="divide-y">
-            {group.items.map((item) => (
-              <GroceryItemRow
-                key={item.id}
-                item={item}
-                onToggle={onToggleItem}
-                onDelete={onDeleteItem}
-                disabled={isUpdating}
-              />
+          {/* Categories within this store */}
+          <div className="space-y-4">
+            {storeGroup.categories.map((group) => (
+              <div key={group.category} className="bg-white rounded-lg border">
+                <div className="px-4 py-3 border-b bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-900">{group.category}</h3>
+                    <span className="text-sm text-gray-600">
+                      {group.checkedCount} / {group.totalCount} checked
+                    </span>
+                  </div>
+                </div>
+
+                <div className="divide-y">
+                  {group.items.map((item) => (
+                    <GroceryItemRow
+                      key={item.id}
+                      item={item}
+                      onToggle={onToggleItem}
+                      onDelete={onDeleteItem}
+                      disabled={isUpdating}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>

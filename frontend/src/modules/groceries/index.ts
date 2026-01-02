@@ -3,4 +3,11 @@
  */
 
 export { groceriesModule } from './module.config';
-export type { GroceryItem, GroceryItemFormData, GroupedGroceries, GroceryStats } from './types';
+export type {
+  GroceryItem,
+  GroceryItemFormData,
+  GroupedGroceries,
+  GroceryStats,
+  Store,
+  StoreGroupedGroceries
+} from './types';

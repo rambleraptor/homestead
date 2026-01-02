@@ -7,8 +7,9 @@
  */
 
 import { useState } from 'react';
-import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2, Image, ListRestart, Tags } from 'lucide-react';
+import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2, Image, ListRestart, Tags, Store as StoreIcon } from 'lucide-react';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
+import { useStores } from '../hooks/useStores';
 import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
 import { useUpdateGroceryItem } from '../hooks/useUpdateGroceryItem';
 import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
@@ -16,13 +17,17 @@ import { useDeleteAllGroceries } from '../hooks/useDeleteAllGroceries';
 import { useCategorizeAllGroceries } from '../hooks/useCategorizeAllGroceries';
 import { GroceryList } from './GroceryList';
 import { ImageUploadDialog } from './ImageUploadDialog';
+import { StoreManagement } from './StoreManagement';
 import { logger } from '@/core/utils/logger';
 
 export function GroceriesHome() {
   const [itemName, setItemName] = useState('');
+  const [selectedStore, setSelectedStore] = useState('');
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [showStoreManagement, setShowStoreManagement] = useState(false);
 
   const { stats, isLoading, isError, error } = useGroupedGroceries();
+  const { data: stores = [] } = useStores();
   const createMutation = useCreateGroceryItem();
   const updateMutation = useUpdateGroceryItem();
   const deleteMutation = useDeleteGroceryItem();
@@ -35,6 +40,7 @@ export function GroceriesHome() {
     try {
       await createMutation.mutateAsync({
         name: itemName.trim(),
+        store: selectedStore || undefined,
       });
       setItemName('');
     } catch (err) {
@@ -131,6 +137,14 @@ export function GroceriesHome() {
         </div>
 
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowStoreManagement(!showStoreManagement)}
+            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 flex items-center gap-2"
+            data-testid="manage-stores-button"
+          >
+            <StoreIcon className="w-5 h-5" />
+            Stores
+          </button>
           {stats.totalItems > 0 && (
             <>
               <button
@@ -170,9 +184,26 @@ export function GroceriesHome() {
         </div>
       </div>
 
+      {/* Store Management */}
+      {showStoreManagement && <StoreManagement />}
+
       {/* Quick Add Item */}
       <div className="bg-white rounded-lg border p-4">
         <div className="flex gap-2">
+          <select
+            value={selectedStore}
+            onChange={(e) => setSelectedStore(e.target.value)}
+            disabled={isSubmitting}
+            className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 bg-white"
+            data-testid="store-select"
+          >
+            <option value="">No Store</option>
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}
+              </option>
+            ))}
+          </select>
           <input
             type="text"
             value={itemName}
@@ -198,7 +229,7 @@ export function GroceriesHome() {
 
       {/* Grocery List */}
       <GroceryList
-        groups={stats.categories}
+        storeGroups={stats.stores}
         onToggleItem={handleToggleItem}
         onDeleteItem={handleDeleteItem}
         isUpdating={isUpdating}
