@@ -1,13 +1,12 @@
 /**
  * Create Grocery Item Hook
  *
- * Mutation for creating a new grocery item with AI categorization
+ * Mutation for creating a new grocery item
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/core/api/queryClient';
 import { Collections, getCollection } from '@/core/api/pocketbase';
-import { categorizeGroceryItem } from '@/core/services/gemini';
 import { logger } from '@/core/utils/logger';
 import type { GroceryItem, GroceryItemFormData } from '../types';
 
@@ -16,16 +15,12 @@ export function useCreateGroceryItem() {
 
   return useMutation({
     mutationFn: async (data: GroceryItemFormData) => {
-      // Categorize the item using AI
-      const category = await categorizeGroceryItem(data.name);
+      logger.info(`Creating grocery item: ${data.name}`);
 
-      logger.info(`Creating grocery item: ${data.name} (${category})`);
-
-      // Create the item with the AI-determined category
+      // Create the item without auto-categorization
       const item = await getCollection<GroceryItem>(Collections.GROCERIES).create({
         name: data.name,
         notes: data.notes || '',
-        category,
         checked: false,
       });
 

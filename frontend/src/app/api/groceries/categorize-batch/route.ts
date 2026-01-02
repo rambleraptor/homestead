@@ -1,9 +1,9 @@
 /**
- * API Route: Categorize Single Grocery Item
+ * API Route: Batch Categorize Grocery Items
  *
- * POST /api/groceries/categorize
- * Body: { name: string }
- * Returns: { name: string, category: string }
+ * POST /api/groceries/categorize-batch
+ * Body: { items: Array<{ id: string, name: string }> }
+ * Returns: { categorized: Array<{ id: string, category: string }>, failed: string[] }
  *
  * Requires user authentication (PocketBase token in Authorization header)
  */
@@ -28,6 +28,16 @@ const GROCERY_CATEGORIES = [
 ] as const;
 
 type GroceryCategory = typeof GROCERY_CATEGORIES[number];
+
+interface ItemToCategorize {
+  id: string;
+  name: string;
+}
+
+interface CategorizedItem {
+  id: string;
+  category: GroceryCategory;
+}
 
 /**
  * Verify authentication using PocketBase token
@@ -62,13 +72,18 @@ async function verifyAuth(request: NextRequest) {
 }
 
 /**
- * Categorize a single grocery item using Gemini AI
+ * Categorize multiple grocery items using a single Gemini AI call
+ * This is more efficient than individual calls
  */
-async function categorizeGroceryItem(itemName: string, genAI: GoogleGenerativeAI): Promise<GroceryCategory> {
+async function batchCategorizeGroceryItems(
+  items: ItemToCategorize[],
+  genAI: GoogleGenerativeAI
+): Promise<CategorizedItem[]> {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    const prompt = `You are a grocery store categorization expert. Categorize this grocery item into the most appropriate category.
+    // Create a more detailed prompt with examples to improve categorization accuracy
+    const prompt = `You are a grocery store categorization expert. Categorize each grocery item into the most appropriate category.
 
 Available categories:
 ${GROCERY_CATEGORIES.map((cat, idx) => `${idx + 1}. ${cat}`).join('\n')}
@@ -96,32 +111,58 @@ Category Guidelines:
   Examples: dish soap, paper towels, laundry detergent, trash bags
 - **Other**: Items that don't fit other categories
 
-Item to categorize: "${itemName}"
+Items to categorize:
+${items.map((item, idx) => `${idx + 1}. ${item.name}`).join('\n')}
 
 Instructions:
-- Respond with ONLY the category name, nothing else
+- Respond with ONLY the category name for each item, one per line
+- Match the order of items exactly (line 1 = item 1, line 2 = item 2, etc.)
 - Choose the MOST SPECIFIC category that fits
 - Consider the primary use/location in a grocery store
 - For items with quantities (e.g., "2 gallons milk"), focus on the item name
 - Use exactly these category names: ${GROCERY_CATEGORIES.join(', ')}
 
-Category:`;
+Response format (one category per line):`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const category = response.text().trim();
+    const text = response.text().trim();
 
-    // Validate the response is a valid category
-    if (GROCERY_CATEGORIES.includes(category as GroceryCategory)) {
-      return category as GroceryCategory;
+    // Parse the response - one category per line
+    const categories = text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    const categorized: CategorizedItem[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      let category: GroceryCategory = 'Other';
+
+      // Get the corresponding category from the response
+      if (i < categories.length) {
+        const responseCategory = categories[i].trim();
+        // Validate the response is a valid category
+        if (GROCERY_CATEGORIES.includes(responseCategory as GroceryCategory)) {
+          category = responseCategory as GroceryCategory;
+        } else {
+          console.warn(`Invalid category "${responseCategory}" for "${item.name}", using "Other"`);
+        }
+      } else {
+        console.warn(`No category returned for "${item.name}", using "Other"`);
+      }
+
+      categorized.push({
+        id: item.id,
+        category,
+      });
     }
 
-    // If invalid response, default to 'Other'
-    console.warn(`Invalid category "${category}" returned for "${itemName}", defaulting to "Other"`);
-    return 'Other';
+    return categorized;
   } catch (error) {
-    console.error('Failed to categorize grocery item:', error);
-    return 'Other';
+    console.error('Failed to batch categorize grocery items:', error);
+    throw error;
   }
 }
 
@@ -139,49 +180,79 @@ export async function POST(request: NextRequest) {
     // Check API key
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      // Fallback to 'Other' if API key not configured
-      const data = await request.json();
-      return NextResponse.json({
-        name: data.name,
-        category: 'Other',
-        message: 'API key not configured, defaulted to Other',
-      });
+      return NextResponse.json(
+        {
+          error: 'Service unavailable',
+          message: 'Gemini API is not configured on the server',
+        },
+        { status: 503 }
+      );
     }
 
     // Parse request body
     const data = await request.json();
-    if (!data || !data.name) {
+    if (!data || !Array.isArray(data.items)) {
       return NextResponse.json(
         {
           error: 'Bad request',
-          message: 'Missing required field: name',
+          message: 'Missing or invalid required field: items (must be an array)',
         },
         { status: 400 }
       );
     }
 
-    const { name } = data;
+    const { items } = data as { items: ItemToCategorize[] };
+
+    if (items.length === 0) {
+      return NextResponse.json({
+        categorized: [],
+        failed: [],
+        message: 'No items to categorize',
+      });
+    }
 
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // Categorize the item
+    console.log(`Batch categorizing ${items.length} items for user ${authRecord.id}`);
+
     try {
-      const category = await categorizeGroceryItem(name, genAI);
+      // Process items in batches to avoid rate limits and token limits
+      const BATCH_SIZE = 20; // Process 20 items at a time
+      const categorized: CategorizedItem[] = [];
+      const failed: string[] = [];
+
+      for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const batch = items.slice(i, i + BATCH_SIZE);
+        try {
+          const batchResult = await batchCategorizeGroceryItems(batch, genAI);
+          categorized.push(...batchResult);
+        } catch (error) {
+          console.error(`Failed to categorize batch starting at index ${i}:`, error);
+          // Add failed items to the failed list
+          batch.forEach((item) => failed.push(item.id));
+        }
+      }
+
+      console.log(`Successfully categorized ${categorized.length} of ${items.length} items`);
+
       return NextResponse.json({
-        name: name,
-        category: category,
+        categorized,
+        failed,
+        message: `Categorized ${categorized.length} of ${items.length} items`,
       });
     } catch (error) {
-      console.error('Failed to categorize item:', error);
-      return NextResponse.json({
-        name: name,
-        category: 'Other',
-        message: 'Categorization failed, defaulted to Other',
-      });
+      console.error('Error in batch categorization:', error);
+      return NextResponse.json(
+        {
+          error: 'Categorization failed',
+          message: error instanceof Error ? error.message : 'Failed to categorize items. Please try again.',
+        },
+        { status: 500 }
+      );
     }
   } catch (error) {
-    console.error('Error in categorization endpoint:', error);
+    console.error('Error in batch categorization endpoint:', error);
     return NextResponse.json(
       {
         error: 'Internal server error',

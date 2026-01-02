@@ -12,26 +12,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import PocketBase from 'pocketbase';
 
-// Standard grocery store categories
-const GROCERY_CATEGORIES = [
-  'Produce',
-  'Dairy & Eggs',
-  'Meat & Seafood',
-  'Bakery',
-  'Frozen Foods',
-  'Pantry & Canned Goods',
-  'Snacks & Candy',
-  'Beverages',
-  'Health & Beauty',
-  'Household & Cleaning',
-  'Other',
-] as const;
-
-type GroceryCategory = typeof GROCERY_CATEGORIES[number];
-
 interface ExtractedItem {
   name: string;
-  category: GroceryCategory;
+  category: 'Other';
 }
 
 /**
@@ -67,13 +50,13 @@ async function verifyAuth(request: NextRequest) {
 }
 
 /**
- * Extract grocery items from an image using Gemini Vision
+ * Extract grocery items from an image using Gemini Vision (without categorization)
  */
 async function extractGroceryItemsFromImage(
   imageBase64: string,
   mimeType: string,
   genAI: GoogleGenerativeAI
-): Promise<string[]> {
+): Promise<ExtractedItem[]> {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
@@ -109,7 +92,7 @@ Lettuce
     const response = await result.response;
     const text = response.text().trim();
 
-    // Parse the response into individual items
+    // Parse the response into individual items (without categories)
     const items = text
       .split('\n')
       .map((item) => item.trim())
@@ -118,7 +101,11 @@ Lettuce
         // Remove leading bullets or dashes
         return item.replace(/^[•\-*]\s*/, '').trim();
       })
-      .filter((item) => item.length > 0);
+      .filter((item) => item.length > 0)
+      .map((item): ExtractedItem => ({
+        name: item,
+        category: 'Other', // Will be categorized later by user action
+      }));
 
     console.log(`Extracted ${items.length} items from image`);
     return items;
@@ -128,70 +115,6 @@ Lettuce
   }
 }
 
-/**
- * Categorize a single grocery item using Gemini AI
- */
-async function categorizeGroceryItem(
-  itemName: string,
-  genAI: GoogleGenerativeAI
-): Promise<GroceryCategory> {
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-    const prompt = `You are a grocery store categorization assistant. Given a grocery item name, categorize it into one of these categories:
-
-${GROCERY_CATEGORIES.join(', ')}
-
-Item: "${itemName}"
-
-Rules:
-- Respond with ONLY the category name, nothing else
-- Choose the most specific and accurate category
-- If unsure, choose "Other"
-
-Category:`;
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const category = response.text().trim();
-
-    // Validate the response is a valid category
-    if (GROCERY_CATEGORIES.includes(category as GroceryCategory)) {
-      return category as GroceryCategory;
-    }
-
-    // If invalid response, default to 'Other'
-    console.warn(`Invalid category "${category}" returned for "${itemName}", defaulting to "Other"`);
-    return 'Other';
-  } catch (error) {
-    console.error('Failed to categorize grocery item:', error);
-    return 'Other';
-  }
-}
-
-/**
- * Batch categorize grocery items with rate limiting
- */
-async function categorizeGroceryItems(
-  items: string[],
-  genAI: GoogleGenerativeAI
-): Promise<ExtractedItem[]> {
-  const BATCH_SIZE = 5; // Process 5 items at a time to avoid rate limits
-  const results: ExtractedItem[] = [];
-
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    const batch = items.slice(i, i + BATCH_SIZE);
-    const categorizations = await Promise.all(
-      batch.map(async (item) => {
-        const category = await categorizeGroceryItem(item, genAI);
-        return { name: item, category };
-      })
-    );
-    results.push(...categorizations);
-  }
-
-  return results;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -247,7 +170,7 @@ export async function POST(request: NextRequest) {
     console.log(`Processing grocery image for user ${authRecord.id}`);
 
     try {
-      // Step 1: Extract items from image
+      // Extract items from image (without categorization)
       const extractedItems = await extractGroceryItemsFromImage(image, mimeType, genAI);
 
       if (extractedItems.length === 0) {
@@ -257,14 +180,11 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Step 2: Categorize all items
-      const categorizedItems = await categorizeGroceryItems(extractedItems, genAI);
-
-      console.log(`Successfully processed ${categorizedItems.length} items`);
+      console.log(`Successfully extracted ${extractedItems.length} items`);
 
       return NextResponse.json({
-        items: categorizedItems,
-        message: `Extracted ${categorizedItems.length} items from image`,
+        items: extractedItems,
+        message: `Extracted ${extractedItems.length} items from image`,
       });
     } catch (error) {
       console.error('Error processing image:', error);
