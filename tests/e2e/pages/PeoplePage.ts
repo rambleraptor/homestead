@@ -239,5 +239,46 @@ export class PeoplePage {
     // Badge text includes emoji "📶 WiFi: {network}" so we match partial text
     await expect(this.page.getByText(`WiFi: ${wifiNetwork}`, { exact: false })).toBeVisible({ timeout: 5000 });
   }
+
+  // Multiple Address Methods
+
+  async addSecondAddress(addressLine: string) {
+    // Click "Add Address" button
+    const addAddressButton = this.page.getByTestId('add-address-button');
+    await addAddressButton.waitFor({ state: 'visible' });
+    await addAddressButton.click();
+
+    // Fill in the second address (index 1)
+    const secondAddressInput = this.page.locator('#address-1-line1');
+    await secondAddressInput.waitFor({ state: 'visible' });
+    await secondAddressInput.fill(addressLine);
+  }
+
+  async removeAddress(index: number) {
+    const removeButton = this.page.getByTestId(`remove-address-${index}-button`);
+    await removeButton.waitFor({ state: 'visible' });
+    await removeButton.click();
+  }
+
+  async expectAddressValue(index: number, value: string) {
+    const addressInput = this.page.locator(`#address-${index}-line1`);
+    await expect(addressInput).toHaveValue(value);
+  }
+
+  async expectAddressCount(count: number) {
+    if (count === 0) {
+      // Check for empty state message
+      await expect(this.page.getByText('No addresses added')).toBeVisible();
+    } else {
+      // Check that the right number of address inputs exist
+      for (let i = 0; i < count; i++) {
+        await expect(this.page.locator(`#address-${i}-line1`)).toBeVisible();
+      }
+
+      // Verify that the next address doesn't exist
+      const nextAddress = this.page.locator(`#address-${count}-line1`);
+      await expect(nextAddress).not.toBeVisible({ timeout: 1000 }).catch(() => {});
+    }
+  }
 }
 

@@ -47,6 +47,7 @@ export function AddressesInput({ addresses, onChange }: AddressesInputProps) {
           type="button"
           onClick={handleAddAddress}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+          data-testid="add-address-button"
         >
           <Plus className="w-4 h-4" />
           Add Address
@@ -73,6 +74,7 @@ export function AddressesInput({ addresses, onChange }: AddressesInputProps) {
                   onClick={() => handleRemoveAddress(index)}
                   className="inline-flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
                   aria-label={`Remove address ${index + 1}`}
+                  data-testid={`remove-address-${index}-button`}
                 >
                   <Trash2 className="w-4 h-4" />
                   Remove

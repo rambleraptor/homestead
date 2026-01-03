@@ -20,26 +20,36 @@ async function upsertAddress(
   const currentUser = getCurrentUser();
   const addressesCollection = getCollection<Address>(Collections.ADDRESSES);
 
-  const addressPayload = {
-    line1: addressData.line1,
-    line2: addressData.line2,
-    city: addressData.city,
-    state: addressData.state,
-    postal_code: addressData.postal_code,
-    country: addressData.country,
-    wifi_network: addressData.wifi_network,
-    wifi_password: addressData.wifi_password,
-    shared_data_id: shared_data_id || undefined,
-    created_by: currentUser?.id,
-  };
-
   if (addressData.id) {
-    // Update existing address
-    await addressesCollection.update(addressData.id, addressPayload);
+    // Update existing address - don't include created_by
+    const updatePayload = {
+      line1: addressData.line1,
+      line2: addressData.line2,
+      city: addressData.city,
+      state: addressData.state,
+      postal_code: addressData.postal_code,
+      country: addressData.country,
+      wifi_network: addressData.wifi_network,
+      wifi_password: addressData.wifi_password,
+      shared_data_id: shared_data_id || undefined, // Explicitly clear if not provided
+    };
+    await addressesCollection.update(addressData.id, updatePayload);
     return addressData.id;
   } else {
     // Create new address
-    const newAddress = await addressesCollection.create(addressPayload);
+    const createPayload = {
+      line1: addressData.line1,
+      line2: addressData.line2,
+      city: addressData.city,
+      state: addressData.state,
+      postal_code: addressData.postal_code,
+      country: addressData.country,
+      wifi_network: addressData.wifi_network,
+      wifi_password: addressData.wifi_password,
+      shared_data_id: shared_data_id || undefined,
+      created_by: currentUser?.id,
+    };
+    const newAddress = await addressesCollection.create(createPayload);
     return newAddress.id;
   }
 }
@@ -48,12 +58,15 @@ async function upsertAddress(
  * Synchronizes addresses for shared data.
  * - First address becomes the primary (address_id on shared data)
  * - Additional addresses get linked via shared_data_id
+ * - Deletes addresses that were removed from the form
  * Returns the primary address ID or undefined if no addresses.
  */
 async function syncAddresses(
   addresses: AddressFormData[],
   sharedDataId: string
 ): Promise<string | undefined> {
+  const addressesCollection = getCollection<Address>(Collections.ADDRESSES);
+
   // Filter out empty addresses
   const validAddresses = addresses.filter(
     addr => addr.line1 && addr.line1.trim() !== ''
@@ -61,6 +74,27 @@ async function syncAddresses(
 
   if (validAddresses.length === 0) {
     return undefined;
+  }
+
+  // Get current address IDs from the form
+  const formAddressIds = new Set(
+    validAddresses.map(addr => addr.id).filter((id): id is string => !!id)
+  );
+
+  // Get all existing additional addresses for this shared data
+  try {
+    const existingAdditionalAddresses = await addressesCollection.getFullList({
+      filter: `shared_data_id = "${sharedDataId}"`,
+    });
+
+    // Delete addresses that are no longer in the form
+    for (const existingAddr of existingAdditionalAddresses) {
+      if (!formAddressIds.has(existingAddr.id)) {
+        await addressesCollection.delete(existingAddr.id);
+      }
+    }
+  } catch {
+    // No existing additional addresses or error fetching - continue
   }
 
   // 1. Upsert primary address (first one, no shared_data_id)
