@@ -79,6 +79,16 @@ export const testGroceryItems = [
 ];
 
 /**
+ * Test stores for multi-store grocery list
+ */
+export const testStores = [
+  { name: 'Whole Foods', sort_order: 0 },
+  { name: 'Costco', sort_order: 1 },
+  { name: 'Target', sort_order: 2 },
+  { name: 'Trader Joes', sort_order: 3 },
+];
+
+/**
  * Test CSV data for people bulk import
  */
 export const testBulkImportCSV = {

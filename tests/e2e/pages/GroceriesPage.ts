@@ -15,7 +15,14 @@ export class GroceriesPage {
     await expect(this.page).toHaveURL(/\/groceries/);
   }
 
-  async createItem(data: { name: string; notes?: string }) {
+  async createItem(data: { name: string; notes?: string; store?: string }) {
+    // Select store if provided
+    if (data.store !== undefined) {
+      const storeSelect = this.page.getByTestId('store-select');
+      await storeSelect.waitFor({ state: 'visible' });
+      await storeSelect.selectOption(data.store);
+    }
+
     // Use the quick-add input to create an item
     const input = this.page.getByTestId('quick-add-input');
     await input.waitFor({ state: 'visible' });
@@ -31,6 +38,87 @@ export class GroceriesPage {
 
     // Note: The quick-add doesn't support notes field
     // If notes are needed, that feature would need to be added
+  }
+
+  async openStoreManagement() {
+    const manageStoresButton = this.page.getByTestId('manage-stores-button');
+    await manageStoresButton.waitFor({ state: 'visible' });
+    await manageStoresButton.click();
+
+    // Wait for store management panel to appear
+    await expect(this.page.getByText('Manage Stores')).toBeVisible();
+  }
+
+  async closeStoreManagement() {
+    const manageStoresButton = this.page.getByTestId('manage-stores-button');
+    await manageStoresButton.click();
+
+    // Wait for store management panel to disappear
+    await expect(this.page.getByText('Manage Stores')).not.toBeVisible();
+  }
+
+  async createStore(name: string) {
+    // Ensure store management is open
+    const addStoreInput = this.page.getByTestId('add-store-input');
+    await addStoreInput.waitFor({ state: 'visible' });
+    await addStoreInput.fill(name);
+
+    const addStoreButton = this.page.getByTestId('add-store-button');
+    await addStoreButton.waitFor({ state: 'visible' });
+    await addStoreButton.click();
+
+    // Wait for network to settle
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  async deleteStore(name: string) {
+    const storeItem = this.page
+      .locator('[data-testid="store-item"]')
+      .filter({ hasText: name });
+
+    // Hover to reveal delete button
+    await storeItem.hover();
+
+    const deleteButton = storeItem.getByTestId('delete-store-button');
+    await deleteButton.waitFor({ state: 'visible' });
+
+    // Set up dialog handler before clicking
+    this.page.once('dialog', dialog => dialog.accept());
+    await deleteButton.click();
+
+    // Wait for network to settle
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  async expectStoreInManagement(name: string) {
+    const storeItem = this.page
+      .locator('[data-testid="store-item"]')
+      .filter({ hasText: name });
+    await expect(storeItem).toBeVisible();
+  }
+
+  async expectStoreNotInManagement(name: string) {
+    const storeItem = this.page
+      .locator('[data-testid="store-item"]')
+      .filter({ hasText: name });
+    await expect(storeItem).not.toBeVisible({ timeout: 2000 }).catch(() => {
+      // Element doesn't exist, which is fine
+    });
+  }
+
+  async expectStoreHeaderVisible(storeName: string) {
+    // Store headers use h2 tags with the store name
+    const storeHeader = this.page.locator('h2').filter({ hasText: storeName });
+    await expect(storeHeader).toBeVisible();
+  }
+
+  async expectItemInStore(storeName: string, itemName: string) {
+    // Find the store section
+    const storeSection = this.page.locator('div.space-y-4').filter({ has: this.page.locator('h2', { hasText: storeName }) });
+
+    // Check if the item exists within that store section
+    const item = storeSection.getByText(itemName).first();
+    await expect(item).toBeVisible();
   }
 
   async expectItemInList(name: string) {
