@@ -120,18 +120,20 @@ export function GroceryItemForm({
         <button
           type="submit"
           disabled={isSubmitting || !formData.name.trim()}
-          className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
           data-testid="grocery-form-submit"
         >
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Adding...
+              <span className="hidden xs:inline">Adding...</span>
+              <span className="xs:hidden">Add</span>
             </>
           ) : (
             <>
               <Plus className="w-4 h-4" />
-              Add Item
+              <span className="hidden xs:inline">Add Item</span>
+              <span className="xs:hidden">Add</span>
             </>
           )}
         </button>
@@ -139,7 +141,7 @@ export function GroceryItemForm({
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-2 sm:px-4 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base shrink-0"
         >
           Cancel
         </button>

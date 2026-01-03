@@ -81,17 +81,17 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
           onKeyPress={handleKeyPress}
           placeholder="Add store..."
           disabled={createMutation.isPending}
-          className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
           data-testid="add-store-input"
         />
         <button
           onClick={handleAddStore}
           disabled={createMutation.isPending || !storeName.trim()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
           data-testid="add-store-button"
         >
-          <Plus className="w-5 h-5" />
-          Add
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="hidden sm:inline">Add</span>
         </button>
       </div>
 
