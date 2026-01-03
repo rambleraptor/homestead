@@ -120,67 +120,73 @@ export function GroceriesHome() {
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShoppingCart className="w-7 h-7" />
-            Grocery List
-          </h1>
-          {stats.totalItems > 0 && (
-            <p className="text-sm text-gray-600 mt-1">
-              {stats.checkedItems} / {stats.totalItems} items checked
-              {stats.checkedItems === stats.totalItems && stats.totalItems > 0 && (
-                <CheckCircle2 className="w-4 h-4 inline ml-2 text-green-600" />
-              )}
-            </p>
-          )}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <ShoppingCart className="w-7 h-7" />
+              Grocery List
+            </h1>
+            {stats.totalItems > 0 && (
+              <p className="text-sm text-gray-600 mt-1">
+                {stats.checkedItems} / {stats.totalItems} items checked
+                {stats.checkedItems === stats.totalItems && stats.totalItems > 0 && (
+                  <CheckCircle2 className="w-4 h-4 inline ml-2 text-green-600" />
+                )}
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="flex gap-2">
+        {/* Action Buttons - Mobile Friendly */}
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowStoreManagement(!showStoreManagement)}
-            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 flex items-center gap-2"
+            className="bg-gray-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-gray-700 flex items-center gap-2 text-sm sm:text-base"
             data-testid="manage-stores-button"
           >
-            <StoreIcon className="w-5 h-5" />
-            Stores
+            <StoreIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden xs:inline">Stores</span>
+            <span className="xs:hidden">Stores</span>
+          </button>
+          <button
+            onClick={() => setShowImageUpload(true)}
+            disabled={isCategorizing}
+            className="bg-green-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+            data-testid="upload-grocery-list-button"
+          >
+            <Image className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden xs:inline">Upload List</span>
+            <span className="xs:hidden">Upload</span>
           </button>
           {stats.totalItems > 0 && (
             <>
               <button
                 onClick={handleCategorizeAll}
                 disabled={isCategorizing || isUpdating}
-                className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-purple-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-purple-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                 data-testid="categorize-all-button"
               >
                 {isCategorizing ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                 ) : (
-                  <Tags className="w-5 h-5" />
+                  <Tags className="w-4 h-4 sm:w-5 sm:h-5" />
                 )}
-                {isCategorizing ? 'Categorizing...' : 'Categorize All'}
+                <span className="hidden sm:inline">{isCategorizing ? 'Categorizing...' : 'Categorize All'}</span>
+                <span className="sm:hidden">{isCategorizing ? 'Categorizing...' : 'Categorize'}</span>
               </button>
               <button
                 onClick={handleNewList}
                 disabled={isUpdating || isCategorizing}
-                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-red-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                 data-testid="new-grocery-list-button"
               >
-                <ListRestart className="w-5 h-5" />
-                New List
+                <ListRestart className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">New List</span>
+                <span className="sm:hidden">New</span>
               </button>
             </>
           )}
-          <button
-            onClick={() => setShowImageUpload(true)}
-            disabled={isCategorizing}
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            data-testid="upload-grocery-list-button"
-          >
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image className="w-5 h-5" />
-            Upload List
-          </button>
         </div>
       </div>
 
