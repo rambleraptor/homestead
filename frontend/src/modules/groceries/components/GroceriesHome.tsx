@@ -200,7 +200,7 @@ export function GroceriesHome() {
             value={selectedStore}
             onChange={(e) => setSelectedStore(e.target.value)}
             disabled={isSubmitting}
-            className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 bg-white"
+            className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 bg-white text-sm sm:text-base"
             data-testid="store-select"
           >
             <option value="">No Store</option>
@@ -217,18 +217,18 @@ export function GroceriesHome() {
             onKeyPress={handleKeyPress}
             placeholder="Add item..."
             disabled={isSubmitting}
-            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
             data-testid="quick-add-input"
             autoFocus
           />
           <button
             onClick={handleQuickAdd}
             disabled={isSubmitting || !itemName.trim()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base shrink-0"
             data-testid="quick-add-button"
           >
-            <Plus className="w-5 h-5" />
-            Add
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Add</span>
           </button>
         </div>
       </div>
