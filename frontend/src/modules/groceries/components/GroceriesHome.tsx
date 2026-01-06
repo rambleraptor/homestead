@@ -200,7 +200,7 @@ export function GroceriesHome() {
             value={selectedStore}
             onChange={(e) => setSelectedStore(e.target.value)}
             disabled={isSubmitting}
-            className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 bg-white text-sm sm:text-base"
+            className="px-2 py-2 sm:px-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 bg-white text-sm sm:text-base w-24 sm:w-auto shrink-0"
             data-testid="store-select"
           >
             <option value="">No Store</option>
@@ -217,7 +217,7 @@ export function GroceriesHome() {
             onKeyPress={handleKeyPress}
             placeholder="Add item..."
             disabled={isSubmitting}
-            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
+            className="flex-1 min-w-0 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
             data-testid="quick-add-input"
             autoFocus
           />
