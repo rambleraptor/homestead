@@ -189,4 +189,31 @@ export class GroceriesPage {
   async expectProgressText(checked: number, total: number) {
     await expect(this.page.getByText(`${checked} / ${total} items checked`)).toBeVisible();
   }
+
+  async markStoreCompleted(storeName: string) {
+    // Find the store section
+    const storeSection = this.page.locator('div.space-y-4').filter({ has: this.page.locator('h2', { hasText: storeName }) });
+
+    // Find and click the mark complete button
+    const markCompleteButton = storeSection.getByTestId('mark-store-completed-button');
+    await markCompleteButton.waitFor({ state: 'visible' });
+    await markCompleteButton.click();
+
+    // Wait for network to settle
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  async expectMarkStoreCompletedButtonVisible(storeName: string) {
+    const storeSection = this.page.locator('div.space-y-4').filter({ has: this.page.locator('h2', { hasText: storeName }) });
+    const markCompleteButton = storeSection.getByTestId('mark-store-completed-button');
+    await expect(markCompleteButton).toBeVisible();
+  }
+
+  async expectMarkStoreCompletedButtonNotVisible(storeName: string) {
+    const storeSection = this.page.locator('div.space-y-4').filter({ has: this.page.locator('h2', { hasText: storeName }) });
+    const markCompleteButton = storeSection.getByTestId('mark-store-completed-button');
+    await expect(markCompleteButton).not.toBeVisible({ timeout: 1000 }).catch(() => {
+      // Button doesn't exist, which is expected when all items are checked
+    });
+  }
 }

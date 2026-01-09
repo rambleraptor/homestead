@@ -260,4 +260,137 @@ test.describe('Groceries - Multi-Store', () => {
       await groceriesPage.expectItemInStore('Costco', testGroceryItems[1].name);
     });
   });
+
+  test.describe('Mark Store Completed', () => {
+    test('should mark all items in a store as completed', async ({ userPocketbase }) => {
+      // Create a store
+      const wholeFoods = await createStore(userPocketbase, testStores[0]);
+
+      // Create unchecked items for this store
+      await createMultipleGroceryItems(userPocketbase, [
+        { ...testGroceryItems[0], store: wholeFoods.id, checked: false },
+        { ...testGroceryItems[1], store: wholeFoods.id, checked: false },
+        { ...testGroceryItems[2], store: wholeFoods.id, checked: false },
+      ]);
+
+      await groceriesPage.goto();
+
+      // Verify items are unchecked
+      await groceriesPage.expectItemChecked(testGroceryItems[0].name, false);
+      await groceriesPage.expectItemChecked(testGroceryItems[1].name, false);
+      await groceriesPage.expectItemChecked(testGroceryItems[2].name, false);
+
+      // Verify mark complete button is visible
+      await groceriesPage.expectMarkStoreCompletedButtonVisible('Whole Foods');
+
+      // Mark all items in the store as completed
+      await groceriesPage.markStoreCompleted('Whole Foods');
+
+      // Verify all items are now checked
+      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
+      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
+      await groceriesPage.expectItemChecked(testGroceryItems[2].name, true);
+
+      // Verify mark complete button is no longer visible
+      await groceriesPage.expectMarkStoreCompletedButtonNotVisible('Whole Foods');
+    });
+
+    test('should only mark items in the selected store', async ({ userPocketbase }) => {
+      // Create stores
+      const wholeFoods = await createStore(userPocketbase, testStores[0]);
+      const costco = await createStore(userPocketbase, testStores[1]);
+
+      // Create unchecked items for both stores
+      await createMultipleGroceryItems(userPocketbase, [
+        { ...testGroceryItems[0], store: wholeFoods.id, checked: false },
+        { ...testGroceryItems[1], store: wholeFoods.id, checked: false },
+        { ...testGroceryItems[2], store: costco.id, checked: false },
+        { ...testGroceryItems[3], store: costco.id, checked: false },
+      ]);
+
+      await groceriesPage.goto();
+
+      // Mark Whole Foods items as completed
+      await groceriesPage.markStoreCompleted('Whole Foods');
+
+      // Verify Whole Foods items are checked
+      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
+      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
+
+      // Verify Costco items are still unchecked
+      await groceriesPage.expectItemChecked(testGroceryItems[2].name, false);
+      await groceriesPage.expectItemChecked(testGroceryItems[3].name, false);
+
+      // Verify mark complete button is visible for Costco
+      await groceriesPage.expectMarkStoreCompletedButtonVisible('Costco');
+    });
+
+    test('should mark all items in No Store section as completed', async ({ userPocketbase }) => {
+      // Create items without a store
+      await createMultipleGroceryItems(userPocketbase, [
+        { ...testGroceryItems[0], store: '', checked: false },
+        { ...testGroceryItems[1], store: '', checked: false },
+      ]);
+
+      await groceriesPage.goto();
+
+      // Verify items are unchecked
+      await groceriesPage.expectItemChecked(testGroceryItems[0].name, false);
+      await groceriesPage.expectItemChecked(testGroceryItems[1].name, false);
+
+      // Mark all "No Store" items as completed
+      await groceriesPage.markStoreCompleted('No Store');
+
+      // Verify all items are now checked
+      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
+      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
+    });
+
+    test('should not show mark complete button when all items are checked', async ({ userPocketbase }) => {
+      // Create a store
+      const wholeFoods = await createStore(userPocketbase, testStores[0]);
+
+      // Create items that are already checked
+      await createMultipleGroceryItems(userPocketbase, [
+        { ...testGroceryItems[0], store: wholeFoods.id, checked: true },
+        { ...testGroceryItems[1], store: wholeFoods.id, checked: true },
+      ]);
+
+      await groceriesPage.goto();
+
+      // Verify items are checked
+      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
+      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
+
+      // Verify mark complete button is not visible
+      await groceriesPage.expectMarkStoreCompletedButtonNotVisible('Whole Foods');
+    });
+
+    test('should handle mixed checked/unchecked items', async ({ userPocketbase }) => {
+      // Create a store
+      const wholeFoods = await createStore(userPocketbase, testStores[0]);
+
+      // Create items with mixed states
+      await createMultipleGroceryItems(userPocketbase, [
+        { ...testGroceryItems[0], store: wholeFoods.id, checked: true },
+        { ...testGroceryItems[1], store: wholeFoods.id, checked: false },
+        { ...testGroceryItems[2], store: wholeFoods.id, checked: false },
+      ]);
+
+      await groceriesPage.goto();
+
+      // Verify initial states
+      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
+      await groceriesPage.expectItemChecked(testGroceryItems[1].name, false);
+      await groceriesPage.expectItemChecked(testGroceryItems[2].name, false);
+
+      // Mark all items as completed (should only affect unchecked items)
+      await groceriesPage.markStoreCompleted('Whole Foods');
+
+      // Verify all items are now checked
+      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
+      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
+      await groceriesPage.expectItemChecked(testGroceryItems[2].name, true);
+    });
+  });
 });

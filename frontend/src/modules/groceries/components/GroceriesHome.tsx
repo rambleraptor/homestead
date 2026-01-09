@@ -15,6 +15,7 @@ import { useUpdateGroceryItem } from '../hooks/useUpdateGroceryItem';
 import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
 import { useDeleteAllGroceries } from '../hooks/useDeleteAllGroceries';
 import { useCategorizeAllGroceries } from '../hooks/useCategorizeAllGroceries';
+import { useMarkStoreCompleted } from '../hooks/useMarkStoreCompleted';
 import { GroceryList } from './GroceryList';
 import { ImageUploadDialog } from './ImageUploadDialog';
 import { StoreManagement } from './StoreManagement';
@@ -33,6 +34,7 @@ export function GroceriesHome() {
   const deleteMutation = useDeleteGroceryItem();
   const deleteAllMutation = useDeleteAllGroceries();
   const categorizeAllMutation = useCategorizeAllGroceries();
+  const markStoreCompletedMutation = useMarkStoreCompleted();
 
   const handleQuickAdd = async () => {
     if (!itemName.trim()) return;
@@ -90,6 +92,15 @@ export function GroceriesHome() {
     }
   };
 
+  const handleMarkStoreCompleted = async (storeId: string | null) => {
+    try {
+      const result = await markStoreCompletedMutation.mutateAsync({ storeId });
+      logger.info(`Marked ${result.updated} items as completed`);
+    } catch (err) {
+      logger.error('Failed to mark store as completed', err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -114,7 +125,7 @@ export function GroceriesHome() {
   }
 
   const isSubmitting = createMutation.isPending;
-  const isUpdating = updateMutation.isPending || deleteMutation.isPending || deleteAllMutation.isPending;
+  const isUpdating = updateMutation.isPending || deleteMutation.isPending || deleteAllMutation.isPending || markStoreCompletedMutation.isPending;
   const isCategorizing = categorizeAllMutation.isPending;
 
   return (
@@ -238,6 +249,7 @@ export function GroceriesHome() {
         storeGroups={stats.stores}
         onToggleItem={handleToggleItem}
         onDeleteItem={handleDeleteItem}
+        onMarkStoreCompleted={handleMarkStoreCompleted}
         isUpdating={isUpdating}
       />
 
