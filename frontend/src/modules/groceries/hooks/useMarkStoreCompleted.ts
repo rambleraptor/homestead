@@ -1,7 +1,7 @@
 /**
  * Mark Store Completed Hook
  *
- * Mutation for marking all items in a store as completed (checked)
+ * Mutation for deleting all items in a store when marking it as completed
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,32 +21,32 @@ export function useMarkStoreCompleted() {
     mutationFn: async ({ storeId }: MarkStoreCompletedParams) => {
       const collection = getCollection<GroceryItem>(Collections.GROCERIES);
 
-      // Build filter for unchecked items in the store
+      // Build filter for all items in the store
       const filter = storeId
-        ? `store = "${storeId}" && checked = false`
-        : `store = "" && checked = false`;
+        ? `store = "${storeId}"`
+        : `store = ""`;
 
-      // Fetch all unchecked items for this store
+      // Fetch all items for this store
       const items = await collection.getFullList({
         filter,
       });
 
-      logger.info(`Marking ${items.length} items as completed for store ${storeId || 'no-store'}`);
+      logger.info(`Deleting ${items.length} items for completed store ${storeId || 'no-store'}`);
 
-      // Update all items to checked
-      const updatePromises = items.map((item) =>
-        collection.update(item.id, { checked: true })
+      // Delete all items
+      const deletePromises = items.map((item) =>
+        collection.delete(item.id)
       );
 
-      await Promise.all(updatePromises);
+      await Promise.all(deletePromises);
 
       return {
-        updated: items.length,
+        deleted: items.length,
         storeId,
       };
     },
     onSuccess: (result) => {
-      logger.info(`Successfully marked ${result.updated} items as completed`);
+      logger.info(`Successfully deleted ${result.deleted} items from completed store`);
       queryClient.invalidateQueries({ queryKey: queryKeys.module('groceries').list() });
     },
     onError: (error) => {

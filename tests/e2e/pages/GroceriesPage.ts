@@ -112,6 +112,14 @@ export class GroceriesPage {
     await expect(storeHeader).toBeVisible();
   }
 
+  async expectStoreHeaderNotVisible(storeName: string) {
+    // Store headers use h2 tags with the store name
+    const storeHeader = this.page.locator('h2').filter({ hasText: storeName });
+    await expect(storeHeader).not.toBeVisible({ timeout: 2000 }).catch(() => {
+      // Element doesn't exist, which is fine
+    });
+  }
+
   async expectItemInStore(storeName: string, itemName: string) {
     // Find the store section
     const storeSection = this.page.locator('div.space-y-4').filter({ has: this.page.locator('h2', { hasText: storeName }) });

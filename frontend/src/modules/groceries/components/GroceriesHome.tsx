@@ -95,7 +95,7 @@ export function GroceriesHome() {
   const handleMarkStoreCompleted = async (storeId: string | null) => {
     try {
       const result = await markStoreCompletedMutation.mutateAsync({ storeId });
-      logger.info(`Marked ${result.updated} items as completed`);
+      logger.info(`Deleted ${result.deleted} items from completed store`);
     } catch (err) {
       logger.error('Failed to mark store as completed', err);
     }
