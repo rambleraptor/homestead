@@ -37,11 +37,11 @@ export function GroceryList({
         <div key={storeGroup.store?.id || 'no-store'} className="space-y-4">
           {/* Store header */}
           <div className="flex items-center gap-2 px-2">
-            <StoreIcon className="w-5 h-5 text-gray-600" />
-            <h2 className="text-xl font-bold text-gray-900">
+            <StoreIcon className="w-5 h-5 text-gray-600 shrink-0" />
+            <h2 className="text-xl font-bold text-gray-900 flex-1 min-w-0 truncate">
               {storeGroup.store?.name || 'No Store'}
             </h2>
-            <span className="ml-auto text-sm text-gray-600">
+            <span className="ml-auto text-sm text-gray-600 shrink-0 whitespace-nowrap">
               {storeGroup.checkedCount} / {storeGroup.totalCount} checked
             </span>
           </div>
@@ -51,9 +51,9 @@ export function GroceryList({
             {storeGroup.categories.map((group) => (
               <div key={group.category} className="bg-white rounded-lg border">
                 <div className="px-4 py-3 border-b bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">{group.category}</h3>
-                    <span className="text-sm text-gray-600">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-gray-900 flex-1 min-w-0 truncate">{group.category}</h3>
+                    <span className="text-sm text-gray-600 shrink-0 whitespace-nowrap">
                       {group.checkedCount} / {group.totalCount} checked
                     </span>
                   </div>
