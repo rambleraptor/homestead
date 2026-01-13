@@ -37,6 +37,7 @@ import { groceriesModule } from './groceries/module.config';
 import { peopleModule } from './people/module.config';
 import { notificationsModule } from './notifications/module.config';
 import { settingsModule } from './settings/module.config';
+import { hsaModule } from './hsa/module.config';
 
 // =============================================================================
 // REGISTER MODULES HERE
@@ -51,6 +52,7 @@ const MODULES: HomeModule[] = [
   giftCardsModule,
   groceriesModule,
   peopleModule,
+  hsaModule,
   notificationsModule,
   settingsModule,
   // Add your modules here...
