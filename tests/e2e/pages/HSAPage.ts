@@ -43,11 +43,16 @@ export class HSAPage {
     }
 
     // Upload a test file (required field)
+    // Create a minimal valid JPEG file with proper magic bytes
     const fileInput = this.page.locator('#receipt_file');
+    const minimalJpeg = Buffer.from([
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+      0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9
+    ]);
     await fileInput.setInputFiles({
       name: 'test-receipt.jpg',
       mimeType: 'image/jpeg',
-      buffer: Buffer.from('test receipt content'),
+      buffer: minimalJpeg,
     });
   }
 

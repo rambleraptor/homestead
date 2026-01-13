@@ -335,9 +335,13 @@ export async function createHSAReceipt(
     notes?: string;
   }
 ) {
-  // For e2e tests, we create a minimal test file to satisfy the required constraint
+  // For e2e tests, we create a minimal valid JPEG file with proper magic bytes
   // In a real scenario, users would upload actual receipt images/PDFs
-  const testFile = new File(['test receipt'], 'test-receipt.jpg', { type: 'image/jpeg' });
+  const minimalJpegBytes = new Uint8Array([
+    0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+    0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9
+  ]);
+  const testFile = new File([minimalJpegBytes], 'test-receipt.jpg', { type: 'image/jpeg' });
 
   const formData = new FormData();
   formData.append('merchant', data.merchant);
