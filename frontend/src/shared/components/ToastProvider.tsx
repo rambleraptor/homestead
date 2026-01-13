@@ -3,8 +3,14 @@
 import React, { createContext, useContext, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { toast as sonnerToast } from 'sonner';
-import { Toaster } from '@/shared/components/ui/sonner';
+import dynamic from 'next/dynamic';
 import type { ToastType } from '@/shared/types/toast';
+
+// Dynamically import Toaster with ssr disabled to prevent hydration issues
+const Toaster = dynamic(
+  () => import('@/shared/components/ui/sonner').then((mod) => mod.Toaster),
+  { ssr: false }
+);
 
 interface ToastContextValue {
   showToast: (type: ToastType, message: string, duration?: number) => void;
