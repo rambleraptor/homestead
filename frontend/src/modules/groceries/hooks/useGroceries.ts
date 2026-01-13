@@ -18,7 +18,7 @@ export function useGroceries() {
   const isOnline = useOnlineStatus();
 
   return useQuery({
-    queryKey: [...queryKeys.module('groceries').list(), { isOnline }],
+    queryKey: queryKeys.module('groceries').list(),
     queryFn: async () => {
       // Check current online status at execution time
       const isCurrentlyOnline = navigator.onLine;
