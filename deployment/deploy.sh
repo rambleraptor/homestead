@@ -194,14 +194,37 @@ if [ "$MIGRATIONS_CHANGED" = true ]; then
     log "${YELLOW}⚠️  No database file found (fresh install)${NC}"
   fi
 
-  # Start PocketBase (auto-applies migrations)
-  log "${BLUE}🚀 Starting PocketBase (migrations will auto-apply)...${NC}"
+  # Apply migrations explicitly
+  log "${BLUE}🔄 Running migrations...${NC}"
+  cd "$PROJECT_ROOT/pocketbase"
+  if ./pocketbase migrate up --dir "$PROJECT_ROOT/pb_migrations" 2>&1 | tee -a "$LOG_FILE"; then
+    log "${GREEN}✅ Migrations applied successfully${NC}"
+  else
+    log "${RED}❌ Migration failed!${NC}"
+
+    # Rollback
+    log "${YELLOW}⏮️  Rolling back...${NC}"
+    if [ -f "$BACKUP_FILE" ]; then
+      cp "$BACKUP_FILE" "$PROJECT_ROOT/pocketbase/pb_data/data.db"
+      log "${BLUE}Database restored from backup${NC}"
+    fi
+    cd "$PROJECT_ROOT"
+    git reset --hard $PREVIOUS_COMMIT 2>&1 | tee -a "$LOG_FILE"
+    sudo systemctl start homeos-pocketbase homeos-frontend
+
+    log "${RED}❌ Deployment failed${NC}"
+    exit 1
+  fi
+  cd "$PROJECT_ROOT"
+
+  # Start PocketBase
+  log "${BLUE}🚀 Starting PocketBase...${NC}"
   sudo systemctl start homeos-pocketbase 2>&1 | tee -a "$LOG_FILE"
   sleep 5
 
   # Verify PocketBase started
   if ! sudo systemctl is-active --quiet homeos-pocketbase; then
-    log "${RED}❌ Migration failed!${NC}"
+    log "${RED}❌ PocketBase failed to start!${NC}"
     sudo journalctl -u homeos-pocketbase -n 50 --no-pager | tee -a "$LOG_FILE"
 
     # Rollback
@@ -220,7 +243,6 @@ if [ "$MIGRATIONS_CHANGED" = true ]; then
 
   # Cleanup old backups (keep last 10)
   ls -t "$BACKUP_DIR"/data.db.backup.* 2>/dev/null | tail -n +11 | xargs -r rm
-  log "${GREEN}✅ Migrations applied successfully${NC}"
 else
   # Restart PocketBase only if there were any changes
   if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ] || [ "$FORCE_BUILD" = true ]; then
