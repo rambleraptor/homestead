@@ -337,7 +337,7 @@ export async function createHSAReceipt(
 ) {
   // For e2e tests, we create a minimal test file to satisfy the required constraint
   // In a real scenario, users would upload actual receipt images/PDFs
-  const testFile = new File(['test receipt'], 'test-receipt.txt', { type: 'text/plain' });
+  const testFile = new File(['test receipt'], 'test-receipt.jpg', { type: 'image/jpeg' });
 
   const formData = new FormData();
   formData.append('merchant', data.merchant);
