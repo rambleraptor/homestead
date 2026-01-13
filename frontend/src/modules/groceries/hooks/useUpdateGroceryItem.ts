@@ -72,16 +72,28 @@ export function useUpdateGroceryItem() {
       return item;
     },
     onSuccess: async (_, { id, data }) => {
-      // Optimistic update: modify local cache if offline
-      if (!navigator.onLine) {
+      const isCurrentlyOnline = navigator.onLine;
+
+      // Update both IndexedDB and React Query cache
+      if (!isCurrentlyOnline) {
         const cached = await getGroceriesLocally();
         const updated = cached.map((item) =>
           item.id === id ? { ...item, ...data, updated: new Date().toISOString() } : item
         );
         await saveGroceriesLocally(updated);
+
+        // Directly update React Query cache for offline mode
+        queryClient.setQueryData(
+          [...queryKeys.module('groceries').list(), { isOnline: false }],
+          updated
+        );
       }
 
-      queryClient.invalidateQueries({ queryKey: queryKeys.module('groceries').list() });
+      // Invalidate all groceries queries to refresh
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.module('groceries').list(),
+        exact: false
+      });
     },
     onError: (error) => {
       logger.error('Failed to update grocery item', error);

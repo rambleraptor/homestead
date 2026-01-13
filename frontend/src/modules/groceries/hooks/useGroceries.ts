@@ -18,10 +18,13 @@ export function useGroceries() {
   const isOnline = useOnlineStatus();
 
   return useQuery({
-    queryKey: queryKeys.module('groceries').list(),
+    queryKey: [...queryKeys.module('groceries').list(), { isOnline }],
     queryFn: async () => {
+      // Check current online status at execution time
+      const isCurrentlyOnline = navigator.onLine;
+
       // When offline, return cached data from IndexedDB
-      if (!isOnline) {
+      if (!isCurrentlyOnline) {
         const cachedItems = await getGroceriesLocally();
         return cachedItems;
       }

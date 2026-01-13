@@ -63,14 +63,26 @@ export function useCreateGroceryItem() {
       return item;
     },
     onSuccess: async (newItem) => {
-      // Optimistic update: add to local cache if offline
-      if (!navigator.onLine) {
+      const isCurrentlyOnline = navigator.onLine;
+
+      // Update both IndexedDB and React Query cache
+      if (!isCurrentlyOnline) {
         const cached = await getGroceriesLocally();
-        await saveGroceriesLocally([...cached, newItem]);
+        const updated = [...cached, newItem];
+        await saveGroceriesLocally(updated);
+
+        // Directly update React Query cache for offline mode
+        queryClient.setQueryData(
+          [...queryKeys.module('groceries').list(), { isOnline: false }],
+          updated
+        );
       }
 
-      // Invalidate groceries list to refresh
-      queryClient.invalidateQueries({ queryKey: queryKeys.module('groceries').list() });
+      // Invalidate all groceries queries to refresh
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.module('groceries').list(),
+        exact: false
+      });
     },
     onError: (error) => {
       logger.error('Failed to create grocery item', error);
