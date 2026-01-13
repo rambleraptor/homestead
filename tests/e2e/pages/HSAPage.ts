@@ -45,8 +45,8 @@ export class HSAPage {
     // Upload a test file (required field)
     const fileInput = this.page.locator('#receipt_file');
     await fileInput.setInputFiles({
-      name: 'test-receipt.txt',
-      mimeType: 'text/plain',
+      name: 'test-receipt.jpg',
+      mimeType: 'image/jpeg',
       buffer: Buffer.from('test receipt content'),
     });
   }
