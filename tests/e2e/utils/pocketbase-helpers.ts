@@ -320,6 +320,95 @@ export async function deleteAllGroceryItems(pb: PocketBase) {
 }
 
 /**
+ * Create an HSA receipt via PocketBase API
+ * Note: receipt_file is not created in tests (would require file upload)
+ */
+export async function createHSAReceipt(
+  pb: PocketBase,
+  data: {
+    merchant: string;
+    service_date: string;
+    amount: number;
+    category: 'Medical' | 'Dental' | 'Vision' | 'Rx';
+    patient?: string;
+    status: 'Stored' | 'Reimbursed';
+    notes?: string;
+  }
+) {
+  // For e2e tests, we create a minimal test file to satisfy the required constraint
+  // In a real scenario, users would upload actual receipt images/PDFs
+  const testFile = new File(['test receipt'], 'test-receipt.txt', { type: 'text/plain' });
+
+  const formData = new FormData();
+  formData.append('merchant', data.merchant);
+  formData.append('service_date', data.service_date);
+  formData.append('amount', data.amount.toString());
+  formData.append('category', data.category);
+  formData.append('status', data.status);
+  formData.append('receipt_file', testFile);
+
+  if (data.patient) {
+    formData.append('patient', data.patient);
+  }
+
+  if (data.notes) {
+    formData.append('notes', data.notes);
+  }
+
+  if (pb.authStore.model?.id) {
+    formData.append('created_by', pb.authStore.model.id);
+  }
+
+  return await pb.collection('hsa_receipts').create(formData);
+}
+
+/**
+ * Create multiple HSA receipts
+ */
+export async function createMultipleHSAReceipts(
+  pb: PocketBase,
+  receipts: Array<{
+    merchant: string;
+    service_date: string;
+    amount: number;
+    category: 'Medical' | 'Dental' | 'Vision' | 'Rx';
+    patient?: string;
+    status: 'Stored' | 'Reimbursed';
+    notes?: string;
+  }>
+) {
+  // Create sequentially to avoid PocketBase auto-cancellation
+  const results = [];
+  for (const receipt of receipts) {
+    const result = await createHSAReceipt(pb, receipt);
+    results.push(result);
+  }
+  return results;
+}
+
+/**
+ * Delete all HSA receipts (family-wide, not filtered by user)
+ * Silently handles cases where collection doesn't exist or no access
+ */
+export async function deleteAllHSAReceipts(pb: PocketBase) {
+  try {
+    const records = await pb.collection('hsa_receipts').getFullList();
+
+    if (records.length > 0) {
+      const promises = records.map(record =>
+        pb.collection('hsa_receipts').delete(record.id)
+      );
+      await Promise.all(promises);
+    }
+  } catch (error: any) {
+    if (error.status === 404 || error.status === 403) {
+      return;
+    }
+    throw error;
+  }
+}
+
+/**
  * Clean up all test data (for the entire family, not just one user)
  */
 export async function cleanupUserData(pb: PocketBase) {
@@ -329,5 +418,6 @@ export async function cleanupUserData(pb: PocketBase) {
     deleteAllAddresses(pb),
     deleteAllGroceryItems(pb),
     deleteAllStores(pb),
+    deleteAllHSAReceipts(pb),
   ]);
 }

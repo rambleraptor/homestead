@@ -89,6 +89,48 @@ export const testStores = [
 ];
 
 /**
+ * Test HSA receipts
+ */
+export const testHSAReceipts = [
+  {
+    merchant: 'CVS Pharmacy',
+    service_date: '2024-01-15',
+    amount: 45.99,
+    category: 'Rx' as const,
+    patient: 'Self',
+    status: 'Stored' as const,
+    notes: 'Prescription refill',
+  },
+  {
+    merchant: 'Dr. Smith Dental',
+    service_date: '2024-02-20',
+    amount: 250.00,
+    category: 'Dental' as const,
+    patient: 'Child',
+    status: 'Stored' as const,
+    notes: 'Cavity filling',
+  },
+  {
+    merchant: 'Vision Center',
+    service_date: '2024-03-10',
+    amount: 150.00,
+    category: 'Vision' as const,
+    patient: 'Spouse',
+    status: 'Stored' as const,
+    notes: 'Eye exam and glasses',
+  },
+  {
+    merchant: 'ABC Medical Clinic',
+    service_date: '2024-01-05',
+    amount: 125.00,
+    category: 'Medical' as const,
+    patient: 'Self',
+    status: 'Reimbursed' as const,
+    notes: 'Annual checkup',
+  },
+];
+
+/**
  * Test CSV data for people bulk import
  */
 export const testBulkImportCSV = {

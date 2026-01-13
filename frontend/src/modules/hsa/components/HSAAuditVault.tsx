@@ -155,6 +155,7 @@ export function HSAAuditVault({
                         <button
                           onClick={() => onMarkAsReimbursed(receipt.id)}
                           disabled={isUpdating}
+                          aria-label={`Mark ${receipt.merchant} receipt as reimbursed`}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Mark as Reimbursed"
                         >
@@ -164,6 +165,7 @@ export function HSAAuditVault({
                       )}
                       <button
                         onClick={() => onDelete(receipt.id)}
+                        aria-label={`Delete ${receipt.merchant} receipt`}
                         className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                         title="Delete receipt"
                       >

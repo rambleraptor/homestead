@@ -124,6 +124,7 @@ export function HSAHome() {
           </h2>
           <button
             onClick={() => setShowForm(!showForm)}
+            data-testid="add-hsa-receipt-button"
             className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
           >
             {showForm ? 'Hide Form' : 'Add Receipt'}
