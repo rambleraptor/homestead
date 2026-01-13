@@ -298,6 +298,20 @@ export async function deleteAllStores(pb: PocketBase) {
 }
 
 /**
+ * Get all grocery items for the current user
+ */
+export async function getGroceryItems(pb: PocketBase) {
+  try {
+    return await pb.collection('groceries').getFullList();
+  } catch (error: any) {
+    if (error.status === 404 || error.status === 403) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
  * Delete all grocery items (family-wide, not filtered by user)
  * Silently handles cases where collection doesn't exist or no access
  */
