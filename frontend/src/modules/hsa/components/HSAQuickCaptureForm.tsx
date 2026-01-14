@@ -8,17 +8,18 @@ import { useState } from 'react';
 import { Upload, X, Sparkles, Loader2 } from 'lucide-react';
 import { getAuthToken } from '@/core/api/pocketbase';
 import type { HSAReceiptFormData, ReceiptCategory } from '../types';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configure PDF.js worker
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-}
 
 /**
  * Convert the first page of a PDF to a PNG image
+ * Dynamically imports pdfjs-dist to avoid SSR issues
  */
 async function convertPdfToImage(pdfFile: File): Promise<{ base64: string; mimeType: string }> {
+  // Dynamic import to avoid SSR issues
+  const pdfjsLib = await import('pdfjs-dist');
+
+  // Configure PDF.js worker
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
   const arrayBuffer = await pdfFile.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const page = await pdf.getPage(1); // Get first page
