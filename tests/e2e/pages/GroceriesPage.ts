@@ -311,7 +311,8 @@ export class GroceriesPage {
       window.dispatchEvent(new Event('offline'));
     });
 
-    await this.page.waitForTimeout(1000);
+    // Wait longer for React Query to load IndexedDB data and React to render
+    await this.page.waitForTimeout(2000);
   }
 
   async createItemOffline(data: { name: string; store?: string }) {

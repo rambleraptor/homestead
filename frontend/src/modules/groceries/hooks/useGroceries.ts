@@ -19,6 +19,7 @@ export function useGroceries() {
 
   return useQuery({
     queryKey: queryKeys.module('groceries').list(),
+    networkMode: 'always', // Allow query to run even when offline
     queryFn: async () => {
       // Check current online status at execution time
       const isCurrentlyOnline = navigator.onLine;
