@@ -273,8 +273,11 @@ export class GroceriesPage {
   async setOffline() {
     await this.setupOfflineScript();
 
-    // Block network requests
-    await this.page.context().setOffline(true);
+    // Use route interception to fail all network requests (simulates true offline)
+    // This is more realistic than context.setOffline() which can cause reload issues
+    await this.page.route('**/*', (route) => {
+      route.abort('failed');
+    });
 
     // Set the test offline flag and dispatch event
     // Ensure flag exists first, then set it and dispatch event
@@ -285,8 +288,7 @@ export class GroceriesPage {
       }
       // Now set it to true (offline)
       (window as any).__testOffline__ = true;
-      // Only dispatch test-offline-change event to trigger React re-render
-      // (Don't dispatch 'offline' to avoid conflicts with the handler)
+      // Dispatch test-offline-change event to trigger React re-render
       window.dispatchEvent(new Event('test-offline-change'));
     });
 
@@ -297,8 +299,8 @@ export class GroceriesPage {
   async setOnline() {
     await this.setupOfflineScript();
 
-    // Re-enable network requests
-    await this.page.context().setOffline(false);
+    // Remove all route interception to allow network requests again
+    await this.page.unroute('**/*');
 
     // Clear the test offline flag and dispatch event
     // Ensure flag exists first, then set it and dispatch event
@@ -309,8 +311,7 @@ export class GroceriesPage {
       }
       // Now set it to false (online)
       (window as any).__testOffline__ = false;
-      // Only dispatch test-offline-change event to trigger React re-render
-      // (Don't dispatch 'online' to avoid conflicts with the handler)
+      // Dispatch test-offline-change event to trigger React re-render
       window.dispatchEvent(new Event('test-offline-change'));
     });
 
@@ -321,14 +322,15 @@ export class GroceriesPage {
   async reloadWhileOffline() {
     await this.setupOfflineScript();
 
-    // To reload while offline, we need to temporarily go online (to fetch the page),
-    // but immediately restore offline state in the browser context
-    await this.page.context().setOffline(false);
+    // Temporarily unblock requests to allow page reload
+    await this.page.unroute('**/*');
 
     await this.page.reload({ waitUntil: 'domcontentloaded' });
 
-    // Immediately re-establish offline state
-    await this.page.context().setOffline(true);
+    // Re-establish offline state with route interception
+    await this.page.route('**/*', (route) => {
+      route.abort('failed');
+    });
 
     // Set the test offline flag and dispatch event
     // Ensure flag exists first, then set it and dispatch event
@@ -339,8 +341,7 @@ export class GroceriesPage {
       }
       // Now set it to true (offline)
       (window as any).__testOffline__ = true;
-      // Only dispatch test-offline-change event to trigger React re-render
-      // (Don't dispatch 'offline' to avoid conflicts with the handler)
+      // Dispatch test-offline-change event to trigger React re-render
       window.dispatchEvent(new Event('test-offline-change'));
     });
 

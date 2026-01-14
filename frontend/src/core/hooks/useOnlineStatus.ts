@@ -24,13 +24,10 @@ export function useOnlineStatus(): boolean {
   const [isOnline, setIsOnline] = useState(getOnlineStatus);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    // Handler for test-specific offline state changes
-    const handleTestOfflineChange = () => {
-      setIsOnline(getOnlineStatus());
-    };
+    // All handlers should check getOnlineStatus() to respect test override
+    const handleOnline = () => setIsOnline(getOnlineStatus());
+    const handleOffline = () => setIsOnline(getOnlineStatus());
+    const handleTestOfflineChange = () => setIsOnline(getOnlineStatus());
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
