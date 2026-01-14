@@ -7,10 +7,11 @@ import { Page, expect } from '@playwright/test';
 export class GroceriesPage {
   private offlineScriptAdded = false;
 
-  constructor(private page: Page) {}
+  constructor(private page: Page) {
+    this.setupOfflineScript();
+  }
 
   async goto() {
-    await this.setupOfflineScript();
     await this.page.goto('/groceries');
   }
 
@@ -18,7 +19,10 @@ export class GroceriesPage {
     await expect(this.page).toHaveURL(/\/groceries/);
   }
 
-  async createItem(data: { name: string; notes?: string; store?: string }) {
+  async createItem(
+    data: { name: string; notes?: string; store?: string },
+    options: { offline?: boolean } = {},
+  ) {
     // Select store if provided
     if (data.store !== undefined) {
       const storeSelect = this.page.getByTestId('store-select');
@@ -36,8 +40,10 @@ export class GroceriesPage {
     await addButton.waitFor({ state: 'visible' });
     await addButton.click();
 
-    // Wait for the input to be cleared and network to settle
-    await this.page.waitForLoadState('networkidle');
+    // If online, wait for network to settle
+    if (!options.offline) {
+      await this.page.waitForLoadState('networkidle');
+    }
 
     // Note: The quick-add doesn't support notes field
     // If notes are needed, that feature would need to be added
@@ -271,70 +277,33 @@ export class GroceriesPage {
   }
 
   async setOffline() {
-    await this.setupOfflineScript();
+    // Set Playwright's offline mode
+    await this.page.context().setOffline(true);
 
-    // Set the test offline flag and dispatch event
-    // Ensure flag exists first, then set it and dispatch event
+    // Set our application's offline mode
     await this.page.evaluate(() => {
-      // Initialize flag if it doesn't exist
-      if (!('__testOffline__' in window)) {
-        (window as any).__testOffline__ = false;
-      }
-      // Now set it to true (offline)
       (window as any).__testOffline__ = true;
-      // Dispatch test-offline-change event to trigger React re-render
-      window.dispatchEvent(new Event('test-offline-change'));
     });
-
-    // Wait for React to process the state change
-    await this.page.waitForTimeout(1000);
   }
 
   async setOnline() {
-    await this.setupOfflineScript();
+    // Set Playwright's offline mode
+    await this.page.context().setOffline(false);
 
-    // Clear the test offline flag and dispatch event
-    // Ensure flag exists first, then set it and dispatch event
+    // Set our application's offline mode
     await this.page.evaluate(() => {
-      // Initialize flag if it doesn't exist
-      if (!('__testOffline__' in window)) {
-        (window as any).__testOffline__ = false;
-      }
-      // Now set it to false (online)
       (window as any).__testOffline__ = false;
-      // Dispatch test-offline-change event to trigger React re-render
-      window.dispatchEvent(new Event('test-offline-change'));
     });
 
-    // Wait for React to process the state change and potential sync
-    await this.page.waitForTimeout(1000);
+    // Wait for network to settle after coming online
+    await this.page.waitForLoadState('networkidle');
   }
 
-  async reloadWhileOffline() {
-    await this.setupOfflineScript();
-
-    await this.page.reload({ waitUntil: 'domcontentloaded' });
-
-    // Set the test offline flag and dispatch event after reload
-    // Ensure flag exists first, then set it and dispatch event
-    await this.page.evaluate(() => {
-      // Initialize flag if it doesn't exist (should be set by init script, but ensure it)
-      if (!('__testOffline__' in window)) {
-        (window as any).__testOffline__ = false;
-      }
-      // Now set it to true (offline)
-      (window as any).__testOffline__ = true;
-      // Dispatch test-offline-change event to trigger React re-render
-      window.dispatchEvent(new Event('test-offline-change'));
-    });
-
-    // Wait longer for React Query to load IndexedDB data and React to render
-    await this.page.waitForTimeout(2000);
-  }
+  
 
   async createItemOffline(data: { name: string; store?: string }) {
     // Create item while offline
-    await this.createItem(data);
+    await this.createItem(data, { offline: true });
     // Don't wait for network idle since we're offline
   }
 
