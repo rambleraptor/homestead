@@ -23,16 +23,29 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  // Initialize state from PocketBase store immediately
-  const [state, setState] = useState<AuthState>(() => {
+  // Initialize with neutral state to avoid hydration mismatch
+  // We'll sync with PocketBase store after mount
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    isLoading: true, // Set to true initially while we check auth state
+  });
+
+  /**
+   * Initialize auth state from PocketBase store after component mounts
+   * This avoids hydration mismatch since localStorage only exists on client
+   */
+  useEffect(() => {
     const user = getCurrentUser();
-    return {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState({
       user,
       token: pb.authStore.token || null,
       isAuthenticated: pb.authStore.isValid,
       isLoading: false,
-    };
-  });
+    });
+  }, []);
 
   /**
    * Subscribe to auth changes
