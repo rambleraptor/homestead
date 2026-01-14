@@ -5,9 +5,12 @@
 import { Page, expect } from '@playwright/test';
 
 export class GroceriesPage {
+  private offlineScriptAdded = false;
+
   constructor(private page: Page) {}
 
   async goto() {
+    await this.setupOfflineScript();
     await this.page.goto('/groceries');
   }
 
@@ -254,19 +257,35 @@ export class GroceriesPage {
     }
   }
 
+  private async setupOfflineScript() {
+    if (this.offlineScriptAdded) return;
+
+    // Add script that runs before page loads to override navigator.onLine
+    await this.page.addInitScript(() => {
+      // Create a global variable to track offline state
+      (window as any).__offline__ = false;
+
+      // Override navigator.onLine
+      Object.defineProperty(navigator, 'onLine', {
+        configurable: true,
+        get() {
+          return !(window as any).__offline__;
+        },
+      });
+    });
+
+    this.offlineScriptAdded = true;
+  }
+
   async setOffline() {
+    await this.setupOfflineScript();
+
     // Block network requests
     await this.page.context().setOffline(true);
 
-    // Simulate offline mode in the browser by modifying navigator.onLine and firing events
+    // Set the offline flag and dispatch event
     await this.page.evaluate(() => {
-      // Override navigator.onLine with a getter that always returns false
-      Object.defineProperty(navigator, 'onLine', {
-        configurable: true,
-        get: () => false,
-      });
-
-      // Dispatch offline event so React hooks pick it up
+      (window as any).__offline__ = true;
       window.dispatchEvent(new Event('offline'));
     });
 
@@ -275,18 +294,14 @@ export class GroceriesPage {
   }
 
   async setOnline() {
+    await this.setupOfflineScript();
+
     // Re-enable network requests
     await this.page.context().setOffline(false);
 
-    // Simulate online mode in the browser
+    // Clear the offline flag and dispatch event
     await this.page.evaluate(() => {
-      // Restore navigator.onLine with a getter that always returns true
-      Object.defineProperty(navigator, 'onLine', {
-        configurable: true,
-        get: () => true,
-      });
-
-      // Dispatch online event so React hooks pick it up
+      (window as any).__offline__ = false;
       window.dispatchEvent(new Event('online'));
     });
 
@@ -295,6 +310,8 @@ export class GroceriesPage {
   }
 
   async reloadWhileOffline() {
+    await this.setupOfflineScript();
+
     // To reload while offline, we need to temporarily go online (to fetch the page),
     // but immediately restore offline state in the browser context
     await this.page.context().setOffline(false);
@@ -303,11 +320,11 @@ export class GroceriesPage {
 
     // Immediately re-establish offline state
     await this.page.context().setOffline(true);
+
+    // The init script already set up the navigator.onLine override
+    // Just need to set the flag and dispatch event
     await this.page.evaluate(() => {
-      Object.defineProperty(navigator, 'onLine', {
-        configurable: true,
-        get: () => false,
-      });
+      (window as any).__offline__ = true;
       window.dispatchEvent(new Event('offline'));
     });
 
