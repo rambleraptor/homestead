@@ -262,11 +262,11 @@ test.describe('Groceries - Multi-Store', () => {
   });
 
   test.describe('Mark Store Completed', () => {
-    test('should mark all items in a store as completed', async ({ userPocketbase }) => {
+    test('should delete all items in a store when marked completed', async ({ userPocketbase }) => {
       // Create a store
       const wholeFoods = await createStore(userPocketbase, testStores[0]);
 
-      // Create unchecked items for this store
+      // Create items for this store
       await createMultipleGroceryItems(userPocketbase, [
         { ...testGroceryItems[0], store: wholeFoods.id, checked: false },
         { ...testGroceryItems[1], store: wholeFoods.id, checked: false },
@@ -275,32 +275,32 @@ test.describe('Groceries - Multi-Store', () => {
 
       await groceriesPage.goto();
 
-      // Verify items are unchecked
-      await groceriesPage.expectItemChecked(testGroceryItems[0].name, false);
-      await groceriesPage.expectItemChecked(testGroceryItems[1].name, false);
-      await groceriesPage.expectItemChecked(testGroceryItems[2].name, false);
+      // Verify items are in the list
+      await groceriesPage.expectItemInList(testGroceryItems[0].name);
+      await groceriesPage.expectItemInList(testGroceryItems[1].name);
+      await groceriesPage.expectItemInList(testGroceryItems[2].name);
 
       // Verify mark complete button is visible
       await groceriesPage.expectMarkStoreCompletedButtonVisible('Whole Foods');
 
-      // Mark all items in the store as completed
+      // Mark all items in the store as completed (deletes them)
       await groceriesPage.markStoreCompleted('Whole Foods');
 
-      // Verify all items are now checked
-      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
-      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
-      await groceriesPage.expectItemChecked(testGroceryItems[2].name, true);
+      // Verify all items are deleted from the list
+      await groceriesPage.expectItemNotInList(testGroceryItems[0].name);
+      await groceriesPage.expectItemNotInList(testGroceryItems[1].name);
+      await groceriesPage.expectItemNotInList(testGroceryItems[2].name);
 
-      // Verify mark complete button is no longer visible
-      await groceriesPage.expectMarkStoreCompletedButtonNotVisible('Whole Foods');
+      // Verify store header is no longer visible (no items left)
+      await groceriesPage.expectStoreHeaderNotVisible('Whole Foods');
     });
 
-    test('should only mark items in the selected store', async ({ userPocketbase }) => {
+    test('should only delete items in the selected store', async ({ userPocketbase }) => {
       // Create stores
       const wholeFoods = await createStore(userPocketbase, testStores[0]);
       const costco = await createStore(userPocketbase, testStores[1]);
 
-      // Create unchecked items for both stores
+      // Create items for both stores
       await createMultipleGroceryItems(userPocketbase, [
         { ...testGroceryItems[0], store: wholeFoods.id, checked: false },
         { ...testGroceryItems[1], store: wholeFoods.id, checked: false },
@@ -310,22 +310,22 @@ test.describe('Groceries - Multi-Store', () => {
 
       await groceriesPage.goto();
 
-      // Mark Whole Foods items as completed
+      // Mark Whole Foods items as completed (deletes them)
       await groceriesPage.markStoreCompleted('Whole Foods');
 
-      // Verify Whole Foods items are checked
-      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
-      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
+      // Verify Whole Foods items are deleted
+      await groceriesPage.expectItemNotInList(testGroceryItems[0].name);
+      await groceriesPage.expectItemNotInList(testGroceryItems[1].name);
 
-      // Verify Costco items are still unchecked
-      await groceriesPage.expectItemChecked(testGroceryItems[2].name, false);
-      await groceriesPage.expectItemChecked(testGroceryItems[3].name, false);
+      // Verify Costco items still exist
+      await groceriesPage.expectItemInList(testGroceryItems[2].name);
+      await groceriesPage.expectItemInList(testGroceryItems[3].name);
 
-      // Verify mark complete button is visible for Costco
+      // Verify mark complete button is still visible for Costco
       await groceriesPage.expectMarkStoreCompletedButtonVisible('Costco');
     });
 
-    test('should mark all items in No Store section as completed', async ({ userPocketbase }) => {
+    test('should delete all items in No Store section when marked completed', async ({ userPocketbase }) => {
       // Create items without a store
       await createMultipleGroceryItems(userPocketbase, [
         { ...testGroceryItems[0], store: '', checked: false },
@@ -334,19 +334,19 @@ test.describe('Groceries - Multi-Store', () => {
 
       await groceriesPage.goto();
 
-      // Verify items are unchecked
-      await groceriesPage.expectItemChecked(testGroceryItems[0].name, false);
-      await groceriesPage.expectItemChecked(testGroceryItems[1].name, false);
+      // Verify items are in the list
+      await groceriesPage.expectItemInList(testGroceryItems[0].name);
+      await groceriesPage.expectItemInList(testGroceryItems[1].name);
 
-      // Mark all "No Store" items as completed
+      // Mark all "No Store" items as completed (deletes them)
       await groceriesPage.markStoreCompleted('No Store');
 
-      // Verify all items are now checked
-      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
-      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
+      // Verify all items are deleted
+      await groceriesPage.expectItemNotInList(testGroceryItems[0].name);
+      await groceriesPage.expectItemNotInList(testGroceryItems[1].name);
     });
 
-    test('should not show mark complete button when all items are checked', async ({ userPocketbase }) => {
+    test('should show mark complete button even when all items are checked', async ({ userPocketbase }) => {
       // Create a store
       const wholeFoods = await createStore(userPocketbase, testStores[0]);
 
@@ -362,11 +362,18 @@ test.describe('Groceries - Multi-Store', () => {
       await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
       await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
 
-      // Verify mark complete button is not visible
-      await groceriesPage.expectMarkStoreCompletedButtonNotVisible('Whole Foods');
+      // Verify mark complete button is visible (since items exist)
+      await groceriesPage.expectMarkStoreCompletedButtonVisible('Whole Foods');
+
+      // Mark store as completed (deletes all items)
+      await groceriesPage.markStoreCompleted('Whole Foods');
+
+      // Verify all items are deleted
+      await groceriesPage.expectItemNotInList(testGroceryItems[0].name);
+      await groceriesPage.expectItemNotInList(testGroceryItems[1].name);
     });
 
-    test('should handle mixed checked/unchecked items', async ({ userPocketbase }) => {
+    test('should delete all items regardless of checked state', async ({ userPocketbase }) => {
       // Create a store
       const wholeFoods = await createStore(userPocketbase, testStores[0]);
 
@@ -384,13 +391,13 @@ test.describe('Groceries - Multi-Store', () => {
       await groceriesPage.expectItemChecked(testGroceryItems[1].name, false);
       await groceriesPage.expectItemChecked(testGroceryItems[2].name, false);
 
-      // Mark all items as completed (should only affect unchecked items)
+      // Mark all items as completed (deletes all items, regardless of checked state)
       await groceriesPage.markStoreCompleted('Whole Foods');
 
-      // Verify all items are now checked
-      await groceriesPage.expectItemChecked(testGroceryItems[0].name, true);
-      await groceriesPage.expectItemChecked(testGroceryItems[1].name, true);
-      await groceriesPage.expectItemChecked(testGroceryItems[2].name, true);
+      // Verify all items are deleted
+      await groceriesPage.expectItemNotInList(testGroceryItems[0].name);
+      await groceriesPage.expectItemNotInList(testGroceryItems[1].name);
+      await groceriesPage.expectItemNotInList(testGroceryItems[2].name);
     });
   });
 });

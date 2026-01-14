@@ -46,13 +46,13 @@ export function GroceryList({
             <span className="text-sm text-gray-600 shrink-0 whitespace-nowrap">
               {storeGroup.checkedCount} / {storeGroup.totalCount} checked
             </span>
-            {onMarkStoreCompleted && storeGroup.checkedCount < storeGroup.totalCount && (
+            {onMarkStoreCompleted && storeGroup.totalCount > 0 && (
               <button
                 onClick={() => onMarkStoreCompleted(storeGroup.store?.id || null)}
                 disabled={isUpdating}
                 className="ml-2 bg-green-600 text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded-md hover:bg-green-700 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap"
                 data-testid="mark-store-completed-button"
-                title="Mark all items in this store as completed"
+                title="Clear all items from this store"
               >
                 <CheckCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Mark Complete</span>
