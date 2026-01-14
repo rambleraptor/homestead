@@ -18,7 +18,7 @@ export const giftCardsModule: HomeModule = {
     { path: 'import' },
   ],
   showInNav: true,
-  navOrder: 2,
+  navOrder: 4,
   section: 'Finance',
   enabled: true,
 };

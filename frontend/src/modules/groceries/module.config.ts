@@ -15,6 +15,6 @@ export const groceriesModule: HomeModule = {
   basePath: '/groceries',
   routes: [{ path: '', index: true }],
   showInNav: true,
-  navOrder: 3,
+  navOrder: 2,
   enabled: true,
 };
