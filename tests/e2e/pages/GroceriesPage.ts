@@ -276,10 +276,17 @@ export class GroceriesPage {
     // Block network requests
     await this.page.context().setOffline(true);
 
-    // Set the test offline flag and dispatch events
+    // Set the test offline flag and dispatch event
+    // Ensure flag exists first, then set it and dispatch event
     await this.page.evaluate(() => {
+      // Initialize flag if it doesn't exist
+      if (!('__testOffline__' in window)) {
+        (window as any).__testOffline__ = false;
+      }
+      // Now set it to true (offline)
       (window as any).__testOffline__ = true;
-      window.dispatchEvent(new Event('offline'));
+      // Only dispatch test-offline-change event to trigger React re-render
+      // (Don't dispatch 'offline' to avoid conflicts with the handler)
       window.dispatchEvent(new Event('test-offline-change'));
     });
 
@@ -293,10 +300,17 @@ export class GroceriesPage {
     // Re-enable network requests
     await this.page.context().setOffline(false);
 
-    // Clear the test offline flag and dispatch events
+    // Clear the test offline flag and dispatch event
+    // Ensure flag exists first, then set it and dispatch event
     await this.page.evaluate(() => {
+      // Initialize flag if it doesn't exist
+      if (!('__testOffline__' in window)) {
+        (window as any).__testOffline__ = false;
+      }
+      // Now set it to false (online)
       (window as any).__testOffline__ = false;
-      window.dispatchEvent(new Event('online'));
+      // Only dispatch test-offline-change event to trigger React re-render
+      // (Don't dispatch 'online' to avoid conflicts with the handler)
       window.dispatchEvent(new Event('test-offline-change'));
     });
 
@@ -316,10 +330,17 @@ export class GroceriesPage {
     // Immediately re-establish offline state
     await this.page.context().setOffline(true);
 
-    // Set the test offline flag and dispatch events
+    // Set the test offline flag and dispatch event
+    // Ensure flag exists first, then set it and dispatch event
     await this.page.evaluate(() => {
+      // Initialize flag if it doesn't exist (should be set by init script, but ensure it)
+      if (!('__testOffline__' in window)) {
+        (window as any).__testOffline__ = false;
+      }
+      // Now set it to true (offline)
       (window as any).__testOffline__ = true;
-      window.dispatchEvent(new Event('offline'));
+      // Only dispatch test-offline-change event to trigger React re-render
+      // (Don't dispatch 'offline' to avoid conflicts with the handler)
       window.dispatchEvent(new Event('test-offline-change'));
     });
 
