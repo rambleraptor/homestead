@@ -9,6 +9,50 @@ import { Upload, X, Sparkles, Loader2 } from 'lucide-react';
 import { getAuthToken } from '@/core/api/pocketbase';
 import type { HSAReceiptFormData, ReceiptCategory } from '../types';
 
+/**
+ * Convert the first page of a PDF to a PNG image
+ * Dynamically imports pdfjs-dist to avoid SSR issues
+ */
+async function convertPdfToImage(pdfFile: File): Promise<{ base64: string; mimeType: string }> {
+  // Dynamic import to avoid SSR issues
+  const pdfjsLib = await import('pdfjs-dist');
+
+  // Configure PDF.js worker
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+  const arrayBuffer = await pdfFile.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const page = await pdf.getPage(1); // Get first page
+
+  // Set up canvas with appropriate scale for good quality
+  const viewport = page.getViewport({ scale: 2.0 });
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    throw new Error('Failed to get canvas context');
+  }
+
+  canvas.height = viewport.height;
+  canvas.width = viewport.width;
+
+  // Render PDF page to canvas
+  const renderContext = {
+    canvasContext: context,
+    viewport: viewport,
+    canvas: canvas,
+  };
+  await page.render(renderContext).promise;
+
+  // Convert canvas to base64 PNG
+  const base64 = canvas.toDataURL('image/png').split(',')[1];
+
+  return {
+    base64,
+    mimeType: 'image/png',
+  };
+}
+
 interface HSAQuickCaptureFormProps {
   onSubmit: (data: HSAReceiptFormData) => Promise<void>;
   onCancel: () => void;
@@ -61,31 +105,36 @@ export function HSAQuickCaptureForm({
   const parseReceipt = async () => {
     if (!selectedFile) return;
 
-    // Only parse images, not PDFs
-    if (selectedFile.type === 'application/pdf') {
-      setError('AI parsing is only available for image files. Please fill in the form manually.');
-      return;
-    }
-
     setIsParsing(true);
     setError(null);
     setParseSuccess(false);
 
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onload = () => {
-          const base64 = reader.result as string;
-          // Remove data URL prefix
-          const base64Data = base64.split(',')[1];
-          resolve(base64Data);
-        };
-        reader.onerror = reject;
-      });
+      let base64Data: string;
+      let mimeType: string;
 
-      reader.readAsDataURL(selectedFile);
-      const base64Data = await base64Promise;
+      // Handle PDF files by converting to image first
+      if (selectedFile.type === 'application/pdf') {
+        const converted = await convertPdfToImage(selectedFile);
+        base64Data = converted.base64;
+        mimeType = converted.mimeType;
+      } else {
+        // Handle image files directly
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const base64 = reader.result as string;
+            // Remove data URL prefix
+            const base64DataPart = base64.split(',')[1];
+            resolve(base64DataPart);
+          };
+          reader.onerror = reject;
+        });
+
+        reader.readAsDataURL(selectedFile);
+        base64Data = await base64Promise;
+        mimeType = selectedFile.type;
+      }
 
       // Call API to parse receipt
       const token = getAuthToken();
@@ -97,7 +146,7 @@ export function HSAQuickCaptureForm({
         },
         body: JSON.stringify({
           image: base64Data,
-          mimeType: selectedFile.type,
+          mimeType: mimeType,
         }),
       });
 
@@ -288,27 +337,26 @@ export function HSAQuickCaptureForm({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            {/* Parse Receipt Button - Only for images */}
-            {selectedFile.type.startsWith('image/') && (
-              <button
-                type="button"
-                onClick={parseReceipt}
-                disabled={isParsing}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isParsing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Parsing receipt...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Parse Receipt with AI
-                  </>
-                )}
-              </button>
-            )}
+            {/* Parse Receipt Button - For images and PDFs */}
+            <button
+              type="button"
+              onClick={parseReceipt}
+              disabled={isParsing}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isParsing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {selectedFile.type === 'application/pdf' ? 'Converting PDF and parsing...' : 'Parsing receipt...'}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Parse Receipt with AI
+                  {selectedFile.type === 'application/pdf' && ' (PDF will be converted)'}
+                </>
+              )}
+            </button>
             {/* Success Message */}
             {parseSuccess && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">

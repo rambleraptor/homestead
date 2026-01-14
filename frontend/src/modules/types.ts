@@ -76,6 +76,12 @@ export interface HomeModule {
   navOrder?: number;
 
   /**
+   * Section/category for grouping modules in navigation
+   * Modules without a section will be displayed at the end
+   */
+  section?: string;
+
+  /**
    * Whether this module is enabled
    * Can be used for feature flags
    * @default true
