@@ -260,18 +260,38 @@ export class GroceriesPage {
   private async setupOfflineScript() {
     if (this.offlineScriptAdded) return;
 
-    // Add script that runs before page loads to override navigator.onLine
-    await this.page.addInitScript(() => {
+    // Use context-level init script for more reliability
+    await this.page.context().addInitScript(() => {
+      // Store original navigator.onLine
+      const originalOnLine = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine')
+        || Object.getOwnPropertyDescriptor(navigator, 'onLine');
+
       // Create a global variable to track offline state
       (window as any).__offline__ = false;
 
-      // Override navigator.onLine
-      Object.defineProperty(navigator, 'onLine', {
-        configurable: true,
-        get() {
-          return !(window as any).__offline__;
-        },
-      });
+      // Try to override on the prototype first (more reliable)
+      try {
+        if (Navigator.prototype) {
+          Object.defineProperty(Navigator.prototype, 'onLine', {
+            configurable: true,
+            get() {
+              return !(window as any).__offline__;
+            },
+          });
+        }
+      } catch (e) {
+        // Fallback: try to override on the instance
+        try {
+          Object.defineProperty(navigator, 'onLine', {
+            configurable: true,
+            get() {
+              return !(window as any).__offline__;
+            },
+          });
+        } catch (e2) {
+          console.warn('Could not override navigator.onLine', e2);
+        }
+      }
     });
 
     this.offlineScriptAdded = true;
