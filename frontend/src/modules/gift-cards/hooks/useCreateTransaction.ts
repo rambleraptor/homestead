@@ -47,12 +47,17 @@ export function useCreateTransaction() {
         created_by: currentUser?.id,
       });
 
-      // Update the gift card with new amount and archive if needed
+      // Delete the gift card if new amount is 0, otherwise update it
+      if (newAmount === 0) {
+        await getCollection(Collections.GIFT_CARDS).delete(giftCardId);
+        return { transaction, updatedCard: null };
+      }
+
+      // Update the gift card with new amount
       const updatedCard = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(
         giftCardId,
         {
           amount: newAmount,
-          archived: newAmount === 0,
         }
       );
 

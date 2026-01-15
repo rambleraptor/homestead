@@ -17,6 +17,15 @@ export function useUpdateGiftCard() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: GiftCardFormData }) => {
       logger.debug('Gift card update mutation called', { id, data });
+
+      // Delete gift card if amount is 0
+      if (data.amount === 0) {
+        logger.debug('Amount is 0, deleting gift card instead of updating', { id });
+        await getCollection(Collections.GIFT_CARDS).delete(id);
+        logger.debug('Gift card deleted successfully', { id });
+        return null;
+      }
+
       // Automatically archive if amount is 0
       const archived = data.amount === 0;
 
