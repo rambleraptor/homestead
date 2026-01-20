@@ -34,6 +34,7 @@ import { logger } from '@/core/utils/logger';
 import { dashboardModule } from './dashboard/module.config';
 import { giftCardsModule } from './gift-cards/module.config';
 import { groceriesModule } from './groceries/module.config';
+import { recipesModule } from './recipes/module.config';
 import { peopleModule } from './people/module.config';
 import { notificationsModule } from './notifications/module.config';
 import { settingsModule } from './settings/module.config';
@@ -51,6 +52,7 @@ const MODULES: HomeModule[] = [
   dashboardModule,
   giftCardsModule,
   groceriesModule,
+  recipesModule,
   peopleModule,
   hsaModule,
   notificationsModule,

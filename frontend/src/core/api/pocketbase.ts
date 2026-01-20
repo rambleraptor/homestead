@@ -40,6 +40,8 @@ export const Collections = {
   NOTIFICATION_SUBSCRIPTIONS: 'notification_subscriptions',
   GROCERIES: 'groceries',
   STORES: 'stores',
+  RECIPES: 'recipes',
+  COOKING_LOGS: 'cooking_logs',
   HSA_RECEIPTS: 'hsa_receipts',
 } as const;
 
