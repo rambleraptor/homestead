@@ -143,12 +143,14 @@ async function sendRecurringNotification(
 
   try {
     // Get push subscriptions for the user who owns this recurring notification
-    const subscriptions = await pb
+    const allSubs = await pb
       .collection('notification_subscriptions')
       .getFullList<NotificationSubscription>({
-        filter: `user_id="${recurringNotification.user_id}" && enabled = true`,
+        filter: `user_id="${recurringNotification.user_id}"`,
         sort: '-created',
       });
+
+    const subscriptions = allSubs.filter((sub) => sub.enabled === true);
 
     if (subscriptions.length === 0) {
       console.log(
@@ -274,15 +276,34 @@ export async function checkAndSendRecurringNotifications(): Promise<void> {
       return;
     }
 
-    await pb.admins.authWithPassword(adminEmail, adminPassword);
+    try {
+      await pb.admins.authWithPassword(adminEmail, adminPassword);
+      console.log('✅ Authenticated as admin:', adminEmail);
+    } catch (error) {
+      console.error('❌ Failed to authenticate as admin:', error);
+      throw error;
+    }
 
     // Get all enabled recurring notifications
-    const recurringNotifications = await pb
-      .collection('recurring_notifications')
-      .getFullList<RecurringNotification>({
-        filter: 'enabled = true',
-        sort: '-created',
+    let recurringNotifications: RecurringNotification[] = [];
+    try {
+      // Fetch all and filter in code to avoid boolean filter issues
+      const allRecurring = await pb
+        .collection('recurring_notifications')
+        .getFullList<RecurringNotification>({
+          sort: '-created',
+        });
+
+      recurringNotifications = allRecurring.filter((rn) => rn.enabled === true);
+    } catch (error: unknown) {
+      const err = error as { status?: number; response?: { message?: string; data?: unknown } };
+      console.error('❌ Failed to fetch recurring notifications:', {
+        status: err.status,
+        message: err.response?.message,
+        data: err.response?.data,
       });
+      throw error;
+    }
 
     if (recurringNotifications.length === 0) {
       console.log('No enabled recurring notifications found');
@@ -384,21 +405,51 @@ export async function checkAndSendLegacyPeopleNotifications(): Promise<void> {
       return;
     }
 
-    await pb.admins.authWithPassword(adminEmail, adminPassword);
+    try {
+      await pb.admins.authWithPassword(adminEmail, adminPassword);
+      console.log('✅ Authenticated as admin:', adminEmail);
+    } catch (error) {
+      console.error('❌ Failed to authenticate as admin:', error);
+      throw error;
+    }
 
-    // Get all people with notification_preferences that DON'T have recurring_notifications
-    // This ensures we only handle people not yet migrated to the new system
-    const people = await pb.collection('people').getFullList<{
+    // Get all people - we'll filter in code since notification_preferences is a JSON field
+    let people: Array<{
       id: string;
       name: string;
       birthday?: string;
       anniversary?: string;
       notification_preferences?: NotificationTiming[];
       created_by: string;
-    }>({
-      filter: 'notification_preferences != null && notification_preferences != "[]"',
-      sort: '-created',
-    });
+    }> = [];
+    try {
+      people = await pb.collection('people').getFullList<{
+        id: string;
+        name: string;
+        birthday?: string;
+        anniversary?: string;
+        notification_preferences?: NotificationTiming[];
+        created_by: string;
+      }>({
+        sort: '-created',
+      });
+
+      // Filter for people with notification_preferences
+      people = people.filter(
+        (person) =>
+          person.notification_preferences &&
+          Array.isArray(person.notification_preferences) &&
+          person.notification_preferences.length > 0
+      );
+    } catch (error: unknown) {
+      const err = error as { status?: number; response?: { message?: string; data?: unknown } };
+      console.error('❌ Failed to fetch people:', {
+        status: err.status,
+        message: err.response?.message,
+        data: err.response?.data,
+      });
+      throw error;
+    }
 
     if (people.length === 0) {
       console.log('No people with legacy notification preferences found');
@@ -508,12 +559,14 @@ async function sendLegacyNotification(
 
   try {
     // Get push subscriptions for the user
-    const subscriptions = await pb
+    const allSubs = await pb
       .collection('notification_subscriptions')
       .getFullList<NotificationSubscription>({
-        filter: `user_id="${userId}" && enabled = true`,
+        filter: `user_id="${userId}"`,
         sort: '-created',
       });
+
+    const subscriptions = allSubs.filter((sub) => sub.enabled === true);
 
     if (subscriptions.length === 0) {
       return stats;
@@ -604,12 +657,14 @@ export async function sendImmediateNotification(
 
   try {
     // Get push subscriptions for the user
-    const subscriptions = await pb
+    const allSubs = await pb
       .collection('notification_subscriptions')
       .getFullList<NotificationSubscription>({
-        filter: `user_id="${userId}" && enabled = true`,
+        filter: `user_id="${userId}"`,
         sort: '-created',
       });
+
+    const subscriptions = allSubs.filter((sub) => sub.enabled === true);
 
     for (const sub of subscriptions) {
       try {

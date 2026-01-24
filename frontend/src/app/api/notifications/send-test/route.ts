@@ -10,7 +10,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import webpush from 'web-push';
 import PocketBase from 'pocketbase';
-import { checkAndSendPeopleNotifications } from '../utils/notification-sender';
+
+interface NotificationSubscription {
+  id: string;
+  user_id: string;
+  subscription_data: webpush.PushSubscription;
+  enabled: boolean;
+}
 
 /**
  * Verify user authentication using PocketBase token
@@ -69,12 +75,93 @@ export async function POST(request: NextRequest) {
     // Configure VAPID details
     webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
 
-    // Run the notification check
-    await checkAndSendPeopleNotifications();
+    // Initialize PocketBase with user token
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || '';
+    const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090');
+    pb.authStore.save(token);
+
+    // Get the current user's subscriptions
+    // The collection rule automatically filters by authenticated user
+    let subscriptions: NotificationSubscription[] = [];
+    try {
+      subscriptions = await pb
+        .collection('notification_subscriptions')
+        .getFullList<NotificationSubscription>();
+
+      console.log(`Found ${subscriptions.length} notification subscription(s)`);
+    } catch (error: unknown) {
+      const err = error as { status?: number; response?: { message?: string; data?: unknown } };
+      console.error('❌ Failed to fetch subscriptions:', {
+        status: err.status,
+        message: err.response?.message,
+        data: err.response?.data,
+      });
+      throw error;
+    }
+
+    const enabledSubs = subscriptions.filter((sub) => sub.enabled === true);
+
+    if (enabledSubs.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'No active push subscriptions found. Please enable notifications first.',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Send test notification to all active subscriptions
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const sub of enabledSubs) {
+      try {
+        const payload = JSON.stringify({
+          title: '🧪 Test Notification',
+          body: 'If you see this, push notifications are working! 🎉',
+          icon: '/icon-192.png',
+          badge: '/badge-72.png',
+          tag: 'test-notification',
+          data: {
+            url: '/notifications',
+            timestamp: new Date().toISOString(),
+          },
+        });
+
+        console.log('[Test Notification] Sending to subscription:', {
+          endpoint: sub.subscription_data.endpoint,
+          hasKeys: !!sub.subscription_data.keys,
+        });
+
+        await webpush.sendNotification(sub.subscription_data, payload);
+        console.log('[Test Notification] ✅ Sent successfully');
+        sentCount++;
+
+        // Create notification record
+        await pb.collection('notifications').create({
+          user_id: authRecord.id,
+          title: '🧪 Test Notification',
+          message: 'If you see this, push notifications are working! 🎉',
+          notification_type: 'system',
+          read: false,
+          sent_at: new Date().toISOString(),
+        });
+      } catch (error: unknown) {
+        const err = error as { statusCode?: number };
+        failedCount++;
+
+        // If subscription is expired, delete it
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await pb.collection('notification_subscriptions').delete(sub.id);
+        }
+      }
+    }
 
     return NextResponse.json({
-      success: true,
-      message: 'Test notification check triggered',
+      success: sentCount > 0,
+      message: `Test notification sent to ${sentCount} subscription(s)`,
+      sent: sentCount,
+      failed: failedCount,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

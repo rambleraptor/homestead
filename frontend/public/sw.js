@@ -2,18 +2,22 @@
  * Service Worker for Web Push Notifications
  */
 
+console.log('[SW] Service Worker script loaded');
+
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
+  console.log('[SW] Service Worker installing...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
+  console.log('[SW] Service Worker activating...');
   event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('push', (event) => {
-  console.log('Push notification received:', event);
+  console.log('[SW] ===== PUSH EVENT RECEIVED =====');
+  console.log('[SW] Push notification received:', event);
+  console.log('[SW] Push data:', event.data ? event.data.text() : 'No data');
 
   let data = {
     title: 'HomeOS Notification',
@@ -39,7 +43,13 @@ self.addEventListener('push', (event) => {
     requireInteraction: data.requireInteraction || false,
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  console.log('[SW] Showing notification:', data.title, options);
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+      .then(() => console.log('[SW] Notification shown successfully'))
+      .catch((err) => console.error('[SW] Error showing notification:', err))
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {

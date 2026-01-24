@@ -1,8 +1,21 @@
 /// <reference path="../pb_data/types.d.ts" />
+
+/**
+ * Fix notification_subscriptions collection to use proper Collection API format
+ */
 migrate((app) => {
+  // Delete the old collection if it exists
+  try {
+    const oldCollection = app.findCollectionByNameOrId("notification_subscriptions");
+    app.delete(oldCollection);
+  } catch (e) {
+    // Collection doesn't exist, continue
+  }
+
   // Get the users collection
   const usersCollection = app.findCollectionByNameOrId("users");
 
+  // Create the collection with proper Collection API
   const collection = new Collection({
     name: "notification_subscriptions",
     type: "base",
@@ -48,6 +61,7 @@ migrate((app) => {
 
   return app.save(collection);
 }, (app) => {
+  // Rollback: delete the collection
   const collection = app.findCollectionByNameOrId("notification_subscriptions");
   return app.delete(collection);
 });
