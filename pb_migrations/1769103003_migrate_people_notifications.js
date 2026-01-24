@@ -68,15 +68,47 @@ migrate(
       // Parse preferences (it's stored as JSON)
       let prefs;
       try {
-        prefs = typeof preferences === 'string' ? JSON.parse(preferences) : preferences;
+        // PocketBase returns JSON fields as byte arrays (Uint8Array or number arrays)
+        // We need to convert bytes back to string, then parse as JSON
+        if (Array.isArray(preferences)) {
+          // Convert byte array to string
+          const jsonString = String.fromCharCode(...preferences);
+          prefs = JSON.parse(jsonString);
+        } else if (typeof preferences === 'string') {
+          // Already a string, just parse it
+          prefs = JSON.parse(preferences);
+        } else if (preferences && typeof preferences === 'object') {
+          // Already parsed (shouldn't happen but handle it)
+          prefs = preferences;
+        } else {
+          console.log(`[Migration] Unexpected preferences type for person ${person.id} (${personName}):`, typeof preferences);
+          errorCount++;
+          continue;
+        }
       } catch (e) {
         console.log(`[Migration] Could not parse preferences for person ${person.id} (${personName}):`, e);
         errorCount++;
         continue;
       }
 
-      if (!Array.isArray(prefs) || prefs.length === 0) {
+      // CRITICAL: Validate that prefs is actually an array
+      if (!Array.isArray(prefs)) {
+        console.log(`[Migration] Preferences is not an array for person ${person.id} (${personName}): ${typeof prefs} - ${JSON.stringify(prefs)}`);
+        errorCount++;
+        continue;
+      }
+
+      if (prefs.length === 0) {
         skippedCount++;
+        continue;
+      }
+
+      // Validate that all timing values are valid
+      const validTimings = ['day_of', 'day_before', 'week_before'];
+      const invalidTimings = prefs.filter(t => !validTimings.includes(t));
+      if (invalidTimings.length > 0) {
+        console.log(`[Migration] Invalid timing values for person ${person.id} (${personName}):`, invalidTimings);
+        errorCount++;
         continue;
       }
 
