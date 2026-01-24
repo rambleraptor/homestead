@@ -1,11 +1,14 @@
 /**
- * People E2E Tests - Notification Preferences & Recurring Notifications
+ * People E2E Tests - Notification Preferences
  *
  * Tests the notification preference system including:
  * - Setting notification preferences when creating a person
  * - Updating notification preferences
- * - Verifying recurring notifications are created in the database
- * - Verifying recurring notifications are deleted when person is deleted
+ * - Verifying notification_preferences field is set correctly on person records
+ *
+ * Note: These tests verify the legacy notification_preferences field on people.
+ * New people use this field for notifications until a future migration converts
+ * them to the recurring_notifications system.
  */
 
 import { test, expect } from '../../fixtures/pocketbase.fixture';
@@ -13,7 +16,6 @@ import { PeoplePage } from '../../pages/PeoplePage';
 import {
   createPerson,
   deleteAllPeople,
-  getRecurringNotificationsForPerson,
   deleteAllRecurringNotifications
 } from '../../utils/pocketbase-helpers';
 
@@ -30,7 +32,7 @@ test.describe('People Notification Preferences', () => {
     await peoplePage.goto();
   });
 
-  test('should create recurring notifications when creating person with birthday', async ({ userPocketbase }) => {
+  test('should save notification preferences when creating person with birthday', async ({ userPocketbase }) => {
     const personData = {
       name: 'John Birthday',
       birthday: '1990-06-15',
@@ -40,33 +42,20 @@ test.describe('People Notification Preferences', () => {
     await peoplePage.createPersonWithNotifications(personData);
     await peoplePage.expectPersonInList(personData.name);
 
-    // Verify person was created
+    // Verify person was created with correct notification_preferences
     const people = await userPocketbase.collection('people').getFullList({
       filter: `name = "${personData.name}"`,
     });
     expect(people.length).toBe(1);
 
-    // Verify recurring notifications were created
-    const notifications = await getRecurringNotificationsForPerson(userPocketbase, people[0].id);
-
-    // Should have 2 notifications for birthday (day_of and week_before)
-    const birthdayNotifications = notifications.filter(n => n.reference_date_field === 'birthday');
-    expect(birthdayNotifications.length).toBe(2);
-
-    // Verify timings
-    const timings = birthdayNotifications.map(n => n.timing).sort();
-    expect(timings).toEqual(['day_of', 'week_before']);
-
-    // Verify templates contain placeholders (not pre-resolved)
-    for (const notification of birthdayNotifications) {
-      expect(notification.title_template).toContain('{{name}}');
-      expect(notification.message_template).toContain('{{name}}');
-      expect(notification.message_template).toContain('{{date}}');
-      expect(notification.enabled).toBe(true);
-    }
+    // Verify notification_preferences field contains the expected values
+    const prefs = people[0].notification_preferences;
+    expect(prefs).toBeDefined();
+    expect(Array.isArray(prefs)).toBe(true);
+    expect(prefs.sort()).toEqual(['day_of', 'week_before'].sort());
   });
 
-  test('should create recurring notifications for both birthday and anniversary', async ({ userPocketbase }) => {
+  test('should save notification preferences for person with both birthday and anniversary', async ({ userPocketbase }) => {
     const personData = {
       name: 'Jane Both',
       birthday: '1985-03-20',
@@ -83,24 +72,22 @@ test.describe('People Notification Preferences', () => {
     });
     expect(people.length).toBe(1);
 
-    // Verify recurring notifications were created
-    const notifications = await getRecurringNotificationsForPerson(userPocketbase, people[0].id);
+    // Verify notification_preferences field
+    const prefs = people[0].notification_preferences;
+    expect(prefs).toBeDefined();
+    expect(prefs).toEqual(['day_before']);
 
-    // Should have 1 notification for birthday + 1 for anniversary
-    const birthdayNotifications = notifications.filter(n => n.reference_date_field === 'birthday');
-    const anniversaryNotifications = notifications.filter(n => n.reference_date_field === 'anniversary');
-
-    expect(birthdayNotifications.length).toBe(1);
-    expect(anniversaryNotifications.length).toBe(1);
-    expect(birthdayNotifications[0].timing).toBe('day_before');
-    expect(anniversaryNotifications[0].timing).toBe('day_before');
+    // Verify dates were saved
+    expect(people[0].birthday).toBe('1985-03-20');
+    expect(people[0].anniversary).toBe('2010-07-04');
   });
 
-  test('should update recurring notifications when editing person preferences', async ({ userPocketbase }) => {
+  test('should update notification preferences when editing person', async ({ userPocketbase }) => {
     // Create person with initial preferences
     const created = await createPerson(userPocketbase, {
       name: 'Update Test',
       birthday: '1995-12-25',
+      notification_preferences: ['day_of'],
     });
 
     await peoplePage.goto();
@@ -108,37 +95,15 @@ test.describe('People Notification Preferences', () => {
     // Edit and change notification preferences
     await peoplePage.editPersonNotifications('Update Test', ['day_before', 'week_before']);
 
-    // Verify recurring notifications were updated
-    const notifications = await getRecurringNotificationsForPerson(userPocketbase, created.id);
-
-    const birthdayNotifications = notifications.filter(n => n.reference_date_field === 'birthday');
-    expect(birthdayNotifications.length).toBe(2);
-
-    const timings = birthdayNotifications.map(n => n.timing).sort();
-    expect(timings).toEqual(['day_before', 'week_before']);
+    // Verify notification_preferences were updated
+    const updated = await userPocketbase.collection('people').getOne(created.id);
+    const prefs = updated.notification_preferences;
+    expect(prefs).toBeDefined();
+    expect(Array.isArray(prefs)).toBe(true);
+    expect(prefs.sort()).toEqual(['day_before', 'week_before'].sort());
   });
 
-  test('should delete recurring notifications when person is deleted', async ({ userPocketbase }) => {
-    // Create person with notifications
-    const created = await createPerson(userPocketbase, {
-      name: 'Delete Test',
-      birthday: '2000-01-01',
-    });
-
-    // Verify recurring notifications exist
-    let notifications = await getRecurringNotificationsForPerson(userPocketbase, created.id);
-    expect(notifications.length).toBeGreaterThan(0);
-
-    // Delete the person
-    await peoplePage.goto();
-    await peoplePage.deletePerson('Delete Test');
-
-    // Verify recurring notifications were deleted
-    notifications = await getRecurringNotificationsForPerson(userPocketbase, created.id);
-    expect(notifications.length).toBe(0);
-  });
-
-  test('should not create recurring notifications when no dates are set', async ({ userPocketbase }) => {
+  test('should save notification preferences even when no dates are set', async ({ userPocketbase }) => {
     const personData = {
       name: 'No Dates Person',
       notificationPreferences: ['day_of', 'day_before', 'week_before'] as const,
@@ -153,12 +118,14 @@ test.describe('People Notification Preferences', () => {
     });
     expect(people.length).toBe(1);
 
-    // Verify no recurring notifications were created (no dates = no notifications)
-    const notifications = await getRecurringNotificationsForPerson(userPocketbase, people[0].id);
-    expect(notifications.length).toBe(0);
+    // Verify notification_preferences are saved (even without dates)
+    const prefs = people[0].notification_preferences;
+    expect(prefs).toBeDefined();
+    expect(Array.isArray(prefs)).toBe(true);
+    expect(prefs.sort()).toEqual(['day_before', 'day_of', 'week_before']);
   });
 
-  test('should remove recurring notifications when preferences are cleared', async ({ userPocketbase }) => {
+  test('should clear notification preferences when all are removed', async ({ userPocketbase }) => {
     // Create person with preferences
     const personData = {
       name: 'Clear Prefs Test',
@@ -168,21 +135,38 @@ test.describe('People Notification Preferences', () => {
 
     await peoplePage.createPersonWithNotifications(personData);
 
-    // Verify person was created
+    // Verify person was created with preferences
     const people = await userPocketbase.collection('people').getFullList({
       filter: `name = "${personData.name}"`,
     });
     expect(people.length).toBe(1);
-
-    // Verify notifications exist
-    let notifications = await getRecurringNotificationsForPerson(userPocketbase, people[0].id);
-    expect(notifications.length).toBe(3); // All 3 preferences for birthday
+    expect(people[0].notification_preferences.length).toBe(3);
 
     // Edit and clear all preferences
     await peoplePage.editPersonNotifications('Clear Prefs Test', []);
 
-    // Verify recurring notifications were removed
-    notifications = await getRecurringNotificationsForPerson(userPocketbase, people[0].id);
-    expect(notifications.length).toBe(0);
+    // Verify notification_preferences were cleared
+    const updated = await userPocketbase.collection('people').getOne(people[0].id);
+    const prefs = updated.notification_preferences;
+    expect(prefs).toEqual([]);
+  });
+
+  test('should delete person successfully', async ({ userPocketbase }) => {
+    // Create person
+    await createPerson(userPocketbase, {
+      name: 'Delete Test',
+      birthday: '2000-01-01',
+      notification_preferences: ['day_of'],
+    });
+
+    // Delete the person
+    await peoplePage.goto();
+    await peoplePage.deletePerson('Delete Test');
+
+    // Verify person was deleted
+    const people = await userPocketbase.collection('people').getFullList({
+      filter: `name = "Delete Test"`,
+    });
+    expect(people.length).toBe(0);
   });
 });
