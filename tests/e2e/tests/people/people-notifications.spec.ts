@@ -77,9 +77,9 @@ test.describe('People Notification Preferences', () => {
     expect(prefs).toBeDefined();
     expect(prefs).toEqual(['day_before']);
 
-    // Verify dates were saved
-    expect(people[0].birthday).toBe('1985-03-20');
-    expect(people[0].anniversary).toBe('2010-07-04');
+    // Verify dates were saved (PocketBase may include time component)
+    expect(people[0].birthday).toContain('1985-03-20');
+    expect(people[0].anniversary).toContain('2010-07-04');
   });
 
   test('should update notification preferences when editing person', async ({ userPocketbase }) => {
