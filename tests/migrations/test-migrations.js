@@ -171,9 +171,11 @@ async function startPocketBase() {
       ? join(TEST_DIR, 'pocketbase.exe')
       : join(TEST_DIR, 'pocketbase');
 
+    const migrationsDir = join(PB_DATA_DIR, 'pb_migrations');
     const pb = spawn(pbBinary, [
       'serve',
       '--dir', PB_DATA_DIR,
+      '--migrationsDir', migrationsDir,
       '--http', `127.0.0.1:${TEST_PORT}`,
     ], {
       stdio: ['ignore', 'pipe', 'pipe']
@@ -323,7 +325,7 @@ async function authenticateAdmin() {
     const options = {
       hostname: '127.0.0.1',
       port: TEST_PORT,
-      path: '/api/admins/auth-with-password',
+      path: '/api/collections/_superusers/auth-with-password',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
