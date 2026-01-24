@@ -4,6 +4,12 @@
  * Handles sending push notifications based on recurring notifications.
  * The daily cron job checks all enabled recurring notifications and creates
  * Notification instances when the timing matches.
+ *
+ * TODO: Migrate existing people with notification_preferences to recurring_notifications.
+ * Currently, new people use the recurring_notifications system, but existing people
+ * still use the legacy notification_preferences field. A data migration should be
+ * created to convert existing notification_preferences to recurring_notifications records.
+ * Until then, checkAndSendPeopleNotifications() handles legacy notifications.
  */
 
 import webpush from 'web-push';
@@ -352,11 +358,231 @@ export async function checkAndSendRecurringNotifications(): Promise<void> {
 }
 
 /**
+ * Check and send notifications for people using the legacy notification_preferences field.
+ * This handles existing people who haven't been migrated to the recurring_notifications system.
+ */
+export async function checkAndSendLegacyPeopleNotifications(): Promise<void> {
+  try {
+    const now = new Date();
+    console.log(
+      `[${now.toISOString()}] Checking legacy people notifications...`
+    );
+
+    // Initialize PocketBase with server credentials
+    const pb = new PocketBase(
+      process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090'
+    );
+
+    // Authenticate as admin to access all data
+    const adminEmail = process.env.POCKETBASE_ADMIN_EMAIL;
+    const adminPassword = process.env.POCKETBASE_ADMIN_PASSWORD;
+
+    if (!adminEmail || !adminPassword) {
+      console.error(
+        'POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD must be set'
+      );
+      return;
+    }
+
+    await pb.admins.authWithPassword(adminEmail, adminPassword);
+
+    // Get all people with notification_preferences that DON'T have recurring_notifications
+    // This ensures we only handle people not yet migrated to the new system
+    const people = await pb.collection('people').getFullList<{
+      id: string;
+      name: string;
+      birthday?: string;
+      anniversary?: string;
+      notification_preferences?: NotificationTiming[];
+      created_by: string;
+    }>({
+      filter: 'notification_preferences != null && notification_preferences != "[]"',
+      sort: '-created',
+    });
+
+    if (people.length === 0) {
+      console.log('No people with legacy notification preferences found');
+      return;
+    }
+
+    console.log(
+      `Found ${people.length} people with legacy notification preferences to check`
+    );
+
+    // Get all recurring notifications to check which people are already migrated
+    const recurringNotifications = await pb
+      .collection('recurring_notifications')
+      .getFullList<RecurringNotification>({
+        filter: 'source_collection = "people"',
+        sort: '-created',
+      });
+
+    const migratedPeopleIds = new Set(
+      recurringNotifications.map((rn) => rn.source_id)
+    );
+
+    let totalSent = 0;
+    let totalFailed = 0;
+    let totalExpired = 0;
+
+    for (const person of people) {
+      // Skip if this person has been migrated to recurring_notifications
+      if (migratedPeopleIds.has(person.id)) {
+        continue;
+      }
+
+      const preferences = person.notification_preferences;
+      if (!preferences || !Array.isArray(preferences) || preferences.length === 0) {
+        continue;
+      }
+
+      // Check birthday notifications
+      if (person.birthday) {
+        for (const timing of preferences) {
+          if (shouldSendNotification(person.birthday, timing)) {
+            const title = `Birthday Reminder - ${person.name}`;
+            const message = `${person.name}'s birthday is coming up on ${formatDate(person.birthday)}!`;
+
+            const stats = await sendLegacyNotification(
+              pb,
+              person.created_by,
+              person.id,
+              title,
+              message,
+              timing
+            );
+
+            totalSent += stats.sent;
+            totalFailed += stats.failed;
+            totalExpired += stats.expired;
+          }
+        }
+      }
+
+      // Check anniversary notifications
+      if (person.anniversary) {
+        for (const timing of preferences) {
+          if (shouldSendNotification(person.anniversary, timing)) {
+            const title = `Anniversary Reminder - ${person.name}`;
+            const message = `${person.name}'s anniversary is coming up on ${formatDate(person.anniversary)}!`;
+
+            const stats = await sendLegacyNotification(
+              pb,
+              person.created_by,
+              person.id,
+              title,
+              message,
+              timing
+            );
+
+            totalSent += stats.sent;
+            totalFailed += stats.failed;
+            totalExpired += stats.expired;
+          }
+        }
+      }
+    }
+
+    console.log('Legacy people notification check complete:', {
+      sent: totalSent,
+      failed: totalFailed,
+      expired: totalExpired,
+    });
+  } catch (error) {
+    console.error('Error in checkAndSendLegacyPeopleNotifications:', error);
+  }
+}
+
+/**
+ * Send a legacy notification for a person
+ */
+async function sendLegacyNotification(
+  pb: PocketBase,
+  userId: string,
+  personId: string,
+  title: string,
+  message: string,
+  notificationType: NotificationTiming
+): Promise<{ sent: number; failed: number; expired: number }> {
+  const stats = { sent: 0, failed: 0, expired: 0 };
+
+  try {
+    // Get push subscriptions for the user
+    const subscriptions = await pb
+      .collection('notification_subscriptions')
+      .getFullList<NotificationSubscription>({
+        filter: `user_id="${userId}" && enabled = true`,
+        sort: '-created',
+      });
+
+    if (subscriptions.length === 0) {
+      return stats;
+    }
+
+    for (const sub of subscriptions) {
+      try {
+        const payload = JSON.stringify({
+          title,
+          body: message,
+          icon: '/icon-192.png',
+          badge: '/badge-72.png',
+          tag: `legacy-person-${personId}`,
+          data: {
+            url: '/people',
+            sourceCollection: 'people',
+            sourceId: personId,
+            timestamp: new Date().toISOString(),
+          },
+        });
+
+        try {
+          await webpush.sendNotification(sub.subscription_data, payload);
+          stats.sent++;
+
+          // Create notification record
+          await pb.collection('notifications').create({
+            user_id: sub.user_id,
+            person_id: personId,
+            source_collection: 'people',
+            source_id: personId,
+            title,
+            message,
+            notification_type: notificationType,
+            read: false,
+            sent_at: new Date().toISOString(),
+          });
+        } catch (error: unknown) {
+          const err = error as { statusCode?: number; message?: string };
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            stats.expired++;
+            try {
+              await pb.collection('notification_subscriptions').delete(sub.id);
+            } catch {
+              // Ignore delete errors
+            }
+          } else {
+            stats.failed++;
+          }
+        }
+      } catch {
+        stats.failed++;
+      }
+    }
+  } catch (error) {
+    console.error('Error in sendLegacyNotification:', error);
+  }
+
+  return stats;
+}
+
+/**
  * @deprecated Use checkAndSendRecurringNotifications instead.
  * This function is kept for backward compatibility.
  */
 export async function checkAndSendPeopleNotifications(): Promise<void> {
-  return checkAndSendRecurringNotifications();
+  // Call both the new recurring system and the legacy system
+  await checkAndSendRecurringNotifications();
+  await checkAndSendLegacyPeopleNotifications();
 }
 
 /**
