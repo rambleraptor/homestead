@@ -17,8 +17,9 @@ export function useMarkNotificationAsRead() {
       return notification;
     },
     onSuccess: () => {
+      // Invalidate all notification queries (both list and stats)
       queryClient.invalidateQueries({
-        queryKey: queryKeys.module(Collections.NOTIFICATIONS).list(),
+        queryKey: queryKeys.module(Collections.NOTIFICATIONS).all(),
       });
     },
   });
