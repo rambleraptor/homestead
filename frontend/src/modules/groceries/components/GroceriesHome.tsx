@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef } from 'react';
-import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2, Image, ListRestart, Tags, Store as StoreIcon } from 'lucide-react';
+import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2, Image, ListRestart, Tags, Store as StoreIcon, Bell } from 'lucide-react';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
 import { useStores } from '../hooks/useStores';
 import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
@@ -19,6 +19,7 @@ import { useMarkStoreCompleted } from '../hooks/useMarkStoreCompleted';
 import { GroceryList } from './GroceryList';
 import { ImageUploadDialog } from './ImageUploadDialog';
 import { StoreManagement } from './StoreManagement';
+import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
 import { logger } from '@/core/utils/logger';
 
 export function GroceriesHome() {
@@ -36,6 +37,7 @@ export function GroceriesHome() {
   const deleteAllMutation = useDeleteAllGroceries();
   const categorizeAllMutation = useCategorizeAllGroceries();
   const markStoreCompletedMutation = useMarkStoreCompleted();
+  const notifyMutation = useSendGroceryNotification();
 
   const handleQuickAdd = async () => {
     if (!itemName.trim()) return;
@@ -103,6 +105,14 @@ export function GroceriesHome() {
     }
   };
 
+  const handleNotify = async () => {
+    try {
+      await notifyMutation.mutateAsync();
+    } catch (err) {
+      logger.error('Failed to send grocery notification', err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -163,6 +173,20 @@ export function GroceriesHome() {
             <StoreIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden xs:inline">Stores</span>
             <span className="xs:hidden">Stores</span>
+          </button>
+          <button
+            onClick={handleNotify}
+            disabled={notifyMutation.isPending}
+            className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+            data-testid="notify-grocery-button"
+          >
+            {notifyMutation.isPending ? (
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+            ) : (
+              <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+            )}
+            <span className="hidden xs:inline">{notifyMutation.isPending ? 'Sending...' : 'Notify'}</span>
+            <span className="xs:hidden">{notifyMutation.isPending ? 'Sending...' : 'Notify'}</span>
           </button>
           <button
             onClick={() => setShowImageUpload(true)}
