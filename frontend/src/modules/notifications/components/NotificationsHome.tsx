@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, BellOff, Check, Calendar } from 'lucide-react';
+import { Bell, BellOff, Check, Calendar, ShoppingCart } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
 import { Spinner } from '@/shared/components/Spinner';
@@ -38,6 +38,9 @@ export function NotificationsHome() {
     // Use source_collection for icon selection (with person_id fallback for backward compatibility)
     if (notification.source_collection === 'people' || notification.person_id) {
       return <Calendar className="w-5 h-5 text-blue-500" />;
+    }
+    if (notification.source_collection === 'groceries') {
+      return <ShoppingCart className="w-5 h-5 text-green-500" />;
     }
     return <Bell className="w-5 h-5 text-gray-500" />;
   };
