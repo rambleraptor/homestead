@@ -94,6 +94,7 @@ fi
 MIGRATIONS_CHANGED=false
 FRONTEND_CHANGED=false
 DEPS_CHANGED=false
+SCRIPTS_DEPS_CHANGED=false
 
 if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ] || [ "$FORCE_BUILD" = true ]; then
   # Auto mode - check committed changes between commits
@@ -109,7 +110,12 @@ if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ] || [ "$FORCE_BUILD" = true ]; then
 
   if git diff --name-only $PREVIOUS_COMMIT..$NEW_COMMIT | grep -q "frontend/package.json"; then
     DEPS_CHANGED=true
-    log "${YELLOW}📦 Dependencies changed${NC}"
+    log "${YELLOW}📦 Frontend dependencies changed${NC}"
+  fi
+
+  if git diff --name-only $PREVIOUS_COMMIT..$NEW_COMMIT | grep -q "scripts/package.json"; then
+    SCRIPTS_DEPS_CHANGED=true
+    log "${YELLOW}📦 Scripts dependencies changed${NC}"
   fi
 elif [ "$AUTO_MODE" = false ]; then
   # Manual mode - check for uncommitted changes in working directory
@@ -132,16 +138,35 @@ elif [ "$AUTO_MODE" = false ]; then
   if git diff --name-only HEAD | grep -q "frontend/package.json" || \
      git diff --cached --name-only | grep -q "frontend/package.json"; then
     DEPS_CHANGED=true
-    log "${YELLOW}📦 Uncommitted dependency changes detected${NC}"
+    log "${YELLOW}📦 Uncommitted frontend dependency changes detected${NC}"
+  fi
+
+  if git diff --name-only HEAD | grep -q "scripts/package.json" || \
+     git diff --cached --name-only | grep -q "scripts/package.json"; then
+    SCRIPTS_DEPS_CHANGED=true
+    log "${YELLOW}📦 Uncommitted scripts dependency changes detected${NC}"
   fi
 fi
 
 # Install dependencies if needed
 if [ "$DEPS_CHANGED" = true ]; then
-  log "${BLUE}📦 Installing dependencies...${NC}"
+  log "${BLUE}📦 Installing frontend dependencies...${NC}"
   cd frontend
   if ! npm ci 2>&1 | tee -a "$LOG_FILE"; then
-    log "${RED}❌ Failed to install dependencies${NC}"
+    log "${RED}❌ Failed to install frontend dependencies${NC}"
+    log "${YELLOW}⏮️  Rolling back...${NC}"
+    cd "$PROJECT_ROOT"
+    git reset --hard "$PREVIOUS_COMMIT" 2>&1 | tee -a "$LOG_FILE"
+    exit 1
+  fi
+  cd "$PROJECT_ROOT"
+fi
+
+if [ "$SCRIPTS_DEPS_CHANGED" = true ]; then
+  log "${BLUE}📦 Installing scripts dependencies...${NC}"
+  cd scripts
+  if ! npm ci 2>&1 | tee -a "$LOG_FILE"; then
+    log "${RED}❌ Failed to install scripts dependencies${NC}"
     log "${YELLOW}⏮️  Rolling back...${NC}"
     cd "$PROJECT_ROOT"
     git reset --hard "$PREVIOUS_COMMIT" 2>&1 | tee -a "$LOG_FILE"

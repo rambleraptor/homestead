@@ -41,3 +41,6 @@ tests/migrations/test_pb_data/
 
 # Pocketbase
 pocketbase/
+
+# Scripts
+scripts/node_modules/
