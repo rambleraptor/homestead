@@ -7,8 +7,9 @@
  */
 
 import { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Link, ArrowRight } from 'lucide-react';
 import { useCreateRecipe } from '../hooks/useCreateRecipe';
+import { useImportRecipeFromUrl } from '../hooks/useImportRecipeFromUrl';
 import type { RecipeFormData, RecipeSourceType, Ingredient } from '../types';
 
 interface RecipeFormDialogProps {
@@ -27,8 +28,30 @@ export function RecipeFormDialog({ isOpen, onClose }: RecipeFormDialogProps) {
   });
 
   const [ingredientInput, setIngredientInput] = useState({ item: '', amount: 0, unit: '', note: '' });
+  const [importUrl, setImportUrl] = useState('');
+  const [importError, setImportError] = useState('');
 
   const createMutation = useCreateRecipe();
+  const importMutation = useImportRecipeFromUrl();
+
+  const handleImportFromUrl = async () => {
+    if (!importUrl.trim()) return;
+    setImportError('');
+
+    try {
+      const data = await importMutation.mutateAsync(importUrl.trim());
+      setFormData({
+        title: data.title || formData.title,
+        source_type: 'digital',
+        source_reference: data.source_reference || importUrl.trim(),
+        ingredients: data.ingredients?.length ? data.ingredients : formData.ingredients,
+        instructions: data.instructions || formData.instructions,
+        rating: formData.rating,
+      });
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Failed to import recipe');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +67,8 @@ export function RecipeFormDialog({ isOpen, onClose }: RecipeFormDialogProps) {
         instructions: '',
         rating: undefined,
       });
+      setImportUrl('');
+      setImportError('');
     } catch {
       // Error handled by mutation
     }
@@ -93,6 +118,51 @@ export function RecipeFormDialog({ isOpen, onClose }: RecipeFormDialogProps) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* Import from URL */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <label htmlFor="import_url" className="block text-sm font-medium text-blue-800 mb-2">
+              <Link className="w-4 h-4 inline-block mr-1 -mt-0.5" />
+              Import from URL
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="import_url"
+                type="url"
+                value={importUrl}
+                onChange={(e) => { setImportUrl(e.target.value); setImportError(''); }}
+                className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                placeholder="https://example.com/recipe"
+                disabled={importMutation.isPending}
+                data-testid="import-url-input"
+              />
+              <button
+                type="button"
+                onClick={handleImportFromUrl}
+                disabled={importMutation.isPending || !importUrl.trim()}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                data-testid="import-url-button"
+              >
+                {importMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight className="w-4 h-4" />
+                    Import
+                  </>
+                )}
+              </button>
+            </div>
+            {importError && (
+              <p className="text-red-600 text-xs mt-2">{importError}</p>
+            )}
+            {importMutation.isSuccess && !importError && (
+              <p className="text-green-700 text-xs mt-2">Recipe imported — review the details below and save.</p>
+            )}
+          </div>
+
           {/* Title */}
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">

@@ -145,6 +145,16 @@ export interface RecipeStats {
 }
 
 /**
+ * Response from the recipe URL import API
+ */
+export interface ImportedRecipeData {
+  title: string;
+  ingredients: Ingredient[];
+  instructions: string;
+  source_reference: string;
+}
+
+/**
  * Cooking mode state
  */
 export interface CookingModeState {
