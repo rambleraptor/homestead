@@ -19,6 +19,7 @@ import { useMarkStoreCompleted } from '../hooks/useMarkStoreCompleted';
 import { GroceryList } from './GroceryList';
 import { ImageUploadDialog } from './ImageUploadDialog';
 import { StoreManagement } from './StoreManagement';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
 import { logger } from '@/core/utils/logger';
 
@@ -27,6 +28,7 @@ export function GroceriesHome() {
   const [selectedStore, setSelectedStore] = useState('');
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [showStoreManagement, setShowStoreManagement] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { stats, isLoading, isError, error } = useGroupedGroceries();
@@ -76,9 +78,14 @@ export function GroceriesHome() {
     }
   };
 
-  const handleNewList = async () => {
+  const handleNewList = () => {
+    setShowClearConfirm(true);
+  };
+
+  const handleConfirmNewList = async () => {
     try {
       await deleteAllMutation.mutateAsync();
+      setShowClearConfirm(false);
     } catch (err) {
       logger.error('Failed to delete all grocery items', err);
     }
@@ -286,6 +293,18 @@ export function GroceriesHome() {
       <ImageUploadDialog
         isOpen={showImageUpload}
         onClose={() => setShowImageUpload(false)}
+      />
+
+      {/* Clear List Confirmation */}
+      <ConfirmDialog
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleConfirmNewList}
+        title="Clear Grocery List"
+        message="Are you sure you want to clear the entire grocery list? This action cannot be undone."
+        confirmLabel="Clear List"
+        variant="danger"
+        isLoading={deleteAllMutation.isPending}
       />
     </div>
   );
