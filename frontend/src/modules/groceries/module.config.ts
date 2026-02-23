@@ -14,6 +14,7 @@ export const groceriesModule: HomeModule = {
   icon: ShoppingCart,
   basePath: '/groceries',
   routes: [{ path: '', index: true }],
+  section: 'Food',
   showInNav: true,
   navOrder: 2,
   enabled: true,

@@ -29,6 +29,7 @@ export function GroceriesHome() {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [showStoreManagement, setShowStoreManagement] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [storeToClear, setStoreToClear] = useState<{ id: string | null; name: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { stats, isLoading, isError, error } = useGroupedGroceries();
@@ -103,10 +104,18 @@ export function GroceriesHome() {
     }
   };
 
-  const handleMarkStoreCompleted = async (storeId: string | null) => {
+  const handleMarkStoreCompleted = (storeId: string | null) => {
+    const storeGroup = stats.stores.find((s) => (s.store?.id || null) === storeId);
+    const storeName = storeGroup?.store?.name || 'No Store';
+    setStoreToClear({ id: storeId, name: storeName });
+  };
+
+  const handleConfirmStoreClear = async () => {
+    if (!storeToClear) return;
     try {
-      const result = await markStoreCompletedMutation.mutateAsync({ storeId });
+      const result = await markStoreCompletedMutation.mutateAsync({ storeId: storeToClear.id });
       logger.info(`Deleted ${result.deleted} items from completed store`);
+      setStoreToClear(null);
     } catch (err) {
       logger.error('Failed to mark store as completed', err);
     }
@@ -305,6 +314,18 @@ export function GroceriesHome() {
         confirmLabel="Clear List"
         variant="danger"
         isLoading={deleteAllMutation.isPending}
+      />
+
+      {/* Clear Store Confirmation */}
+      <ConfirmDialog
+        isOpen={storeToClear !== null}
+        onClose={() => setStoreToClear(null)}
+        onConfirm={handleConfirmStoreClear}
+        title={`Clear ${storeToClear?.name ?? 'Store'}`}
+        message={`Are you sure you want to clear all items from ${storeToClear?.name ?? 'this store'}? This action cannot be undone.`}
+        confirmLabel="Clear Store"
+        variant="danger"
+        isLoading={markStoreCompletedMutation.isPending}
       />
     </div>
   );
