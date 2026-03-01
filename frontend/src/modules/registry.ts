@@ -40,6 +40,7 @@ import { notificationsModule } from './notifications/module.config';
 import { settingsModule } from './settings/module.config';
 import { hsaModule } from './hsa/module.config';
 import { developerModule } from './developer/module.config';
+import { creditCardsModule } from './credit-cards/module.config';
 
 // =============================================================================
 // REGISTER MODULES HERE
@@ -56,6 +57,7 @@ const MODULES: HomeModule[] = [
   recipesModule,
   peopleModule,
   hsaModule,
+  creditCardsModule,
   notificationsModule,
   settingsModule,
   developerModule,

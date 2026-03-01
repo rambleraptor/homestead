@@ -44,6 +44,9 @@ export const Collections = {
   RECIPES: 'recipes',
   COOKING_LOGS: 'cooking_logs',
   HSA_RECEIPTS: 'hsa_receipts',
+  CREDIT_CARDS: 'credit_cards',
+  CREDIT_CARD_PERKS: 'credit_card_perks',
+  PERK_REDEMPTIONS: 'perk_redemptions',
 } as const;
 
 /**
