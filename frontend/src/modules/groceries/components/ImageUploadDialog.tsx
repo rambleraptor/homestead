@@ -191,7 +191,7 @@ export function ImageUploadDialog({ isOpen, onClose }: ImageUploadDialogProps) {
                   <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
                   <div>
                     <p className="font-medium text-blue-900">Processing image...</p>
-                    <p className="text-sm text-blue-700">Extracting and categorizing items</p>
+                    <p className="text-sm text-blue-700">Extracting items from image</p>
                   </div>
                 </div>
               )}
@@ -226,7 +226,7 @@ export function ImageUploadDialog({ isOpen, onClose }: ImageUploadDialogProps) {
                       >
                         {failedItems.length > 0
                           ? `${failedItems.length} items could not be added`
-                          : 'Items have been categorized and added to your list'}
+                          : 'Items have been added to your list'}
                       </p>
                     </div>
                   </div>

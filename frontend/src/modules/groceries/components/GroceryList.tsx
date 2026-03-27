@@ -3,7 +3,7 @@
 /**
  * Grocery List Component
  *
- * Displays grocery items grouped by store and category
+ * Displays grocery items grouped by store
  */
 
 import { Trash2, Store as StoreIcon, CheckCheck } from 'lucide-react';
@@ -61,31 +61,18 @@ export function GroceryList({
             )}
           </div>
 
-          {/* Categories within this store */}
-          <div className="space-y-4">
-            {storeGroup.categories.map((group) => (
-              <div key={group.category} className="bg-white rounded-lg border">
-                <div className="px-4 py-3 border-b bg-gray-50">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-semibold text-gray-900 flex-1 min-w-0 truncate">{group.category}</h3>
-                    <span className="text-sm text-gray-600 shrink-0 whitespace-nowrap">
-                      {group.checkedCount} / {group.totalCount} checked
-                    </span>
-                  </div>
-                </div>
-
-                <div className="divide-y">
-                  {group.items.map((item) => (
-                    <GroceryItemRow
-                      key={item.id}
-                      item={item}
-                      onToggle={onToggleItem}
-                      onDelete={onDeleteItem}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+          {/* Items within this store */}
+          <div className="bg-white rounded-lg border">
+            <div className="divide-y">
+              {storeGroup.items.map((item) => (
+                <GroceryItemRow
+                  key={item.id}
+                  item={item}
+                  onToggle={onToggleItem}
+                  onDelete={onDeleteItem}
+                />
+              ))}
+            </div>
           </div>
         </div>
       ))}

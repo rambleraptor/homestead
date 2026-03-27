@@ -12,6 +12,7 @@ import { extractGroceryItemsFromImage } from '@/core/services/gemini';
 import { logger } from '@/core/utils/logger';
 import type { GroceryItem } from '../types';
 
+
 export interface CreateFromImageResult {
   extractedCount: number;
   createdItems: GroceryItem[];
@@ -23,10 +24,9 @@ export function useCreateGroceryItemsFromImage() {
 
   return useMutation({
     mutationFn: async (imageFile: File) => {
-      logger.info('Extracting and categorizing grocery items from image');
+      logger.info('Extracting grocery items from image');
 
-      // Extract and categorize items using backend API
-      // Backend handles both vision extraction and categorization
+      // Extract items using backend API
       const extractedItems = await extractGroceryItemsFromImage(imageFile);
 
       if (extractedItems.length === 0) {
@@ -50,7 +50,6 @@ export function useCreateGroceryItemsFromImage() {
           const item = await collection.create({
             name: extractedItem.name,
             notes: '',
-            category: extractedItem.category,
             checked: false,
           });
           createdItems.push(item);

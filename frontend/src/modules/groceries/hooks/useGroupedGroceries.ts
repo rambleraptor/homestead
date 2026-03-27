@@ -1,29 +1,27 @@
 /**
  * Grouped Groceries Hook
  *
- * Groups grocery items by store and category, and provides statistics
+ * Groups grocery items by store and provides statistics
  */
 
 import { useMemo } from 'react';
-import { GROCERY_CATEGORIES } from '@/core/services/gemini';
-import type { GroceryCategory } from '@/core/services/gemini';
 import { useGroceries } from './useGroceries';
 import { useStores } from './useStores';
-import type { GroupedGroceries, StoreGroupedGroceries, GroceryStats } from '../types';
+import type { StoreGroupedGroceries, GroceryStats } from '../types';
 
 export function useGroupedGroceries() {
   const { data: items = [], isLoading: itemsLoading, isError: itemsError, error: itemsErrorMsg } = useGroceries();
   const { data: stores = [], isLoading: storesLoading, isError: storesError, error: storesErrorMsg } = useStores();
 
   const stats = useMemo<GroceryStats>(() => {
-    // Group items by store first
+    // Group items by store
     const storeMap = new Map<string | null, StoreGroupedGroceries>();
 
     // Initialize all stores
     stores.forEach((store) => {
       storeMap.set(store.id, {
         store,
-        categories: [],
+        items: [],
         checkedCount: 0,
         totalCount: 0,
       });
@@ -32,74 +30,23 @@ export function useGroupedGroceries() {
     // Initialize "No Store" group
     storeMap.set(null, {
       store: null,
-      categories: [],
+      items: [],
       checkedCount: 0,
       totalCount: 0,
     });
 
-    // Group items by store, then by category
+    // Sort items into stores
     items.forEach((item) => {
       const storeId = item.store || null;
       const storeGroup = storeMap.get(storeId);
 
       if (storeGroup) {
+        storeGroup.items.push(item);
         storeGroup.totalCount++;
         if (item.checked) {
           storeGroup.checkedCount++;
         }
       }
-    });
-
-    // For each store, group items by category
-    storeMap.forEach((storeGroup, storeId) => {
-      const categoryMap = new Map<GroceryCategory | 'Uncategorized', GroupedGroceries>();
-
-      // Initialize all known categories
-      GROCERY_CATEGORIES.forEach((category) => {
-        categoryMap.set(category, {
-          category,
-          items: [],
-          checkedCount: 0,
-          totalCount: 0,
-        });
-      });
-
-      // Add uncategorized group
-      categoryMap.set('Uncategorized', {
-        category: 'Uncategorized',
-        items: [],
-        checkedCount: 0,
-        totalCount: 0,
-      });
-
-      // Sort items into categories for this store
-      items
-        .filter((item) => (item.store || null) === storeId)
-        .forEach((item) => {
-          const category = item.category || 'Uncategorized';
-          const group = categoryMap.get(category);
-
-          if (group) {
-            group.items.push(item);
-            group.totalCount++;
-            if (item.checked) {
-              group.checkedCount++;
-            }
-          }
-        });
-
-      // Filter out empty categories and sort
-      storeGroup.categories = Array.from(categoryMap.values())
-        .filter((group) => group.totalCount > 0)
-        .sort((a, b) => {
-          // Unchecked items first, then by category name
-          const aUnchecked = a.totalCount - a.checkedCount;
-          const bUnchecked = b.totalCount - b.checkedCount;
-          if (aUnchecked !== bUnchecked) {
-            return bUnchecked - aUnchecked;
-          }
-          return a.category.localeCompare(b.category);
-        });
     });
 
     // Filter out empty stores and sort by sort_order

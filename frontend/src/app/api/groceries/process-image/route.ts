@@ -3,7 +3,7 @@
  *
  * POST /api/groceries/process-image
  * Body: { image: string (base64), mimeType: string }
- * Returns: { items: Array<{ name: string, category: string }>, message: string }
+ * Returns: { items: Array<{ name: string }>, message: string }
  *
  * Requires user authentication (PocketBase token in Authorization header)
  */
@@ -14,7 +14,6 @@ import PocketBase from 'pocketbase';
 
 interface ExtractedItem {
   name: string;
-  category: 'Other';
 }
 
 /**
@@ -104,7 +103,6 @@ Lettuce
       .filter((item) => item.length > 0)
       .map((item): ExtractedItem => ({
         name: item,
-        category: 'Other', // Will be categorized later by user action
       }));
 
     console.log(`Extracted ${items.length} items from image`);

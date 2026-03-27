@@ -7,14 +7,13 @@
  */
 
 import { useState, useRef } from 'react';
-import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2, Image, ListRestart, Tags, Store as StoreIcon, Bell } from 'lucide-react';
+import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2, Image, ListRestart, Store as StoreIcon, Bell } from 'lucide-react';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
 import { useStores } from '../hooks/useStores';
 import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
 import { useUpdateGroceryItem } from '../hooks/useUpdateGroceryItem';
 import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
 import { useDeleteAllGroceries } from '../hooks/useDeleteAllGroceries';
-import { useCategorizeAllGroceries } from '../hooks/useCategorizeAllGroceries';
 import { useMarkStoreCompleted } from '../hooks/useMarkStoreCompleted';
 import { GroceryList } from './GroceryList';
 import { ImageUploadDialog } from './ImageUploadDialog';
@@ -38,7 +37,6 @@ export function GroceriesHome() {
   const updateMutation = useUpdateGroceryItem();
   const deleteMutation = useDeleteGroceryItem();
   const deleteAllMutation = useDeleteAllGroceries();
-  const categorizeAllMutation = useCategorizeAllGroceries();
   const markStoreCompletedMutation = useMarkStoreCompleted();
   const notifyMutation = useSendGroceryNotification();
 
@@ -89,18 +87,6 @@ export function GroceriesHome() {
       setShowClearConfirm(false);
     } catch (err) {
       logger.error('Failed to delete all grocery items', err);
-    }
-  };
-
-  const handleCategorizeAll = async () => {
-    try {
-      const result = await categorizeAllMutation.mutateAsync();
-      logger.info(
-        `Categorized ${result.categorized} of ${result.totalItems} items` +
-          (result.failed > 0 ? `, ${result.failed} failed` : '')
-      );
-    } catch (err) {
-      logger.error('Failed to categorize grocery items', err);
     }
   };
 
@@ -156,7 +142,6 @@ export function GroceriesHome() {
   // Only track bulk operations that should disable the entire UI
   // Individual item updates/deletes should not disable other items
   const isBulkUpdating = deleteAllMutation.isPending || markStoreCompletedMutation.isPending;
-  const isCategorizing = categorizeAllMutation.isPending;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -206,7 +191,7 @@ export function GroceriesHome() {
           </button>
           <button
             onClick={() => setShowImageUpload(true)}
-            disabled={isCategorizing}
+            disabled={isBulkUpdating}
             className="bg-green-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             data-testid="upload-grocery-list-button"
           >
@@ -215,32 +200,16 @@ export function GroceriesHome() {
             <span className="xs:hidden">Upload</span>
           </button>
           {stats.totalItems > 0 && (
-            <>
-              <button
-                onClick={handleCategorizeAll}
-                disabled={isCategorizing || isBulkUpdating}
-                className="bg-purple-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-purple-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-                data-testid="categorize-all-button"
-              >
-                {isCategorizing ? (
-                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                ) : (
-                  <Tags className="w-4 h-4 sm:w-5 sm:h-5" />
-                )}
-                <span className="hidden sm:inline">{isCategorizing ? 'Categorizing...' : 'Categorize All'}</span>
-                <span className="sm:hidden">{isCategorizing ? 'Categorizing...' : 'Categorize'}</span>
-              </button>
-              <button
-                onClick={handleNewList}
-                disabled={isBulkUpdating || isCategorizing}
-                className="bg-red-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-                data-testid="new-grocery-list-button"
-              >
-                <ListRestart className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">New List</span>
-                <span className="sm:hidden">New</span>
-              </button>
-            </>
+            <button
+              onClick={handleNewList}
+              disabled={isBulkUpdating}
+              className="bg-red-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+              data-testid="new-grocery-list-button"
+            >
+              <ListRestart className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">New List</span>
+              <span className="sm:hidden">New</span>
+            </button>
           )}
         </div>
       </div>

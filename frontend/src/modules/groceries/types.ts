@@ -2,8 +2,6 @@
  * Groceries Module Types
  */
 
-import type { GroceryCategory } from '@/core/services/gemini';
-
 /**
  * Store record from PocketBase
  */
@@ -23,7 +21,6 @@ export interface GroceryItem {
   id: string;
   name: string;
   checked: boolean;
-  category?: GroceryCategory;
   notes?: string;
   store?: string; // Store ID
   created_by?: string;
@@ -41,21 +38,11 @@ export interface GroceryItemFormData {
 }
 
 /**
- * Grouped grocery items by category
- */
-export interface GroupedGroceries {
-  category: GroceryCategory | 'Uncategorized';
-  items: GroceryItem[];
-  checkedCount: number;
-  totalCount: number;
-}
-
-/**
- * Grocery items grouped by category within a store
+ * Grocery items grouped by store
  */
 export interface StoreGroupedGroceries {
   store: Store | null; // null for items without a store
-  categories: GroupedGroceries[];
+  items: GroceryItem[];
   checkedCount: number;
   totalCount: number;
 }
