@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Cake, Heart, Plus, Upload, Search } from 'lucide-react';
+import { Plus, Upload, Search } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
@@ -14,7 +14,6 @@ import { usePeople } from '../hooks/usePeople';
 import { useCreatePerson } from '../hooks/useCreatePerson';
 import { useUpdatePerson } from '../hooks/useUpdatePerson';
 import { useDeletePerson } from '../hooks/useDeletePerson';
-import { usePeopleStats } from '../hooks/usePeopleStats';
 import { PersonForm } from './PersonForm';
 import { PersonCard } from './PersonCard';
 import type { Person, PersonFormData } from '../types';
@@ -22,7 +21,6 @@ import type { Person, PersonFormData } from '../types';
 export function PeopleHome() {
   const router = useRouter();
   const { data: people, isLoading } = usePeople();
-  const { data: stats } = usePeopleStats();
   const createPerson = useCreatePerson();
   const updatePerson = useUpdatePerson();
   const deletePerson = useDeletePerson();
@@ -136,52 +134,6 @@ export function PeopleHome() {
           </Button>
         </div>
       </div>
-
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <div className="flex items-center">
-              <Users className="w-8 h-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">
-                  Total People
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.totalPeople}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center">
-              <Cake className="w-8 h-8 text-pink-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">
-                  Upcoming Birthdays
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.upcomingBirthdays}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center">
-              <Heart className="w-8 h-8 text-red-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">
-                  Upcoming Anniversaries
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.upcomingAnniversaries}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
 
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
