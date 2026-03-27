@@ -41,8 +41,6 @@ export const Collections = {
   RECURRING_NOTIFICATIONS: 'recurring_notifications',
   GROCERIES: 'groceries',
   STORES: 'stores',
-  RECIPES: 'recipes',
-  COOKING_LOGS: 'cooking_logs',
   HSA_RECEIPTS: 'hsa_receipts',
   CREDIT_CARDS: 'credit_cards',
   CREDIT_CARD_PERKS: 'credit_card_perks',
