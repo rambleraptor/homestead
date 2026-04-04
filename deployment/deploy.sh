@@ -93,6 +93,7 @@ fi
 # Detect what changed
 MIGRATIONS_CHANGED=false
 FRONTEND_CHANGED=false
+BACKEND_CHANGED=false
 DEPS_CHANGED=false
 SCRIPTS_DEPS_CHANGED=false
 
@@ -106,6 +107,11 @@ if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ] || [ "$FORCE_BUILD" = true ]; then
   if git diff --name-only $PREVIOUS_COMMIT..$NEW_COMMIT | grep -q "frontend/"; then
     FRONTEND_CHANGED=true
     log "${YELLOW}🔄 Frontend changes detected${NC}"
+  fi
+
+  if git diff --name-only $PREVIOUS_COMMIT..$NEW_COMMIT | grep -q "backend/"; then
+    BACKEND_CHANGED=true
+    log "${YELLOW}🔄 Backend changes detected${NC}"
   fi
 
   if git diff --name-only $PREVIOUS_COMMIT..$NEW_COMMIT | grep -q "frontend/package.json"; then
@@ -133,6 +139,13 @@ elif [ "$AUTO_MODE" = false ]; then
      git ls-files --others --exclude-standard | grep -q "frontend/"; then
     FRONTEND_CHANGED=true
     log "${YELLOW}🔄 Uncommitted frontend changes detected${NC}"
+  fi
+
+  if git diff --name-only HEAD | grep -q "backend/" || \
+     git diff --cached --name-only | grep -q "backend/" || \
+     git ls-files --others --exclude-standard | grep -q "backend/"; then
+    BACKEND_CHANGED=true
+    log "${YELLOW}🔄 Uncommitted backend changes detected${NC}"
   fi
 
   if git diff --name-only HEAD | grep -q "frontend/package.json" || \
@@ -173,6 +186,30 @@ if [ "$SCRIPTS_DEPS_CHANGED" = true ]; then
     exit 1
   fi
   cd "$PROJECT_ROOT"
+fi
+
+# Check if PocketBase binary exists
+if [ ! -f "$PROJECT_ROOT/pocketbase/pocketbase" ]; then
+  log "${YELLOW}⚠️  PocketBase binary missing${NC}"
+  BACKEND_CHANGED=true
+fi
+
+# Build backend (PocketBase with libSQL) if needed
+if [ "$BACKEND_CHANGED" = true ] || [ "$FORCE_BUILD" = true ]; then
+  log "${BLUE}🔨 Building PocketBase with libSQL...${NC}"
+  mkdir -p "$PROJECT_ROOT/pocketbase"
+  cd "$PROJECT_ROOT/backend"
+  if ! CGO_ENABLED=1 go build -o "$PROJECT_ROOT/pocketbase/pocketbase" . 2>&1 | tee -a "$LOG_FILE"; then
+    log "${RED}❌ Backend build failed${NC}"
+    log "${YELLOW}⏮️  Rolling back...${NC}"
+    cd "$PROJECT_ROOT"
+    git reset --hard "$PREVIOUS_COMMIT" 2>&1 | tee -a "$LOG_FILE"
+    exit 1
+  fi
+  cd "$PROJECT_ROOT"
+  log "${GREEN}✅ Backend build complete${NC}"
+else
+  log "${BLUE}⏭️  Skipping backend build (no changes detected)${NC}"
 fi
 
 # Check if .next build directory exists (Next.js builds to .next, not dist)

@@ -672,10 +672,14 @@ open http://127.0.0.1:8090/_/
 - **`src/shared/`** - Shared components and utilities
 - **`src/test/`** - Test setup and utilities
 
-### Backend
+### Backend (`backend/`)
 
+- **`backend/main.go`** - Custom PocketBase build with libSQL database driver
+- **`backend/go.mod`** - Go module dependencies
+- **`backend/internal/sqlite3stub/`** - Stub to prevent mattn/go-sqlite3 CGO conflicts
 - **`pb_migrations/`** - PocketBase database migrations
-- **`pocketbase/`** - PocketBase binary and data (not in git)
+- **`pb_hooks/`** - PocketBase server-side JavaScript hooks
+- **`pocketbase/`** - Built binary and data directory (not in git)
 
 ### Tests
 
@@ -696,7 +700,8 @@ make ci && make test
 # Individual checks
 make lint             # ESLint
 make type-check       # TypeScript
-make build            # Production build
+make build-backend    # PocketBase with libSQL
+make build            # Full production build (backend + frontend)
 make test             # Frontend tests
 make test-migrations  # PocketBase migration tests
 make test-hooks       # PocketBase hook validation

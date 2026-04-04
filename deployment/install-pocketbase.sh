@@ -2,60 +2,54 @@
 set -e
 
 # PocketBase Installation Script
-# Downloads and installs PocketBase
+# Builds a custom PocketBase binary with libSQL support from the backend/ Go source.
 
-POCKETBASE_VERSION="${POCKETBASE_VERSION:-0.34.2}"
-ARCH=$(uname -m)
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-
-echo "🗄️  Installing PocketBase v${POCKETBASE_VERSION}..."
+echo "Building PocketBase with libSQL support..."
 
 # Navigate to project root
 cd "$(dirname "$0")/.."
 
-# Determine architecture
-if [ "$ARCH" = "x86_64" ]; then
-    ARCH="amd64"
-elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-    ARCH="arm64"
-else
-    echo "❌ Unsupported architecture: $ARCH"
+# Check Go is installed
+if ! command -v go &> /dev/null; then
+    echo "Go is required to build PocketBase with libSQL."
+    echo "Install Go 1.21+ from https://go.dev/dl/"
     exit 1
 fi
 
-# Create pocketbase directory
-mkdir -p pocketbase
-cd pocketbase
-
-# Download PocketBase if not already present
-if [ ! -f "pocketbase" ]; then
-    echo "📥 Downloading PocketBase for ${OS}_${ARCH}..."
-    DOWNLOAD_URL="https://github.com/pocketbase/pocketbase/releases/download/v${POCKETBASE_VERSION}/pocketbase_${POCKETBASE_VERSION}_${OS}_${ARCH}.zip"
-
-    if command -v wget &> /dev/null; then
-        wget -q --show-progress "$DOWNLOAD_URL" -O pocketbase.zip
-    elif command -v curl &> /dev/null; then
-        curl -L "$DOWNLOAD_URL" -o pocketbase.zip
-    else
-        echo "❌ Neither wget nor curl found. Please install one of them."
-        exit 1
-    fi
-
-    echo "📦 Extracting PocketBase..."
-    unzip -q pocketbase.zip
-    rm pocketbase.zip
-
-    chmod +x pocketbase
-    echo "✅ PocketBase installed successfully!"
-else
-    echo "✅ PocketBase already installed"
+# Check C compiler is available (required for go-libsql CGO)
+if ! command -v gcc &> /dev/null && ! command -v cc &> /dev/null; then
+    echo "A C compiler (gcc) is required for the libSQL native library."
+    echo "Install with: sudo apt install build-essential"
+    exit 1
 fi
 
-# Check version
-./pocketbase --version
+# Create output directory
+mkdir -p pocketbase
 
+# Tidy dependencies
+echo "Resolving Go module dependencies..."
+cd backend
+go mod tidy
+
+# Build the custom PocketBase binary with libSQL
+echo "Compiling PocketBase with libSQL backend..."
+CGO_ENABLED=1 go build -o ../pocketbase/pocketbase .
+
+cd ..
+
+chmod +x pocketbase/pocketbase
+
+# Check version
+./pocketbase/pocketbase --version
+
+echo ""
+echo "PocketBase with libSQL built successfully!"
 echo ""
 echo "Next steps:"
 echo "  1. Build frontend: ./deployment/build.sh"
 echo "  2. Configure environment: cp deployment/.env.production frontend/.env"
 echo "  3. Set up services: sudo ./deployment/setup-services.sh"
+echo ""
+echo "Optional Turso sync:"
+echo "  Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in your environment"
+echo "  to sync the local database with a remote Turso instance."

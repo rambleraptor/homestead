@@ -1,14 +1,18 @@
 [Unit]
-Description=PocketBase for HomeOS
+Description=PocketBase for HomeOS (libSQL backend)
 After=network.target
 
 [Service]
 Type=simple
 User=homeosuser
-WorkingDirectory=/path/to/homeOS/pocketbase
-ExecStart=/path/to/homeOS/pocketbase/pocketbase serve --http=0.0.0.0:8090
+WorkingDirectory=/path/to/homeOS
+ExecStart=/path/to/homeOS/pocketbase/pocketbase serve --http=0.0.0.0:8090 --dir=pocketbase/pb_data --hooksDir=pb_hooks --migrationsDir=pb_migrations
 Restart=on-failure
 RestartSec=5s
+
+# Turso sync (optional - uncomment and set values to enable remote sync)
+# Environment="TURSO_DATABASE_URL=libsql://your-db.turso.io"
+# Environment="TURSO_AUTH_TOKEN=your-auth-token"
 
 # Security hardening
 NoNewPrivileges=true
@@ -16,7 +20,7 @@ PrivateTmp=true
 ProtectSystem=strict
 
 # Environment
-Environment="HOME=/path/to/homeOS/pocketbase"
+Environment="HOME=/path/to/homeOS"
 
 [Install]
 WantedBy=multi-user.target

@@ -1,10 +1,11 @@
-.PHONY: help install clean lint type-check build test test-migrations test-hooks test-auto-update test-e2e test-all dev start audit format all ci deploy setup-services start-services stop restart status logs
+.PHONY: help install clean lint type-check build build-backend test test-migrations test-hooks test-auto-update test-e2e test-all dev start audit format all ci deploy setup-services start-services stop restart status logs
 
 # Default target
 .DEFAULT_GOAL := help
 
-# Frontend directory
+# Directories
 FRONTEND_DIR := frontend
+BACKEND_DIR := backend
 
 help: ## Show this help message
 	@echo "HomeOS - Available Make Targets"
@@ -14,11 +15,15 @@ help: ## Show this help message
 install: ## Install all dependencies
 	@echo "Installing frontend dependencies..."
 	cd $(FRONTEND_DIR) && npm install
+	@echo "Tidying backend Go modules..."
+	cd $(BACKEND_DIR) && go mod tidy
 
 clean: ## Remove build artifacts and dependencies
 	@echo "Cleaning build artifacts..."
 	rm -rf $(FRONTEND_DIR)/.next
 	rm -rf $(FRONTEND_DIR)/node_modules
+	@echo "Cleaning backend build artifacts..."
+	rm -f pocketbase/pocketbase
 	@echo "Cleaning migration test artifacts..."
 	cd tests/migrations && npm run clean 2>/dev/null || true
 
@@ -30,8 +35,14 @@ type-check: ## Run TypeScript type checking
 	@echo "Running TypeScript type check..."
 	cd $(FRONTEND_DIR) && npm run type-check
 
-build: ## Build for production
-	@echo "Building application..."
+build-backend: ## Build PocketBase with libSQL backend
+	@echo "Building PocketBase with libSQL..."
+	@mkdir -p pocketbase
+	cd $(BACKEND_DIR) && CGO_ENABLED=1 go build -o ../pocketbase/pocketbase .
+	@echo "Backend built: pocketbase/pocketbase"
+
+build: build-backend ## Build for production
+	@echo "Building frontend..."
 	cd $(FRONTEND_DIR) && npm run build
 
 dev: ## Start development server
