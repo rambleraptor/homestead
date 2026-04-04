@@ -37,7 +37,7 @@ export async function POST(
 
     // Trigger execution asynchronously (non-blocking)
     // The execution will happen in a separate request
-    fetch(`${request.nextUrl.origin}/api/actions/runs/utils/execute`, {
+    fetch(`${request.nextUrl.origin}/api/actions/runs/utils`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
