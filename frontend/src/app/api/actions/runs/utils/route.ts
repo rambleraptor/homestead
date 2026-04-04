@@ -26,10 +26,8 @@ export async function POST(request: NextRequest) {
     const pocketbaseUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
     const pocketbaseToken = pb.authStore.token;
 
-    // Execute in background (don't await)
-    executeScript(runId, pocketbaseUrl, pocketbaseToken).catch(err => {
-      console.error('Script execution error:', err);
-    });
+    // Await execution so it completes before the response context is torn down
+    await executeScript(runId, pocketbaseUrl, pocketbaseToken);
 
     return NextResponse.json({ success: true });
 

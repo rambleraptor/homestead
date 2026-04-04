@@ -30,7 +30,7 @@ export function useActionRun(runId: string | null, options?: { enabled?: boolean
     refetchInterval: (query) => {
       // Poll every 2 seconds while running or awaiting input
       const run = query.state.data;
-      if (run && (run.status === 'running' || run.status === 'awaiting_input')) {
+      if (run && (run.status === 'pending' || run.status === 'running' || run.status === 'awaiting_input')) {
         return 2000;
       }
       // Stop polling when done
