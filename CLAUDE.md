@@ -9,6 +9,7 @@ This document provides guidelines for Claude AI assistants working on the HomeOS
 - [Testing Guidelines](#testing-guidelines)
 - [Code Quality Standards](#code-quality-standards)
 - [Project Structure](#project-structure)
+- [aepbase Backend (migration in progress)](#aepbase-backend-migration-in-progress)
 
 ## Pull Request Requirements
 
@@ -735,6 +736,81 @@ make ci && make test
 ```
 
 Only push when all checks pass successfully.
+
+---
+
+## aepbase Backend (migration in progress)
+
+We are migrating the HomeOS backend from **PocketBase** to **aepbase** (an
+AEP-compliant dynamic REST server). The schema is defined in Terraform using
+the `aep-dev/aep` provider. See `aepbase/README.md` for full details.
+
+### Current state
+
+- PocketBase (`pb_migrations/`, `pb_hooks/`, `pocketbase/`) is still the
+  source of truth for the running app. The frontend talks to it, tests rely
+  on it, and `make` targets build it.
+- `aepbase/` is the staging area for the new backend. Its terraform files
+  model every PocketBase collection as an AEP resource definition. Applying
+  them stands up a fresh aepbase instance with the equivalent schema.
+
+### Running aepbase locally
+
+```bash
+cd aepbase
+./install.sh                            # builds bin/aepbase
+./run.sh                                # serves on :8090
+# in another terminal:
+cd aepbase/terraform
+export AEP_OPENAPI=http://localhost:8090/openapi.json
+terraform init && terraform apply
+```
+
+### Rules for editing `aepbase/terraform/`
+
+1. **Resource type in HCL is `aep_aep-resource-definition`** (yes, the hyphen
+   is real — it's what the dynamic provider generates from the meta-API).
+2. **Singular/plural must be kebab-case, not camelCase.** `gift-card`, not
+   `giftCard`. Terraform's plugin framework rejects URL params that contain
+   uppercase letters, and a camelCase singular produces invalid params like
+   `giftCard_id`.
+3. **JSON Schema `enum`, `minimum`, `maximum` are stripped by aepbase on
+   round-trip.** Using them causes terraform apply to fail with *"Provider
+   produced inconsistent result after apply"*. Encode allowed values in
+   `description` instead:
+   ```hcl
+   status = { type = "string", description = "one of: pending, success, error" }
+   ```
+4. **Child resources need explicit `depends_on`.** Setting `parents = ["foo"]`
+   alone does not create a terraform dependency — add
+   `depends_on = [aep_aep-resource-definition.foo]`.
+5. **Field names inside the JSON schema stay snake_case** to match existing
+   PB data (e.g. `card_number`, `created_by`, `service_date`).
+6. **Don't add autodate fields** (`created`, `updated`). aepbase manages
+   `create_time` and `update_time` itself.
+7. **After editing an aepbase resource definition out of band**, run
+   `terraform init -upgrade` so the provider re-reads `/openapi.json`.
+
+### Parent/child relationships
+
+Where PocketBase used a cascade-delete relation, model it as an AEP parent
+(not as a plain string FK field). Current parented resources:
+
+| Child          | Parent        |
+|----------------|---------------|
+| `transaction`  | `gift-card`   |
+| `perk`         | `credit-card` |
+| `redemption`   | `perk`        |
+| `run`          | `action`      |
+| `log`          | `recipe`      |
+
+When making a resource a child, **remove the FK field from its schema** —
+it's encoded in the URL path (`/gift-cards/{id}/transactions/{id}`).
+
+### Not yet migrated
+
+Auth, file uploads, access rules, the `users` collection. Do not assume
+feature parity with PocketBase. If a task depends on one of these, flag it.
 
 ---
 

@@ -1,0 +1,7 @@
+bin/
+src/
+data/
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+# keep .terraform.lock.hcl checked in — it pins provider versions
