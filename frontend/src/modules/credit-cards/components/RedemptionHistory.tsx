@@ -4,19 +4,23 @@
  * Table showing past redemptions for a card's perks
  */
 
-import { Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { PerkRedemption, CreditCardPerk } from '../types';
 
 interface RedemptionHistoryProps {
   redemptions: PerkRedemption[];
   perks: CreditCardPerk[];
   onDeleteRedemption: (id: string) => void;
+  onEditRedemption: (redemption: PerkRedemption) => void;
+  onAddRedemption: () => void;
 }
 
 export function RedemptionHistory({
   redemptions,
   perks,
   onDeleteRedemption,
+  onEditRedemption,
+  onAddRedemption,
 }: RedemptionHistoryProps) {
   const perkMap = new Map(perks.map((p) => [p.id, p]));
 
@@ -27,8 +31,23 @@ export function RedemptionHistory({
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-      <h3 className="text-lg font-bold text-gray-900 mb-4">Redemption History</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-gray-900">Redemption History</h3>
+        <button
+          onClick={onAddRedemption}
+          data-testid="add-redemption-button"
+          className="flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add Redemption
+        </button>
+      </div>
 
+      {sorted.length === 0 ? (
+        <p className="text-center py-6 text-gray-400">
+          No redemptions yet. Use &quot;Add Redemption&quot; to log historical data.
+        </p>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -65,13 +84,22 @@ export function RedemptionHistory({
                     ${redemption.amount}
                   </td>
                   <td className="py-2 px-2 text-right">
-                    <button
-                      onClick={() => onDeleteRedemption(redemption.id)}
-                      className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                      data-testid={`delete-redemption-${redemption.id}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => onEditRedemption(redemption)}
+                        className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
+                        data-testid={`edit-redemption-${redemption.id}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteRedemption(redemption.id)}
+                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                        data-testid={`delete-redemption-${redemption.id}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -90,6 +118,7 @@ export function RedemptionHistory({
           </tfoot>
         </table>
       </div>
+      )}
     </div>
   );
 }
