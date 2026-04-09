@@ -18,6 +18,8 @@ import { useCreatePerk } from '../hooks/useCreatePerk';
 import { useUpdatePerk } from '../hooks/useUpdatePerk';
 import { useDeletePerk } from '../hooks/useDeletePerk';
 import { useRedeemPerk } from '../hooks/useRedeemPerk';
+import { useCreateRedemption } from '../hooks/useCreateRedemption';
+import { useUpdateRedemption } from '../hooks/useUpdateRedemption';
 import { useDeleteRedemption } from '../hooks/useDeleteRedemption';
 import { useCreditCardStats } from '../hooks/useCreditCardStats';
 import { useUpcomingPerks } from '../hooks/useUpcomingPerks';
@@ -28,7 +30,7 @@ import { CardDetail } from './CardDetail';
 import { UpcomingPerks } from './UpcomingPerks';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { logger } from '@/core/utils/logger';
-import type { CreditCardFormData, PerkFormData, CreditCard as CreditCardType } from '../types';
+import type { CreditCardFormData, PerkFormData, RedemptionFormData, CreditCard as CreditCardType } from '../types';
 
 type ViewState =
   | { type: 'list' }
@@ -57,6 +59,8 @@ export function CreditCardsHome() {
   const updatePerkMutation = useUpdatePerk();
   const deletePerkMutation = useDeletePerk();
   const redeemPerkMutation = useRedeemPerk();
+  const createRedemptionMutation = useCreateRedemption();
+  const updateRedemptionMutation = useUpdateRedemption();
   const deleteRedemptionMutation = useDeleteRedemption();
 
   const handleCreateCard = async (data: CreditCardFormData) => {
@@ -131,6 +135,22 @@ export function CreditCardsHome() {
       });
     } catch (err) {
       logger.error('Failed to redeem perk', err);
+    }
+  };
+
+  const handleCreateRedemption = async (data: RedemptionFormData) => {
+    try {
+      await createRedemptionMutation.mutateAsync(data);
+    } catch (err) {
+      logger.error('Failed to create redemption', err);
+    }
+  };
+
+  const handleUpdateRedemption = async (id: string, data: RedemptionFormData) => {
+    try {
+      await updateRedemptionMutation.mutateAsync({ id, data });
+    } catch (err) {
+      logger.error('Failed to update redemption', err);
     }
   };
 
@@ -221,10 +241,14 @@ export function CreditCardsHome() {
           onUpdatePerk={handleUpdatePerk}
           onDeletePerk={(id) => handleDeleteRequest('perk', id)}
           onRedeemPerk={handleRedeemPerk}
+          onCreateRedemption={handleCreateRedemption}
+          onUpdateRedemption={handleUpdateRedemption}
           onDeleteRedemption={(id) => handleDeleteRequest('redemption', id)}
           isCreatingPerk={createPerkMutation.isPending}
           isUpdatingPerk={updatePerkMutation.isPending}
           isRedeeming={redeemPerkMutation.isPending}
+          isCreatingRedemption={createRedemptionMutation.isPending}
+          isUpdatingRedemption={updateRedemptionMutation.isPending}
         />
       )}
 

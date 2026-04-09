@@ -9,9 +9,10 @@ import { ArrowLeft, Pencil, Trash2, Plus } from 'lucide-react';
 import { CoverageProgressBar } from './CoverageProgressBar';
 import { PerkForm } from './PerkForm';
 import { PerkRow } from './PerkRow';
+import { RedemptionForm } from './RedemptionForm';
 import { RedemptionHistory } from './RedemptionHistory';
 import { getAnnualizedValue, getCurrentPeriod, formatPeriod } from '../utils/periodUtils';
-import type { CreditCard, CreditCardPerk, PerkRedemption, PerkFormData } from '../types';
+import type { CreditCard, CreditCardPerk, PerkRedemption, PerkFormData, RedemptionFormData } from '../types';
 
 interface CardDetailProps {
   card: CreditCard;
@@ -24,10 +25,14 @@ interface CardDetailProps {
   onUpdatePerk: (id: string, data: PerkFormData) => Promise<void>;
   onDeletePerk: (id: string) => void;
   onRedeemPerk: (perkId: string, amount: number) => Promise<void>;
+  onCreateRedemption: (data: RedemptionFormData) => Promise<void>;
+  onUpdateRedemption: (id: string, data: RedemptionFormData) => Promise<void>;
   onDeleteRedemption: (id: string) => void;
   isCreatingPerk: boolean;
   isUpdatingPerk: boolean;
   isRedeeming: boolean;
+  isCreatingRedemption: boolean;
+  isUpdatingRedemption: boolean;
 }
 
 export function CardDetail({
@@ -41,13 +46,19 @@ export function CardDetail({
   onUpdatePerk,
   onDeletePerk,
   onRedeemPerk,
+  onCreateRedemption,
+  onUpdateRedemption,
   onDeleteRedemption,
   isCreatingPerk,
   isUpdatingPerk,
   isRedeeming,
+  isCreatingRedemption,
+  isUpdatingRedemption,
 }: CardDetailProps) {
   const [showPerkForm, setShowPerkForm] = useState(false);
   const [editingPerk, setEditingPerk] = useState<CreditCardPerk | null>(null);
+  const [showRedemptionForm, setShowRedemptionForm] = useState(false);
+  const [editingRedemption, setEditingRedemption] = useState<PerkRedemption | null>(null);
 
   const now = new Date();
   const yearStart = new Date(now.getFullYear(), 0, 1);
@@ -198,13 +209,19 @@ export function CardDetail({
       </div>
 
       {/* Redemption History */}
-      {cardRedemptions.length > 0 && (
-        <RedemptionHistory
-          redemptions={cardRedemptions}
-          perks={perks}
-          onDeleteRedemption={onDeleteRedemption}
-        />
-      )}
+      <RedemptionHistory
+        redemptions={cardRedemptions}
+        perks={perks}
+        onDeleteRedemption={onDeleteRedemption}
+        onEditRedemption={(redemption) => {
+          setEditingRedemption(redemption);
+          setShowRedemptionForm(true);
+        }}
+        onAddRedemption={() => {
+          setEditingRedemption(null);
+          setShowRedemptionForm(true);
+        }}
+      />
 
       {/* Perk Form Modal */}
       <PerkForm
@@ -217,6 +234,20 @@ export function CardDetail({
         creditCardId={card.id}
         initialData={editingPerk ?? undefined}
         isSubmitting={isCreatingPerk || isUpdatingPerk}
+      />
+
+      {/* Redemption Form Modal */}
+      <RedemptionForm
+        isOpen={showRedemptionForm}
+        onClose={() => { setShowRedemptionForm(false); setEditingRedemption(null); }}
+        onSubmit={editingRedemption
+          ? (data) => onUpdateRedemption(editingRedemption.id, data)
+          : onCreateRedemption
+        }
+        perks={perks}
+        card={card}
+        initialData={editingRedemption ?? undefined}
+        isSubmitting={isCreatingRedemption || isUpdatingRedemption}
       />
     </div>
   );
