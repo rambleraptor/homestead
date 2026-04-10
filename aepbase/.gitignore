@@ -1,6 +1,9 @@
 bin/
 src/
 data/
+# upstream aepbase is now consumed as a Go module dependency, but keep
+# `src/` ignored so an old checkout from the previous install.sh script
+# doesn't get accidentally committed.
 terraform/.terraform/
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup

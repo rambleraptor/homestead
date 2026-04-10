@@ -1,6 +1,7 @@
 # Gift cards domain — mirrors pb_migrations collections `gift_cards` and
-# `gift_card_transactions`. PB relations are stored as string fields holding
-# the referenced resource `path` (AEP convention). File fields store URLs.
+# `gift_card_transactions`. Shared household data: any authenticated user
+# can read and write. `created_by` is informational only (string holding the
+# user's resource path, e.g. "users/{user_id}").
 
 resource "aep_aep-resource-definition" "gift_card" {
   singular             = "gift-card"
@@ -16,15 +17,22 @@ resource "aep_aep-resource-definition" "gift_card" {
       amount      = { type = "number" }
       notes       = { type = "string" }
       archived    = { type = "boolean" }
-      # TODO(file-uploads): in PocketBase these were native FileField uploads
-      # (5MB, jpeg/png/webp/gif, with auto-generated 100x100 and 400x400
-      # thumbnails). aepbase has no file storage or multipart handling, so
-      # these are plain strings holding an external URL for now. Revisit once
-      # we pick a storage strategy (S3/R2 + presigned PUT, sidecar service,
-      # or upstream aepbase FileField support).
-      front_image = { type = "string", description = "URL to front image" }
-      back_image  = { type = "string", description = "URL to back image" }
-      created_by  = { type = "string", description = "users/{user_id}" }
+      # File fields use aepbase's experimental file-field support
+      # (EnableFileFields=true in main.go). Uploaded via multipart, served
+      # back as a download URL. PB used 5MB image/jpeg|png|webp|gif uploads
+      # with 100x100 + 400x400 thumbs; aepbase doesn't generate thumbnails
+      # but mime/size constraints can be enforced client-side.
+      front_image = {
+        type                   = "binary"
+        "x-aepbase-file-field" = true
+        description            = "Front-of-card image (jpeg/png/webp/gif, <=5MB)"
+      }
+      back_image = {
+        type                   = "binary"
+        "x-aepbase-file-field" = true
+        description            = "Back-of-card image (jpeg/png/webp/gif, <=5MB)"
+      }
+      created_by = { type = "string", description = "users/{user_id}" }
     }
     required = ["merchant", "card_number", "amount"]
   })

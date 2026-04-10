@@ -17,11 +17,14 @@ resource "aep_aep-resource-definition" "recipe" {
       changelog        = { type = "object" }
       last_cooked      = { type = "string", format = "date-time" }
       rating           = { type = "number", description = "1-10 scale" }
-      # TODO(file-uploads): in PocketBase this was a FileField (5MB,
-      # jpeg/png/webp, no thumbnails). aepbase has no file storage — this is
-      # a URL string until we pick a storage strategy.
-      image            = { type = "string", description = "URL to recipe image" }
-      created_by       = { type = "string" }
+      # File field — uploaded via multipart, served back as a download URL.
+      # PB used 5MB image/jpeg|png|webp uploads with no thumbnails.
+      image = {
+        type                   = "binary"
+        "x-aepbase-file-field" = true
+        description            = "Recipe image (jpeg/png/webp, <=5MB)"
+      }
+      created_by = { type = "string" }
     }
     required = ["title", "source_type", "version"]
   })

@@ -14,13 +14,18 @@ resource "aep_aep-resource-definition" "hsa_receipt" {
       category     = { type = "string", description = "one of: Medical, Dental, Vision, Rx" }
       patient      = { type = "string" }
       status       = { type = "string", description = "one of: Stored, Reimbursed" }
-      # TODO(file-uploads): in PocketBase this was a required FileField
-      # (10MB, jpeg/png/webp/gif/pdf, with 100x100 and 400x400 thumbnails).
-      # aepbase has no file storage — see aepbase/README.md. For now this is
-      # a URL string; the required constraint is preserved below.
-      receipt_file = { type = "string", description = "URL to receipt file (image or PDF)" }
-      notes        = { type = "string" }
-      created_by   = { type = "string" }
+      # File field — uploaded via multipart, served back as a download URL.
+      # PB used a required 10MB jpeg/png/webp/gif/pdf upload with 100x100 +
+      # 400x400 thumbs; aepbase doesn't generate thumbnails. The `required`
+      # constraint below is enforced by aepbase — empty multipart returns
+      # 400 on create.
+      receipt_file = {
+        type                   = "binary"
+        "x-aepbase-file-field" = true
+        description            = "Receipt file (jpeg/png/webp/gif/pdf, <=10MB)"
+      }
+      notes      = { type = "string" }
+      created_by = { type = "string" }
     }
     required = ["merchant", "service_date", "amount", "category", "status", "receipt_file"]
   })
