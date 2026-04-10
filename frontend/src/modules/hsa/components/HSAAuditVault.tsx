@@ -8,9 +8,31 @@ import { useMemo } from 'react';
 import { CheckCircle, ExternalLink, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/shared/utils/currencyUtils';
 import { formatDate } from '@/shared/utils/dateUtils';
-import { pb } from '@/core/api/pocketbase';
-import type { HSAStats, ReceiptStatus } from '../types';
+import type { HSAStats, HSAReceipt, ReceiptStatus } from '../types';
 import { useHSAReceipts } from '../hooks/useHSAReceipts';
+import { useHSAReceiptUrl } from '../hooks/useHSAReceiptUrl';
+
+/**
+ * Renders an HSA receipt's `receipt_file` as a link. Wrapped in a component
+ * so the backend-aware URL hook can be called once per row.
+ */
+function HSAReceiptLink({ receipt }: { receipt: HSAReceipt }) {
+  const url = useHSAReceiptUrl(receipt);
+  if (!url) {
+    return <span className="text-gray-400 text-sm">Loading…</span>;
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
+    >
+      View
+      <ExternalLink className="w-3 h-3" />
+    </a>
+  );
+}
 
 interface HSAAuditVaultProps {
   stats: HSAStats;
@@ -37,9 +59,6 @@ export function HSAAuditVault({
     return receipts.filter((r) => r.status === statusFilter);
   }, [receipts, statusFilter]);
 
-  const getReceiptUrl = (receipt: { id: string; receipt_file: string }) => {
-    return pb.files.getUrl(receipt, receipt.receipt_file);
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-md border border-gray-200">
@@ -128,15 +147,7 @@ export function HSAAuditVault({
                     {receipt.patient || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <a
-                      href={getReceiptUrl(receipt)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      View
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                    <HSAReceiptLink receipt={receipt} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {receipt.status === 'Stored' ? (

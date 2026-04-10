@@ -1,73 +1,71 @@
 /**
  * Update Gift Card Mutation Hook
  *
- * Updates an existing gift card in PocketBase
+ * Routes through aepbase or PB based on the gift-cards backend flag. The
+ * `amount === 0 → delete card` shortcut is preserved on both branches.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/core/api/queryClient';
+import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { Collections, getCollection } from '@/core/api/pocketbase';
+import { isAepbaseEnabled } from '@/core/api/backend';
 import { logger } from '@/core/utils/logger';
 import type { GiftCard, GiftCardFormData } from '../types';
 import { buildGiftCardFormData, buildGiftCardData } from '../utils/formData';
+import { mapPbGiftCard } from './_mapPbRecords';
 
 export function useUpdateGiftCard() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: GiftCardFormData }) => {
-      logger.debug('Gift card update mutation called', { id, data });
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: GiftCardFormData;
+    }): Promise<GiftCard | null> => {
+      const useAep = isAepbaseEnabled('gift-cards');
+      logger.debug('Gift card update mutation called', { id, data, backend: useAep ? 'aepbase' : 'pb' });
 
-      // Delete gift card if amount is 0
+      // Delete gift card if amount is 0 (matches the previous shortcut).
       if (data.amount === 0) {
-        logger.debug('Amount is 0, deleting gift card instead of updating', { id });
-        await getCollection(Collections.GIFT_CARDS).delete(id);
-        logger.debug('Gift card deleted successfully', { id });
+        if (useAep) {
+          await aepbase.remove(AepCollections.GIFT_CARDS, id);
+        } else {
+          await getCollection(Collections.GIFT_CARDS).delete(id);
+        }
         return null;
       }
 
-      // Automatically archive if amount is 0
       const archived = data.amount === 0;
-
-      // Use FormData if files are present
       const hasFiles = data.front_image || data.back_image;
 
-      if (hasFiles) {
-        logger.debug('Using FormData for gift card update (has files)', { id });
-        const formData = buildGiftCardFormData({
-          data,
-          archived,
-        });
-        const result = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(id, formData);
-        logger.debug('Gift card update successful (FormData)', { id, result });
-
-        // VERIFY: Fetch from database to confirm
-        const verified = await getCollection<GiftCard>(Collections.GIFT_CARDS).getOne(id);
-        logger.debug('Database verification (FormData)', { id, verified });
-
-        return result;
-      } else {
-        logger.debug('Using plain object for gift card update (no files)', { id });
-        const updateData = buildGiftCardData({
-          data,
-          archived,
-        });
-        logger.debug('Gift card update data prepared', { id, updateData });
-        const result = await getCollection<GiftCard>(Collections.GIFT_CARDS).update(id, updateData);
-        logger.debug('Gift card update successful (plain object)', { id, result });
-
-        // VERIFY: Fetch from database to confirm
-        const verified = await getCollection<GiftCard>(Collections.GIFT_CARDS).getOne(id);
-        logger.debug('Database verification (plain object)', { id, verified });
-
-        return result;
+      if (useAep) {
+        if (hasFiles) {
+          const formData = buildGiftCardFormData({ data, archived });
+          return await aepbase.update<GiftCard>(AepCollections.GIFT_CARDS, id, formData);
+        }
+        const updateData = buildGiftCardData({ data, archived });
+        return await aepbase.update<GiftCard>(AepCollections.GIFT_CARDS, id, updateData);
       }
+
+      // PocketBase path.
+      if (hasFiles) {
+        const formData = buildGiftCardFormData({ data, archived });
+        const rec = await getCollection<Parameters<typeof mapPbGiftCard>[0]>(
+          Collections.GIFT_CARDS,
+        ).update(id, formData);
+        return mapPbGiftCard(rec);
+      }
+      const updateData = buildGiftCardData({ data, archived });
+      const rec = await getCollection<Parameters<typeof mapPbGiftCard>[0]>(
+        Collections.GIFT_CARDS,
+      ).update(id, updateData);
+      return mapPbGiftCard(rec);
     },
     onSuccess: async () => {
-      logger.debug('Gift card update successful, refetching queries');
-      // Invalidate and refetch gift cards queries
-      // invalidateQueries marks as stale, refetchQueries triggers immediate refetch
-      // Both together ensure data is fresh before mutation resolves
       await queryClient.invalidateQueries({
         queryKey: queryKeys.module('gift-cards').all(),
       });

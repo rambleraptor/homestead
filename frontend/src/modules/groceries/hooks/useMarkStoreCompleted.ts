@@ -1,12 +1,16 @@
 /**
- * Mark Store Completed Hook
+ * Mark Store Completed Hook — branches on the `groceries` flag.
  *
- * Mutation for deleting all items in a store when marking it as completed
+ * Deletes all grocery items belonging to the given store. In aepbase mode
+ * we list all items and filter client-side since aepbase has no filter
+ * expression equivalent.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
+import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { Collections, getCollection } from '@/core/api/pocketbase';
+import { isAepbaseEnabled } from '@/core/api/backend';
+import { queryKeys } from '@/core/api/queryClient';
 import { logger } from '@/core/utils/logger';
 import type { GroceryItem } from '../types';
 
@@ -19,31 +23,25 @@ export function useMarkStoreCompleted() {
 
   return useMutation({
     mutationFn: async ({ storeId }: MarkStoreCompletedParams) => {
+      const matches = (item: GroceryItem) =>
+        storeId ? item.store === storeId : !item.store;
+
+      if (isAepbaseEnabled('groceries')) {
+        const all = await aepbase.list<GroceryItem>(AepCollections.GROCERIES);
+        const items = all.filter(matches);
+        logger.info(`Deleting ${items.length} items for completed store ${storeId || 'no-store'}`);
+        await Promise.all(
+          items.map((item) => aepbase.remove(AepCollections.GROCERIES, item.id)),
+        );
+        return { deleted: items.length, storeId };
+      }
+
       const collection = getCollection<GroceryItem>(Collections.GROCERIES);
-
-      // Build filter for all items in the store
-      const filter = storeId
-        ? `store = "${storeId}"`
-        : `store = ""`;
-
-      // Fetch all items for this store
-      const items = await collection.getFullList({
-        filter,
-      });
-
+      const filter = storeId ? `store = "${storeId}"` : `store = ""`;
+      const items = await collection.getFullList({ filter });
       logger.info(`Deleting ${items.length} items for completed store ${storeId || 'no-store'}`);
-
-      // Delete all items
-      const deletePromises = items.map((item) =>
-        collection.delete(item.id)
-      );
-
-      await Promise.all(deletePromises);
-
-      return {
-        deleted: items.length,
-        storeId,
-      };
+      await Promise.all(items.map((item) => collection.delete(item.id)));
+      return { deleted: items.length, storeId };
     },
     onSuccess: (result) => {
       logger.info(`Successfully deleted ${result.deleted} items from completed store`);

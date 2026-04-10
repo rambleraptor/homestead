@@ -29,17 +29,8 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface RegisterData {
-  email: string;
-  password: string;
-  passwordConfirm: string;
-  name: string;
-  username: string;
-}
-
 export interface AuthContextValue extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
-  register: (data: RegisterData) => Promise<void>;
   refreshUser: () => Promise<void>;
 }

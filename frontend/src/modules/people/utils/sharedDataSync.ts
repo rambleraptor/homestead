@@ -1,4 +1,20 @@
+/**
+ * Shared-data sync helpers — branch on the `people` backend flag.
+ *
+ * The PocketBase code path is unchanged from the original implementation.
+ * The aepbase code path uses the thin wrapper. Where the PB version uses
+ * filter strings (e.g. `person_a = "..." || person_b = "..."`), the aepbase
+ * version lists the full collection and filters client-side. Household
+ * datasets are small enough that this is fine.
+ *
+ * Returned values use the PB-shaped types (`created_by` is a bare id, etc.)
+ * so the existing hooks and components don't need to change. The aepbase
+ * branch maps records into this shape internally.
+ */
+
+import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { getCollection, getCurrentUser, Collections } from '@/core/api/pocketbase';
+import { isAepbaseEnabled } from '@/core/api/backend';
 import type { PersonSharedData, Address, AddressFormData } from '../types';
 
 /**
@@ -9,35 +25,85 @@ function isValidRecordId(id: string): boolean {
   return /^[a-zA-Z0-9]{15}$/.test(id);
 }
 
-/**
- * Creates or updates a single address.
- * If shared_data_id is provided, links the address to that shared data.
- */
+// ----------------------------------------------------------------------------
+// aepbase helpers
+// ----------------------------------------------------------------------------
+
+interface AepAddressRecord {
+  id: string;
+  path: string;
+  line1: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  wifi_network?: string;
+  wifi_password?: string;
+  shared_data_id?: string;
+  created_by?: string;
+  create_time: string;
+  update_time: string;
+}
+
+interface AepSharedDataRecord {
+  id: string;
+  path: string;
+  person_a: string;
+  person_b?: string;
+  address_id?: string;
+  anniversary?: string;
+  created_by?: string;
+  create_time: string;
+  update_time: string;
+}
+
+function mapAepAddress(rec: AepAddressRecord): Address {
+  return {
+    id: rec.id,
+    line1: rec.line1,
+    line2: rec.line2,
+    city: rec.city,
+    state: rec.state,
+    postal_code: rec.postal_code,
+    country: rec.country,
+    wifi_network: rec.wifi_network,
+    wifi_password: rec.wifi_password,
+    shared_data_id: rec.shared_data_id,
+    created_by: rec.created_by || '',
+    created: rec.create_time,
+    updated: rec.update_time,
+  };
+}
+
+function mapAepSharedData(rec: AepSharedDataRecord): PersonSharedData {
+  return {
+    id: rec.id,
+    person_a: rec.person_a,
+    person_b: rec.person_b,
+    address_id: rec.address_id,
+    anniversary: rec.anniversary,
+    created_by: rec.created_by || '',
+    created: rec.create_time,
+    updated: rec.update_time,
+  };
+}
+
+function aepCreatedBy(): string | undefined {
+  const id = aepbase.getCurrentUser()?.id;
+  return id ? `users/${id}` : undefined;
+}
+
+// ----------------------------------------------------------------------------
+// Address upsert
+// ----------------------------------------------------------------------------
+
 async function upsertAddress(
   addressData: AddressFormData,
-  shared_data_id?: string
+  shared_data_id?: string,
 ): Promise<string> {
-  const currentUser = getCurrentUser();
-  const addressesCollection = getCollection<Address>(Collections.ADDRESSES);
-
-  if (addressData.id) {
-    // Update existing address - don't include created_by
-    const updatePayload = {
-      line1: addressData.line1,
-      line2: addressData.line2,
-      city: addressData.city,
-      state: addressData.state,
-      postal_code: addressData.postal_code,
-      country: addressData.country,
-      wifi_network: addressData.wifi_network,
-      wifi_password: addressData.wifi_password,
-      shared_data_id: shared_data_id || undefined, // Explicitly clear if not provided
-    };
-    await addressesCollection.update(addressData.id, updatePayload);
-    return addressData.id;
-  } else {
-    // Create new address
-    const createPayload = {
+  if (isAepbaseEnabled('people')) {
+    const body = {
       line1: addressData.line1,
       line2: addressData.line2,
       city: addressData.city,
@@ -47,116 +113,173 @@ async function upsertAddress(
       wifi_network: addressData.wifi_network,
       wifi_password: addressData.wifi_password,
       shared_data_id: shared_data_id || undefined,
-      created_by: currentUser?.id,
     };
-    const newAddress = await addressesCollection.create(createPayload);
-    return newAddress.id;
+    if (addressData.id) {
+      await aepbase.update<AepAddressRecord>(
+        AepCollections.ADDRESSES,
+        addressData.id,
+        body,
+      );
+      return addressData.id;
+    }
+    const created = await aepbase.create<AepAddressRecord>(
+      AepCollections.ADDRESSES,
+      { ...body, created_by: aepCreatedBy() },
+    );
+    return created.id;
   }
+
+  // PocketBase path
+  const currentUser = getCurrentUser();
+  const addressesCollection = getCollection<Address>(Collections.ADDRESSES);
+  if (addressData.id) {
+    await addressesCollection.update(addressData.id, {
+      line1: addressData.line1,
+      line2: addressData.line2,
+      city: addressData.city,
+      state: addressData.state,
+      postal_code: addressData.postal_code,
+      country: addressData.country,
+      wifi_network: addressData.wifi_network,
+      wifi_password: addressData.wifi_password,
+      shared_data_id: shared_data_id || undefined,
+    });
+    return addressData.id;
+  }
+  const newAddress = await addressesCollection.create({
+    line1: addressData.line1,
+    line2: addressData.line2,
+    city: addressData.city,
+    state: addressData.state,
+    postal_code: addressData.postal_code,
+    country: addressData.country,
+    wifi_network: addressData.wifi_network,
+    wifi_password: addressData.wifi_password,
+    shared_data_id: shared_data_id || undefined,
+    created_by: currentUser?.id,
+  });
+  return newAddress.id;
 }
 
-/**
- * Synchronizes addresses for shared data.
- * - First address becomes the primary (address_id on shared data)
- * - Additional addresses get linked via shared_data_id
- * - Deletes addresses that were removed from the form
- * Returns the primary address ID or undefined if no addresses.
- */
 async function syncAddresses(
   addresses: AddressFormData[],
-  sharedDataId: string
+  sharedDataId: string,
 ): Promise<string | undefined> {
-  const addressesCollection = getCollection<Address>(Collections.ADDRESSES);
-
-  // Filter out empty addresses
   const validAddresses = addresses.filter(
-    addr => addr.line1 && addr.line1.trim() !== ''
+    (addr) => addr.line1 && addr.line1.trim() !== '',
   );
+  if (validAddresses.length === 0) return undefined;
 
-  if (validAddresses.length === 0) {
-    return undefined;
-  }
-
-  // Get current address IDs from the form
   const formAddressIds = new Set(
-    validAddresses.map(addr => addr.id).filter((id): id is string => !!id)
+    validAddresses.map((addr) => addr.id).filter((id): id is string => !!id),
   );
 
-  // Get all existing additional addresses for this shared data
-  try {
-    const existingAdditionalAddresses = await addressesCollection.getFullList({
-      filter: `shared_data_id = "${sharedDataId}"`,
-    });
-
-    // Delete addresses that are no longer in the form
-    for (const existingAddr of existingAdditionalAddresses) {
-      if (!formAddressIds.has(existingAddr.id)) {
-        await addressesCollection.delete(existingAddr.id);
+  if (isAepbaseEnabled('people')) {
+    // List all addresses, filter client-side by shared_data_id
+    try {
+      const all = await aepbase.list<AepAddressRecord>(AepCollections.ADDRESSES);
+      const existingAdditional = all.filter((a) => a.shared_data_id === sharedDataId);
+      for (const existing of existingAdditional) {
+        if (!formAddressIds.has(existing.id)) {
+          await aepbase.remove(AepCollections.ADDRESSES, existing.id);
+        }
       }
+    } catch {
+      /* continue */
     }
-  } catch {
-    // No existing additional addresses or error fetching - continue
+  } else {
+    try {
+      const addressesCollection = getCollection<Address>(Collections.ADDRESSES);
+      const existing = await addressesCollection.getFullList({
+        filter: `shared_data_id = "${sharedDataId}"`,
+      });
+      for (const existingAddr of existing) {
+        if (!formAddressIds.has(existingAddr.id)) {
+          await addressesCollection.delete(existingAddr.id);
+        }
+      }
+    } catch {
+      /* continue */
+    }
   }
 
-  // 1. Upsert primary address (first one, no shared_data_id)
   const primaryAddressId = await upsertAddress(validAddresses[0]);
-
-  // 2. Upsert additional addresses with shared_data_id link
   for (let i = 1; i < validAddresses.length; i++) {
     await upsertAddress(validAddresses[i], sharedDataId);
   }
-
   return primaryAddressId;
 }
 
-/**
- * Finds shared data for a given person.
- * Searches where person_a = personId OR person_b = personId
- */
+// ----------------------------------------------------------------------------
+// findSharedDataForPerson
+// ----------------------------------------------------------------------------
+
 export async function findSharedDataForPerson(
-  personId: string
+  personId: string,
 ): Promise<PersonSharedData | null> {
+  if (isAepbaseEnabled('people')) {
+    const all = await aepbase.list<AepSharedDataRecord>(
+      AepCollections.PERSON_SHARED_DATA,
+    );
+    const found = all.find(
+      (s) => s.person_a === personId || s.person_b === personId,
+    );
+    return found ? mapAepSharedData(found) : null;
+  }
+
   // Validate personId to prevent SQL injection
   if (!isValidRecordId(personId)) {
     throw new Error(`Invalid person ID format: ${personId}`);
   }
-
   try {
-    const sharedDataCollection = getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA);
-
-    // Safe to use template literal now that we've validated the format
+    const sharedDataCollection = getCollection<PersonSharedData>(
+      Collections.PERSON_SHARED_DATA,
+    );
     const filter = `person_a = "${personId}" || person_b = "${personId}"`;
-    const sharedData = await sharedDataCollection.getFirstListItem(filter);
-
-    return sharedData;
+    return await sharedDataCollection.getFirstListItem(filter);
   } catch {
-    // No shared data found
     return null;
   }
 }
 
-/**
- * Creates shared data for a person (without partner).
- */
+// ----------------------------------------------------------------------------
+// createSharedData
+// ----------------------------------------------------------------------------
+
 export async function createSharedData(data: {
   personId: string;
   addresses?: AddressFormData[];
   anniversary?: string;
 }): Promise<PersonSharedData> {
-  const currentUser = getCurrentUser();
-  const sharedDataCollection = getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA);
+  const validAddresses =
+    data.addresses?.filter((addr) => addr.line1 && addr.line1.trim() !== '') || [];
 
-  // Filter valid addresses
-  const validAddresses = data.addresses?.filter(
-    addr => addr.line1 && addr.line1.trim() !== ''
-  ) || [];
-
-  // Create primary address if any
   let primaryAddressId: string | undefined;
   if (validAddresses.length > 0) {
     primaryAddressId = await upsertAddress(validAddresses[0]);
   }
 
-  // Create shared data with primary address
+  if (isAepbaseEnabled('people')) {
+    const created = await aepbase.create<AepSharedDataRecord>(
+      AepCollections.PERSON_SHARED_DATA,
+      {
+        person_a: data.personId,
+        person_b: undefined,
+        address_id: primaryAddressId,
+        anniversary: data.anniversary,
+        created_by: aepCreatedBy(),
+      },
+    );
+    for (let i = 1; i < validAddresses.length; i++) {
+      await upsertAddress(validAddresses[i], created.id);
+    }
+    return mapAepSharedData(created);
+  }
+
+  const currentUser = getCurrentUser();
+  const sharedDataCollection = getCollection<PersonSharedData>(
+    Collections.PERSON_SHARED_DATA,
+  );
   const sharedData = await sharedDataCollection.create({
     person_a: data.personId,
     person_b: undefined,
@@ -164,169 +287,227 @@ export async function createSharedData(data: {
     anniversary: data.anniversary,
     created_by: currentUser?.id,
   });
-
-  // Create additional addresses with shared_data_id link
   for (let i = 1; i < validAddresses.length; i++) {
     await upsertAddress(validAddresses[i], sharedData.id);
   }
-
   return sharedData;
 }
 
-/**
- * Updates existing shared data.
- */
+// ----------------------------------------------------------------------------
+// updateSharedData
+// ----------------------------------------------------------------------------
+
 export async function updateSharedData(
   sharedDataId: string,
-  data: {
-    addresses?: AddressFormData[];
-    anniversary?: string;
-  }
+  data: { addresses?: AddressFormData[]; anniversary?: string },
 ): Promise<PersonSharedData> {
-  const sharedDataCollection = getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA);
-
-  // Sync addresses if provided
   const primaryAddressId = data.addresses
     ? await syncAddresses(data.addresses, sharedDataId)
     : undefined;
 
+  if (isAepbaseEnabled('people')) {
+    const updated = await aepbase.update<AepSharedDataRecord>(
+      AepCollections.PERSON_SHARED_DATA,
+      sharedDataId,
+      { address_id: primaryAddressId, anniversary: data.anniversary },
+    );
+    return mapAepSharedData(updated);
+  }
+
+  const sharedDataCollection = getCollection<PersonSharedData>(
+    Collections.PERSON_SHARED_DATA,
+  );
   return await sharedDataCollection.update(sharedDataId, {
     address_id: primaryAddressId,
     anniversary: data.anniversary,
   });
 }
 
-/**
- * Adds a partner to existing shared data or creates new shared data with partner.
- */
+// ----------------------------------------------------------------------------
+// setPartner
+// ----------------------------------------------------------------------------
+
 export async function setPartner(
   personId: string,
   partnerId: string,
-  sharedData?: {
-    addresses?: AddressFormData[];
-    anniversary?: string;
-  }
+  sharedData?: { addresses?: AddressFormData[]; anniversary?: string },
 ): Promise<PersonSharedData> {
-  const currentUser = getCurrentUser();
-  const sharedDataCollection = getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA);
-
-  // Check if person already has shared data
+  const useAep = isAepbaseEnabled('people');
   const existingSharedData = await findSharedDataForPerson(personId);
-
-  // Check if partner already has shared data
   const partnerSharedData = await findSharedDataForPerson(partnerId);
 
   if (existingSharedData && !partnerSharedData) {
-    // Person has shared data, partner doesn't - add partner to person's shared data
-    // Sync addresses if provided, otherwise keep existing
     const primaryAddressId = sharedData?.addresses
       ? await syncAddresses(sharedData.addresses, existingSharedData.id)
       : existingSharedData.address_id;
 
-    return await sharedDataCollection.update(existingSharedData.id, {
+    if (useAep) {
+      const updated = await aepbase.update<AepSharedDataRecord>(
+        AepCollections.PERSON_SHARED_DATA,
+        existingSharedData.id,
+        {
+          person_b: partnerId,
+          address_id: primaryAddressId,
+          anniversary: sharedData?.anniversary || existingSharedData.anniversary,
+        },
+      );
+      return mapAepSharedData(updated);
+    }
+    return await getCollection<PersonSharedData>(
+      Collections.PERSON_SHARED_DATA,
+    ).update(existingSharedData.id, {
       person_b: partnerId,
       address_id: primaryAddressId,
       anniversary: sharedData?.anniversary || existingSharedData.anniversary,
     });
-  } else if (!existingSharedData && partnerSharedData) {
-    // Partner has shared data, person doesn't - add person to partner's shared data
+  }
+
+  if (!existingSharedData && partnerSharedData) {
     const primaryAddressId = sharedData?.addresses
       ? await syncAddresses(sharedData.addresses, partnerSharedData.id)
       : partnerSharedData.address_id;
 
-    return await sharedDataCollection.update(partnerSharedData.id, {
+    if (useAep) {
+      const updated = await aepbase.update<AepSharedDataRecord>(
+        AepCollections.PERSON_SHARED_DATA,
+        partnerSharedData.id,
+        {
+          person_b: personId,
+          address_id: primaryAddressId,
+          anniversary: sharedData?.anniversary || partnerSharedData.anniversary,
+        },
+      );
+      return mapAepSharedData(updated);
+    }
+    return await getCollection<PersonSharedData>(
+      Collections.PERSON_SHARED_DATA,
+    ).update(partnerSharedData.id, {
       person_b: personId,
       address_id: primaryAddressId,
       anniversary: sharedData?.anniversary || partnerSharedData.anniversary,
     });
-  } else if (existingSharedData && partnerSharedData) {
-    // Both have shared data - merge into one (keep person's, delete partner's)
-    let primaryAddressId: string | undefined;
+  }
 
+  if (existingSharedData && partnerSharedData) {
+    let primaryAddressId: string | undefined;
     if (sharedData?.addresses) {
-      // Use provided addresses
       primaryAddressId = await syncAddresses(sharedData.addresses, existingSharedData.id);
     } else {
-      // Keep existing primary address (no merge needed with new approach)
       primaryAddressId = existingSharedData.address_id;
     }
 
-    const mergedData = await sharedDataCollection.update(existingSharedData.id, {
+    if (useAep) {
+      const merged = await aepbase.update<AepSharedDataRecord>(
+        AepCollections.PERSON_SHARED_DATA,
+        existingSharedData.id,
+        {
+          person_b: partnerId,
+          address_id: primaryAddressId,
+          anniversary:
+            sharedData?.anniversary ||
+            existingSharedData.anniversary ||
+            partnerSharedData.anniversary,
+        },
+      );
+      await aepbase.remove(AepCollections.PERSON_SHARED_DATA, partnerSharedData.id);
+      return mapAepSharedData(merged);
+    }
+
+    const sharedDataCollection = getCollection<PersonSharedData>(
+      Collections.PERSON_SHARED_DATA,
+    );
+    const merged = await sharedDataCollection.update(existingSharedData.id, {
       person_b: partnerId,
       address_id: primaryAddressId,
-      anniversary: sharedData?.anniversary || existingSharedData.anniversary || partnerSharedData.anniversary,
+      anniversary:
+        sharedData?.anniversary ||
+        existingSharedData.anniversary ||
+        partnerSharedData.anniversary,
     });
-
-    // Delete partner's old shared data
     await sharedDataCollection.delete(partnerSharedData.id);
-
-    return mergedData;
-  } else {
-    // Neither has shared data - create new
-    // Filter valid addresses
-    const validAddresses = sharedData?.addresses?.filter(
-      addr => addr.line1 && addr.line1.trim() !== ''
-    ) || [];
-
-    // Create primary address if any
-    let primaryAddressId: string | undefined;
-    if (validAddresses.length > 0) {
-      primaryAddressId = await upsertAddress(validAddresses[0]);
-    }
-
-    // Create shared data
-    const newSharedData = await sharedDataCollection.create({
-      person_a: personId,
-      person_b: partnerId,
-      address_id: primaryAddressId,
-      anniversary: sharedData?.anniversary,
-      created_by: currentUser?.id,
-    });
-
-    // Create additional addresses with shared_data_id link
-    for (let i = 1; i < validAddresses.length; i++) {
-      await upsertAddress(validAddresses[i], newSharedData.id);
-    }
-
-    return newSharedData;
+    return merged;
   }
+
+  // Neither has shared data — create new.
+  const validAddresses =
+    sharedData?.addresses?.filter((addr) => addr.line1 && addr.line1.trim() !== '') ||
+    [];
+  let primaryAddressId: string | undefined;
+  if (validAddresses.length > 0) {
+    primaryAddressId = await upsertAddress(validAddresses[0]);
+  }
+
+  if (useAep) {
+    const created = await aepbase.create<AepSharedDataRecord>(
+      AepCollections.PERSON_SHARED_DATA,
+      {
+        person_a: personId,
+        person_b: partnerId,
+        address_id: primaryAddressId,
+        anniversary: sharedData?.anniversary,
+        created_by: aepCreatedBy(),
+      },
+    );
+    for (let i = 1; i < validAddresses.length; i++) {
+      await upsertAddress(validAddresses[i], created.id);
+    }
+    return mapAepSharedData(created);
+  }
+
+  const currentUser = getCurrentUser();
+  const sharedDataCollection = getCollection<PersonSharedData>(
+    Collections.PERSON_SHARED_DATA,
+  );
+  const newSharedData = await sharedDataCollection.create({
+    person_a: personId,
+    person_b: partnerId,
+    address_id: primaryAddressId,
+    anniversary: sharedData?.anniversary,
+    created_by: currentUser?.id,
+  });
+  for (let i = 1; i < validAddresses.length; i++) {
+    await upsertAddress(validAddresses[i], newSharedData.id);
+  }
+  return newSharedData;
 }
 
-/**
- * Removes partner from shared data.
- * Splits the shared data into two separate records if both had data.
- */
+// ----------------------------------------------------------------------------
+// removePartner
+// ----------------------------------------------------------------------------
+
 export async function removePartner(
   personId: string,
-  partnerId: string
+  partnerId: string,
 ): Promise<void> {
-  const currentUser = getCurrentUser();
-  const sharedDataCollection = getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA);
-
+  const useAep = isAepbaseEnabled('people');
   const sharedData = await findSharedDataForPerson(personId);
+  if (!sharedData) return;
 
-  if (!sharedData) {
-    return;
-  }
-
-  // Determine which person is person_a and which is person_b
   const personIsA = sharedData.person_a === personId;
   const otherPersonId = personIsA ? sharedData.person_b : sharedData.person_a;
+  if (otherPersonId !== partnerId) return;
 
-  if (otherPersonId !== partnerId) {
-    // Not actually partners in shared data
+  if (useAep) {
+    await aepbase.update<AepSharedDataRecord>(
+      AepCollections.PERSON_SHARED_DATA,
+      sharedData.id,
+      { person_b: undefined },
+    );
+    await aepbase.create<AepSharedDataRecord>(AepCollections.PERSON_SHARED_DATA, {
+      person_a: otherPersonId || '',
+      person_b: undefined,
+      address_id: sharedData.address_id,
+      anniversary: sharedData.anniversary,
+      created_by: aepCreatedBy(),
+    });
     return;
   }
 
-  // Fix race condition: Update current shared data FIRST to remove partner
-  // This ensures data consistency if the subsequent create fails
-  await sharedDataCollection.update(sharedData.id, {
-    person_b: undefined,
-  });
-
-  // Then create new shared data for the other person
-  // If this fails, at least the original record is in a consistent state
-  // Both people share the same address_id - they can modify independently later
+  const currentUser = getCurrentUser();
+  const sharedDataCollection = getCollection<PersonSharedData>(
+    Collections.PERSON_SHARED_DATA,
+  );
+  await sharedDataCollection.update(sharedData.id, { person_b: undefined });
   await sharedDataCollection.create({
     person_a: otherPersonId || '',
     person_b: undefined,
@@ -336,10 +517,18 @@ export async function removePartner(
   });
 }
 
-/**
- * Deletes shared data for a person.
- */
+// ----------------------------------------------------------------------------
+// deleteSharedData
+// ----------------------------------------------------------------------------
+
 export async function deleteSharedData(sharedDataId: string): Promise<void> {
-  const sharedDataCollection = getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA);
-  await sharedDataCollection.delete(sharedDataId);
+  if (isAepbaseEnabled('people')) {
+    await aepbase.remove(AepCollections.PERSON_SHARED_DATA, sharedDataId);
+    return;
+  }
+  await getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA).delete(
+    sharedDataId,
+  );
 }
+
+export { mapAepAddress };

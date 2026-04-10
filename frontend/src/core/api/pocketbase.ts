@@ -24,7 +24,12 @@ export const pb = new PocketBase(PB_URL);
 pb.autoCancellation(false); // Prevent request cancellation on component unmount
 
 /**
- * Type-safe collection names
+ * Type-safe collection names.
+ *
+ * USER_ROLES / MODULE_PERMISSIONS / AUDIT_LOG are kept here for backwards
+ * compatibility but are NOT used by any frontend hook today, and there are
+ * no aepbase equivalents on the migration path. They will be removed
+ * alongside the rest of PocketBase once every module is on aepbase.
  */
 export const Collections = {
   USERS: 'users',

@@ -2,7 +2,7 @@ module homeos/aepbase
 
 go 1.25.1
 
-require github.com/rambleraptor/aepbase v0.0.0-20260406174122-ddb35c596dec
+require github.com/rambleraptor/aepbase v0.0.0-20260410224808-8586ff9089c9
 
 require (
 	cel.dev/expr v0.25.1 // indirect

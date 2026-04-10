@@ -1,30 +1,54 @@
+/**
+ * Notification stats + shared fetcher — branches on the `notifications` flag.
+ *
+ * In aepbase, notifications are children of users (`/users/{id}/notifications`)
+ * so we no longer filter by `user_id`; the URL implies the scope. The shared
+ * `fetchNotifications()` helper is called by both `useNotifications` and
+ * `useNotificationStats` so they stay in sync.
+ */
+
 import { useQuery } from '@tanstack/react-query';
+import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { getCollection, pb, Collections } from '@/core/api/pocketbase';
+import { isAepbaseEnabled } from '@/core/api/backend';
 import { queryKeys } from '@/core/api/queryClient';
 import type { Notification, NotificationStats } from '../types';
 
-/**
- * Shared query function for fetching notifications.
- * Used by both useNotifications and useNotificationStats to ensure consistency.
- */
+interface AepNotification extends Notification {
+  path: string;
+  create_time: string;
+  update_time: string;
+}
+
+function normalize(rec: AepNotification | Notification): Notification {
+  const ae = rec as AepNotification;
+  return {
+    ...rec,
+    created: ae.create_time || rec.created || '',
+    updated: ae.update_time || rec.updated || '',
+  };
+}
+
 export async function fetchNotifications(): Promise<Notification[]> {
+  if (isAepbaseEnabled('notifications')) {
+    const userId = aepbase.getCurrentUser()?.id;
+    if (!userId) return [];
+    const list = await aepbase.list<AepNotification>(AepCollections.NOTIFICATIONS, {
+      parent: [AepCollections.USERS, userId],
+    });
+    return list
+      .map(normalize)
+      .sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+  }
+
   const userId = pb.authStore.record?.id;
   if (!userId) return [];
-
-  const notifications = await getCollection<Notification>(
-    Collections.NOTIFICATIONS
-  ).getFullList({
+  return await getCollection<Notification>(Collections.NOTIFICATIONS).getFullList({
     sort: '-created',
     filter: `user_id="${userId}"`,
   });
-
-  return notifications;
 }
 
-/**
- * Hook to fetch notification stats (total, unread, read counts).
- * Derives data from the same query as useNotifications for consistency.
- */
 export function useNotificationStats() {
   return useQuery({
     queryKey: queryKeys.module(Collections.NOTIFICATIONS).list(),

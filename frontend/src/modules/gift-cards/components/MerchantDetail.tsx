@@ -9,8 +9,8 @@
 import { useState } from 'react';
 import { ArrowLeft, CreditCard, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Minus, Edit } from 'lucide-react';
 import { useCreateTransaction } from '../hooks/useCreateTransaction';
+import { GiftCardImage } from './GiftCardImage';
 import type { GiftCard } from '../types';
-import { pb } from '@/core/api/pocketbase';
 import { formatCurrency } from '@/shared/utils/currencyUtils';
 
 interface MerchantDetailProps {
@@ -155,7 +155,7 @@ export function MerchantDetail({
                       {formatCurrency(card.amount)}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Added {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
+                      Added {card.create_time ? new Date(card.create_time).toLocaleDateString() : 'Recently'}
                     </p>
                   </div>
                 </div>
@@ -297,8 +297,9 @@ export function MerchantDetail({
                       {card.front_image && (
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Front</p>
-                          <img
-                            src={pb.files.getURL(card, card.front_image)}
+                          <GiftCardImage
+                            card={card}
+                            field="front_image"
                             alt="Front of gift card"
                             className="w-full h-32 object-cover rounded border border-gray-200"
                           />
@@ -307,8 +308,9 @@ export function MerchantDetail({
                       {card.back_image && (
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Back</p>
-                          <img
-                            src={pb.files.getURL(card, card.back_image)}
+                          <GiftCardImage
+                            card={card}
+                            field="back_image"
                             alt="Back of gift card"
                             className="w-full h-32 object-cover rounded border border-gray-200"
                           />
@@ -353,7 +355,7 @@ export function MerchantDetail({
                           {formatCurrency(card.amount)}
                         </p>
                         <p className="text-xs text-gray-500">
-                          Archived • Added {card.created ? new Date(card.created).toLocaleDateString() : 'Recently'}
+                          Archived • Added {card.create_time ? new Date(card.create_time).toLocaleDateString() : 'Recently'}
                         </p>
                       </div>
                     </div>
@@ -455,8 +457,9 @@ export function MerchantDetail({
                           {card.front_image && (
                             <div>
                               <p className="text-xs text-gray-500 mb-1">Front</p>
-                              <img
-                                src={pb.files.getURL(card, card.front_image)}
+                              <GiftCardImage
+                                card={card}
+                                field="front_image"
                                 alt="Front of gift card"
                                 className="w-full h-32 object-cover rounded border border-gray-200"
                               />
@@ -465,8 +468,9 @@ export function MerchantDetail({
                           {card.back_image && (
                             <div>
                               <p className="text-xs text-gray-500 mb-1">Back</p>
-                              <img
-                                src={pb.files.getURL(card, card.back_image)}
+                              <GiftCardImage
+                                card={card}
+                                field="back_image"
                                 alt="Back of gift card"
                                 className="w-full h-32 object-cover rounded border border-gray-200"
                               />

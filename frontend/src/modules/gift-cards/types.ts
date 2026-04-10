@@ -3,10 +3,15 @@
  */
 
 /**
- * Gift Card record from PocketBase
+ * Gift Card record from aepbase.
+ *
+ * `created_by` holds an aepbase resource path (`users/{user_id}`), not a bare
+ * id like PocketBase used to. `create_time`/`update_time` are aepbase's
+ * standard timestamps (PocketBase used `created`/`updated`).
  */
 export interface GiftCard {
   id: string;
+  path: string;
   merchant: string;
   card_number: string;
   pin?: string;
@@ -15,8 +20,8 @@ export interface GiftCard {
   front_image?: string;
   back_image?: string;
   created_by?: string;
-  created: string;
-  updated: string;
+  create_time: string;
+  update_time: string;
   archived?: boolean;
 }
 
@@ -39,19 +44,24 @@ export interface GiftCardFormData {
 export type TransactionType = 'decrement' | 'set';
 
 /**
- * Gift Card Transaction record from PocketBase
+ * Gift Card Transaction record from aepbase.
+ *
+ * Transactions are a child of gift-cards in aepbase, so the parent id is
+ * encoded in the URL path (`/gift-cards/{id}/transactions/{id}`) rather than
+ * stored as a foreign-key field. The PocketBase-era `gift_card` field is
+ * gone; callers identify the parent via the URL.
  */
 export interface GiftCardTransaction {
   id: string;
-  gift_card: string;
+  path: string;
   transaction_type: TransactionType;
   previous_amount: number;
   new_amount: number;
   amount_changed: number;
   notes?: string;
   created_by?: string;
-  created: string;
-  updated: string;
+  create_time: string;
+  update_time: string;
 }
 
 /**

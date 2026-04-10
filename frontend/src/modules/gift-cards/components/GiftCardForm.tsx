@@ -6,10 +6,10 @@
  * Form for creating and editing gift cards
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Save, X, Upload, Trash2 } from 'lucide-react';
 import type { GiftCard, GiftCardFormData } from '../types';
-import { pb } from '@/core/api/pocketbase';
+import { useGiftCardImageUrl } from '../hooks/useGiftCardImageUrl';
 import { useToast } from '@/shared/components/ToastProvider';
 import { validateImageFile } from '@/shared/utils/fileValidation';
 
@@ -40,16 +40,34 @@ export function GiftCardForm({
   // Track if amount has been set by user (to avoid showing 0 initially)
   const [amountTouched, setAmountTouched] = useState(!!initialData?.amount);
 
-  const [frontImagePreview, setFrontImagePreview] = useState<string | null>(
-    initialData?.front_image
-      ? pb.files.getURL(initialData, initialData.front_image)
-      : null
-  );
-  const [backImagePreview, setBackImagePreview] = useState<string | null>(
-    initialData?.back_image
-      ? pb.files.getURL(initialData, initialData.back_image)
-      : null
-  );
+  // Image preview state is split between two sources:
+  //  - the existing card's image, fetched via the backend-aware hook
+  //    (synchronous PB URL or async aepbase blob URL);
+  //  - any image the user has uploaded in this session, held as a blob URL.
+  // Upload always wins; "remove" hides both for the current edit session
+  // (matching the previous behavior — actual deletion still requires a save
+  // that omits the field).
+  const remoteFrontUrl = useGiftCardImageUrl(initialData ?? null, 'front_image');
+  const remoteBackUrl = useGiftCardImageUrl(initialData ?? null, 'back_image');
+  const [frontUploadUrl, setFrontUploadUrl] = useState<string | null>(null);
+  const [backUploadUrl, setBackUploadUrl] = useState<string | null>(null);
+  const [frontHidden, setFrontHidden] = useState(false);
+  const [backHidden, setBackHidden] = useState(false);
+
+  // Revoke blob URLs when the user replaces them or unmounts.
+  useEffect(() => {
+    return () => {
+      if (frontUploadUrl) URL.revokeObjectURL(frontUploadUrl);
+    };
+  }, [frontUploadUrl]);
+  useEffect(() => {
+    return () => {
+      if (backUploadUrl) URL.revokeObjectURL(backUploadUrl);
+    };
+  }, [backUploadUrl]);
+
+  const frontImagePreview = frontUploadUrl ?? (frontHidden ? null : remoteFrontUrl);
+  const backImagePreview = backUploadUrl ?? (backHidden ? null : remoteBackUrl);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,12 +111,13 @@ export function GiftCardForm({
         [imageType]: file,
       }));
 
-      // Create preview URL
       const previewUrl = URL.createObjectURL(file);
       if (imageType === 'front_image') {
-        setFrontImagePreview(previewUrl);
+        setFrontUploadUrl(previewUrl);
+        setFrontHidden(false);
       } else {
-        setBackImagePreview(previewUrl);
+        setBackUploadUrl(previewUrl);
+        setBackHidden(false);
       }
     }
   };
@@ -110,15 +129,11 @@ export function GiftCardForm({
     }));
 
     if (imageType === 'front_image') {
-      if (frontImagePreview && frontImagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(frontImagePreview);
-      }
-      setFrontImagePreview(null);
+      setFrontUploadUrl(null);
+      setFrontHidden(true);
     } else {
-      if (backImagePreview && backImagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(backImagePreview);
-      }
-      setBackImagePreview(null);
+      setBackUploadUrl(null);
+      setBackHidden(true);
     }
   };
 

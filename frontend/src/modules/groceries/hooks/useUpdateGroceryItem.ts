@@ -1,12 +1,12 @@
 /**
- * Update Grocery Item Hook
- *
- * Mutation for updating grocery items (toggle checked, edit name/notes)
+ * Update Grocery Item Hook — branches on the `groceries` flag.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
+import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { Collections, getCollection } from '@/core/api/pocketbase';
+import { isAepbaseEnabled } from '@/core/api/backend';
+import { queryKeys } from '@/core/api/queryClient';
 import { logger } from '@/core/utils/logger';
 import type { GroceryItem } from '../types';
 
@@ -24,8 +24,10 @@ export function useUpdateGroceryItem() {
 
   return useMutation({
     mutationFn: async ({ id, data }: UpdateGroceryItemParams) => {
-      const item = await getCollection<GroceryItem>(Collections.GROCERIES).update(id, data);
-      return item;
+      if (isAepbaseEnabled('groceries')) {
+        return await aepbase.update<GroceryItem>(AepCollections.GROCERIES, id, data);
+      }
+      return await getCollection<GroceryItem>(Collections.GROCERIES).update(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.module('groceries').list() });

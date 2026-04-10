@@ -10,13 +10,13 @@ import { GiftCardForm } from '../components/GiftCardForm';
 import { ToastProvider } from '@/shared/components/ToastProvider';
 import type { GiftCard } from '../types';
 
-// Mock pb.files.getURL
-vi.mock('@/core/api/pocketbase', () => ({
-  pb: {
-    files: {
-      getURL: vi.fn((_record, filename) => `http://test.com/${filename}`),
-    },
-  },
+// Mock the backend-aware image URL hook so tests don't need a fetch or pb stub.
+// The component renders the returned string directly into <img src=>.
+vi.mock('../hooks/useGiftCardImageUrl', () => ({
+  useGiftCardImageUrl: vi.fn((card, field) => {
+    if (!card?.[field]) return null;
+    return `http://test.com/${card[field]}`;
+  }),
 }));
 
 // Helper to render with ToastProvider
@@ -45,13 +45,14 @@ describe('GiftCardForm', () => {
     const onCancel = vi.fn();
     const initialData: GiftCard = {
       id: '1',
+      path: 'gift-cards/1',
       merchant: 'Amazon',
       card_number: '1234-5678',
       pin: '1234',
       amount: 50.0,
       notes: 'Test notes',
-      created: '2024-01-01',
-      updated: '2024-01-01',
+      create_time: '2024-01-01',
+      update_time: '2024-01-01',
     };
 
     renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} initialData={initialData} />);
@@ -185,13 +186,14 @@ describe('GiftCardForm', () => {
     const onCancel = vi.fn();
     const initialData: GiftCard = {
       id: '1',
+      path: 'gift-cards/1',
       merchant: 'Amazon',
       card_number: '1234-5678',
       amount: 50.0,
       front_image: 'front_abc123.png',
       back_image: 'back_def456.png',
-      created: '2024-01-01',
-      updated: '2024-01-01',
+      create_time: '2024-01-01',
+      update_time: '2024-01-01',
     };
 
     renderWithToast(<GiftCardForm onSubmit={onSubmit} onCancel={onCancel} initialData={initialData} />);

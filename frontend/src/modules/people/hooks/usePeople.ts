@@ -1,5 +1,15 @@
+/**
+ * People list hook — branches on the `people` flag.
+ *
+ * Joins people + person_shared_data + addresses client-side. The same join
+ * logic runs in both backends; the only difference is which client fetches
+ * the underlying records.
+ */
+
 import { useQuery } from '@tanstack/react-query';
+import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { getCollection, Collections } from '@/core/api/pocketbase';
+import { isAepbaseEnabled } from '@/core/api/backend';
 import { queryKeys } from '@/core/api/queryClient';
 import type { Person, NotificationPreference, PersonSharedData, Address } from '../types';
 
@@ -9,26 +19,48 @@ interface PersonRecord {
   birthday?: string;
   notification_preferences: NotificationPreference[];
   created_by: string;
-  created: string;
-  updated: string;
+  created?: string;
+  updated?: string;
+  create_time?: string;
+  update_time?: string;
+  path?: string;
 }
 
 export function usePeople() {
   return useQuery({
     queryKey: queryKeys.module('people').list(),
     queryFn: async () => {
-      // Fetch all people records
-      const peopleRecords = await getCollection<PersonRecord>(Collections.PEOPLE).getFullList({
-        sort: 'name',
-      });
+      const useAep = isAepbaseEnabled('people');
 
-      // Fetch ALL shared data in a single query (fixes N+1 problem)
-      const allSharedData = await getCollection<PersonSharedData>(Collections.PERSON_SHARED_DATA).getFullList();
+      let peopleRecords: PersonRecord[];
+      let allSharedData: PersonSharedData[];
+      let allAddresses: Address[];
 
-      // Fetch ALL addresses in a single query
-      const allAddresses = await getCollection<Address>(Collections.ADDRESSES).getFullList();
+      if (useAep) {
+        const [p, s, a] = await Promise.all([
+          aepbase.list<PersonRecord>(AepCollections.PEOPLE),
+          aepbase.list<PersonSharedData>(AepCollections.PERSON_SHARED_DATA),
+          aepbase.list<Address>(AepCollections.ADDRESSES),
+        ]);
+        peopleRecords = p
+          .map((rec) => ({
+            ...rec,
+            created: rec.create_time || '',
+            updated: rec.update_time || '',
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        allSharedData = s;
+        allAddresses = a;
+      } else {
+        peopleRecords = await getCollection<PersonRecord>(Collections.PEOPLE).getFullList({
+          sort: 'name',
+        });
+        allSharedData = await getCollection<PersonSharedData>(
+          Collections.PERSON_SHARED_DATA,
+        ).getFullList();
+        allAddresses = await getCollection<Address>(Collections.ADDRESSES).getFullList();
+      }
 
-      // Create lookup maps for O(1) access
       const sharedDataByPersonA = new Map<string, PersonSharedData>();
       const sharedDataByPersonB = new Map<string, PersonSharedData>();
       const addressesById = new Map<string, Address>();
@@ -39,55 +71,52 @@ export function usePeople() {
           sharedDataByPersonB.set(sharedData.person_b, sharedData);
         }
       }
+      for (const address of allAddresses) addressesById.set(address.id, address);
 
-      for (const address of allAddresses) {
-        addressesById.set(address.id, address);
-      }
-
-      // Enrich with shared data (no async calls needed)
       const people: Person[] = peopleRecords.map((record) => {
-        const sharedData = sharedDataByPersonA.get(record.id) || sharedDataByPersonB.get(record.id);
-
-        // Get addresses from both sources (primary + additional)
+        const sharedData =
+          sharedDataByPersonA.get(record.id) || sharedDataByPersonB.get(record.id);
         const addresses: Address[] = [];
 
         if (sharedData) {
-          // 1. Get primary address from address_id
           if (sharedData.address_id) {
-            const primaryAddress = addressesById.get(sharedData.address_id);
-            if (primaryAddress) {
-              addresses.push(primaryAddress);
-            }
+            const primary = addressesById.get(sharedData.address_id);
+            if (primary) addresses.push(primary);
           }
-
-          // 2. Get additional addresses where shared_data_id matches
           for (const address of allAddresses) {
-            if (address.shared_data_id === sharedData.id && address.id !== sharedData.address_id) {
+            if (
+              address.shared_data_id === sharedData.id &&
+              address.id !== sharedData.address_id
+            ) {
               addresses.push(address);
             }
           }
         }
 
-        // Find partner if shared data exists
         let partner: Person | undefined;
         const partnerId = sharedData
-          ? (sharedData.person_a === record.id ? sharedData.person_b : sharedData.person_a)
+          ? sharedData.person_a === record.id
+            ? sharedData.person_b
+            : sharedData.person_a
           : undefined;
-
         if (partnerId) {
-          const partnerRecord = peopleRecords.find(p => p.id === partnerId);
+          const partnerRecord = peopleRecords.find((p) => p.id === partnerId);
           if (partnerRecord) {
             partner = {
               ...partnerRecord,
-              addresses, // Partners share addresses
+              created: partnerRecord.created || '',
+              updated: partnerRecord.updated || '',
+              addresses,
               anniversary: sharedData?.anniversary,
-              partner: undefined, // Avoid circular reference
+              partner: undefined,
             };
           }
         }
 
         return {
           ...record,
+          created: record.created || '',
+          updated: record.updated || '',
           addresses,
           anniversary: sharedData?.anniversary,
           partner,
