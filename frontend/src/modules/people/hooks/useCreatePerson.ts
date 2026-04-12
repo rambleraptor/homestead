@@ -1,5 +1,11 @@
+/**
+ * Create Person Mutation Hook — branches on the `people` flag.
+ */
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { getCollection, getCurrentUser, Collections } from '@/core/api/pocketbase';
+import { isAepbaseEnabled } from '@/core/api/backend';
 import { queryKeys } from '@/core/api/queryClient';
 import { logger } from '@/core/utils/logger';
 import type { PersonFormData, NotificationPreference } from '../types';
@@ -12,8 +18,10 @@ interface PersonRecord {
   birthday?: string;
   notification_preferences: NotificationPreference[];
   created_by: string;
-  created: string;
-  updated: string;
+  created?: string;
+  updated?: string;
+  create_time?: string;
+  update_time?: string;
 }
 
 export function useCreatePerson() {
@@ -22,26 +30,32 @@ export function useCreatePerson() {
   return useMutation({
     mutationFn: async (data: PersonFormData) => {
       try {
-        const currentUser = getCurrentUser();
+        let personRecord: PersonRecord;
 
-        // Create person record (without address/anniversary - those go in shared_data)
-        // notification_preferences is kept for backward compatibility but we'll also sync to recurring_notifications
-        const personRecord = await getCollection<PersonRecord>(Collections.PEOPLE).create({
-          name: data.name,
-          birthday: data.birthday,
-          notification_preferences: data.notification_preferences,
-          created_by: currentUser?.id,
-        });
+        if (isAepbaseEnabled('people')) {
+          const aepUserId = aepbase.getCurrentUser()?.id;
+          personRecord = await aepbase.create<PersonRecord>(AepCollections.PEOPLE, {
+            name: data.name,
+            birthday: data.birthday,
+            notification_preferences: data.notification_preferences,
+            created_by: aepUserId ? `users/${aepUserId}` : undefined,
+          });
+        } else {
+          const currentUser = getCurrentUser();
+          personRecord = await getCollection<PersonRecord>(Collections.PEOPLE).create({
+            name: data.name,
+            birthday: data.birthday,
+            notification_preferences: data.notification_preferences,
+            created_by: currentUser?.id,
+          });
+        }
 
-        // Handle shared data
         if (data.partner_id) {
-          // Create shared data with partner
           await setPartner(personRecord.id, data.partner_id, {
             addresses: data.addresses,
             anniversary: data.anniversary,
           });
         } else if (data.addresses.length > 0 || data.anniversary) {
-          // Create shared data for individual person
           await createSharedData({
             personId: personRecord.id,
             addresses: data.addresses,
@@ -49,19 +63,18 @@ export function useCreatePerson() {
           });
         }
 
-        // Sync recurring notifications for this person (non-blocking)
-        // This is a best-effort operation - if it fails, we still want the person to be created
         try {
           await syncRecurringNotificationsForPerson(
             personRecord.id,
             personRecord.name,
             data.birthday,
             data.anniversary,
-            data.notification_preferences
+            data.notification_preferences,
           );
         } catch (syncError) {
-          logger.error('Failed to sync recurring notifications', syncError, { personId: personRecord.id });
-          // Don't throw - notification sync failure shouldn't block person creation
+          logger.error('Failed to sync recurring notifications', syncError, {
+            personId: personRecord.id,
+          });
         }
 
         return personRecord;

@@ -9,6 +9,19 @@ terraform {
   }
 }
 
+# Bearer token used to authenticate against aepbase. Once EnableUsers is on,
+# every endpoint except `/openapi.json` and `POST /users/:login` requires it.
+# Set via the standard terraform env var convention:
+#   export TF_VAR_aepbase_token=$(curl -sS -X POST http://localhost:8090/users/:login \
+#       -H 'Content-Type: application/json' \
+#       -d '{"email":"admin@example.com","password":"..."}' | jq -r .token)
+variable "aepbase_token" {
+  type        = string
+  sensitive   = true
+  default     = ""
+  description = "Bearer token for aepbase. Set via TF_VAR_aepbase_token."
+}
+
 # The aep provider is a *dynamic* provider: at init time it reads the OpenAPI
 # spec from AEP_OPENAPI and generates a terraform resource for each
 # x-aep-resource in the spec. For a vanilla aepbase, that includes
@@ -19,6 +32,6 @@ terraform {
 #   export AEP_OPENAPI=http://localhost:8090/openapi.json
 provider "aep" {
   headers = {
-    # aepbase has no auth by default. Add headers here if you front it with a proxy.
+    Authorization = "Bearer ${var.aepbase_token}"
   }
 }

@@ -18,6 +18,5 @@ export const AuthContext = createContext<AuthContextValue>({
   ...initialState,
   login: async () => {},
   logout: () => {},
-  register: async () => {},
   refreshUser: async () => {},
 });

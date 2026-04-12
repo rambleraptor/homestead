@@ -12,19 +12,21 @@ import type { MerchantSummary, GiftCard } from '../types';
 const mockCards: GiftCard[] = [
   {
     id: '1',
+    path: 'gift-cards/1',
     merchant: 'Amazon',
     card_number: '1234',
     amount: 50,
-    created: '2024-01-01',
-    updated: '2024-01-01',
+    create_time: '2024-01-01',
+    update_time: '2024-01-01',
   },
   {
     id: '2',
+    path: 'gift-cards/2',
     merchant: 'Amazon',
     card_number: '5678',
     amount: 25,
-    created: '2024-01-02',
-    updated: '2024-01-02',
+    create_time: '2024-01-02',
+    update_time: '2024-01-02',
   },
 ];
 
@@ -42,11 +44,12 @@ const mockMerchants: MerchantSummary[] = [
     cards: [
       {
         id: '3',
+        path: 'gift-cards/3',
         merchant: 'Starbucks',
         card_number: '9012',
         amount: 15,
-        created: '2024-01-03',
-        updated: '2024-01-03',
+        create_time: '2024-01-03',
+        update_time: '2024-01-03',
       },
     ],
   },

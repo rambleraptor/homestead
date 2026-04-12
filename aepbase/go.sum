@@ -27,8 +27,8 @@ github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdh
 github.com/ncruces/go-strftime v0.1.9/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/rambleraptor/aepbase v0.0.0-20260406174122-ddb35c596dec h1:A8KSnyzXFVprZS3IuMTdZiohI46Bf2UKyMP8XBirjtM=
-github.com/rambleraptor/aepbase v0.0.0-20260406174122-ddb35c596dec/go.mod h1:1UEbIh49UvoPLYHB3dHf5AljhODx6jTW6e1Zm9Vlm/s=
+github.com/rambleraptor/aepbase v0.0.0-20260411234717-5f2f0368e5dc h1:p/7N0T2Mhp0QtkU8O9mLZMtVihMfVGe1hhQRCAxCyn8=
+github.com/rambleraptor/aepbase v0.0.0-20260411234717-5f2f0368e5dc/go.mod h1:1UEbIh49UvoPLYHB3dHf5AljhODx6jTW6e1Zm9Vlm/s=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/stoewer/go-strcase v1.2.0 h1:Z2iHWqGXH00XYgqDmNgQbIBxf3wrNq0F3feEy0ainaU=

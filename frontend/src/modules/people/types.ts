@@ -2,7 +2,8 @@ export type PersonEventType = 'birthday' | 'anniversary';
 
 export type NotificationPreference = 'day_of' | 'day_before' | 'week_before';
 
-// Address type
+// Address type. PB-shape stays here so existing helpers compile; the
+// aepbase code path hydrates the same field names.
 export interface Address {
   id: string;
   line1: string;

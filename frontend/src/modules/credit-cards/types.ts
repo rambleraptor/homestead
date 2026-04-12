@@ -18,10 +18,13 @@ export type PerkFrequency = 'monthly' | 'quarterly' | 'semi_annual' | 'annual';
 export type PerkCategory = 'travel' | 'dining' | 'streaming' | 'credits' | 'insurance' | 'lounge' | 'other';
 
 /**
- * Credit Card record from PocketBase
+ * Credit Card record (aepbase-shaped). The PB code path maps PB records onto
+ * this same shape via `_mapPbRecords` so consumers don't care which backend
+ * served them.
  */
 export interface CreditCard {
   id: string;
+  path: string;
   name: string;
   issuer: string;
   last_four?: string;
@@ -31,8 +34,8 @@ export interface CreditCard {
   notes?: string;
   archived: boolean;
   created_by?: string;
-  created: string;
-  updated: string;
+  create_time: string;
+  update_time: string;
 }
 
 /**
@@ -50,10 +53,15 @@ export interface CreditCardFormData {
 }
 
 /**
- * Credit Card Perk record from PocketBase
+ * Credit Card Perk record. In aepbase, perks are a child of credit-cards
+ * (URL: /credit-cards/{id}/perks/{id}) so the parent id isn't a stored
+ * field — but we keep `credit_card` here populated by the mapper, because
+ * the compute hooks (`useCreditCardStats`, `useUpcomingPerks`) join perks
+ * to cards by this field.
  */
 export interface CreditCardPerk {
   id: string;
+  path: string;
   credit_card: string;
   name: string;
   value: number;
@@ -61,8 +69,8 @@ export interface CreditCardPerk {
   category?: PerkCategory;
   notes?: string;
   created_by?: string;
-  created: string;
-  updated: string;
+  create_time: string;
+  update_time: string;
 }
 
 /**
@@ -78,10 +86,13 @@ export interface PerkFormData {
 }
 
 /**
- * Perk Redemption record from PocketBase
+ * Perk Redemption record. Two levels of nesting in aepbase
+ * (`/credit-cards/{id}/perks/{id}/redemptions/{id}`) so the mapper populates
+ * `perk` from the URL parent — same reason as `credit_card` on perks.
  */
 export interface PerkRedemption {
   id: string;
+  path: string;
   perk: string;
   period_start: string;
   period_end: string;
@@ -89,8 +100,8 @@ export interface PerkRedemption {
   amount: number;
   notes?: string;
   created_by?: string;
-  created: string;
-  updated: string;
+  create_time: string;
+  update_time: string;
 }
 
 /**
