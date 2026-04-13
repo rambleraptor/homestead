@@ -30,7 +30,6 @@ export function useCreatePerson() {
         const personRecord = await aepbase.create<PersonRecord>(AepCollections.PEOPLE, {
           name: data.name,
           birthday: data.birthday,
-          notification_preferences: data.notification_preferences,
           created_by: userId ? `users/${userId}` : undefined,
         });
 

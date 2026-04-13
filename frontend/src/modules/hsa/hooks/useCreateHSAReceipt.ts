@@ -12,18 +12,21 @@ export function useCreateHSAReceipt() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: HSAReceiptFormData) => {
-      const formData = new FormData();
-      formData.append('merchant', data.merchant);
-      formData.append('service_date', data.service_date);
-      formData.append('amount', data.amount.toString());
-      formData.append('category', data.category);
-      formData.append('status', data.status);
-      if (data.patient) formData.append('patient', data.patient);
-      if (data.notes) formData.append('notes', data.notes);
-      if (data.receipt_file) formData.append('receipt_file', data.receipt_file);
-
       const userId = aepbase.getCurrentUser()?.id;
-      if (userId) formData.append('created_by', `users/${userId}`);
+      const resource: Record<string, unknown> = {
+        merchant: data.merchant,
+        service_date: data.service_date,
+        amount: data.amount,
+        category: data.category,
+        status: data.status,
+      };
+      if (data.patient) resource.patient = data.patient;
+      if (data.notes) resource.notes = data.notes;
+      if (userId) resource.created_by = `users/${userId}`;
+
+      const formData = new FormData();
+      formData.append('resource', new Blob([JSON.stringify(resource)], { type: 'application/json' }));
+      if (data.receipt_file) formData.append('receipt_file', data.receipt_file);
 
       return await aepbase.create<HSAReceipt>(AepCollections.HSA_RECEIPTS, formData);
     },

@@ -198,7 +198,6 @@ export async function createPerson(
   const person = await aepCreate<PersonRecord>(token, 'people', {
     name: data.name,
     birthday: data.birthday,
-    notification_preferences: ['day_of'],
   });
 
   if (data.address || data.anniversary) {
@@ -301,15 +300,22 @@ export async function createHSAReceipt(
     0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9,
   ]);
   const blob = new Blob([jpegBytes], { type: 'image/jpeg' });
+  const resource: Record<string, unknown> = {
+    merchant: data.merchant,
+    service_date: data.service_date,
+    amount: data.amount,
+    category: data.category,
+    status: data.status,
+  };
+  if (data.patient) resource.patient = data.patient;
+  if (data.notes) resource.notes = data.notes;
+
   const formData = new FormData();
-  formData.append('merchant', data.merchant);
-  formData.append('service_date', data.service_date);
-  formData.append('amount', data.amount.toString());
-  formData.append('category', data.category);
-  formData.append('status', data.status);
+  formData.append(
+    'resource',
+    new Blob([JSON.stringify(resource)], { type: 'application/json' }),
+  );
   formData.append('receipt_file', blob, 'test-receipt.jpg');
-  if (data.patient) formData.append('patient', data.patient);
-  if (data.notes) formData.append('notes', data.notes);
 
   return aepCreateMultipart<HSAReceiptRecord>(token, 'hsa-receipts', formData);
 }

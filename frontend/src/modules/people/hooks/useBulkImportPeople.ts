@@ -54,7 +54,6 @@ export function useBulkImportPeople() {
             {
               name: personData.name,
               birthday: personData.birthday,
-              notification_preferences: personData.notification_preferences ?? ['day_of'],
               created_by: createdBy,
             },
           );
