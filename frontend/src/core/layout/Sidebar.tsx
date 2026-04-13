@@ -22,8 +22,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
-  // Get modules available to current user
-  const modules = user ? getNavigationModules() : [];
+  // Get modules available to current user. Modules can opt into a superuser
+  // gate via `metadata.requiresSuperuser`, which hides them for regular users.
+  const modules = user
+    ? getNavigationModules().filter(
+        (m) => !m.metadata?.requiresSuperuser || user.type === 'superuser',
+      )
+    : [];
 
   // Group modules by section
   const modulesBySection = modules.reduce((acc, module) => {

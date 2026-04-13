@@ -376,3 +376,50 @@ export async function cleanupUserData(token: string, userId: string) {
     deleteAllRecurringNotifications(token, userId),
   ]);
 }
+
+// ---------------------------------------------------------------------------
+// Users (superuser-only)
+// ---------------------------------------------------------------------------
+
+interface CreateUserInput {
+  email: string;
+  password: string;
+  display_name?: string;
+  type?: 'regular' | 'superuser';
+}
+
+export interface UserRecord {
+  id: string;
+  email: string;
+  display_name?: string;
+  type?: 'regular' | 'superuser';
+}
+
+export async function createUser(
+  adminToken: string,
+  data: CreateUserInput,
+): Promise<UserRecord> {
+  return aepCreate<UserRecord>(adminToken, 'users', {
+    email: data.email,
+    password: data.password,
+    display_name: data.display_name || '',
+    type: data.type || 'regular',
+  });
+}
+
+/**
+ * Delete every user except the ids in `preserveIds`. Used by Users module
+ * tests to tidy up without wiping the bootstrap superuser or the fixture-
+ * owned `testUser`.
+ */
+export async function deleteUsersExcept(
+  adminToken: string,
+  preserveIds: string[],
+) {
+  const users = await aepList<{ id: string }>(adminToken, 'users');
+  const keep = new Set(preserveIds);
+  for (const u of users) {
+    if (keep.has(u.id)) continue;
+    await aepRemove(adminToken, 'users', u.id);
+  }
+}
