@@ -145,7 +145,10 @@ export class HSAPage {
   }
 
   async expectReceiptCount(count: number) {
-    const countText = count === 1 ? '1 receipt' : `${count} receipts`;
     await expect(this.page.getByText(new RegExp(`Showing ${count}`)).first()).toBeVisible();
+  }
+
+  async expectEmptyState() {
+    await expect(this.page.getByText(/no receipts found/i)).toBeVisible();
   }
 }

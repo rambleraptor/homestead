@@ -1,13 +1,13 @@
 [Unit]
 Description=HomeOS Frontend
-After=network.target homeos-pocketbase.service
+After=network.target homeos-aepbase.service
 Requires=homeos-aepbase.service
 
 [Service]
 Type=simple
 User=homeosuser
 WorkingDirectory=/path/to/homeOS/frontend
-ExecStart=npm start -- -p 3000
+ExecStart=/opt/node22/bin/npm start -- -p 3000
 Restart=on-failure
 RestartSec=5s
 
@@ -18,8 +18,7 @@ ProtectSystem=strict
 
 # Environment
 Environment="NODE_ENV=production"
-Environment="PATH=/usr/local/bin:/usr/bin:/bin"
-EnvironmentFile=/path/to/homeOS/frontend/.env
+Environment="PATH=/opt/node22/bin:/usr/local/bin:/usr/bin:/bin"
 
 [Install]
 WantedBy=multi-user.target

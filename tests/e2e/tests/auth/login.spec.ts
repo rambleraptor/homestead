@@ -2,7 +2,7 @@
  * Authentication E2E Tests - Login
  */
 
-import { test, expect } from '../../fixtures/pocketbase.fixture';
+import { test, expect } from '../../fixtures/aepbase.fixture';
 import { LoginPage } from '../../pages/LoginPage';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { testUsers } from '../../fixtures/test-data';

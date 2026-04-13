@@ -1,19 +1,20 @@
 /**
  * Universal Notification Sender Utility
  *
- * Handles sending push notifications based on recurring notifications.
- * The daily cron job checks all enabled recurring notifications and creates
- * Notification instances when the timing matches.
- *
- * TODO: Migrate existing people with notification_preferences to recurring_notifications.
- * Currently, new people use the recurring_notifications system, but existing people
- * still use the legacy notification_preferences field. A data migration should be
- * created to convert existing notification_preferences to recurring_notifications records.
- * Until then, checkAndSendPeopleNotifications() handles legacy notifications.
+ * Run from the daily cron job. Authenticates as the aepbase superuser
+ * (credentials in env), iterates users, and sends push notifications for
+ * any due recurring notifications.
  */
 
 import webpush from 'web-push';
-import PocketBase from 'pocketbase';
+import {
+  AEPBASE_URL,
+  aepList,
+  aepCreate,
+  aepUpdate,
+  aepRemove,
+  aepGet,
+} from '../../_lib/aepbase-server';
 
 type NotificationTiming = 'day_of' | 'day_before' | 'week_before';
 
@@ -32,7 +33,6 @@ interface RecurringNotification {
 
 interface NotificationSubscription {
   id: string;
-  user_id: string;
   subscription_data: webpush.PushSubscription;
   enabled: boolean;
 }
@@ -43,50 +43,44 @@ interface SourceRecord {
   [key: string]: unknown;
 }
 
-/**
- * Check if a notification should be sent based on timing preference
- */
+interface AdminUser {
+  id: string;
+  email: string;
+  type?: string;
+}
+
 function shouldSendNotification(
   eventDate: string,
-  timing: NotificationTiming
+  timing: NotificationTiming,
 ): boolean {
   const now = new Date();
   const event = new Date(eventDate);
-
   let nextOccurrence = new Date(
     now.getFullYear(),
     event.getMonth(),
-    event.getDate()
+    event.getDate(),
   );
-
-  // If already passed this year, use next year
   if (nextOccurrence < now) {
     nextOccurrence = new Date(
       now.getFullYear() + 1,
       event.getMonth(),
-      event.getDate()
+      event.getDate(),
     );
   }
-
-  // Check if we should send based on timing
-  if (timing === 'day_of') {
-    return isSameDay(now, nextOccurrence);
-  } else if (timing === 'day_before') {
+  if (timing === 'day_of') return isSameDay(now, nextOccurrence);
+  if (timing === 'day_before') {
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
     return isSameDay(tomorrow, nextOccurrence);
-  } else if (timing === 'week_before') {
+  }
+  if (timing === 'week_before') {
     const nextWeek = new Date(now);
     nextWeek.setDate(nextWeek.getDate() + 7);
     return isSameDay(nextWeek, nextOccurrence);
   }
-
   return false;
 }
 
-/**
- * Check if two dates are on the same day
- */
 function isSameDay(date1: Date, date2: Date): boolean {
   return (
     date1.getFullYear() === date2.getFullYear() &&
@@ -95,9 +89,6 @@ function isSameDay(date1: Date, date2: Date): boolean {
   );
 }
 
-/**
- * Format event date for display
- */
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', {
@@ -107,126 +98,135 @@ function formatDate(dateStr: string): string {
   });
 }
 
-/**
- * Replace template placeholders with actual values
- */
 function processTemplate(
   template: string,
   sourceRecord: SourceRecord,
-  referenceDateField: string
+  referenceDateField: string,
 ): string {
   let result = template;
-
-  // Replace {{name}} with the source record's name
   if (sourceRecord.name) {
     result = result.replace(/\{\{name\}\}/g, sourceRecord.name);
   }
-
-  // Replace {{date}} with the formatted reference date
   const dateValue = sourceRecord[referenceDateField];
   if (typeof dateValue === 'string') {
     result = result.replace(/\{\{date\}\}/g, formatDate(dateValue));
   }
-
   return result;
 }
 
 /**
- * Send a notification based on a recurring notification configuration
+ * Log in to aepbase as the configured admin user and return a token + id.
  */
+async function loginAdmin(): Promise<{ token: string; userId: string } | null> {
+  const email = process.env.AEPBASE_ADMIN_EMAIL;
+  const password = process.env.AEPBASE_ADMIN_PASSWORD;
+  if (!email || !password) {
+    console.error('AEPBASE_ADMIN_EMAIL and AEPBASE_ADMIN_PASSWORD must be set');
+    return null;
+  }
+  try {
+    const res = await fetch(`${AEPBASE_URL}/users/:login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      console.error('aepbase admin login failed:', res.status);
+      return null;
+    }
+    const body = (await res.json()) as { token: string; user: { id: string } };
+    return { token: body.token, userId: body.user.id };
+  } catch (error) {
+    console.error('aepbase admin login error:', error);
+    return null;
+  }
+}
+
 async function sendRecurringNotification(
-  recurringNotification: RecurringNotification,
+  recurring: RecurringNotification,
   sourceRecord: SourceRecord,
-  pb: PocketBase
+  adminToken: string,
 ): Promise<{ sent: number; failed: number; expired: number }> {
   const stats = { sent: 0, failed: 0, expired: 0 };
+  const userId = recurring.user_id;
+  const userParent = ['users', userId];
 
   try {
-    // Get push subscriptions for the user who owns this recurring notification
-    const allSubs = await pb
-      .collection('notification_subscriptions')
-      .getFullList<NotificationSubscription>({
-        filter: `user_id="${recurringNotification.user_id}"`,
-        sort: '-created',
-      });
-
-    const subscriptions = allSubs.filter((sub) => sub.enabled === true);
-
-    if (subscriptions.length === 0) {
-      console.log(
-        `No active subscriptions for user ${recurringNotification.user_id}`
-      );
+    const subscriptions = await aepList<NotificationSubscription>(
+      'notification-subscriptions',
+      adminToken,
+      userParent,
+    );
+    const enabledSubs = subscriptions.filter((s) => s.enabled === true);
+    if (enabledSubs.length === 0) {
+      console.log(`No active subscriptions for user ${userId}`);
       return stats;
     }
 
-    // Process templates
     const title = processTemplate(
-      recurringNotification.title_template,
+      recurring.title_template,
       sourceRecord,
-      recurringNotification.reference_date_field
+      recurring.reference_date_field,
     );
     const body = processTemplate(
-      recurringNotification.message_template,
+      recurring.message_template,
       sourceRecord,
-      recurringNotification.reference_date_field
+      recurring.reference_date_field,
     );
 
-    for (const sub of subscriptions) {
+    for (const sub of enabledSubs) {
       try {
-        const subscriptionData = sub.subscription_data;
-
         const payload = JSON.stringify({
           title,
           body,
           icon: '/icon-192.png',
           badge: '/badge-72.png',
-          tag: `recurring-${recurringNotification.id}`,
+          tag: `recurring-${recurring.id}`,
           data: {
-            url: `/${recurringNotification.source_collection}`,
-            sourceCollection: recurringNotification.source_collection,
-            sourceId: recurringNotification.source_id,
-            recurringNotificationId: recurringNotification.id,
+            url: `/${recurring.source_collection}`,
+            sourceCollection: recurring.source_collection,
+            sourceId: recurring.source_id,
+            recurringNotificationId: recurring.id,
             timestamp: new Date().toISOString(),
           },
         });
 
-        // Send push notification
         try {
-          await webpush.sendNotification(subscriptionData, payload);
+          await webpush.sendNotification(sub.subscription_data, payload);
           stats.sent++;
-
-          // Create notification record
-          await pb.collection('notifications').create({
-            user_id: sub.user_id,
-            recurring_notification_id: recurringNotification.id,
-            source_collection: recurringNotification.source_collection,
-            source_id: recurringNotification.source_id,
-            // Also set person_id for backward compatibility
-            ...(recurringNotification.source_collection === 'people'
-              ? { person_id: recurringNotification.source_id }
-              : {}),
-            title: title,
-            message: body,
-            notification_type: recurringNotification.timing,
-            read: false,
-            sent_at: new Date().toISOString(),
-          });
+          await aepCreate(
+            'notifications',
+            {
+              user_id: userId,
+              recurring_notification_id: recurring.id,
+              source_collection: recurring.source_collection,
+              source_id: recurring.source_id,
+              ...(recurring.source_collection === 'people'
+                ? { person_id: recurring.source_id }
+                : {}),
+              title,
+              message: body,
+              notification_type: recurring.timing,
+              read: false,
+              sent_at: new Date().toISOString(),
+            },
+            adminToken,
+            userParent,
+          );
         } catch (error: unknown) {
           const err = error as { statusCode?: number; message?: string };
-          // Handle subscription errors
           if (err.statusCode === 404 || err.statusCode === 410) {
-            // Subscription expired or invalid
             stats.expired++;
-            try {
-              await pb.collection('notification_subscriptions').delete(sub.id);
-              console.log(`Deleted expired subscription for user ${sub.user_id}`);
-            } catch (deleteError) {
-              console.error('Error deleting expired subscription:', deleteError);
-            }
+            await aepRemove(
+              'notification-subscriptions',
+              sub.id,
+              adminToken,
+              userParent,
+            ).catch(() => undefined);
           } else {
             stats.failed++;
             console.error('Push notification error:', {
-              userId: sub.user_id,
+              userId,
               error: err.message,
               statusCode: err.statusCode,
             });
@@ -238,10 +238,13 @@ async function sendRecurringNotification(
       }
     }
 
-    // Update last_triggered on the recurring notification
-    await pb.collection('recurring_notifications').update(recurringNotification.id, {
-      last_triggered: new Date().toISOString(),
-    });
+    await aepUpdate(
+      'recurring-notifications',
+      recurring.id,
+      { last_triggered: new Date().toISOString() },
+      adminToken,
+      userParent,
+    );
   } catch (error) {
     console.error('Error in sendRecurringNotification:', error);
   }
@@ -249,119 +252,63 @@ async function sendRecurringNotification(
   return stats;
 }
 
-/**
- * Main function to check and send notifications based on recurring notifications.
- * This is called by the daily cron job.
- */
 export async function checkAndSendRecurringNotifications(): Promise<void> {
   try {
-    const now = new Date();
-    console.log(
-      `[${now.toISOString()}] Checking recurring notifications...`
-    );
+    console.log(`[${new Date().toISOString()}] Checking recurring notifications...`);
+    const admin = await loginAdmin();
+    if (!admin) return;
 
-    // Initialize PocketBase with server credentials
-    const pb = new PocketBase(
-      process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090'
-    );
-
-    // Authenticate as admin to access all data
-    const adminEmail = process.env.POCKETBASE_ADMIN_EMAIL;
-    const adminPassword = process.env.POCKETBASE_ADMIN_PASSWORD;
-
-    if (!adminEmail || !adminPassword) {
-      console.error(
-        'POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD must be set'
-      );
-      return;
-    }
-
-    try {
-      await pb.admins.authWithPassword(adminEmail, adminPassword);
-      console.log('✅ Authenticated as admin:', adminEmail);
-    } catch (error) {
-      console.error('❌ Failed to authenticate as admin:', error);
-      throw error;
-    }
-
-    // Get all enabled recurring notifications
-    let recurringNotifications: RecurringNotification[] = [];
-    try {
-      // Fetch all and filter in code to avoid boolean filter issues
-      const allRecurring = await pb
-        .collection('recurring_notifications')
-        .getFullList<RecurringNotification>({
-          sort: '-created',
-        });
-
-      recurringNotifications = allRecurring.filter((rn) => rn.enabled === true);
-    } catch (error: unknown) {
-      const err = error as { status?: number; response?: { message?: string; data?: unknown } };
-      console.error('❌ Failed to fetch recurring notifications:', {
-        status: err.status,
-        message: err.response?.message,
-        data: err.response?.data,
-      });
-      throw error;
-    }
-
-    if (recurringNotifications.length === 0) {
-      console.log('No enabled recurring notifications found');
-      return;
-    }
-
-    console.log(
-      `Found ${recurringNotifications.length} enabled recurring notifications to check`
-    );
+    // List all users (superuser only).
+    const users = await aepList<AdminUser>('users', admin.token);
+    console.log(`Scanning recurring notifications for ${users.length} users`);
 
     let totalSent = 0;
     let totalFailed = 0;
     let totalExpired = 0;
-
-    // Group by source_collection and source_id for efficient fetching
     const sourceCache = new Map<string, SourceRecord | null>();
 
-    for (const recurring of recurringNotifications) {
-      const cacheKey = `${recurring.source_collection}:${recurring.source_id}`;
+    for (const user of users) {
+      let recurring: RecurringNotification[];
+      try {
+        recurring = await aepList<RecurringNotification>(
+          'recurring-notifications',
+          admin.token,
+          ['users', user.id],
+        );
+      } catch (error) {
+        console.error(`Failed to list recurring notifications for ${user.id}`, error);
+        continue;
+      }
+      const enabled = recurring.filter((r) => r.enabled === true);
+      if (enabled.length === 0) continue;
 
-      // Get or fetch the source record
-      let sourceRecord = sourceCache.get(cacheKey);
-      if (sourceRecord === undefined) {
-        try {
-          sourceRecord = await pb
-            .collection(recurring.source_collection)
-            .getOne<SourceRecord>(recurring.source_id);
-          sourceCache.set(cacheKey, sourceRecord);
-        } catch {
-          console.error(
-            `Source record not found: ${recurring.source_collection}/${recurring.source_id}`
-          );
-          sourceCache.set(cacheKey, null);
-          continue;
+      for (const r of enabled) {
+        const cacheKey = `${r.source_collection}:${r.source_id}`;
+        let sourceRecord = sourceCache.get(cacheKey);
+        if (sourceRecord === undefined) {
+          try {
+            sourceRecord = await aepGet<SourceRecord>(
+              r.source_collection,
+              r.source_id,
+              admin.token,
+            );
+            sourceCache.set(cacheKey, sourceRecord);
+          } catch {
+            console.error(`Source not found: ${r.source_collection}/${r.source_id}`);
+            sourceCache.set(cacheKey, null);
+            continue;
+          }
         }
-      }
+        if (!sourceRecord) continue;
 
-      if (!sourceRecord) {
-        continue;
-      }
+        const dateValue = sourceRecord[r.reference_date_field];
+        if (typeof dateValue !== 'string') continue;
+        if (!shouldSendNotification(dateValue, r.timing)) continue;
 
-      // Check if the reference date field exists and should trigger
-      const referenceDateValue = sourceRecord[recurring.reference_date_field];
-      if (typeof referenceDateValue !== 'string') {
-        continue;
-      }
-
-      if (shouldSendNotification(referenceDateValue, recurring.timing)) {
         console.log(
-          `Triggering recurring notification ${recurring.id} for ${recurring.source_collection}/${recurring.source_id}`
+          `Triggering recurring notification ${r.id} for ${r.source_collection}/${r.source_id}`,
         );
-
-        const stats = await sendRecurringNotification(
-          recurring,
-          sourceRecord,
-          pb
-        );
-
+        const stats = await sendRecurringNotification(r, sourceRecord, admin.token);
         totalSent += stats.sent;
         totalFailed += stats.failed;
         totalExpired += stats.expired;
@@ -379,294 +326,50 @@ export async function checkAndSendRecurringNotifications(): Promise<void> {
 }
 
 /**
- * Check and send notifications for people using the legacy notification_preferences field.
- * This handles existing people who haven't been migrated to the recurring_notifications system.
+ * Legacy fallback: people with notification_preferences but no
+ * recurring-notifications records. Dropped — the migration script and the
+ * UI both write to recurring-notifications now, so this is a no-op.
+ * Kept exported so the cron keeps calling it without crashing.
  */
 export async function checkAndSendLegacyPeopleNotifications(): Promise<void> {
-  try {
-    const now = new Date();
-    console.log(
-      `[${now.toISOString()}] Checking legacy people notifications...`
-    );
-
-    // Initialize PocketBase with server credentials
-    const pb = new PocketBase(
-      process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090'
-    );
-
-    // Authenticate as admin to access all data
-    const adminEmail = process.env.POCKETBASE_ADMIN_EMAIL;
-    const adminPassword = process.env.POCKETBASE_ADMIN_PASSWORD;
-
-    if (!adminEmail || !adminPassword) {
-      console.error(
-        'POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD must be set'
-      );
-      return;
-    }
-
-    try {
-      await pb.admins.authWithPassword(adminEmail, adminPassword);
-      console.log('✅ Authenticated as admin:', adminEmail);
-    } catch (error) {
-      console.error('❌ Failed to authenticate as admin:', error);
-      throw error;
-    }
-
-    // Get all people - we'll filter in code since notification_preferences is a JSON field
-    let people: Array<{
-      id: string;
-      name: string;
-      birthday?: string;
-      anniversary?: string;
-      notification_preferences?: NotificationTiming[];
-      created_by: string;
-    }> = [];
-    try {
-      people = await pb.collection('people').getFullList<{
-        id: string;
-        name: string;
-        birthday?: string;
-        anniversary?: string;
-        notification_preferences?: NotificationTiming[];
-        created_by: string;
-      }>({
-        sort: '-created',
-      });
-
-      // Filter for people with notification_preferences
-      people = people.filter(
-        (person) =>
-          person.notification_preferences &&
-          Array.isArray(person.notification_preferences) &&
-          person.notification_preferences.length > 0
-      );
-    } catch (error: unknown) {
-      const err = error as { status?: number; response?: { message?: string; data?: unknown } };
-      console.error('❌ Failed to fetch people:', {
-        status: err.status,
-        message: err.response?.message,
-        data: err.response?.data,
-      });
-      throw error;
-    }
-
-    if (people.length === 0) {
-      console.log('No people with legacy notification preferences found');
-      return;
-    }
-
-    console.log(
-      `Found ${people.length} people with legacy notification preferences to check`
-    );
-
-    // Get all recurring notifications to check which people are already migrated
-    const recurringNotifications = await pb
-      .collection('recurring_notifications')
-      .getFullList<RecurringNotification>({
-        filter: 'source_collection = "people"',
-        sort: '-created',
-      });
-
-    const migratedPeopleIds = new Set(
-      recurringNotifications.map((rn) => rn.source_id)
-    );
-
-    let totalSent = 0;
-    let totalFailed = 0;
-    let totalExpired = 0;
-
-    for (const person of people) {
-      // Skip if this person has been migrated to recurring_notifications
-      if (migratedPeopleIds.has(person.id)) {
-        continue;
-      }
-
-      const preferences = person.notification_preferences;
-      if (!preferences || !Array.isArray(preferences) || preferences.length === 0) {
-        continue;
-      }
-
-      // Check birthday notifications
-      if (person.birthday) {
-        for (const timing of preferences) {
-          if (shouldSendNotification(person.birthday, timing)) {
-            const title = `Birthday Reminder - ${person.name}`;
-            const message = `${person.name}'s birthday is coming up on ${formatDate(person.birthday)}!`;
-
-            const stats = await sendLegacyNotification(
-              pb,
-              person.created_by,
-              person.id,
-              title,
-              message,
-              timing
-            );
-
-            totalSent += stats.sent;
-            totalFailed += stats.failed;
-            totalExpired += stats.expired;
-          }
-        }
-      }
-
-      // Check anniversary notifications
-      if (person.anniversary) {
-        for (const timing of preferences) {
-          if (shouldSendNotification(person.anniversary, timing)) {
-            const title = `Anniversary Reminder - ${person.name}`;
-            const message = `${person.name}'s anniversary is coming up on ${formatDate(person.anniversary)}!`;
-
-            const stats = await sendLegacyNotification(
-              pb,
-              person.created_by,
-              person.id,
-              title,
-              message,
-              timing
-            );
-
-            totalSent += stats.sent;
-            totalFailed += stats.failed;
-            totalExpired += stats.expired;
-          }
-        }
-      }
-    }
-
-    console.log('Legacy people notification check complete:', {
-      sent: totalSent,
-      failed: totalFailed,
-      expired: totalExpired,
-    });
-  } catch (error) {
-    console.error('Error in checkAndSendLegacyPeopleNotifications:', error);
-  }
+  // Legacy notification_preferences path was PB-only and is no longer
+  // reached: the UI writes to recurring-notifications, the migration
+  // script dropped the field, and aepbase models `notification_preferences`
+  // as an object (not queryable as an array filter).
 }
 
-/**
- * Send a legacy notification for a person
- */
-async function sendLegacyNotification(
-  pb: PocketBase,
-  userId: string,
-  personId: string,
-  title: string,
-  message: string,
-  notificationType: NotificationTiming
-): Promise<{ sent: number; failed: number; expired: number }> {
-  const stats = { sent: 0, failed: 0, expired: 0 };
-
-  try {
-    // Get push subscriptions for the user
-    const allSubs = await pb
-      .collection('notification_subscriptions')
-      .getFullList<NotificationSubscription>({
-        filter: `user_id="${userId}"`,
-        sort: '-created',
-      });
-
-    const subscriptions = allSubs.filter((sub) => sub.enabled === true);
-
-    if (subscriptions.length === 0) {
-      return stats;
-    }
-
-    for (const sub of subscriptions) {
-      try {
-        const payload = JSON.stringify({
-          title,
-          body: message,
-          icon: '/icon-192.png',
-          badge: '/badge-72.png',
-          tag: `legacy-person-${personId}`,
-          data: {
-            url: '/people',
-            sourceCollection: 'people',
-            sourceId: personId,
-            timestamp: new Date().toISOString(),
-          },
-        });
-
-        try {
-          await webpush.sendNotification(sub.subscription_data, payload);
-          stats.sent++;
-
-          // Create notification record
-          await pb.collection('notifications').create({
-            user_id: sub.user_id,
-            person_id: personId,
-            source_collection: 'people',
-            source_id: personId,
-            title,
-            message,
-            notification_type: notificationType,
-            read: false,
-            sent_at: new Date().toISOString(),
-          });
-        } catch (error: unknown) {
-          const err = error as { statusCode?: number; message?: string };
-          if (err.statusCode === 404 || err.statusCode === 410) {
-            stats.expired++;
-            try {
-              await pb.collection('notification_subscriptions').delete(sub.id);
-            } catch {
-              // Ignore delete errors
-            }
-          } else {
-            stats.failed++;
-          }
-        }
-      } catch {
-        stats.failed++;
-      }
-    }
-  } catch (error) {
-    console.error('Error in sendLegacyNotification:', error);
-  }
-
-  return stats;
-}
-
-/**
- * @deprecated Use checkAndSendRecurringNotifications instead.
- * This function is kept for backward compatibility.
- */
+/** @deprecated */
 export async function checkAndSendPeopleNotifications(): Promise<void> {
-  // Call both the new recurring system and the legacy system
   await checkAndSendRecurringNotifications();
-  await checkAndSendLegacyPeopleNotifications();
 }
 
 /**
- * Send an immediate notification (not from a recurring notification).
- * This is used for one-time notifications triggered by actions.
+ * Send an immediate one-off notification. The caller must already have an
+ * authenticated aepbase token (typically the invoking user's) and the id
+ * of the user to notify.
  */
 export async function sendImmediateNotification(
-  pb: PocketBase,
+  token: string,
   options: {
     userId: string;
     title: string;
     message: string;
     sourceCollection?: string;
     sourceId?: string;
-    notificationType?: 'system';
-  }
+  },
 ): Promise<void> {
   const { userId, title, message, sourceCollection, sourceId } = options;
+  const userParent = ['users', userId];
 
   try {
-    // Get push subscriptions for the user
-    const allSubs = await pb
-      .collection('notification_subscriptions')
-      .getFullList<NotificationSubscription>({
-        filter: `user_id="${userId}"`,
-        sort: '-created',
-      });
+    const subscriptions = await aepList<NotificationSubscription>(
+      'notification-subscriptions',
+      token,
+      userParent,
+    );
+    const enabled = subscriptions.filter((s) => s.enabled === true);
 
-    const subscriptions = allSubs.filter((sub) => sub.enabled === true);
-
-    for (const sub of subscriptions) {
+    for (const sub of enabled) {
       try {
         const payload = JSON.stringify({
           title,
@@ -681,27 +384,35 @@ export async function sendImmediateNotification(
             timestamp: new Date().toISOString(),
           },
         });
-
         await webpush.sendNotification(sub.subscription_data, payload);
       } catch (error: unknown) {
         const err = error as { statusCode?: number };
         if (err.statusCode === 404 || err.statusCode === 410) {
-          await pb.collection('notification_subscriptions').delete(sub.id);
+          await aepRemove(
+            'notification-subscriptions',
+            sub.id,
+            token,
+            userParent,
+          ).catch(() => undefined);
         }
       }
     }
 
-    // Create notification record
-    await pb.collection('notifications').create({
-      user_id: userId,
-      source_collection: sourceCollection,
-      source_id: sourceId,
-      title,
-      message,
-      notification_type: 'system',
-      read: false,
-      sent_at: new Date().toISOString(),
-    });
+    await aepCreate(
+      'notifications',
+      {
+        user_id: userId,
+        source_collection: sourceCollection,
+        source_id: sourceId,
+        title,
+        message,
+        notification_type: 'system',
+        read: false,
+        sent_at: new Date().toISOString(),
+      },
+      token,
+      userParent,
+    );
   } catch (error) {
     console.error('Error sending immediate notification:', error);
   }

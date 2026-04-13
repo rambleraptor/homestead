@@ -1,15 +1,10 @@
 /**
- * People list hook — branches on the `people` flag.
- *
- * Joins people + person_shared_data + addresses client-side. The same join
- * logic runs in both backends; the only difference is which client fetches
- * the underlying records.
+ * People list hook. Joins people + person_shared_data + addresses
+ * client-side since aepbase has no filter/join support.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { getCollection, Collections } from '@/core/api/pocketbase';
-import { isAepbaseEnabled } from '@/core/api/backend';
 import { queryKeys } from '@/core/api/queryClient';
 import type { Person, NotificationPreference, PersonSharedData, Address } from '../types';
 
@@ -17,49 +12,23 @@ interface PersonRecord {
   id: string;
   name: string;
   birthday?: string;
-  notification_preferences: NotificationPreference[];
-  created_by: string;
-  created?: string;
-  updated?: string;
+  notification_preferences?: NotificationPreference[];
+  created_by?: string;
   create_time?: string;
   update_time?: string;
-  path?: string;
 }
 
 export function usePeople() {
   return useQuery({
     queryKey: queryKeys.module('people').list(),
     queryFn: async () => {
-      const useAep = isAepbaseEnabled('people');
+      const [peopleRecords, allSharedData, allAddresses] = await Promise.all([
+        aepbase.list<PersonRecord>(AepCollections.PEOPLE),
+        aepbase.list<PersonSharedData>(AepCollections.PERSON_SHARED_DATA),
+        aepbase.list<Address>(AepCollections.ADDRESSES),
+      ]);
 
-      let peopleRecords: PersonRecord[];
-      let allSharedData: PersonSharedData[];
-      let allAddresses: Address[];
-
-      if (useAep) {
-        const [p, s, a] = await Promise.all([
-          aepbase.list<PersonRecord>(AepCollections.PEOPLE),
-          aepbase.list<PersonSharedData>(AepCollections.PERSON_SHARED_DATA),
-          aepbase.list<Address>(AepCollections.ADDRESSES),
-        ]);
-        peopleRecords = p
-          .map((rec) => ({
-            ...rec,
-            created: rec.create_time || '',
-            updated: rec.update_time || '',
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
-        allSharedData = s;
-        allAddresses = a;
-      } else {
-        peopleRecords = await getCollection<PersonRecord>(Collections.PEOPLE).getFullList({
-          sort: 'name',
-        });
-        allSharedData = await getCollection<PersonSharedData>(
-          Collections.PERSON_SHARED_DATA,
-        ).getFullList();
-        allAddresses = await getCollection<Address>(Collections.ADDRESSES).getFullList();
-      }
+      peopleRecords.sort((a, b) => a.name.localeCompare(b.name));
 
       const sharedDataByPersonA = new Map<string, PersonSharedData>();
       const sharedDataByPersonB = new Map<string, PersonSharedData>();
@@ -67,9 +36,7 @@ export function usePeople() {
 
       for (const sharedData of allSharedData) {
         sharedDataByPersonA.set(sharedData.person_a, sharedData);
-        if (sharedData.person_b) {
-          sharedDataByPersonB.set(sharedData.person_b, sharedData);
-        }
+        if (sharedData.person_b) sharedDataByPersonB.set(sharedData.person_b, sharedData);
       }
       for (const address of allAddresses) addressesById.set(address.id, address);
 
@@ -77,7 +44,6 @@ export function usePeople() {
         const sharedData =
           sharedDataByPersonA.get(record.id) || sharedDataByPersonB.get(record.id);
         const addresses: Address[] = [];
-
         if (sharedData) {
           if (sharedData.address_id) {
             const primary = addressesById.get(sharedData.address_id);
@@ -104,8 +70,10 @@ export function usePeople() {
           if (partnerRecord) {
             partner = {
               ...partnerRecord,
-              created: partnerRecord.created || '',
-              updated: partnerRecord.updated || '',
+              created: partnerRecord.create_time || '',
+              updated: partnerRecord.update_time || '',
+              notification_preferences: partnerRecord.notification_preferences || [],
+              created_by: partnerRecord.created_by || '',
               addresses,
               anniversary: sharedData?.anniversary,
               partner: undefined,
@@ -115,8 +83,10 @@ export function usePeople() {
 
         return {
           ...record,
-          created: record.created || '',
-          updated: record.updated || '',
+          created: record.create_time || '',
+          updated: record.update_time || '',
+          notification_preferences: record.notification_preferences || [],
+          created_by: record.created_by || '',
           addresses,
           anniversary: sharedData?.anniversary,
           partner,

@@ -1,5 +1,15 @@
+/**
+ * Change the current user's password.
+ *
+ * aepbase has no dedicated change-password endpoint, but `PATCH /users/{id}`
+ * accepts a `password` field and bcrypt-hashes it server-side. To preserve
+ * the "old password required" security property we first re-authenticate
+ * via `POST /users/:login` with the current password; only on success do we
+ * patch in the new one.
+ */
+
 import { useMutation } from '@tanstack/react-query';
-import { pb, Collections } from '@/core/api/pocketbase';
+import { aepbase } from '@/core/api/aepbase';
 
 export interface ChangePasswordData {
   oldPassword: string;
@@ -10,15 +20,20 @@ export interface ChangePasswordData {
 export function useChangePassword() {
   return useMutation({
     mutationFn: async (data: ChangePasswordData) => {
-      const userId = pb.authStore.record?.id;
-      if (!userId) throw new Error('User not authenticated');
+      if (data.password !== data.passwordConfirm) {
+        throw new Error('New password and confirmation do not match');
+      }
+      const user = aepbase.getCurrentUser();
+      if (!user) throw new Error('User not authenticated');
 
-      // PocketBase requires oldPassword, password, and passwordConfirm
-      return await pb.collection(Collections.USERS).update(userId, {
-        oldPassword: data.oldPassword,
+      // Verify the current password by re-logging in. Throws on mismatch.
+      await aepbase.login(user.email, data.oldPassword);
+
+      // Update the password. aepbase hashes server-side.
+      const updated = await aepbase.update('users', user.id, {
         password: data.password,
-        passwordConfirm: data.passwordConfirm,
       });
+      return updated;
     },
   });
 }

@@ -12,11 +12,12 @@
     "test:chromium": "playwright test --project=chromium",
     "test:auth": "playwright test tests/auth/",
     "test:gift-cards": "playwright test tests/gift-cards/",
-    "test:events": "playwright test tests/events/",
+    "test:people": "playwright test tests/people/",
+    "test:hsa": "playwright test tests/hsa/",
     "test:settings": "playwright test tests/settings/",
     "test:navigation": "playwright test tests/navigation/",
     "report": "playwright show-report",
-    "clean": "rm -rf test-results playwright-report pb_test_data"
+    "clean": "rm -rf test-results playwright-report aep_test_data"
   },
   "keywords": [
     "e2e",
@@ -27,9 +28,7 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.49.1",
-    "@types/node": "^22.10.2"
-  },
-  "dependencies": {
-    "pocketbase": "^0.21.5"
+    "@types/node": "^22.10.2",
+    "typescript": "^6.0.2"
   }
 }

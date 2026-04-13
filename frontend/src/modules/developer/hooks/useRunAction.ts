@@ -1,31 +1,23 @@
-/**
- * Hook to run an action
- */
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { pb } from '@/core/api/pocketbase';
+import { aepbase } from '@/core/api/aepbase';
 
 export function useRunAction() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (actionId: string) => {
+      const userId = aepbase.getCurrentUser()?.id || '';
       const response = await fetch(`/api/actions/${actionId}/run`, {
         method: 'POST',
         headers: {
-          'Authorization': pb.authStore.token,
+          Authorization: `Bearer ${aepbase.authStore.token}`,
+          'X-User-Id': userId,
           'Content-Type': 'application/json',
         },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to run action');
-      }
-
+      if (!response.ok) throw new Error('Failed to run action');
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate actions to refresh last_run_at
       queryClient.invalidateQueries({ queryKey: ['actions'] });
     },
   });

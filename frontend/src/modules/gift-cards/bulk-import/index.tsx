@@ -5,13 +5,13 @@
  */
 
 import { BulkImportContainer, useBulkImport } from '@/shared/bulk-import';
-import { Collections } from '@/core/api/pocketbase';
+import { AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
 import { giftCardsImportSchema } from './schema';
 
 export function GiftCardsBulkImport() {
   const bulkImport = useBulkImport({
-    collection: Collections.GIFT_CARDS,
+    collection: AepCollections.GIFT_CARDS,
     queryKey: queryKeys.module('gift-cards').list(),
     // Transform data to add null for file fields
     transformData: (data) => ({

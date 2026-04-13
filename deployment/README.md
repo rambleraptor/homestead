@@ -5,41 +5,52 @@ Simple deployment for HomeOS on Linux with systemd.
 ## Quick Setup
 
 ```bash
-# 1. Install PocketBase
-./deployment/install-pocketbase.sh
+# 1. Install aepbase (builds the Go wrapper)
+./deployment/install-aepbase.sh
 
-# 2. Build frontend
+# 2. Start aepbase once to bootstrap the superuser
+cd aepbase && ./run.sh
+# Copy the printed admin email + password. Ctrl-C when you're done.
+
+# 3. Apply the schema
+cd aepbase/terraform
+TF_VAR_aepbase_token=$(curl -sS -X POST http://localhost:8090/users/:login \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"admin@example.com","password":"<superuser password>"}' \
+    | jq -r .token) \
+    AEP_OPENAPI=http://localhost:8090/openapi.json \
+    terraform apply
+
+# 4. Build frontend
 ./deployment/build.sh
 
-# 3. Configure environment
+# 5. Configure environment
 cp deployment/.env.production frontend/.env
 # Generate VAPID keys: cd frontend && npx web-push generate-vapid-keys
-# Edit frontend/.env and add your VAPID public key
+# Edit frontend/.env and add your VAPID public key.
 
-# 4. Set up systemd services
+# 6. Set up systemd services
 sudo make setup-services
 
-# 5. Start services
+# 7. Start services
 sudo make start
 
-# 6. Configure PocketBase
-# - Open http://localhost:8090/_/
-# - Create admin account
-# - Create user in Collections → users (check "Verified")
-
-# 7. Access HomeOS at http://localhost:3000
+# 8. Access HomeOS at http://localhost:3000
 ```
 
 ## Prerequisites
 
 - Linux with systemd (Ubuntu, Debian, Fedora, etc.)
 - Node.js 20+
+- Go 1.25+ (for building aepbase)
+- Terraform 1.5+ (for schema)
 - Git
 
 Install on Ubuntu/Debian:
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs git
+sudo apt install -y nodejs git golang-go
+# Terraform: https://developer.hashicorp.com/terraform/install
 ```
 
 ## Common Commands
@@ -66,31 +77,45 @@ make ci && make test    # Run all checks
 
 ### Manual Deployment
 
-Deploy current code:
 ```bash
 sudo make deploy
 ```
 
 The deploy script:
-- Detects changes (migrations, frontend, dependencies)
-- Builds only what changed
-- Applies migrations with automatic backup
-- Rolls back on failure
-- Verifies services started
+- Detects changes (aepbase source, frontend, dependencies) between the
+  current and target commit
+- Rebuilds only what changed
+- Rebuilds and restarts aepbase if `aepbase/` changed
+- Rebuilds and restarts the frontend if `frontend/` changed
+- Rolls back (git reset --hard) on failure
+- Verifies both services came back up
+
+### Schema changes (aepbase/terraform/)
+
+**Not auto-applied.** Terraform apply is a manual step — re-run it after
+editing `aepbase/terraform/*.tf`:
+
+```bash
+cd aepbase/terraform
+TF_VAR_aepbase_token=<admin token> \
+    AEP_OPENAPI=http://localhost:8090/openapi.json \
+    terraform apply
+```
+
+If the schema change requires dropping an existing resource definition,
+`terraform destroy` the affected resource first. aepbase preserves data
+across schema updates but does not support mutating a field's `type` or
+changing `parents` on an existing definition — delete + recreate in those
+cases. See `CLAUDE.md` for the full set of schema-evolution gotchas.
 
 ### Automatic Updates
 
 Set up automatic deployment (pulls from GitHub every 10 minutes):
 
 ```bash
-# 1. Set up auto-update
 sudo make setup-auto-update
-
-# 2. Enable auto-updates
 sudo systemctl enable homeos-auto-update.timer
 sudo systemctl start homeos-auto-update.timer
-
-# 3. Check status
 sudo systemctl status homeos-auto-update.timer
 ```
 
@@ -98,30 +123,30 @@ Configure update frequency by editing `/etc/systemd/system/homeos-auto-update.ti
 ```ini
 [Timer]
 OnBootSec=1min
-OnUnitActiveSec=10min  # Change to 5min, 1h, etc.
+OnUnitActiveSec=10min
 ```
 
 Then reload: `sudo systemctl daemon-reload && sudo systemctl restart homeos-auto-update.timer`
 
 ### Rollback
 
-If deployment fails, automatic rollback:
-- Restores database from backup
-- Reverts code to previous commit
-- Restarts services on last known good state
+If deployment fails, the script automatically `git reset --hard`s to the
+previous commit and restarts services. For manual rollback:
 
-Manual rollback:
 ```bash
-sudo systemctl stop homeos-pocketbase homeos-frontend
+sudo systemctl stop homeos-aepbase homeos-frontend
 
-# Restore database
-BACKUP=$(ls -t pocketbase/pb_data/backups/*.backup.* | head -1)
-cp "$BACKUP" pocketbase/pb_data/data.db
+# aepbase data lives in aepbase/data/. Back it up if concerned before
+# touching the binary:
+cp -a aepbase/data aepbase/data.backup.$(date +%Y%m%d_%H%M%S)
 
 # Rollback code
 git reset --hard HEAD~1
 
-sudo systemctl start homeos-pocketbase homeos-frontend
+# Rebuild aepbase if its Go source changed
+cd aepbase && ./install.sh && cd ..
+
+sudo systemctl start homeos-aepbase homeos-frontend
 ```
 
 ## Tailscale Access (Optional)
@@ -129,33 +154,40 @@ sudo systemctl start homeos-pocketbase homeos-frontend
 Access HomeOS from anywhere on your Tailscale network:
 
 ```bash
-# 1. Install Tailscale
 curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
-
-# 2. Get your Tailscale IP
 tailscale ip -4
 
-# 3. Update frontend/.env (optional)
-NEXT_PUBLIC_POCKETBASE_URL=http://YOUR_TAILSCALE_IP:8090
+# Then point the frontend's aepbase proxy at the Tailscale IP. Either:
+#   - set AEPBASE_URL in frontend/.env and rebuild, or
+#   - leave the proxy at localhost and rely on frontend access via
+#     http://<tailscale ip>:3000 (aepbase stays on localhost).
 
-# 4. Rebuild and restart
 ./deployment/build.sh
 sudo make restart
-
-# 5. Access from any Tailscale device
-http://YOUR_TAILSCALE_IP:3000
 ```
 
 ## Configuration
 
-### Environment Variables
+### Environment variables
 
 Edit `frontend/.env`:
 ```bash
-NEXT_PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090  # Or Tailscale URL
-NEXT_PUBLIC_APP_NAME=HomeOS
+# Proxy targets (Next.js server-side — do NOT prefix with NEXT_PUBLIC_)
+AEPBASE_URL=http://127.0.0.1:8090
+
+# VAPID keys for web push
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=YOUR_VAPID_PUBLIC_KEY_HERE
+VAPID_PUBLIC_KEY=YOUR_VAPID_PUBLIC_KEY_HERE
+VAPID_PRIVATE_KEY=YOUR_VAPID_PRIVATE_KEY_HERE
+VAPID_EMAIL=mailto:admin@example.com
+
+# Admin credentials for the notification cron (superuser only)
+AEPBASE_ADMIN_EMAIL=admin@example.com
+AEPBASE_ADMIN_PASSWORD=<superuser password>
+
+# Gemini for OCR routes (optional)
+GEMINI_API_KEY=...
 ```
 
 Generate VAPID keys:
@@ -163,35 +195,35 @@ Generate VAPID keys:
 cd frontend && npx web-push generate-vapid-keys
 ```
 
-### Service Configuration
+### Service configuration
 
 Systemd services are in `deployment/systemd/`:
-- `pocketbase.service` - PocketBase on port 8090
-- `homeos-frontend.service` - Frontend on port 3000
-- `homeos-auto-update.service` - Auto-update service
-- `homeos-auto-update.timer` - Update schedule
+- `aepbase.service` — aepbase on port 8090
+- `homeos-frontend.service` — Next.js on port 3000
+- `homeos-auto-update.service` — Auto-update service
+- `homeos-auto-update.timer` — Update schedule
 
 View logs:
 ```bash
 make logs                    # Both services
-make logs-pocketbase         # PocketBase only
+make logs-aepbase            # aepbase only
 make logs-frontend           # Frontend only
-sudo journalctl -u homeos-pocketbase -n 100  # Last 100 lines
+sudo journalctl -u homeos-aepbase -n 100
 ```
 
 ## Troubleshooting
 
 ### Services won't start
 ```bash
-make status                          # Check status
-sudo journalctl -u homeos-pocketbase -n 50
+make status
+sudo journalctl -u homeos-aepbase -n 50
 sudo journalctl -u homeos-frontend -n 50
 ```
 
 ### Port already in use
 ```bash
-sudo lsof -i :8090  # Check PocketBase port
-sudo lsof -i :3000  # Check frontend port
+sudo lsof -i :8090
+sudo lsof -i :3000
 ```
 
 ### Build fails
@@ -202,17 +234,16 @@ npm install
 npm run build
 ```
 
-### Migration fails
-Automatic rollback occurs. Check logs:
-```bash
-cat deployment.log
-sudo journalctl -u homeos-pocketbase -n 100
-```
+### Terraform apply fails
+- "cannot change type" / "changing parents is not supported": delete the
+  resource definition (DELETE /aep-resource-definitions/...) and re-apply.
+  Data is wiped — only do this in dev.
+- "401" / "forbidden": your `TF_VAR_aepbase_token` is expired. Re-log in.
 
 ### Can't access via Tailscale
 ```bash
-tailscale status          # Check Tailscale
-sudo ufw allow 3000       # Ubuntu firewall
+tailscale status
+sudo ufw allow 3000
 sudo ufw allow 8090
 ```
 
@@ -220,53 +251,48 @@ sudo ufw allow 8090
 
 ### Backup
 ```bash
-# Database backup (automatic during migrations)
+# aepbase data (SQLite + uploaded files)
 mkdir -p backups
-cp pocketbase/pb_data/data.db backups/data.db.$(date +%Y%m%d_%H%M%S)
+cp -a aepbase/data backups/aepbase-data.$(date +%Y%m%d_%H%M%S)
 
-# Environment backup
+# Environment
 cp frontend/.env backups/.env.$(date +%Y%m%d_%H%M%S)
 ```
 
 ### Restore
 ```bash
-sudo systemctl stop homeos-pocketbase
-cp backups/data.db.YYYYMMDD_HHMMSS pocketbase/pb_data/data.db
-sudo systemctl start homeos-pocketbase
+sudo systemctl stop homeos-aepbase
+rm -rf aepbase/data
+cp -a backups/aepbase-data.YYYYMMDD_HHMMSS aepbase/data
+sudo systemctl start homeos-aepbase
 ```
 
 ## Scripts Reference
 
 | Script | Description |
 |--------|-------------|
-| `install-pocketbase.sh` | Download and install PocketBase |
+| `install-aepbase.sh` | Build aepbase from Go source |
 | `build.sh` | Build frontend for production |
-| `deploy.sh` | Deploy with migrations and rollback |
+| `deploy.sh` | Deploy with rollback on failure |
 | `setup-services.sh` | Set up systemd services |
 | `setup-auto-update.sh` | Set up automatic updates |
 
 ## Security
 
-1. **Use strong passwords** for PocketBase admin and users
-2. **Regular backups** of `pocketbase/pb_data/data.db`
-3. **Keep updated**: `git pull && sudo make deploy`
-4. **Review migrations** before deploying
-5. **Use deploy keys** for auto-updates (read-only GitHub access)
-6. **Enable email verification** in PocketBase settings
+1. **Use strong passwords** for the aepbase superuser.
+2. **Regular backups** of `aepbase/data/` (SQLite DB + uploaded files).
+3. **Keep updated**: `git pull && sudo make deploy`.
+4. **Review `aepbase/terraform/` diffs** before running `terraform apply`.
+5. **Use deploy keys** for auto-updates (read-only GitHub access).
 
 ## Production Checklist
 
-- [ ] PocketBase installed and running
+- [ ] aepbase built and running
+- [ ] Terraform schema applied
 - [ ] Frontend built successfully
-- [ ] Environment variables configured (VAPID keys)
-- [ ] PocketBase admin account created
-- [ ] First user account created
+- [ ] Environment variables configured (VAPID keys, admin creds)
 - [ ] Services enabled for auto-start
 - [ ] Can access at http://localhost:3000
 - [ ] (Optional) Tailscale configured
 - [ ] (Optional) Auto-updates enabled
 - [ ] (Optional) Backup strategy configured
-
----
-
-**Need help?** Check [main README](../README.md) or [PocketBase docs](https://pocketbase.io/docs/)

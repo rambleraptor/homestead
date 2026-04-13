@@ -1,17 +1,17 @@
 /**
  * Vitest Setup File
  *
- * This file runs before all tests and sets up the testing environment
+ * Runs before all tests and sets up the testing environment.
  */
 
 import '@testing-library/jest-dom';
 import { afterEach, vi, beforeAll, afterAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
-// Mock window.matchMedia
+// matchMedia stub for jsdom
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -23,47 +23,66 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Cleanup after each test
 afterEach(() => {
   cleanup();
 });
 
-// Mock PocketBase
-vi.mock('@/core/api/pocketbase', () => ({
-  pb: {
+// Mock the aepbase client. Tests that need specific behavior can override
+// these via vi.mocked(...) on the exported names.
+vi.mock('@/core/api/aepbase', () => ({
+  aepbase: {
+    list: vi.fn(async () => []),
+    get: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    download: vi.fn(),
+    login: vi.fn(),
+    logout: vi.fn(),
+    refreshCurrentUser: vi.fn(),
+    getCurrentUser: vi.fn(() => ({
+      id: 'test-user-id',
+      email: 'test@example.com',
+      name: 'Test User',
+      username: 'test@example.com',
+      verified: true,
+      created: '2024-01-01T00:00:00Z',
+      updated: '2024-01-01T00:00:00Z',
+    })),
     authStore: {
-      isValid: true,
-      model: { id: 'test-user-id', email: 'test@example.com' },
       token: 'test-token',
+      isValid: true,
+      model: { id: 'test-user-id' },
+      save: vi.fn(),
       clear: vi.fn(),
-      onChange: vi.fn(),
+      onChange: vi.fn(() => () => undefined),
     },
-    collection: vi.fn(),
   },
-  Collections: {
+  AepCollections: {
     USERS: 'users',
-    USER_ROLES: 'user_roles',
-    MODULE_PERMISSIONS: 'module_permissions',
-    AUDIT_LOG: 'audit_log',
-    GIFT_CARDS: 'gift_cards',
-    GIFT_CARD_TRANSACTIONS: 'gift_card_transactions',
-    EVENTS: 'events',
+    USER_PREFERENCES: 'preferences',
+    GIFT_CARDS: 'gift-cards',
+    GIFT_CARD_TRANSACTIONS: 'transactions',
+    PEOPLE: 'people',
+    PERSON_SHARED_DATA: 'person-shared-data',
+    ADDRESSES: 'addresses',
     NOTIFICATIONS: 'notifications',
-    NOTIFICATION_SUBSCRIPTIONS: 'notification_subscriptions',
+    NOTIFICATION_SUBSCRIPTIONS: 'notification-subscriptions',
+    RECURRING_NOTIFICATIONS: 'recurring-notifications',
+    GROCERIES: 'groceries',
+    STORES: 'stores',
+    HSA_RECEIPTS: 'hsa-receipts',
+    CREDIT_CARDS: 'credit-cards',
+    CREDIT_CARD_PERKS: 'perks',
+    PERK_REDEMPTIONS: 'redemptions',
+    RECIPES: 'recipes',
+    RECIPE_LOGS: 'logs',
+    ACTIONS: 'actions',
+    ACTION_RUNS: 'runs',
   },
-  getCurrentUser: vi.fn(() => ({
-    id: 'test-user-id',
-    email: 'test@example.com',
-    name: 'Test User',
-  })),
-  isAuthenticated: vi.fn(() => true),
-  getAuthToken: vi.fn(() => 'test-token'),
-  clearAuth: vi.fn(),
-  onAuthChange: vi.fn(),
-  getCollection: vi.fn(),
 }));
 
-// Suppress console errors in tests (optional, can be removed if you want to see them)
+// Suppress noisy jsdom error about form submission
 const originalError = console.error;
 beforeAll(() => {
   console.error = (...args: unknown[]) => {

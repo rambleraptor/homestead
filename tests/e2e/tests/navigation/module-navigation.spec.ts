@@ -2,7 +2,7 @@
  * Navigation E2E Tests - Module Navigation
  */
 
-import { test, expect } from '../../fixtures/pocketbase.fixture';
+import { test, expect } from '../../fixtures/aepbase.fixture';
 import { DashboardPage } from '../../pages/DashboardPage';
 
 test.describe('Module Navigation', () => {

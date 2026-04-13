@@ -2,7 +2,7 @@
  * Authentication E2E Tests - Logout
  */
 
-import { test, expect } from '../../fixtures/pocketbase.fixture';
+import { test, expect } from '../../fixtures/aepbase.fixture';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { LoginPage } from '../../pages/LoginPage';
 

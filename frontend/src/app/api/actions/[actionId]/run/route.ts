@@ -1,58 +1,64 @@
 /**
- * API Route: Run Action
- *
  * POST /api/actions/[actionId]/run
- * Creates a new action_run record and triggers script execution
- *
- * Returns: { runId: string, status: string }
+ * Creates a new action_run record and triggers script execution.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPocketBase } from '@/core/api/pocketbase';
+import {
+  authenticate,
+  aepGet,
+  aepCreate,
+} from '../../../_lib/aepbase-server';
 import { executeScript } from '../../runs/utils/execute';
+
+interface ActionRecord {
+  id: string;
+  name: string;
+  script_id: string;
+  parameters?: Record<string, unknown>;
+}
+
+interface ActionRunRecord {
+  id: string;
+  status: string;
+}
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ actionId: string }> }
+  { params }: { params: Promise<{ actionId: string }> },
 ) {
   try {
-    const pb = getPocketBase(request);
+    const auth = await authenticate(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { actionId } = await params;
 
     // Verify action exists
-    const action = await pb.collection('actions').getOne(actionId);
-
-    if (!action) {
-      return NextResponse.json(
-        { error: 'Action not found' },
-        { status: 404 }
-      );
+    try {
+      await aepGet<ActionRecord>('actions', actionId, auth.token);
+    } catch {
+      return NextResponse.json({ error: 'Action not found' }, { status: 404 });
     }
 
-    // Create action_run record
-    const run = await pb.collection('action_runs').create({
-      action: actionId,
-      status: 'pending',
-      logs: [],
-    });
+    const run = await aepCreate<ActionRunRecord>(
+      'runs',
+      { status: 'pending', logs: [] },
+      auth.token,
+      ['actions', actionId],
+    );
 
-    // Trigger execution asynchronously (non-blocking, runs in background)
-    const pocketbaseUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
-    const pocketbaseToken = pb.authStore.token;
-    executeScript(run.id, pocketbaseUrl, pocketbaseToken).catch(err => {
+    // Fire and forget.
+    executeScript(run.id, actionId, auth.token).catch((err) => {
       console.error('Script execution error:', err);
     });
 
-    return NextResponse.json({
-      runId: run.id,
-      status: run.status,
-    });
-
+    return NextResponse.json({ runId: run.id, status: run.status });
   } catch (error) {
     console.error('Error creating action run:', error);
     return NextResponse.json(
       { error: 'Failed to create action run' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

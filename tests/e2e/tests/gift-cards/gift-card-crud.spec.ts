@@ -2,19 +2,24 @@
  * Gift Cards E2E Tests - CRUD Operations
  */
 
-import { test, expect } from '../../fixtures/pocketbase.fixture';
+import { test, expect } from '../../fixtures/aepbase.fixture';
 import { GiftCardsPage } from '../../pages/GiftCardsPage';
 import { testGiftCards } from '../../fixtures/test-data';
-import { createGiftCard, createMultipleGiftCards, deleteAllGiftCards } from '../../utils/pocketbase-helpers';
+import {
+  createGiftCard,
+  createMultipleGiftCards,
+  deleteAllGiftCards,
+  aepGet,
+} from '../../utils/aepbase-helpers';
 
 test.describe('Gift Cards CRUD', () => {
   let giftCardsPage: GiftCardsPage;
 
-  test.beforeEach(async ({ authenticatedPage, userPocketbase }) => {
+  test.beforeEach(async ({ authenticatedPage, userToken }) => {
     giftCardsPage = new GiftCardsPage(authenticatedPage);
 
     // Clean up any existing gift cards for this test user
-    await deleteAllGiftCards(userPocketbase);
+    await deleteAllGiftCards(userToken);
 
     await giftCardsPage.goto();
   });
@@ -39,10 +44,10 @@ test.describe('Gift Cards CRUD', () => {
     }
   });
 
-  test('should edit existing gift card', async ({ page, userPocketbase }) => {
+  test('should edit existing gift card', async ({ page, userToken }) => {
     // Create a gift card via API for faster setup
     const originalCard = testGiftCards[0];
-    const createdCard = await createGiftCard(userPocketbase, originalCard);
+    const createdCard = await createGiftCard(userToken, originalCard);
 
     // Navigate to gift cards page
     await giftCardsPage.goto();
@@ -59,16 +64,16 @@ test.describe('Gift Cards CRUD', () => {
     );
 
     // Verify the card was updated in the database
-    const updatedCard = await userPocketbase.collection('gift_cards').getOne(createdCard.id);
+    const updatedCard = await aepGet<{ amount: number }>(userToken, 'gift-cards', createdCard.id);
     expect(updatedCard.amount).toBe(newAmount);
 
     // Verify the updated amount appears in the UI
     await giftCardsPage.expectGiftCardInList(originalCard.merchant, newAmount);
   });
 
-  test('should delete a gift card', async ({ userPocketbase }) => {
+  test('should delete a gift card', async ({ userToken }) => {
     // Create a gift card via API
-    await createGiftCard(userPocketbase, testGiftCards[0]);
+    await createGiftCard(userToken, testGiftCards[0]);
 
     await giftCardsPage.goto();
 
@@ -82,10 +87,10 @@ test.describe('Gift Cards CRUD', () => {
     await giftCardsPage.expectGiftCardNotInList(testGiftCards[0].merchant);
   });
 
-  test('should display multiple cards from same merchant', async ({ userPocketbase }) => {
+  test('should display multiple cards from same merchant', async ({ userToken }) => {
     // Create multiple cards for Amazon
     const amazonCards = testGiftCards.filter(card => card.merchant === 'Amazon');
-    await createMultipleGiftCards(userPocketbase, amazonCards);
+    await createMultipleGiftCards(userToken, amazonCards);
 
     await giftCardsPage.goto();
 

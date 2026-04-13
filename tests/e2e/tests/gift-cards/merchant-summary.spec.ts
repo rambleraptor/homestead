@@ -2,23 +2,23 @@
  * Gift Cards E2E Tests - Merchant Summaries
  */
 
-import { test, expect } from '../../fixtures/pocketbase.fixture';
+import { test, expect } from '../../fixtures/aepbase.fixture';
 import { GiftCardsPage } from '../../pages/GiftCardsPage';
-import { createMultipleGiftCards, deleteAllGiftCards } from '../../utils/pocketbase-helpers';
+import { createMultipleGiftCards, deleteAllGiftCards } from '../../utils/aepbase-helpers';
 
 test.describe('Merchant Summaries', () => {
   let giftCardsPage: GiftCardsPage;
 
-  test.beforeEach(async ({ authenticatedPage, userPocketbase }) => {
+  test.beforeEach(async ({ authenticatedPage, userToken }) => {
     giftCardsPage = new GiftCardsPage(authenticatedPage);
 
     // Clean up any existing gift cards
-    await deleteAllGiftCards(userPocketbase);
+    await deleteAllGiftCards(userToken);
 
     await giftCardsPage.goto();
   });
 
-  test('should calculate merchant summary correctly for multiple cards', async ({ userPocketbase }) => {
+  test('should calculate merchant summary correctly for multiple cards', async ({ userToken }) => {
     // Create multiple cards for same merchant
     const amazonCards = [
       { merchant: 'Amazon', amount: 50 },
@@ -26,7 +26,7 @@ test.describe('Merchant Summaries', () => {
       { merchant: 'Amazon', amount: 20 },
     ];
 
-    await createMultipleGiftCards(userPocketbase, amazonCards);
+    await createMultipleGiftCards(userToken, amazonCards);
 
     await giftCardsPage.goto();
 
@@ -37,7 +37,7 @@ test.describe('Merchant Summaries', () => {
     await giftCardsPage.expectGiftCardInList('Amazon');
   });
 
-  test('should show separate summaries for different merchants', async ({ userPocketbase }) => {
+  test('should show separate summaries for different merchants', async ({ userToken }) => {
     const cards = [
       { merchant: 'Amazon', amount: 50 },
       { merchant: 'Amazon', amount: 30 },
@@ -45,7 +45,7 @@ test.describe('Merchant Summaries', () => {
       { merchant: 'Target', amount: 100 },
     ];
 
-    await createMultipleGiftCards(userPocketbase, cards);
+    await createMultipleGiftCards(userToken, cards);
 
     await giftCardsPage.goto();
 

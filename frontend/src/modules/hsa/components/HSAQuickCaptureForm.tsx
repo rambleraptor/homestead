@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Upload, X, Sparkles, Loader2 } from 'lucide-react';
-import { getAuthToken } from '@/core/api/pocketbase';
+import { aepbase } from '@/core/api/aepbase';
 import type { HSAReceiptFormData, ReceiptCategory } from '../types';
 
 /**
@@ -137,12 +137,14 @@ export function HSAQuickCaptureForm({
       }
 
       // Call API to parse receipt
-      const token = getAuthToken();
+      const token = aepbase.authStore.token;
+      const userId = aepbase.getCurrentUser()?.id || '';
       const response = await fetch('/api/hsa/parse-receipt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
+          'X-User-Id': userId,
         },
         body: JSON.stringify({
           image: base64Data,

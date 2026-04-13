@@ -4,19 +4,36 @@
  * Tests for the bulk CSV import functionality for people
  */
 
-import { test, expect } from '../../fixtures/pocketbase.fixture';
+import { test, expect } from '../../fixtures/aepbase.fixture';
 import { PeoplePage } from '../../pages/PeoplePage';
 import { testBulkImportCSV } from '../../fixtures/test-data';
-import { deleteAllPeople, getPersonSharedData } from '../../utils/pocketbase-helpers';
+import {
+  aepGet,
+  aepList,
+  deleteAllPeople,
+  getPersonSharedData,
+} from '../../utils/aepbase-helpers';
+
+interface PersonRow {
+  id: string;
+  name: string;
+}
+
+interface AddressRow {
+  id: string;
+  line1: string;
+  wifi_network?: string;
+  wifi_password?: string;
+}
 
 test.describe('People Bulk Import', () => {
     let peoplePage: PeoplePage;
 
-    test.beforeEach(async ({ authenticatedPage, userPocketbase }) => {
+    test.beforeEach(async ({ authenticatedPage, userToken }) => {
         peoplePage = new PeoplePage(authenticatedPage);
 
         // Clean up any existing people
-        await deleteAllPeople(userPocketbase);
+        await deleteAllPeople(userToken);
     });
 
     test('should import people with basic data (name only)', async ({ authenticatedPage }) => {
@@ -46,7 +63,7 @@ test.describe('People Bulk Import', () => {
         await peoplePage.expectPersonInList('Carol Davis');
     });
 
-    test('should import people with full data', async ({ authenticatedPage, userPocketbase }) => {
+    test('should import people with full data', async ({ authenticatedPage, userToken }) => {
         await peoplePage.gotoBulkImport();
 
         // Upload CSV with full data
@@ -67,22 +84,22 @@ test.describe('People Bulk Import', () => {
         await peoplePage.expectPersonInList('Jane Smith');
 
         // Verify address was imported via API
-        const people = await userPocketbase.collection('people').getFullList();
-        const john = people.find(p => p.name === 'John Smith');
+        const people = await aepList<PersonRow>(userToken, 'people');
+        const john = people.find((p) => p.name === 'John Smith');
         expect(john).toBeDefined();
 
-        const sharedData = await getPersonSharedData(userPocketbase, john!.id);
+        const sharedData = await getPersonSharedData(userToken, john!.id);
         expect(sharedData).toBeDefined();
         expect(sharedData?.address_id).toBeDefined();
 
         if (sharedData?.address_id) {
-            const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id);
+            const address = await aepGet<AddressRow>(userToken, 'addresses', sharedData.address_id);
             expect(address.line1).toContain('123 Main St');
             expect(address.wifi_network).toBe('HomeNetwork');
         }
     });
 
-    test('should import people with partner relationships', async ({ authenticatedPage, userPocketbase }) => {
+    test('should import people with partner relationships', async ({ authenticatedPage, userToken }) => {
         await peoplePage.gotoBulkImport();
 
         // Upload CSV with partner data
@@ -103,23 +120,23 @@ test.describe('People Bulk Import', () => {
         await peoplePage.expectPersonInList('Sarah Brown');
 
         // Verify partner relationship via API
-        const people = await userPocketbase.collection('people').getFullList();
-        const mike = people.find(p => p.name === 'Mike Brown');
-        const sarah = people.find(p => p.name === 'Sarah Brown');
+        const people = await aepList<PersonRow>(userToken, 'people');
+        const mike = people.find((p) => p.name === 'Mike Brown');
+        const sarah = people.find((p) => p.name === 'Sarah Brown');
 
         expect(mike).toBeDefined();
         expect(sarah).toBeDefined();
 
         // Check that they share the same shared_data record
-        const mikeSharedData = await getPersonSharedData(userPocketbase, mike!.id);
-        const sarahSharedData = await getPersonSharedData(userPocketbase, sarah!.id);
+        const mikeSharedData = await getPersonSharedData(userToken, mike!.id);
+        const sarahSharedData = await getPersonSharedData(userToken, sarah!.id);
 
         expect(mikeSharedData).toBeDefined();
         expect(sarahSharedData).toBeDefined();
         expect(mikeSharedData?.id).toBe(sarahSharedData?.id);
     });
 
-    test('should import people with WiFi information', async ({ authenticatedPage, userPocketbase }) => {
+    test('should import people with WiFi information', async ({ authenticatedPage, userToken }) => {
         await peoplePage.gotoBulkImport();
 
         // Upload CSV with WiFi data
@@ -136,14 +153,14 @@ test.describe('People Bulk Import', () => {
         await authenticatedPage.waitForURL(/\/people$/);
 
         // Verify WiFi data via API
-        const people = await userPocketbase.collection('people').getFullList();
-        const david = people.find(p => p.name === 'David Lee');
+        const people = await aepList<PersonRow>(userToken, 'people');
+        const david = people.find((p) => p.name === 'David Lee');
 
-        const sharedData = await getPersonSharedData(userPocketbase, david!.id);
+        const sharedData = await getPersonSharedData(userToken, david!.id);
         expect(sharedData?.address_id).toBeDefined();
 
         if (sharedData?.address_id) {
-            const address = await userPocketbase.collection('addresses').getOne(sharedData.address_id);
+            const address = await aepGet<AddressRow>(userToken, 'addresses', sharedData.address_id);
             expect(address.wifi_network).toBe('OfficeWiFi');
             expect(address.wifi_password).toBe('secure123');
         }

@@ -1,21 +1,11 @@
 /**
  * Notification Sync Utility for People Module
  *
- * Handles syncing recurring notifications when people are created/updated.
- * Branches on the `notifications` flag (not `people`) because the writes
- * land in the notifications collection.
- *
- * In aepbase, recurring-notifications is a child of users, so the URL is
- * `/users/{user_id}/recurring-notifications`. The user id comes from
- * `aepbase.getCurrentUser()` in aepbase mode.
- *
- * Templates store placeholders ({{name}}, {{date}}) that are resolved at
- * send-time from the source record so name changes flow through.
+ * Syncs recurring notifications when people are created/updated. Templates
+ * store placeholders ({{name}}, {{date}}) that are resolved at send-time.
  */
 
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { getCollection, pb, Collections } from '@/core/api/pocketbase';
-import { isAepbaseEnabled } from '@/core/api/backend';
 import type { NotificationPreference } from '../types';
 import type {
   RecurringNotification,
@@ -32,18 +22,10 @@ const ANNIVERSARY_TEMPLATES = {
   message: "{{name}}'s anniversary is coming up on {{date}}!",
 };
 
-function escapeFilterValue(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
 interface AepRecurringNotification extends RecurringNotification {
   path: string;
   create_time: string;
   update_time: string;
-}
-
-function aepUserId(): string | null {
-  return aepbase.getCurrentUser()?.id || null;
 }
 
 async function listRecurringForPerson(
@@ -51,67 +33,34 @@ async function listRecurringForPerson(
   personId: string,
   dateField?: 'birthday' | 'anniversary',
 ): Promise<RecurringNotification[]> {
-  if (isAepbaseEnabled('notifications')) {
-    const all = await aepbase.list<AepRecurringNotification>(
-      AepCollections.RECURRING_NOTIFICATIONS,
-      { parent: [AepCollections.USERS, userId] },
-    );
-    return all.filter(
-      (n) =>
-        n.source_collection === 'people' &&
-        n.source_id === personId &&
-        (dateField ? n.reference_date_field === dateField : true),
-    );
-  }
-
-  const escapedUserId = escapeFilterValue(userId);
-  const escapedPersonId = escapeFilterValue(personId);
-  const filterParts = [
-    `user_id="${escapedUserId}"`,
-    `source_collection="people"`,
-    `source_id="${escapedPersonId}"`,
-  ];
-  if (dateField) filterParts.push(`reference_date_field="${dateField}"`);
-  return await getCollection<RecurringNotification>(
-    Collections.RECURRING_NOTIFICATIONS,
-  ).getFullList({ filter: filterParts.join(' && ') });
+  const all = await aepbase.list<AepRecurringNotification>(
+    AepCollections.RECURRING_NOTIFICATIONS,
+    { parent: [AepCollections.USERS, userId] },
+  );
+  return all.filter(
+    (n) =>
+      n.source_collection === 'people' &&
+      n.source_id === personId &&
+      (dateField ? n.reference_date_field === dateField : true),
+  );
 }
 
 async function createRecurringNotification(
   userId: string,
   body: Omit<RecurringNotification, 'id' | 'created' | 'updated'>,
 ): Promise<void> {
-  if (isAepbaseEnabled('notifications')) {
-    await aepbase.create(AepCollections.RECURRING_NOTIFICATIONS, body, {
-      parent: [AepCollections.USERS, userId],
-    });
-    return;
-  }
-  await getCollection<RecurringNotification>(
-    Collections.RECURRING_NOTIFICATIONS,
-  ).create(body);
+  await aepbase.create(AepCollections.RECURRING_NOTIFICATIONS, body, {
+    parent: [AepCollections.USERS, userId],
+  });
 }
 
 async function deleteRecurringNotification(
   userId: string,
   id: string,
 ): Promise<void> {
-  if (isAepbaseEnabled('notifications')) {
-    await aepbase.remove(AepCollections.RECURRING_NOTIFICATIONS, id, {
-      parent: [AepCollections.USERS, userId],
-    });
-    return;
-  }
-  await getCollection<RecurringNotification>(
-    Collections.RECURRING_NOTIFICATIONS,
-  ).delete(id);
-}
-
-function currentUserId(): string | null {
-  if (isAepbaseEnabled('notifications')) {
-    return aepUserId();
-  }
-  return pb.authStore.record?.id || null;
+  await aepbase.remove(AepCollections.RECURRING_NOTIFICATIONS, id, {
+    parent: [AepCollections.USERS, userId],
+  });
 }
 
 export async function syncRecurringNotificationsForPerson(
@@ -121,10 +70,8 @@ export async function syncRecurringNotificationsForPerson(
   anniversary: string | undefined,
   preferences: NotificationPreference[],
 ): Promise<void> {
-  const userId = currentUserId();
-  if (!userId) {
-    throw new Error('User not authenticated');
-  }
+  const userId = aepbase.getCurrentUser()?.id;
+  if (!userId) throw new Error('User not authenticated');
 
   const desiredTimings = preferences as NotificationTiming[];
 
@@ -161,16 +108,13 @@ async function syncNotificationsForDateField(
 
   if (!dateValue) {
     await Promise.all(
-      existing.map((notification) =>
-        deleteRecurringNotification(userId, notification.id),
-      ),
+      existing.map((notification) => deleteRecurringNotification(userId, notification.id)),
     );
     return;
   }
 
   const toCreate: NotificationTiming[] = [];
   const toDelete: RecurringNotification[] = [];
-
   for (const timing of desiredTimings) {
     if (!existingTimings.has(timing)) toCreate.push(timing);
   }
@@ -201,9 +145,8 @@ async function syncNotificationsForDateField(
 export async function deleteRecurringNotificationsForPerson(
   personId: string,
 ): Promise<void> {
-  const userId = currentUserId();
+  const userId = aepbase.getCurrentUser()?.id;
   if (!userId) return;
-
   const notifications = await listRecurringForPerson(userId, personId);
   await Promise.all(
     notifications.map((notification) =>
@@ -215,9 +158,8 @@ export async function deleteRecurringNotificationsForPerson(
 export async function getNotificationTimingsForPerson(
   personId: string,
 ): Promise<{ birthday: NotificationTiming[]; anniversary: NotificationTiming[] }> {
-  const userId = currentUserId();
+  const userId = aepbase.getCurrentUser()?.id;
   if (!userId) return { birthday: [], anniversary: [] };
-
   const notifications = await listRecurringForPerson(userId, personId);
   const result = {
     birthday: [] as NotificationTiming[],

@@ -1,16 +1,12 @@
 /**
- * Notification stats + shared fetcher — branches on the `notifications` flag.
+ * Notification stats + shared fetcher.
  *
- * In aepbase, notifications are children of users (`/users/{id}/notifications`)
- * so we no longer filter by `user_id`; the URL implies the scope. The shared
- * `fetchNotifications()` helper is called by both `useNotifications` and
- * `useNotificationStats` so they stay in sync.
+ * Notifications are children of users in aepbase
+ * (`/users/{id}/notifications`), so the URL implies the user scope.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { getCollection, pb, Collections } from '@/core/api/pocketbase';
-import { isAepbaseEnabled } from '@/core/api/backend';
 import { queryKeys } from '@/core/api/queryClient';
 import type { Notification, NotificationStats } from '../types';
 
@@ -20,38 +16,28 @@ interface AepNotification extends Notification {
   update_time: string;
 }
 
-function normalize(rec: AepNotification | Notification): Notification {
-  const ae = rec as AepNotification;
+function normalize(rec: AepNotification): Notification {
   return {
     ...rec,
-    created: ae.create_time || rec.created || '',
-    updated: ae.update_time || rec.updated || '',
+    created: rec.create_time || '',
+    updated: rec.update_time || '',
   };
 }
 
 export async function fetchNotifications(): Promise<Notification[]> {
-  if (isAepbaseEnabled('notifications')) {
-    const userId = aepbase.getCurrentUser()?.id;
-    if (!userId) return [];
-    const list = await aepbase.list<AepNotification>(AepCollections.NOTIFICATIONS, {
-      parent: [AepCollections.USERS, userId],
-    });
-    return list
-      .map(normalize)
-      .sort((a, b) => (b.created || '').localeCompare(a.created || ''));
-  }
-
-  const userId = pb.authStore.record?.id;
+  const userId = aepbase.getCurrentUser()?.id;
   if (!userId) return [];
-  return await getCollection<Notification>(Collections.NOTIFICATIONS).getFullList({
-    sort: '-created',
-    filter: `user_id="${userId}"`,
+  const list = await aepbase.list<AepNotification>(AepCollections.NOTIFICATIONS, {
+    parent: [AepCollections.USERS, userId],
   });
+  return list
+    .map(normalize)
+    .sort((a, b) => (b.created || '').localeCompare(a.created || ''));
 }
 
 export function useNotificationStats() {
   return useQuery({
-    queryKey: queryKeys.module(Collections.NOTIFICATIONS).list(),
+    queryKey: queryKeys.module('notifications').list(),
     queryFn: fetchNotifications,
     select: (notifications): NotificationStats => ({
       total: notifications.length,

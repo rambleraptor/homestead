@@ -1,5 +1,12 @@
+/**
+ * Bulk import people from a parsed CSV.
+ *
+ * Creates each person, attaches address/anniversary via shared_data, and
+ * in a second pass resolves partner-by-name references.
+ */
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCollection, getCurrentUser, Collections } from '@/core/api/pocketbase';
+import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
 import type { PersonCSVData, NotificationPreference } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
@@ -10,10 +17,10 @@ interface PersonRecord {
   id: string;
   name: string;
   birthday?: string;
-  notification_preferences: NotificationPreference[];
-  created_by: string;
-  created: string;
-  updated: string;
+  notification_preferences?: NotificationPreference[];
+  created_by?: string;
+  create_time?: string;
+  update_time?: string;
 }
 
 interface CreatedPersonInfo {
@@ -21,51 +28,48 @@ interface CreatedPersonInfo {
   partnerName?: string;
 }
 
-/**
- * Custom bulk import hook for people that handles:
- * - Creating person records
- * - Creating shared_data with address and anniversary
- * - Establishing partner relationships by name matching
- */
 export function useBulkImportPeople() {
   const queryClient = useQueryClient();
-  const currentUser = getCurrentUser();
 
   return useMutation({
     mutationFn: async (items: ParsedItem<PersonCSVData>[]): Promise<BulkImportResult> => {
+      const userId = aepbase.getCurrentUser()?.id;
+      const createdBy = userId ? `users/${userId}` : undefined;
+
       const results: BulkImportResult = {
         successful: 0,
         failed: 0,
         errors: [],
       };
 
-      // Filter to only valid items
-      const validItems = items.filter(item => item.isValid);
-
-      // First pass: Create all people and their shared data (without partner relationships)
+      const validItems = items.filter((item) => item.isValid);
       const createdPeople: CreatedPersonInfo[] = [];
 
+      // Pass 1: create people + shared data (no partners yet).
       for (const item of validItems) {
         const personData = item.data;
-
         try {
-          // Create person record (without address/anniversary - those go in shared_data)
-          const personRecord = await getCollection<PersonRecord>(Collections.PEOPLE).create({
-            name: personData.name,
-            birthday: personData.birthday,
-            notification_preferences: personData.notification_preferences ?? ['day_of'],
-            created_by: currentUser?.id,
-          });
+          const personRecord = await aepbase.create<PersonRecord>(
+            AepCollections.PEOPLE,
+            {
+              name: personData.name,
+              birthday: personData.birthday,
+              notification_preferences: personData.notification_preferences ?? ['day_of'],
+              created_by: createdBy,
+            },
+          );
 
-          // Build address data from flat fields
           const hasAddressData = personData.address || personData.wifi_network;
-          const addresses = hasAddressData ? [{
-            line1: personData.address || '',
-            wifi_network: personData.wifi_network,
-            wifi_password: personData.wifi_password,
-          }] : [];
+          const addresses = hasAddressData
+            ? [
+                {
+                  line1: personData.address || '',
+                  wifi_network: personData.wifi_network,
+                  wifi_password: personData.wifi_password,
+                },
+              ]
+            : [];
 
-          // Create shared data if address or anniversary provided (without partner for now)
           if (addresses.length > 0 || personData.anniversary) {
             await createSharedData({
               personId: personRecord.id,
@@ -78,31 +82,23 @@ export function useBulkImportPeople() {
             record: personRecord,
             partnerName: personData.partner_name,
           });
-
           results.successful++;
         } catch (error) {
           results.failed++;
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          results.errors.push({
-            rowNumber: item.rowNumber,
-            error: errorMessage,
-          });
+          results.errors.push({ rowNumber: item.rowNumber, error: errorMessage });
         }
       }
 
-      // Second pass: Resolve partner relationships by name
-      // Build a map of name -> person ID for quick lookups
+      // Pass 2: resolve partner relationships by name.
       const nameToIdMap = new Map<string, string>();
       for (const { record } of createdPeople) {
-        // Use lowercase for case-insensitive matching
         nameToIdMap.set(record.name.toLowerCase(), record.id);
       }
 
-      // Also fetch existing people from the database for matching
       try {
-        const existingPeople = await getCollection<PersonRecord>(Collections.PEOPLE).getFullList();
+        const existingPeople = await aepbase.list<PersonRecord>(AepCollections.PEOPLE);
         for (const person of existingPeople) {
-          // Only add if not already in the map (newly created people take precedence)
           if (!nameToIdMap.has(person.name.toLowerCase())) {
             nameToIdMap.set(person.name.toLowerCase(), person.id);
           }
@@ -111,21 +107,17 @@ export function useBulkImportPeople() {
         logger.warn('Failed to fetch existing people for partner matching', { error });
       }
 
-      // Now resolve partner relationships
-      const processedPartners = new Set<string>(); // Track to avoid duplicate processing
+      const processedPartners = new Set<string>();
       for (const { record, partnerName } of createdPeople) {
         if (!partnerName) continue;
-
-        const partnerKey = [record.name.toLowerCase(), partnerName.toLowerCase()].sort().join('|');
-        if (processedPartners.has(partnerKey)) {
-          // Already processed this pair from the other side
-          continue;
-        }
+        const partnerKey = [record.name.toLowerCase(), partnerName.toLowerCase()]
+          .sort()
+          .join('|');
+        if (processedPartners.has(partnerKey)) continue;
 
         const partnerId = nameToIdMap.get(partnerName.toLowerCase());
         if (partnerId) {
           try {
-            // Use setPartner to establish the relationship
             await setPartner(record.id, partnerId);
             processedPartners.add(partnerKey);
             logger.info('Partner relationship established', {
@@ -138,27 +130,19 @@ export function useBulkImportPeople() {
               partner: partnerName,
               error,
             });
-            // Continue with import even if partner linking fails
           }
         } else {
-          logger.warn('Partner not found', {
-            person: record.name,
-            partnerName,
-          });
-          // Continue with import - partner just won't be linked
+          logger.warn('Partner not found', { person: record.name, partnerName });
         }
       }
 
       if (results.failed > 0) {
         logger.error('Bulk import errors', { errors: results.errors });
       }
-
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('people').list(),
-      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.module('people').list() });
     },
   });
 }

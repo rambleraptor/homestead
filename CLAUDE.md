@@ -1,6 +1,9 @@
 # Claude AI Assistant Guidelines for HomeOS
 
-This document provides guidelines for Claude AI assistants working on the HomeOS project, as well as general development practices for all contributors.
+This document gives both Claude and human contributors the ground rules for
+working on the HomeOS repo. The backend is **aepbase** (an AEP-compliant
+dynamic REST server). The frontend is a Next.js app that talks to aepbase
+through a same-origin `/api/aep` proxy.
 
 ## Table of Contents
 
@@ -9,7 +12,8 @@ This document provides guidelines for Claude AI assistants working on the HomeOS
 - [Testing Guidelines](#testing-guidelines)
 - [Code Quality Standards](#code-quality-standards)
 - [Project Structure](#project-structure)
-- [aepbase Backend (migration in progress)](#aepbase-backend-migration-in-progress)
+- [aepbase schema (Terraform)](#aepbase-schema-terraform)
+- [Data Migration from PocketBase](#data-migration-from-pocketbase)
 
 ## Pull Request Requirements
 
@@ -17,801 +21,290 @@ This document provides guidelines for Claude AI assistants working on the HomeOS
 
 ### 1. Build ✅
 
-The application must build successfully without errors.
-
 ```bash
-# From project root
 make build
-
-# Or from frontend directory
-cd frontend && npm run build
+# or: cd frontend && npm run build
 ```
-
-**Why:** Ensures that the code compiles correctly and there are no build-time errors that would prevent deployment.
 
 ### 2. Lint ✅
 
-Code must pass ESLint checks with no errors.
-
 ```bash
-# From project root
 make lint
-
-# Or from frontend directory
-cd frontend && npm run lint
+# or: cd frontend && npm run lint
 ```
-
-**Why:** Maintains code consistency, catches common errors, and enforces coding standards across the project.
 
 ### 3. Type Check ✅
 
-TypeScript must compile without type errors.
-
 ```bash
-# From project root
 make type-check
-
-# Or from frontend directory
-cd frontend && npm run type-check
+# or: cd frontend && npm run type-check
 ```
-
-**Why:** Catches type-related bugs early and ensures type safety throughout the codebase.
 
 ### 4. Tests ✅
 
-All tests must pass.
-
 ```bash
-# From project root
-make test
-
-# Or from frontend directory
-cd frontend && npm run test
+make test                  # Vitest (frontend unit/integration tests)
+make test-e2e              # Playwright end-to-end tests
 ```
-
-**Why:** Validates that new changes don't break existing functionality and that new features work as expected.
 
 ## Development Workflow
 
-### Complete Pre-Push Checklist
+### Full local stack
 
-Before pushing any PR, run the CI command which combines all essential checks:
+You need two processes running to develop against the real backend:
 
 ```bash
-# From project root - runs lint, type-check, build, and tests
+# Terminal 1 — aepbase
+cd aepbase
+./install.sh               # first time only
+./run.sh
+
+# Terminal 2 — Next.js frontend
+cd frontend
+npm run dev
+```
+
+On aepbase's first start, the superuser's email + password are printed to
+stdout. Save them; you'll need them to log in to the app and for
+`terraform apply`.
+
+### Pre-push checklist
+
+```bash
 make ci && make test
 ```
 
-This single command ensures your code meets all quality standards.
+This runs lint, type-check, build, and unit tests. Run `make test-e2e`
+separately when you've changed anything data-adjacent.
 
-### Recommended Development Process
+### Recommended process
 
-1. **Create a feature branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **Make your changes**
-   - Write clean, modular code
-   - Follow the existing architecture patterns
-   - Add tests for new functionality
-
-3. **Test locally**
-   ```bash
-   make ci && make test-all
-   ```
-
-4. **Commit with clear messages**
-   ```bash
-   git commit -m "Add feature: brief description"
-   ```
-
-5. **Push and create PR**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
+1. Create a feature branch
+2. Make your changes; follow the existing module architecture
+3. Run the full gate: `make ci && make test && make test-e2e`
+4. Commit with a clear message and push
 
 ## Testing Guidelines
 
-### Frontend Tests
+### Frontend unit/integration tests
 
-HomeOS uses Vitest for testing. Tests should cover:
+Vitest + Testing Library. Tests live next to the code they cover, under
+`__tests__/` directories. `src/test/setup.ts` mocks the aepbase client
+globally — individual tests can override behavior via `vi.mocked(...)`.
 
-- **Component behavior** - User interactions and rendering
-- **Hooks** - Custom hook logic and state management
-- **API integration** - PocketBase queries and mutations
-- **Business logic** - Utilities and helper functions
+### End-to-end (E2E) tests
 
-```typescript
-// Example test structure
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-
-describe('ComponentName', () => {
-  it('should render correctly', () => {
-    render(<ComponentName />);
-    expect(screen.getByText('Expected Text')).toBeInTheDocument();
-  });
-});
-```
-
-### Migration Tests
-
-Located in `tests/migrations/`, these tests:
-
-- Download and run PocketBase 0.34.2
-- Apply all migrations from `pb_migrations/`
-- Verify PocketBase doesn't crash
-- Check that collections are created with correct schema
-
-See `tests/migrations/README.md` for more details.
-
-### End-to-End (E2E) Tests
-
-Located in `tests/e2e/`, these tests verify the full integration of HomeOS:
-
-- **Real browser testing** - Uses Playwright to test in actual browsers
-- **PocketBase integration** - Tests against real PocketBase instance
-- **Complete user flows** - Authentication, CRUD operations, navigation
-- **Comprehensive coverage** - Gift cards, events, settings, and more
+Playwright against a real aepbase instance. Located in `tests/e2e/`.
 
 ```bash
-# Run e2e tests
-make test-e2e
-
-# Run in UI mode (interactive debugging)
-make test-e2e-ui
-
-# Run specific test suite
-cd tests/e2e && npm run test:auth
-cd tests/e2e && npm run test:gift-cards
+make test-e2e               # headless run
+make test-e2e-ui            # interactive UI mode
 ```
 
-**What's tested:**
-- Authentication (login, logout, session persistence)
-- Gift Cards (create, read, update, delete, merchant summaries)
-- Events (CRUD, recurring events, date handling)
-- Settings (password changes, validation)
-- Navigation (routing, 404 handling, module switching)
-
-See `tests/e2e/README.md` for detailed documentation.
-
-#### E2E Testing Best Practices
-
-**CRITICAL: Follow these guidelines when writing or maintaining e2e tests to ensure reliability and maintainability.**
-
-##### 1. Test Isolation
-
-**Each test MUST be completely isolated from other tests:**
-
-```typescript
-test.beforeEach(async ({ authenticatedPage, userPocketbase }) => {
-  // Clean up data for THIS test user before each test
-  await deleteAllGiftCards(userPocketbase);
-  await deleteAllEvents(userPocketbase);
-
-  // Navigate to the page under test
-  await myPage.goto();
-});
-```
-
-**Why:** Isolation ensures tests can run in any order and don't affect each other.
-
-**Each test gets:**
-- A unique test user (created and deleted automatically via `testUser` fixture)
-- An authenticated browser page (`authenticatedPage` fixture)
-- A PocketBase client authenticated as that user (`userPocketbase` fixture)
-
-**DON'T:**
-- ❌ Manually clean up data for other users or merchants
-- ❌ Rely on data from previous tests
-- ❌ Share state between tests
-
-**DO:**
-- ✅ Use `beforeEach` to clean up the current test user's data
-- ✅ Create test data via API in `beforeEach` or test setup
-- ✅ Trust that each test user is isolated
-
-##### 2. Waiting Strategies
-
-**NEVER use hardcoded timeouts:**
-
-```typescript
-// ❌ BAD - Hardcoded timeout
-await page.waitForTimeout(500);
-await page.waitForTimeout(1000);
-
-// ✅ GOOD - Wait for specific conditions
-await submitButton.waitFor({ state: 'visible' });
-await submitButton.click();
-await submitButton.waitFor({ state: 'hidden' });
-
-// ✅ GOOD - Wait for network to settle
-await page.waitForLoadState('networkidle');
-
-// ✅ GOOD - Playwright's auto-waiting
-await expect(page.getByText('Success')).toBeVisible();
-```
-
-**Why:** Hardcoded timeouts are brittle, slow tests down, and can cause flakiness.
-
-**Best practices:**
-- Use Playwright's built-in auto-waiting for actions (click, fill, etc.)
-- Use `waitFor({ state })` for explicit waits
-- Use `waitForLoadState('networkidle')` after mutations
-- Use `expect().toBeVisible()` for assertions (has built-in retry)
-
-##### 3. Selectors
-
-**Use selectors in this priority order:**
-
-1. **`data-testid` attributes** (most stable):
-   ```typescript
-   // ✅ BEST - Dedicated test ID
-   await page.getByTestId('add-gift-card-button').click();
-   await page.getByTestId('gift-card-form-submit').click();
-   ```
-
-2. **Role-based selectors** (semantic):
-   ```typescript
-   // ✅ GOOD - Semantic and accessible
-   await page.getByRole('button', { name: /add gift card/i }).click();
-   await page.getByRole('heading', { name: 'Dashboard' }).isVisible();
-   ```
-
-3. **Label-based selectors** (for form fields):
-   ```typescript
-   // ✅ GOOD - Matches how users interact
-   await page.getByLabel(/email/i).fill('user@example.com');
-   await page.getByLabel(/password/i).fill('password123');
-   ```
-
-4. **Text content** (for verification):
-   ```typescript
-   // ✅ OK - For checking displayed content
-   await expect(page.getByText('Success!')).toBeVisible();
-   ```
-
-**AVOID:**
-- ❌ CSS class selectors (`.bg-white.rounded-lg.border`)
-- ❌ Complex DOM traversal (`locator('..')`)
-- ❌ Positional selectors that break when layout changes
-
-**Adding test IDs to components:**
-
-```tsx
-// Add to critical UI elements
-<button data-testid="add-item-button" onClick={handleAdd}>
-  Add Item
-</button>
-
-<form data-testid="item-form">
-  <button type="submit" data-testid="item-form-submit">
-    Submit
-  </button>
-</form>
-```
-
-##### 4. Page Object Model (POM)
-
-**All e2e tests MUST use Page Object Models:**
-
-```typescript
-// tests/e2e/pages/MyFeaturePage.ts
-export class MyFeaturePage {
-  constructor(private page: Page) {}
-
-  async goto() {
-    await this.page.goto('/my-feature');
-  }
-
-  async createItem(data: ItemData) {
-    // Use data-testid for buttons
-    const addButton = this.page.getByTestId('add-item-button');
-    await addButton.waitFor({ state: 'visible' });
-    await addButton.click();
-
-    // Fill form using IDs
-    await this.page.locator('#name').fill(data.name);
-    await this.page.locator('#amount').fill(data.amount.toString());
-
-    // Submit and wait for form to close
-    const submitButton = this.page.getByTestId('item-form-submit');
-    await submitButton.click();
-    await submitButton.waitFor({ state: 'hidden' });
-
-    // Wait for network to settle
-    await this.page.waitForLoadState('networkidle');
-  }
-
-  async expectItemInList(name: string) {
-    await expect(this.page.getByText(name)).toBeVisible();
-  }
-}
-```
-
-**Why:** POMs encapsulate page interactions, making tests readable and maintainable.
-
-**DON'T put in Page Objects:**
-- ❌ `console.log` statements (use Playwright's debugging tools)
-- ❌ Test assertions (except for helper methods like `expectItemInList`)
-- ❌ Test data creation (use PocketBase helpers instead)
-
-##### 5. Test Data Management
-
-**Use API helpers for test data:**
-
-```typescript
-// ✅ GOOD - Fast API setup
-test('should edit item', async ({ userPocketbase }) => {
-  // Create via API (fast)
-  const item = await createItem(userPocketbase, testData.item1);
-
-  await myPage.goto();
-
-  // Test the edit operation
-  await myPage.editItem(item.name, { amount: 100 });
-
-  // Verify in database
-  const updated = await userPocketbase.collection('items').getOne(item.id);
-  expect(updated.amount).toBe(100);
-});
-
-// ❌ BAD - Slow UI setup
-test('should edit item', async () => {
-  // Don't create via UI if you're testing edit
-  await myPage.createItem(testData.item1);
-  await myPage.editItem(testData.item1.name, { amount: 100 });
-});
-```
-
-**Why:** API setup is 10-100x faster than UI interaction. Only test UI operations you're actually testing.
-
-**Centralize test data:**
-
-```typescript
-// tests/e2e/fixtures/test-data.ts
-export const testItems = [
-  { name: 'Item 1', amount: 50 },
-  { name: 'Item 2', amount: 75 },
-];
-
-// Use in tests
-import { testItems } from '../../fixtures/test-data';
-```
-
-##### 6. Error Handling and Debugging
-
-**DON'T use console.log in page objects or tests:**
-
-```typescript
-// ❌ BAD
-console.log('[MyPage] Clicking button...');
-await button.click();
-console.log('[MyPage] Button clicked');
-
-// ✅ GOOD - Use Playwright's built-in debugging
-// Run with: npm run test:debug
-// Or use --headed flag to see browser
-```
-
-**For debugging, use:**
-
-```bash
-# Interactive debugging
-npm run test:debug
-
-# Run in headed mode to see browser
-npm run test:headed
-
-# UI mode (best for debugging)
-npm run test:ui
-
-# Generate trace on failure (automatic)
-# View with: npx playwright show-trace trace.zip
-```
-
-**Consistent error handling:**
-
-```typescript
-// ✅ GOOD - Handle optional elements cleanly
-const confirmButton = page.getByRole('button', { name: /confirm/i });
-const isVisible = await confirmButton.isVisible({ timeout: 1000 })
-  .catch(() => false);
-
-if (isVisible) {
-  await confirmButton.click();
-}
-
-// ❌ BAD - Silent failures
-.catch(() => {}) // Don't swallow errors without reason
-```
-
-##### 7. New Module E2E Checklist
-
-**When adding a new module, create e2e tests following this structure:**
-
-1. **Add test IDs to components:**
-   ```tsx
-   <button data-testid="add-{module}-button">Add {Module}</button>
-   <button data-testid="{module}-form-submit">Submit</button>
-   <button data-testid="{module}-form-cancel">Cancel</button>
-   ```
-
-2. **Create Page Object Model:**
-   ```
-   tests/e2e/pages/{Module}Page.ts
-   ```
-
-3. **Create API helpers:**
-   ```typescript
-   // tests/e2e/utils/pocketbase-helpers.ts
-   export async function create{Module}(pb: PocketBase, data: {Module}Data) {
-     return await pb.collection('{modules}').create(data);
-   }
-
-   export async function deleteAll{Modules}(pb: PocketBase) {
-     const records = await pb.collection('{modules}').getFullList();
-     for (const record of records) {
-       await pb.collection('{modules}').delete(record.id);
-     }
-   }
-   ```
-
-4. **Create test suite:**
-   ```
-   tests/e2e/tests/{module}/{module}-crud.spec.ts
-   ```
-
-5. **Test structure:**
-   ```typescript
-   test.describe('{Module} CRUD', () => {
-     let {module}Page: {Module}Page;
-
-     test.beforeEach(async ({ authenticatedPage, userPocketbase }) => {
-       {module}Page = new {Module}Page(authenticatedPage);
-       await deleteAll{Modules}(userPocketbase);
-       await {module}Page.goto();
-     });
-
-     test('should create a {module}', async () => {
-       // Test implementation
-     });
-
-     test('should edit a {module}', async ({ userPocketbase }) => {
-       // Test implementation
-     });
-
-     test('should delete a {module}', async ({ userPocketbase }) => {
-       // Test implementation
-     });
-   });
-   ```
-
-6. **Run tests:**
-   ```bash
-   cd tests/e2e && npm run test:{module}
-   ```
-
-##### 8. Common Patterns
-
-**Verifying database state:**
-
-```typescript
-// ✅ GOOD - Verify both DB and UI
-const updated = await userPocketbase.collection('items').getOne(itemId);
-expect(updated.amount).toBe(newAmount);
-await myPage.expectItemInList('Item Name', newAmount);
-```
-
-**Handling modals/dialogs:**
-
-```typescript
-async submitForm() {
-  const submitButton = this.page.getByTestId('form-submit');
-  await submitButton.click();
-  // Wait for modal to close
-  await submitButton.waitFor({ state: 'hidden' });
-  // Wait for mutation to complete
-  await this.page.waitForLoadState('networkidle');
-}
-```
-
-**Conditional interactions:**
-
-```typescript
-// Check if confirmation dialog appears
-const confirmButton = this.page.getByRole('button', { name: /confirm/i });
-const isVisible = await confirmButton.isVisible({ timeout: 1000 })
-  .catch(() => false);
-
-if (isVisible) {
-  await confirmButton.click();
-}
-```
-
-**Summary: E2E Testing Principles**
-
-1. ✅ **Isolation**: Each test gets a unique user and clean data
-2. ✅ **Explicit waits**: Use `waitFor()` and `waitForLoadState()`, not hardcoded timeouts
-3. ✅ **Stable selectors**: Prefer `data-testid` > roles > labels > text
-4. ✅ **Page Objects**: Encapsulate page interactions
-5. ✅ **API setup**: Create test data via PocketBase API, not UI
-6. ✅ **No logging**: Use Playwright's debugging tools instead
-7. ✅ **Fast and reliable**: Tests should run quickly and pass consistently
+E2E best practices (CRITICAL — follow these to keep the suite reliable):
+
+#### 1. Test isolation
+Each test gets its own user (see fixtures) and cleans its own data in
+`beforeEach`. Don't rely on data from other tests.
+
+#### 2. Waiting
+NEVER use `page.waitForTimeout(ms)`. Use Playwright's auto-waits, explicit
+`waitFor({ state })` calls, or `expect().toBeVisible()` (which has built-in
+retries).
+
+#### 3. Selectors (priority order)
+1. `data-testid` — stable, semantic
+2. Role-based: `getByRole('button', { name: /add/i })`
+3. Label: `getByLabel(/email/i)`
+4. Text — only for verifying displayed content
+
+Avoid CSS class selectors and positional selectors.
+
+#### 4. Page Object Model
+All e2e tests use POMs under `tests/e2e/pages/`. POMs encapsulate page
+interactions; they don't contain assertions (except helper `expect…`
+methods) or `console.log` statements.
+
+#### 5. Test data setup
+Seed via aepbase REST (`tests/e2e/utils/aepbase-helpers.ts`), not through
+the UI. API seed is 10-100× faster.
+
+#### 6. Adding a new module
+
+1. Add `data-testid` attrs on key buttons/forms
+2. Create a Page Object at `tests/e2e/pages/<Module>Page.ts`
+3. Add aepbase helpers (`create<Module>`, `deleteAll<Modules>`)
+4. Create specs at `tests/e2e/tests/<module>/<module>-crud.spec.ts`
+5. Run: `cd tests/e2e && npm run test -- tests/<module>/`
 
 ## Code Quality Standards
 
 ### TypeScript
-
-- Use strict type checking (enabled in `tsconfig.json`)
-- Avoid `any` types - use proper type definitions
+- Strict type checking (see `tsconfig.json`)
+- Avoid `any`; use proper types. If you truly need `unknown`, narrow it.
 - Export types that might be reused
 - Use interfaces for object shapes
 
 ### React
+- Functional components with hooks
+- Custom hooks for reusable logic
+- Follow the modular architecture pattern below
 
-- Prefer functional components with hooks
-- Use custom hooks for reusable logic
-- Keep components focused and single-purpose
-- Follow the modular architecture pattern
+### Modular architecture
 
-### Modular Architecture
-
-Every feature should be a self-contained module:
+Every feature is a self-contained module:
 
 ```
-src/modules/feature-name/
-├── components/          # UI components
-├── hooks/              # Custom hooks
+src/modules/<feature>/
+├── components/         # UI components
+├── hooks/              # Custom hooks (data access lives here)
 ├── types.ts            # TypeScript types
 ├── routes.tsx          # Route definitions
 ├── module.config.ts    # Module metadata
-└── index.ts           # Public exports
+└── index.ts            # Public exports
 ```
 
-### Code Style
-
-- Use meaningful variable and function names
-- Write self-documenting code
-- Add comments only for complex logic
+### Style
+- Meaningful variable / function names
+- Prefer self-documenting code; add comments only for non-obvious "why"
 - Keep functions small and focused
-- Avoid premature optimization
-
-## PocketBase Migrations
-
-### Important: Use the Correct Migration API
-
-PocketBase 0.34.2 uses the **Collection API** for migrations. **DO NOT** use the old Dao pattern.
-
-#### ✅ Correct - Collection API (Use This)
-
-```javascript
-/// <reference path="../pb_data/types.d.ts" />
-migrate((app) => {
-  const collection = app.findCollectionByNameOrId("my_collection");
-
-  // Add a field
-  collection.fields.add(new TextField({
-    name: "my_field",
-    required: false,
-    max: 255
-  }));
-
-  // Add a boolean field
-  collection.fields.add(new BoolField({
-    name: "archived",
-    required: false
-  }));
-
-  // Add a file field
-  collection.fields.add(new FileField({
-    name: "image",
-    required: false,
-    maxSelect: 1,
-    maxSize: 5242880,
-    mimeTypes: ["image/jpeg", "image/png"]
-  }));
-
-  return app.save(collection);
-}, (app) => {
-  const collection = app.findCollectionByNameOrId("my_collection");
-
-  // Remove fields safely
-  const field = collection.fields.getByName("my_field");
-  if (field) {
-    collection.fields.removeById(field.id);
-  }
-
-  return app.save(collection);
-});
-```
-
-#### ❌ Incorrect - Dao Pattern (DO NOT USE)
-
-```javascript
-// DO NOT USE THIS PATTERN
-migrate((db) => {
-  const dao = new Dao(db)
-  const collection = dao.findCollectionByNameOrId("my_collection")
-
-  collection.schema.addField(new SchemaField({
-    // ...
-  }))
-
-  return dao.saveCollection(collection)
-})
-```
-
-### Key Points
-
-- Always use `migrate((app) => ...)` NOT `migrate((db) => ...)`
-- Use `app.findCollectionByNameOrId()` NOT `new Dao(db).findCollectionByNameOrId()`
-- Use `collection.fields.add(new FieldType(...))` NOT `collection.schema.addField()`
-- Use typed field constructors: `TextField`, `BoolField`, `FileField`, etc.
-- Use `app.save(collection)` NOT `dao.saveCollection(collection)`
-- Always include rollback logic in the second function parameter
-
-### Testing Migrations Locally
-
-Test migrations by running PocketBase locally:
-
-```bash
-# Start PocketBase (will auto-apply migrations)
-./pocketbase serve
-
-# Verify collections in admin UI
-open http://127.0.0.1:8090/_/
-```
+- No premature optimization
 
 ## Project Structure
 
 ### Frontend (`frontend/`)
 
-- **`src/core/`** - Core infrastructure (auth, routing, API)
-- **`src/modules/`** - Feature modules (dashboard, gift-cards, etc.)
-- **`src/shared/`** - Shared components and utilities
-- **`src/test/`** - Test setup and utilities
+- `src/core/api/aepbase.ts` — thin REST client wrapper for aepbase
+- `src/core/auth/` — AuthContext, types, route guards
+- `src/app/api/` — Next.js server routes (notifications, OCR, actions)
+- `src/app/api/_lib/aepbase-server.ts` — server-side aepbase helper (the
+  client-side wrapper uses localStorage, so server routes use this instead)
+- `src/modules/` — feature modules (gift-cards, credit-cards, etc.)
+- `src/shared/` — shared components + utilities
 
-### Backend
+### Backend (`aepbase/`)
 
-- **`pb_migrations/`** - PocketBase database migrations
-- **`pocketbase/`** - PocketBase binary and data (not in git)
+- `main.go` — thin wrapper that imports aepbase as a Go library and opts
+  into `EnableUsers` and `EnableFileFields`
+- `install.sh` — builds the binary into `bin/aepbase`
+- `run.sh` — runs it on :8090
+- `data/` — sqlite db + uploaded files (gitignored)
+- `terraform/` — schema-as-code (see next section)
 
-### Tests
+### Scripts (`aepbase/scripts/`)
 
-- **`frontend/src/**/*.test.ts(x)`** - Frontend unit/integration tests
+- `migrate_pb_to_aep.py` — one-time PocketBase → aepbase data migration.
+  Kept for historical reference; the codebase no longer depends on PB.
 
-## Common Commands Quick Reference
+### Deployment (`deployment/`)
 
-```bash
-# Install dependencies
-make install
+Systemd-based deployment. See `deployment/README.md`.
 
-# Start development server
-make dev
+## aepbase schema (Terraform)
 
-# Run all quality checks
-make ci && make test
+The schema lives in `aepbase/terraform/`, driven by the `aep-dev/aep`
+dynamic provider.
 
-# Individual checks
-make lint             # ESLint
-make type-check       # TypeScript
-make build            # Production build
-make test             # Frontend tests
-make test-migrations  # PocketBase migration tests
-make test-hooks       # PocketBase hook validation
-make test-e2e         # End-to-end tests
-make test-all         # All tests
-
-# E2E tests
-make test-e2e         # Run all e2e tests
-make test-e2e-ui      # Run e2e tests in UI mode
-
-# Clean build artifacts
-make clean
-
-# Security audit
-make audit
-```
-
-## For Claude AI Assistants
-
-When working on this project:
-
-1. **Always run the full test suite** before marking tasks complete
-2. **Follow the modular architecture** - don't create monolithic components
-3. **Respect existing patterns** - review similar code before implementing
-4. **Use correct PocketBase migration API** - Collection API (app), NOT Dao pattern (db)
-5. **Ask clarifying questions** if requirements are unclear
-6. **Document complex logic** - but prefer self-explanatory code
-7. **Security first** - validate inputs, sanitize outputs, follow OWASP guidelines
-
-### Before Every PR Push
-
-Run this command and verify all checks pass:
+### Applying changes
 
 ```bash
-make ci && make test
-```
+# Get an admin bearer token
+TOKEN=$(curl -sS -X POST http://localhost:8090/users/:login \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"admin@example.com","password":"<pw>"}' | jq -r .token)
 
-Only push when all checks pass successfully.
-
----
-
-## aepbase Backend (migration in progress)
-
-We are migrating the HomeOS backend from **PocketBase** to **aepbase** (an
-AEP-compliant dynamic REST server). The schema is defined in Terraform using
-the `aep-dev/aep` provider. See `aepbase/README.md` for full details.
-
-### Current state
-
-- PocketBase (`pb_migrations/`, `pb_hooks/`, `pocketbase/`) is still the
-  source of truth for the running app. The frontend talks to it, tests rely
-  on it, and `make` targets build it.
-- `aepbase/` is the staging area for the new backend. Its terraform files
-  model every PocketBase collection as an AEP resource definition. Applying
-  them stands up a fresh aepbase instance with the equivalent schema.
-
-### Running aepbase locally
-
-```bash
-cd aepbase
-./install.sh                            # builds bin/aepbase
-./run.sh                                # serves on :8090
-# in another terminal:
 cd aepbase/terraform
-export AEP_OPENAPI=http://localhost:8090/openapi.json
-terraform init && terraform apply
+TF_VAR_aepbase_token=$TOKEN \
+    AEP_OPENAPI=http://localhost:8090/openapi.json \
+    terraform apply
 ```
 
-### Rules for editing `aepbase/terraform/`
+### Rules (gotchas we've hit)
 
-1. **Resource type in HCL is `aep_aep-resource-definition`** (yes, the hyphen
-   is real — it's what the dynamic provider generates from the meta-API).
+1. **Resource type in HCL is `aep_aep-resource-definition`** — yes, the
+   hyphen is real; it's what the dynamic provider generates.
 2. **Singular/plural must be kebab-case, not camelCase.** `gift-card`, not
-   `giftCard`. Terraform's plugin framework rejects URL params that contain
-   uppercase letters, and a camelCase singular produces invalid params like
-   `giftCard_id`.
-3. **JSON Schema `enum`, `minimum`, `maximum` are stripped by aepbase on
-   round-trip.** Using them causes terraform apply to fail with *"Provider
-   produced inconsistent result after apply"*. Encode allowed values in
-   `description` instead:
+   `giftCard`. Terraform's plugin framework rejects URL params with
+   uppercase letters.
+3. **JSON-schema `enum`, `minimum`, `maximum` are stripped on round-trip.**
+   Encode allowed values in `description`:
    ```hcl
    status = { type = "string", description = "one of: pending, success, error" }
    ```
 4. **Child resources need explicit `depends_on`.** Setting `parents = ["foo"]`
-   alone does not create a terraform dependency — add
-   `depends_on = [aep_aep-resource-definition.foo]`.
-5. **Field names inside the JSON schema stay snake_case** to match existing
-   PB data (e.g. `card_number`, `created_by`, `service_date`).
+   alone does not create a terraform dependency.
+5. **Schema field names stay snake_case** (matches the existing data from
+   the PB era, e.g. `card_number`, `created_by`, `service_date`).
 6. **Don't add autodate fields** (`created`, `updated`). aepbase manages
-   `create_time` and `update_time` itself.
-7. **After editing an aepbase resource definition out of band**, run
+   `create_time` and `update_time` itself (note the underscore).
+7. **After editing a resource definition out of band**, run
    `terraform init -upgrade` so the provider re-reads `/openapi.json`.
+8. **aepbase disallows `type` changes and `parents` changes** on an
+   existing resource definition. Delete + recreate the definition
+   (destructive!) if you need either.
+9. **File fields**: declare with `type = "binary"` +
+   `"x-aepbase-file-field" = true`. aepbase writes files under
+   `aepbase/data/files/...` and exposes a `:download` custom method.
 
-### Parent/child relationships
+### Parent / child relationships
 
-Where PocketBase used a cascade-delete relation, model it as an AEP parent
-(not as a plain string FK field). Current parented resources:
+| Child                       | Parent        | URL pattern                                                 |
+|-----------------------------|---------------|-------------------------------------------------------------|
+| `transaction`               | `gift-card`   | `/gift-cards/{id}/transactions/{id}`                        |
+| `perk`                      | `credit-card` | `/credit-cards/{id}/perks/{id}`                             |
+| `redemption`                | `perk`        | `/credit-cards/{id}/perks/{id}/redemptions/{id}`            |
+| `run`                       | `action`      | `/actions/{id}/runs/{id}`                                   |
+| `log`                       | `recipe`      | `/recipes/{id}/logs/{id}`                                   |
+| `notification`              | `user`        | `/users/{id}/notifications/{id}`                            |
+| `notification-subscription` | `user`        | `/users/{id}/notification-subscriptions/{id}`               |
+| `recurring-notification`    | `user`        | `/users/{id}/recurring-notifications/{id}`                  |
+| `user-preference`           | `user`        | `/users/{id}/preferences/{id}` (note the prefix strip)      |
 
-| Child          | Parent        |
-|----------------|---------------|
-| `transaction`  | `gift-card`   |
-| `perk`         | `credit-card` |
-| `redemption`   | `perk`        |
-| `run`          | `action`      |
-| `log`          | `recipe`      |
+Parent-keyed children don't carry the parent id as a stored field; it's
+encoded in the URL path.
 
-When making a resource a child, **remove the FK field from its schema** —
-it's encoded in the URL path (`/gift-cards/{id}/transactions/{id}`).
+### Not yet modeled
 
-### Not yet migrated
+- Per-collection access rules (row-level security beyond user parenting)
+- Realtime subscriptions (polling only)
+- Thumbnail generation for file fields
 
-Auth, file uploads, access rules, the `users` collection. Do not assume
-feature parity with PocketBase. If a task depends on one of these, flag it.
+## Data Migration from PocketBase
+
+`aepbase/scripts/migrate_pb_to_aep.py` copies a PocketBase `pb_data/`
+directory's contents into a running aepbase instance, including file
+uploads. It's a one-shot tool preserved for reference — the frontend and
+backend no longer depend on PocketBase.
+
+```bash
+python3 aepbase/scripts/migrate_pb_to_aep.py \
+    --pb-data ~/tmp/pocketbase/pb_data \
+    --aep-url http://localhost:8090 \
+    --email admin@example.com \
+    --password <aepbase superuser password> \
+    --wipe
+```
+
+See the script header for all flags (`--dry-run`, `--collection`, etc.).
 
 ---
 
-**Remember:** The goal is to maintain high code quality while moving quickly. These checks exist to catch issues early and keep the codebase healthy.
+## For Claude AI Assistants
+
+1. **Always run the full gate** (`make ci && make test`) before marking
+   work complete.
+2. **Follow the modular architecture** — don't create monolithic
+   components. Module hooks own their data access.
+3. **Respect existing patterns** — review similar code before implementing.
+4. **Use the aepbase wrapper** (`@/core/api/aepbase`) for client-side data
+   access, and `@/app/api/_lib/aepbase-server` for server routes.
+5. **Ask before touching schema** — terraform changes affect real data.
+6. **Security first** — validate inputs, sanitize outputs, follow OWASP.
+
+### Before every PR push
+
+```bash
+make ci && make test
+```
+
+Only push when all checks pass.

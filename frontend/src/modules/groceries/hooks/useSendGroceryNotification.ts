@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { pb } from '@/core/api/pocketbase';
+import { aepbase } from '@/core/api/aepbase';
 
 interface GroceryNotificationResponse {
   success: boolean;
@@ -10,20 +10,19 @@ interface GroceryNotificationResponse {
 export function useSendGroceryNotification() {
   return useMutation({
     mutationFn: async () => {
-      const token = pb.authStore.token;
+      const token = aepbase.authStore.token;
+      const userId = aepbase.getCurrentUser()?.id || '';
       const res = await fetch('/api/notifications/send-grocery', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
+          'X-User-Id': userId,
         },
       });
-
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
-
-      const response = await res.json() as GroceryNotificationResponse;
-      return response;
+      return (await res.json()) as GroceryNotificationResponse;
     },
   });
 }

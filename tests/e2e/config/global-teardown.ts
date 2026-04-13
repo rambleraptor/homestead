@@ -1,14 +1,15 @@
 /**
  * Playwright Global Teardown
  *
- * Runs once after all tests
+ * Stops the aepbase process that was spawned in global-setup. The data
+ * directory is left in place so a test failure can be inspected post-run.
  */
 
-import { stopPocketBase } from './pocketbase.setup';
+import { stopAepbase } from './aepbase.setup';
 
 async function globalTeardown() {
-  console.log('\n🛑 Stopping PocketBase...\n');
-  await stopPocketBase();
+  console.log('\n🛑 Stopping aepbase...');
+  await stopAepbase();
 }
 
 export default globalTeardown;

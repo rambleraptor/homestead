@@ -2,7 +2,7 @@
  * Settings E2E Tests - Change Password
  */
 
-import { test, expect } from '../../fixtures/pocketbase.fixture';
+import { test, expect } from '../../fixtures/aepbase.fixture';
 import { SettingsPage } from '../../pages/SettingsPage';
 import { LoginPage } from '../../pages/LoginPage';
 import { DashboardPage } from '../../pages/DashboardPage';

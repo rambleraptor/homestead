@@ -1,11 +1,9 @@
 /**
- * Update Person Mutation Hook — branches on the `people` flag.
+ * Update Person Mutation Hook.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { getCollection, Collections } from '@/core/api/pocketbase';
-import { isAepbaseEnabled } from '@/core/api/backend';
 import { queryKeys } from '@/core/api/queryClient';
 import { logger } from '@/core/utils/logger';
 import type { PersonFormData, NotificationPreference } from '../types';
@@ -27,10 +25,10 @@ interface PersonRecord {
   id: string;
   name: string;
   birthday?: string;
-  notification_preferences: NotificationPreference[];
-  created_by: string;
-  created?: string;
-  updated?: string;
+  notification_preferences?: NotificationPreference[];
+  created_by?: string;
+  create_time?: string;
+  update_time?: string;
 }
 
 export function useUpdatePerson() {
@@ -38,8 +36,6 @@ export function useUpdatePerson() {
 
   return useMutation({
     mutationFn: async ({ id, data }: UpdatePersonData) => {
-      logger.debug('Person update mutation called', { id, data });
-
       const oldSharedData = await findSharedDataForPerson(id);
       const oldPartnerId = oldSharedData
         ? oldSharedData.person_a === id
@@ -47,25 +43,11 @@ export function useUpdatePerson() {
           : oldSharedData.person_a
         : undefined;
 
-      const updateBody = {
+      const personRecord = await aepbase.update<PersonRecord>(AepCollections.PEOPLE, id, {
         name: data.name,
         birthday: data.birthday,
         notification_preferences: data.notification_preferences,
-      };
-
-      let personRecord: PersonRecord;
-      if (isAepbaseEnabled('people')) {
-        personRecord = await aepbase.update<PersonRecord>(
-          AepCollections.PEOPLE,
-          id,
-          updateBody,
-        );
-      } else {
-        personRecord = await getCollection<PersonRecord>(Collections.PEOPLE).update(
-          id,
-          updateBody,
-        );
-      }
+      });
 
       const newPartnerId = data.partner_id;
       const partnerChanged = oldPartnerId !== newPartnerId;
@@ -118,7 +100,7 @@ export function useUpdatePerson() {
         queryKey: queryKeys.module('people').detail(variables.id),
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.module(Collections.RECURRING_NOTIFICATIONS).list(),
+        queryKey: queryKeys.module('recurring_notifications').list(),
       });
       if (result.newPartnerId) {
         queryClient.invalidateQueries({
@@ -131,8 +113,6 @@ export function useUpdatePerson() {
         });
       }
     },
-    onError: (error) => {
-      logger.error('Person update mutation error', error);
-    },
+    onError: (error) => logger.error('Person update mutation error', error),
   });
 }

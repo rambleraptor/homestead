@@ -1,41 +1,33 @@
 /**
- * API Route: Execute Action Run
- *
- * POST /api/actions/runs/utils/execute
- * Executes the Playwright script for an action_run
- *
- * Body: { runId: string }
+ * POST /api/actions/runs/utils/execute — triggers execution of a run.
+ * Body: { runId: string, actionId: string }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPocketBase } from '@/core/api/pocketbase';
+import { authenticate } from '../../../_lib/aepbase-server';
 import { executeScript } from './execute';
 
 export async function POST(request: NextRequest) {
   try {
-    const { runId } = await request.json();
-
-    if (!runId) {
+    const auth = await authenticate(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const { runId, actionId } = await request.json();
+    if (!runId || !actionId) {
       return NextResponse.json(
-        { error: 'runId is required' },
-        { status: 400 }
+        { error: 'runId and actionId are required' },
+        { status: 400 },
       );
     }
 
-    const pb = getPocketBase(request);
-    const pocketbaseUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
-    const pocketbaseToken = pb.authStore.token;
-
-    // Await execution so it completes before the response context is torn down
-    await executeScript(runId, pocketbaseUrl, pocketbaseToken);
-
+    await executeScript(runId, actionId, auth.token);
     return NextResponse.json({ success: true });
-
   } catch (error) {
     console.error('Error triggering execution:', error);
     return NextResponse.json(
       { error: 'Failed to trigger execution' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

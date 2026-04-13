@@ -1,9 +1,8 @@
-.PHONY: help install clean lint type-check build test test-migrations test-hooks test-auto-update test-e2e test-all dev start audit format all ci deploy setup-services start-services stop restart status logs
+.PHONY: help install clean lint type-check build test test-e2e test-e2e-ui test-all dev start audit format all ci deploy setup-services start-services stop restart status logs
 
 # Default target
 .DEFAULT_GOAL := help
 
-# Frontend directory
 FRONTEND_DIR := frontend
 
 help: ## Show this help message
@@ -19,8 +18,6 @@ clean: ## Remove build artifacts and dependencies
 	@echo "Cleaning build artifacts..."
 	rm -rf $(FRONTEND_DIR)/.next
 	rm -rf $(FRONTEND_DIR)/node_modules
-	@echo "Cleaning migration test artifacts..."
-	cd tests/migrations && npm run clean 2>/dev/null || true
 
 lint: ## Run ESLint
 	@echo "Running ESLint..."
@@ -46,18 +43,6 @@ test: ## Run frontend tests with Vitest
 	@echo "Running frontend tests..."
 	cd $(FRONTEND_DIR) && npm run test
 
-test-migrations: ## Run PocketBase migration tests
-	@echo "Running migration tests..."
-	npm test --prefix tests/migrations
-
-test-hooks: ## Run PocketBase hook validation tests
-	@echo "Running hook validation tests..."
-	node tests/hooks/test-notification-hook.js
-
-test-auto-update: ## Run auto-update script tests
-	@echo "Running auto-update tests..."
-	@./tests/deployment/test-auto-update.sh
-
 test-e2e: ## Run end-to-end tests with Playwright
 	@echo "Running e2e tests..."
 	cd tests/e2e && npm install && npx playwright install --with-deps chromium && npm test
@@ -66,7 +51,7 @@ test-e2e-ui: ## Run e2e tests in UI mode
 	@echo "Running e2e tests in UI mode..."
 	cd tests/e2e && npm run test:ui
 
-test-all: test test-migrations test-hooks test-auto-update ## Run all tests (frontend + migrations + hooks + auto-update)
+test-all: test test-e2e ## Run all tests (frontend + e2e)
 	@echo "All tests completed!"
 
 audit: ## Run security audit
@@ -97,28 +82,28 @@ setup-auto-update: ## Set up automatic updates (requires sudo)
 
 start-services: ## Start HomeOS services (requires sudo)
 	@echo "Starting HomeOS services..."
-	@sudo systemctl start homeos-pocketbase homeos-frontend
+	@sudo systemctl start homeos-aepbase homeos-frontend
 	@echo "✅ Services started"
 
 stop: ## Stop HomeOS services (requires sudo)
 	@echo "Stopping HomeOS services..."
-	@sudo systemctl stop homeos-pocketbase homeos-frontend
+	@sudo systemctl stop homeos-aepbase homeos-frontend
 	@echo "✅ Services stopped"
 
 restart: ## Restart HomeOS services (requires sudo)
 	@echo "Restarting HomeOS services..."
-	@sudo systemctl restart homeos-pocketbase homeos-frontend
+	@sudo systemctl restart homeos-aepbase homeos-frontend
 	@echo "✅ Services restarted"
 
 status: ## Check service status
-	@sudo systemctl status homeos-pocketbase homeos-frontend
+	@sudo systemctl status homeos-aepbase homeos-frontend
 
 logs: ## Follow service logs
 	@echo "Following logs (Ctrl+C to stop)..."
-	@sudo journalctl -u homeos-pocketbase -u homeos-frontend -f
+	@sudo journalctl -u homeos-aepbase -u homeos-frontend -f
 
-logs-pocketbase: ## Follow PocketBase logs
-	@sudo journalctl -u homeos-pocketbase -f
+logs-aepbase: ## Follow aepbase logs
+	@sudo journalctl -u homeos-aepbase -f
 
 logs-frontend: ## Follow frontend logs
 	@sudo journalctl -u homeos-frontend -f

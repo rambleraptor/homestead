@@ -1,69 +1,38 @@
 /**
  * Update Gift Card Mutation Hook
  *
- * Routes through aepbase or PB based on the gift-cards backend flag. The
- * `amount === 0 → delete card` shortcut is preserved on both branches.
+ * File fields go over multipart; plain updates use merge-patch JSON.
+ * The amount-zero shortcut deletes the card outright.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/core/api/queryClient';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { Collections, getCollection } from '@/core/api/pocketbase';
-import { isAepbaseEnabled } from '@/core/api/backend';
 import { logger } from '@/core/utils/logger';
 import type { GiftCard, GiftCardFormData } from '../types';
 import { buildGiftCardFormData, buildGiftCardData } from '../utils/formData';
-import { mapPbGiftCard } from './_mapPbRecords';
 
 export function useUpdateGiftCard() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: GiftCardFormData;
-    }): Promise<GiftCard | null> => {
-      const useAep = isAepbaseEnabled('gift-cards');
-      logger.debug('Gift card update mutation called', { id, data, backend: useAep ? 'aepbase' : 'pb' });
+    mutationFn: async ({ id, data }: { id: string; data: GiftCardFormData }): Promise<GiftCard | null> => {
+      logger.debug('Gift card update mutation called', { id, data });
 
-      // Delete gift card if amount is 0 (matches the previous shortcut).
       if (data.amount === 0) {
-        if (useAep) {
-          await aepbase.remove(AepCollections.GIFT_CARDS, id);
-        } else {
-          await getCollection(Collections.GIFT_CARDS).delete(id);
-        }
+        await aepbase.remove(AepCollections.GIFT_CARDS, id);
         return null;
       }
 
       const archived = data.amount === 0;
       const hasFiles = data.front_image || data.back_image;
 
-      if (useAep) {
-        if (hasFiles) {
-          const formData = buildGiftCardFormData({ data, archived });
-          return await aepbase.update<GiftCard>(AepCollections.GIFT_CARDS, id, formData);
-        }
-        const updateData = buildGiftCardData({ data, archived });
-        return await aepbase.update<GiftCard>(AepCollections.GIFT_CARDS, id, updateData);
-      }
-
-      // PocketBase path.
       if (hasFiles) {
         const formData = buildGiftCardFormData({ data, archived });
-        const rec = await getCollection<Parameters<typeof mapPbGiftCard>[0]>(
-          Collections.GIFT_CARDS,
-        ).update(id, formData);
-        return mapPbGiftCard(rec);
+        return await aepbase.update<GiftCard>(AepCollections.GIFT_CARDS, id, formData);
       }
       const updateData = buildGiftCardData({ data, archived });
-      const rec = await getCollection<Parameters<typeof mapPbGiftCard>[0]>(
-        Collections.GIFT_CARDS,
-      ).update(id, updateData);
-      return mapPbGiftCard(rec);
+      return await aepbase.update<GiftCard>(AepCollections.GIFT_CARDS, id, updateData);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({

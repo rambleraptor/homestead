@@ -1,33 +1,30 @@
-/**
- * Hook to provide user input for awaiting_input runs
- */
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { usePocketBase } from '@/core/api/pocketbase';
+import { aepbase } from '@/core/api/aepbase';
 
 export function useProvideInput() {
-  const pb = usePocketBase();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({ runId, input }: { runId: string; input: Record<string, unknown> }) => {
+    mutationFn: async ({
+      runId,
+      input,
+    }: {
+      runId: string;
+      input: Record<string, unknown>;
+    }) => {
+      const userId = aepbase.getCurrentUser()?.id || '';
       const response = await fetch(`/api/actions/runs/${runId}`, {
         method: 'POST',
         headers: {
-          'Authorization': pb.authStore.token,
+          Authorization: `Bearer ${aepbase.authStore.token}`,
+          'X-User-Id': userId,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ input }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to provide input');
-      }
-
+      if (!response.ok) throw new Error('Failed to provide input');
       return response.json();
     },
     onSuccess: (_, variables) => {
-      // Invalidate the run query to refetch updated status
       queryClient.invalidateQueries({ queryKey: ['action-run', variables.runId] });
     },
   });
