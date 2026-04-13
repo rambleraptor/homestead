@@ -191,7 +191,6 @@ const DEFINITIONS: ResourceDefinition[] = [
     schema: {
       type: 'object',
       properties: {
-        user_id: { type: 'string' },
         title: { type: 'string' },
         message: { type: 'string' },
         notification_type: { type: 'string' },
@@ -215,7 +214,6 @@ const DEFINITIONS: ResourceDefinition[] = [
     schema: {
       type: 'object',
       properties: {
-        user_id: { type: 'string' },
         subscription_data: { type: 'object' },
         enabled: { type: 'boolean' },
       },
@@ -230,7 +228,6 @@ const DEFINITIONS: ResourceDefinition[] = [
     schema: {
       type: 'object',
       properties: {
-        user_id: { type: 'string' },
         source_collection: { type: 'string' },
         source_id: { type: 'string' },
         title_template: { type: 'string' },
