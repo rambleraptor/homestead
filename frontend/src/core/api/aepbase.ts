@@ -424,8 +424,6 @@ export const AepCollections = {
   PERK_REDEMPTIONS: 'redemptions', // child of perks
   RECIPES: 'recipes',
   RECIPE_LOGS: 'logs', // child of recipes
-  ACTIONS: 'actions',
-  ACTION_RUNS: 'runs', // child of actions
 } as const;
 
 // ----------------------------------------------------------------------------
