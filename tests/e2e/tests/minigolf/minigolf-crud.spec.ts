@@ -40,8 +40,8 @@ test.describe('Minigolf CRUD', () => {
 
     // New game setup
     await minigolfPage.clickNewGame();
-    await minigolfPage.selectPlayerById(alice.id);
-    await minigolfPage.selectPlayerById(bob.id);
+    await minigolfPage.selectPlayerByName(alice.id, 'Alice');
+    await minigolfPage.selectPlayerByName(bob.id, 'Bob');
     await minigolfPage.setHoleCount(2);
     await minigolfPage.startGame();
 
@@ -85,8 +85,8 @@ test.describe('Minigolf CRUD', () => {
 
     await minigolfPage.goto();
     await minigolfPage.clickNewGame();
-    await minigolfPage.selectPlayerById(alice.id);
-    await minigolfPage.selectPlayerById(bob.id);
+    await minigolfPage.selectPlayerByName(alice.id, 'Alice');
+    await minigolfPage.selectPlayerByName(bob.id, 'Bob');
     await minigolfPage.setHoleCount(1);
     await minigolfPage.startGame();
 

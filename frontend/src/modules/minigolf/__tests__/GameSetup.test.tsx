@@ -35,7 +35,7 @@ describe('GameSetup', () => {
     expect(screen.getByTestId('start-game-button')).toBeDisabled();
   });
 
-  it('submits players as people/{id} paths + default hole count', async () => {
+  it('adds players via autocomplete and submits as people/{id} paths', async () => {
     const user = userEvent.setup();
     const onStart = vi.fn();
     stubPeople([
@@ -44,11 +44,20 @@ describe('GameSetup', () => {
     ]);
     render(<GameSetup onStart={onStart} onCancel={() => {}} />);
 
-    await user.click(screen.getByTestId('player-toggle-a'));
-    await user.click(screen.getByTestId('player-toggle-b'));
+    const search = screen.getByTestId('player-search');
+    await user.click(search);
+    await user.type(search, 'ali');
+    await user.click(screen.getByTestId('player-option-a'));
+
+    // Search is cleared after selection; type again to add Bob.
+    await user.type(search, 'bo');
+    await user.click(screen.getByTestId('player-option-b'));
+
     expect(screen.getByTestId('selected-player-count')).toHaveTextContent(
       '2 selected',
     );
+    expect(screen.getByTestId('selected-player-a')).toHaveTextContent('Alice');
+    expect(screen.getByTestId('selected-player-b')).toHaveTextContent('Bob');
 
     await user.click(screen.getByTestId('start-game-button'));
     expect(onStart).toHaveBeenCalledWith({
@@ -58,7 +67,45 @@ describe('GameSetup', () => {
     });
   });
 
-  it('deselects a player on second tap', async () => {
+  it('removes a player via the chip remove button', async () => {
+    const user = userEvent.setup();
+    stubPeople([
+      { id: 'a', name: 'Alice' },
+      { id: 'b', name: 'Bob' },
+    ]);
+    render(<GameSetup onStart={() => {}} onCancel={() => {}} />);
+
+    const search = screen.getByTestId('player-search');
+    await user.click(search);
+    await user.click(screen.getByTestId('player-option-a'));
+    await user.click(screen.getByTestId('remove-player-a'));
+
+    expect(screen.getByTestId('selected-player-count')).toHaveTextContent(
+      '0 selected',
+    );
+    expect(screen.queryByTestId('selected-player-a')).toBeNull();
+    expect(screen.getByTestId('start-game-button')).toBeDisabled();
+  });
+
+  it('hides already-selected players from the dropdown', async () => {
+    const user = userEvent.setup();
+    stubPeople([
+      { id: 'a', name: 'Alice' },
+      { id: 'b', name: 'Bob' },
+    ]);
+    render(<GameSetup onStart={() => {}} onCancel={() => {}} />);
+
+    const search = screen.getByTestId('player-search');
+    await user.click(search);
+    await user.click(screen.getByTestId('player-option-a'));
+
+    // Re-focus and confirm Alice is no longer offered.
+    await user.click(search);
+    expect(screen.queryByTestId('player-option-a')).toBeNull();
+    expect(screen.getByTestId('player-option-b')).toBeVisible();
+  });
+
+  it('Enter selects the first match', async () => {
     const user = userEvent.setup();
     const onStart = vi.fn();
     stubPeople([
@@ -67,13 +114,11 @@ describe('GameSetup', () => {
     ]);
     render(<GameSetup onStart={onStart} onCancel={() => {}} />);
 
-    await user.click(screen.getByTestId('player-toggle-a'));
-    await user.click(screen.getByTestId('player-toggle-a'));
+    const search = screen.getByTestId('player-search');
+    await user.click(search);
+    await user.type(search, 'bo{Enter}');
 
-    expect(screen.getByTestId('selected-player-count')).toHaveTextContent(
-      '0 selected',
-    );
-    expect(screen.getByTestId('start-game-button')).toBeDisabled();
+    expect(screen.getByTestId('selected-player-b')).toHaveTextContent('Bob');
   });
 
   it('captures an optional location + custom hole count', async () => {
@@ -82,7 +127,9 @@ describe('GameSetup', () => {
     stubPeople([{ id: 'a', name: 'Alice' }]);
     render(<GameSetup onStart={onStart} onCancel={() => {}} />);
 
-    await user.click(screen.getByTestId('player-toggle-a'));
+    const search = screen.getByTestId('player-search');
+    await user.click(search);
+    await user.click(screen.getByTestId('player-option-a'));
     // Bump hole count 9 -> 12
     await user.click(screen.getByTestId('hole-count-inc'));
     await user.click(screen.getByTestId('hole-count-inc'));

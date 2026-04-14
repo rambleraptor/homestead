@@ -2,12 +2,13 @@
 
 /**
  * Game setup screen — pick players from the `people` module and choose
- * the number of holes. Player list is a tap-to-toggle chip grid, sized
- * for thumb selection on mobile. Minimum one player required to start.
+ * the number of holes. Players are added via a text-field autocomplete:
+ * type to filter, click (or press Enter) to add. Selected players show
+ * as removable chips. Minimum one player required to start.
  */
 
-import React, { useState } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Loader2, X } from 'lucide-react';
 import { usePeople } from '@/modules/people/hooks/usePeople';
 import { ScoreStepper } from './ScoreStepper';
 import type { GameFormData } from '../types';
@@ -25,12 +26,63 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [holeCount, setHoleCount] = useState<number>(DEFAULT_HOLE_COUNT);
   const [location, setLocation] = useState<string>('');
+  const [search, setSearch] = useState<string>('');
+  const [searchFocused, setSearchFocused] = useState<boolean>(false);
+  const blurTimer = useRef<number | null>(null);
 
-  const togglePlayer = (personId: string) => {
+  const peopleById = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    for (const p of people ?? []) map.set(p.id, { id: p.id, name: p.name });
+    return map;
+  }, [people]);
+
+  const matches = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const selectedIds = new Set(
+      selectedPlayers.map((path) => path.replace(/^people\//, '')),
+    );
+    const all = (people ?? []).filter((p) => !selectedIds.has(p.id));
+    if (!query) return all.slice(0, 8);
+    return all.filter((p) => p.name.toLowerCase().includes(query)).slice(0, 8);
+  }, [people, search, selectedPlayers]);
+
+  const addPlayer = (personId: string) => {
     const path = `people/${personId}`;
     setSelectedPlayers((prev) =>
-      prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path],
+      prev.includes(path) ? prev : [...prev, path],
     );
+    setSearch('');
+  };
+
+  const removePlayer = (personId: string) => {
+    const path = `people/${personId}`;
+    setSelectedPlayers((prev) => prev.filter((p) => p !== path));
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (matches.length > 0) addPlayer(matches[0].id);
+    } else if (e.key === 'Backspace' && search === '' && selectedPlayers.length > 0) {
+      const last = selectedPlayers[selectedPlayers.length - 1];
+      const id = last.replace(/^people\//, '');
+      removePlayer(id);
+    } else if (e.key === 'Escape') {
+      setSearch('');
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  // Delay closing the dropdown so option clicks register before blur.
+  const handleSearchBlur = () => {
+    blurTimer.current = window.setTimeout(() => setSearchFocused(false), 120);
+  };
+  const handleSearchFocus = () => {
+    if (blurTimer.current !== null) {
+      window.clearTimeout(blurTimer.current);
+      blurTimer.current = null;
+    }
+    setSearchFocused(true);
   };
 
   const canStart = selectedPlayers.length > 0 && holeCount > 0 && !isSubmitting;
@@ -43,6 +95,8 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
       location: location.trim() || undefined,
     });
   };
+
+  const showDropdown = searchFocused && (people?.length ?? 0) > 0;
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
@@ -77,27 +131,91 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
             Add people in the People module first, then come back to start a game.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-2" data-testid="player-picker">
-            {people.map((person) => {
-              const path = `people/${person.id}`;
-              const active = selectedPlayers.includes(path);
-              return (
-                <button
-                  key={person.id}
-                  type="button"
-                  onClick={() => togglePlayer(person.id)}
-                  data-testid={`player-toggle-${person.id}`}
-                  aria-pressed={active}
-                  className={`h-14 px-4 rounded-lg text-base font-medium border-2 transition-colors ${
-                    active
-                      ? 'bg-primary-500 border-primary-600 text-gray-900'
-                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
+          <div className="space-y-3">
+            {/* Selected players as chips */}
+            {selectedPlayers.length > 0 && (
+              <div
+                className="flex flex-wrap gap-2"
+                data-testid="selected-players"
+              >
+                {selectedPlayers.map((path) => {
+                  const id = path.replace(/^people\//, '');
+                  const person = peopleById.get(id);
+                  if (!person) return null;
+                  return (
+                    <span
+                      key={id}
+                      data-testid={`selected-player-${id}`}
+                      className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full bg-primary-500 border border-primary-600 text-gray-900 text-sm font-medium"
+                    >
+                      {person.name}
+                      <button
+                        type="button"
+                        onClick={() => removePlayer(id)}
+                        aria-label={`Remove ${person.name}`}
+                        data-testid={`remove-player-${id}`}
+                        className="p-0.5 rounded-full hover:bg-primary-600/40 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Autocomplete input */}
+            <div className="relative">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                onFocus={handleSearchFocus}
+                onBlur={handleSearchBlur}
+                placeholder="Type a name to add a player…"
+                aria-label="Search players"
+                aria-autocomplete="list"
+                data-testid="player-search"
+                className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+
+              {showDropdown && (
+                <ul
+                  role="listbox"
+                  data-testid="player-options"
+                  className="absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg"
                 >
-                  {person.name}
-                </button>
-              );
-            })}
+                  {matches.length === 0 ? (
+                    <li
+                      data-testid="player-options-empty"
+                      className="px-3 py-2 text-sm text-gray-500"
+                    >
+                      {search.trim()
+                        ? 'No matching people'
+                        : 'All players added'}
+                    </li>
+                  ) : (
+                    matches.map((person) => (
+                      <li key={person.id} role="option" aria-selected={false}>
+                        <button
+                          type="button"
+                          // onMouseDown so the click fires before input blur.
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            addPlayer(person.id);
+                          }}
+                          data-testid={`player-option-${person.id}`}
+                          className="w-full text-left px-3 py-2 text-base text-gray-800 hover:bg-gray-100"
+                        >
+                          {person.name}
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
           </div>
         )}
       </section>

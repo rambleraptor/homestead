@@ -24,10 +24,18 @@ export class MinigolfPage {
     await btn.click();
   }
 
-  async selectPlayerById(personId: string) {
-    const toggle = this.page.getByTestId(`player-toggle-${personId}`);
-    await toggle.waitFor({ state: 'visible' });
-    await toggle.click();
+  async selectPlayerByName(personId: string, name: string) {
+    const search = this.page.getByTestId('player-search');
+    await search.waitFor({ state: 'visible' });
+    await search.click();
+    await search.fill(name);
+    const option = this.page.getByTestId(`player-option-${personId}`);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+    // Confirm the chip rendered before moving on.
+    await this.page.getByTestId(`selected-player-${personId}`).waitFor({
+      state: 'visible',
+    });
   }
 
   async setHoleCount(target: number) {
