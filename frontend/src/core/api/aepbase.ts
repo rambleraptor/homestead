@@ -19,7 +19,7 @@
  *  - User registration is not supported. `login()` is the only auth call.
  */
 
-import type { User } from '../auth/types';
+import type { User, UserType } from '../auth/types';
 
 const AEP_BASE = '/api/aep';
 const AUTH_TOKEN_KEY = 'aepbase_auth_token';
@@ -57,6 +57,8 @@ interface RawAepUser {
 
 /** Map aepbase's `user` resource onto the frontend's `User` view model. */
 function mapAepUser(raw: RawAepUser): User {
+  const type: UserType | undefined =
+    raw.type === 'superuser' || raw.type === 'regular' ? raw.type : undefined;
   return {
     id: raw.id,
     email: raw.email,
@@ -65,6 +67,7 @@ function mapAepUser(raw: RawAepUser): User {
     verified: true,
     created: raw.create_time,
     updated: raw.update_time,
+    type,
   };
 }
 

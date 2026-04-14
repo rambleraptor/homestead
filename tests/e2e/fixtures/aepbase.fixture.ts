@@ -29,16 +29,23 @@ type TestUser = {
 
 type AepbaseFixtures = {
   adminToken: string;
+  adminCreds: { email: string; password: string; id: string };
   testUser: TestUser;
   userToken: string;
   userId: string;
   authenticatedPage: Page;
+  authenticatedAdminPage: Page;
 };
 
 export const test = base.extend<AepbaseFixtures>({
   adminToken: async ({}, use) => {
     const creds = await readAdminCreds();
     await use(creds.token);
+  },
+
+  adminCreds: async ({}, use) => {
+    const creds = await readAdminCreds();
+    await use({ email: creds.email, password: creds.password, id: creds.id });
   },
 
   /**
@@ -117,6 +124,19 @@ export const test = base.extend<AepbaseFixtures>({
     await page.getByRole('button', { name: /login|sign in/i }).click();
     await page.waitForURL('/dashboard', { timeout: 5000 });
 
+    await use(page);
+  },
+
+  /**
+   * A Playwright page logged in as the bootstrap superuser. Use this for
+   * specs that need to exercise superuser-only UI (e.g. the Users module).
+   */
+  authenticatedAdminPage: async ({ page, adminCreds }, use) => {
+    await page.goto('/login');
+    await page.getByLabel(/email/i).fill(adminCreds.email);
+    await page.getByLabel(/password/i).fill(adminCreds.password);
+    await page.getByRole('button', { name: /login|sign in/i }).click();
+    await page.waitForURL('/dashboard', { timeout: 5000 });
     await use(page);
   },
 });

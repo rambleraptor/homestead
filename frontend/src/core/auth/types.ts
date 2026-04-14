@@ -4,6 +4,8 @@
 
 export type MapProvider = 'google' | 'apple';
 
+export type UserType = 'superuser' | 'regular';
+
 export interface User {
   id: string;
   email: string;
@@ -15,6 +17,7 @@ export interface User {
   created: string;
   updated: string;
   map_provider?: MapProvider;
+  type?: UserType;
 }
 
 export interface AuthState {
