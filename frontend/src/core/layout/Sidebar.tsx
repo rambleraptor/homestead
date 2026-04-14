@@ -9,7 +9,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LogOut, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronRight, Home, LogOut, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { getNavigationModules } from '../../modules/registry';
 
@@ -18,9 +19,60 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+const COLLAPSED_SECTIONS_STORAGE_KEY = 'homeos.sidebar.collapsedSections';
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+
+  // Track which sections are collapsed. Persist to localStorage so the
+  // preference survives reloads. Default: all sections expanded.
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSED_SECTIONS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          // Loading persisted preferences post-hydration is a legitimate
+          // external-system sync; the setState here is not a cascading render.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setCollapsedSections(new Set(parsed.filter((s) => typeof s === 'string')));
+        }
+      }
+    } catch {
+      // Ignore malformed values; fall back to default (all expanded).
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(
+        COLLAPSED_SECTIONS_STORAGE_KEY,
+        JSON.stringify(Array.from(collapsedSections)),
+      );
+    } catch {
+      // Ignore storage errors (e.g., quota, privacy mode).
+    }
+  }, [collapsedSections, hydrated]);
+
+  const toggleSection = (section: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
+  };
 
   // Get modules available to current user. Modules can opt into a superuser
   // gate via `metadata.requiresSuperuser`, which hides them for regular users.
@@ -103,39 +155,57 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 No modules available
               </div>
             ) : (
-              sections.map((section) => (
-                <div key={section || 'unsectioned'} className="mb-4 last:mb-0">
-                  {/* Section Header */}
-                  {section && (
-                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      {section}
-                    </div>
-                  )}
+              sections.map((section) => {
+                const collapsed = section ? collapsedSections.has(section) : false;
+                const contentId = `sidebar-section-${section || 'unsectioned'}`;
+                return (
+                  <div key={section || 'unsectioned'} className="mb-4 last:mb-0">
+                    {/* Section Header */}
+                    {section && (
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(section)}
+                        aria-expanded={!collapsed}
+                        aria-controls={contentId}
+                        data-testid={`sidebar-section-toggle-${section}`}
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider rounded-md hover:bg-gray-100 transition-colors"
+                      >
+                        <span>{section}</span>
+                        {collapsed ? (
+                          <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" aria-hidden="true" />
+                        )}
+                      </button>
+                    )}
 
-                  {/* Section Modules */}
-                  <div className="space-y-1">
-                    {modulesBySection[section].map((module) => {
-                      const Icon = module.icon;
-                      const active = isActive(module.basePath);
-                      return (
-                        <Link
-                          key={module.id}
-                          href={module.basePath}
-                          onClick={onClose}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                            active
-                              ? 'bg-primary-100 text-primary-700'
-                              : 'text-gray-700 hover:bg-gray-100'
-                          }`}
-                        >
-                          <Icon className="w-5 h-5 flex-shrink-0" />
-                          <span className="font-medium">{module.name}</span>
-                        </Link>
-                      );
-                    })}
+                    {/* Section Modules */}
+                    {!collapsed && (
+                      <div id={contentId} className="space-y-1">
+                        {modulesBySection[section].map((module) => {
+                          const Icon = module.icon;
+                          const active = isActive(module.basePath);
+                          return (
+                            <Link
+                              key={module.id}
+                              href={module.basePath}
+                              onClick={onClose}
+                              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                                active
+                                  ? 'bg-primary-100 text-primary-700'
+                                  : 'text-gray-700 hover:bg-gray-100'
+                              }`}
+                            >
+                              <Icon className="w-5 h-5 flex-shrink-0" />
+                              <span className="font-medium">{module.name}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </nav>
 
