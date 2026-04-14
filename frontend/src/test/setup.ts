@@ -77,6 +77,8 @@ vi.mock('@/core/api/aepbase', () => ({
     PERK_REDEMPTIONS: 'redemptions',
     RECIPES: 'recipes',
     RECIPE_LOGS: 'logs',
+    GAMES: 'games',
+    GAME_HOLES: 'holes',
   },
 }));
 

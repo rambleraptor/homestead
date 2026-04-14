@@ -41,7 +41,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, {} as Record<string, typeof modules>);
 
   // Get sections in a defined order, with any unlisted sections at the end
-  const sectionOrder = ['Money', 'Food', 'Relationships', 'General'];
+  const sectionOrder = ['Money', 'Food', 'Relationships', 'Games', 'General'];
   const sections = Object.keys(modulesBySection).sort((a, b) => {
     const aIndex = sectionOrder.indexOf(a);
     const bIndex = sectionOrder.indexOf(b);

@@ -343,6 +343,51 @@ const DEFINITIONS: ResourceDefinition[] = [
       required: ['status'],
     },
   },
+  {
+    singular: 'game',
+    plural: 'games',
+    description: 'A mini golf game session.',
+    user_settable_create: true,
+    schema: {
+      type: 'object',
+      properties: {
+        location: { type: 'string' },
+        played_at: { type: 'string' },
+        players: { type: 'array', items: { type: 'string' } },
+        hole_count: { type: 'number' },
+        completed: { type: 'boolean' },
+        notes: { type: 'string' },
+        created_by: { type: 'string' },
+      },
+      required: ['players', 'hole_count'],
+    },
+  },
+  {
+    singular: 'hole',
+    plural: 'holes',
+    description: 'A single hole within a mini golf game.',
+    user_settable_create: true,
+    parents: ['game'],
+    schema: {
+      type: 'object',
+      properties: {
+        hole_number: { type: 'number' },
+        par: { type: 'number' },
+        scores: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              player: { type: 'string' },
+              strokes: { type: 'number' },
+            },
+          },
+        },
+        created_by: { type: 'string' },
+      },
+      required: ['hole_number', 'par', 'scores'],
+    },
+  },
 ];
 
 export async function applySchema(adminToken: string): Promise<void> {
