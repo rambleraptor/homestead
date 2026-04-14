@@ -17,6 +17,7 @@ import { useUpdateGame } from '../hooks/useUpdateGame';
 import { useGameHoles } from '../hooks/useGameHoles';
 import { useCreateHole } from '../hooks/useCreateHole';
 import { useUpdateHole } from '../hooks/useUpdateHole';
+import { useDeleteGame } from '../hooks/useDeleteGame';
 import { GameList } from './GameList';
 import { GameSetup } from './GameSetup';
 import { HolePlay } from './HolePlay';
@@ -51,6 +52,7 @@ export function MinigolfHome() {
   const updateGame = useUpdateGame();
   const createHole = useCreateHole();
   const updateHole = useUpdateHole();
+  const deleteGame = useDeleteGame();
 
   const peopleLite = useMemo(
     () => (people ?? []).map((p) => ({ id: p.id, name: p.name })),
@@ -150,6 +152,17 @@ export function MinigolfHome() {
     setView('list');
   };
 
+  const handleDeleteGame = async () => {
+    if (!activeGame) return;
+    try {
+      await deleteGame.mutateAsync(activeGame.id);
+      setActiveGameId(null);
+      setView('list');
+    } catch (err) {
+      logger.error('Failed to delete game', err);
+    }
+  };
+
   if (gamesLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -238,6 +251,8 @@ export function MinigolfHome() {
           holes={holes ?? []}
           people={peopleLite}
           onBack={handleBackFromResults}
+          onDelete={handleDeleteGame}
+          isDeleting={deleteGame.isPending}
         />
       )}
     </div>

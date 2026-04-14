@@ -6,9 +6,10 @@
  * completed game.
  */
 
-import React from 'react';
-import { ArrowLeft, Trophy, Flag } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, Trophy, Flag, Trash2 } from 'lucide-react';
 import { computeTotals, computeWinners, computeTotalPar } from '../utils/scoring';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { Game, Hole } from '../types';
 
 interface Person {
@@ -21,6 +22,8 @@ interface GameResultsProps {
   holes: Hole[];
   people: Person[];
   onBack: () => void;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
 function displayNameFor(playerPath: string, people: Person[]): string {
@@ -28,12 +31,25 @@ function displayNameFor(playerPath: string, people: Person[]): string {
   return people.find((p) => p.id === id)?.name || 'Unknown';
 }
 
-export function GameResults({ game, holes, people, onBack }: GameResultsProps) {
+export function GameResults({
+  game,
+  holes,
+  people,
+  onBack,
+  onDelete,
+  isDeleting = false,
+}: GameResultsProps) {
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
   const totals = computeTotals(holes, game.players);
   const winners = computeWinners(totals);
   const totalPar = computeTotalPar(holes);
 
   const sortedHoles = [...holes].sort((a, b) => a.hole_number - b.hole_number);
+
+  const handleConfirmDelete = () => {
+    if (onDelete) onDelete();
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -48,6 +64,19 @@ export function GameResults({ game, holes, people, onBack }: GameResultsProps) {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="text-2xl font-bold text-gray-900">Results</h2>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => setDeleteConfirmOpen(true)}
+            aria-label="Delete game"
+            data-testid="delete-game-button"
+            disabled={isDeleting}
+            className="ml-auto flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="w-5 h-5" />
+            <span className="hidden sm:inline">Delete</span>
+          </button>
+        )}
       </div>
 
       {/* Winner */}
@@ -145,6 +174,20 @@ export function GameResults({ game, holes, people, onBack }: GameResultsProps) {
             </tbody>
           </table>
         </section>
+      )}
+
+      {onDelete && (
+        <ConfirmDialog
+          isOpen={deleteConfirmOpen}
+          onClose={() => setDeleteConfirmOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title="Delete Game"
+          message="Are you sure you want to delete this game? All hole scores will be removed. This action cannot be undone."
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          variant="danger"
+          isLoading={isDeleting}
+        />
       )}
     </div>
   );
