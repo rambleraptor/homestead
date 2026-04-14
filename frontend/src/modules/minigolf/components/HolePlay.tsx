@@ -18,6 +18,7 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { ScoreStepper } from './ScoreStepper';
+import { computeTotalPar, computeTotals } from '../utils/scoring';
 import type { Game, Hole, PlayerScore } from '../types';
 
 interface Person {
@@ -29,6 +30,8 @@ interface HolePlayProps {
   game: Game;
   currentHole: number;
   existingHole?: Hole;
+  /** Holes scored before the current hole — used to show running totals. */
+  previousHoles?: Hole[];
   people: Person[];
   isSaving: boolean;
   onPrevious: () => void;
@@ -48,6 +51,7 @@ export function HolePlay({
   game,
   currentHole,
   existingHole,
+  previousHoles = [],
   people,
   isSaving,
   onPrevious,
@@ -62,6 +66,16 @@ export function HolePlay({
   const [scores, setScores] = useState<Record<string, number>>(() =>
     seedScores(game.players, existingHole, existingHole?.par ?? DEFAULT_PAR),
   );
+
+  const cumulativeTotals = useMemo(
+    () => computeTotals(previousHoles, game.players),
+    [previousHoles, game.players],
+  );
+  const cumulativePar = useMemo(
+    () => computeTotalPar(previousHoles),
+    [previousHoles],
+  );
+  const hasCumulative = previousHoles.length > 0;
 
   const isLast = currentHole >= game.hole_count;
   const isFirst = currentHole <= 1;
@@ -121,6 +135,54 @@ export function HolePlay({
           testId="par"
         />
       </section>
+
+      {/* Cumulative scores through the previous hole — only shown once
+          at least one hole has been recorded. Kept compact so the
+          per-player steppers remain in the thumb-friendly bottom half. */}
+      {hasCumulative && (
+        <section
+          className="bg-white rounded-lg shadow-md p-3 border border-gray-200 mt-3"
+          data-testid="cumulative-scores"
+        >
+          <div className="flex items-center justify-between text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+            <span>Total through hole {currentHole - 1}</span>
+            {cumulativePar > 0 && (
+              <span className="tabular-nums">Par {cumulativePar}</span>
+            )}
+          </div>
+          <div className="space-y-1">
+            {game.players.map((player) => {
+              const id = player.replace(/^people\//, '');
+              const total = cumulativeTotals[player] ?? 0;
+              const diff = total - cumulativePar;
+              return (
+                <div
+                  key={player}
+                  className="flex items-center justify-between text-sm"
+                  data-testid={`cumulative-${id}`}
+                >
+                  <span className="font-medium text-gray-900 truncate">
+                    {displayNameFor(player, people)}
+                  </span>
+                  <span className="tabular-nums">
+                    <span
+                      className="font-semibold text-gray-900"
+                      data-testid={`cumulative-${id}-total`}
+                    >
+                      {total}
+                    </span>
+                    {cumulativePar > 0 && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        ({diff === 0 ? 'E' : diff > 0 ? `+${diff}` : diff})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Per-player strokes — takes up the main body, thumb-accessible */}
       <section className="flex-1 mt-4 space-y-3 pb-4">

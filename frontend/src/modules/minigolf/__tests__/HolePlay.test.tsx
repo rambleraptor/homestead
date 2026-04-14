@@ -112,6 +112,72 @@ describe('HolePlay', () => {
     expect(screen.getByTestId('hole-prev')).toBeDisabled();
   });
 
+  it('does not render cumulative scores on the first hole', () => {
+    render(
+      <HolePlay
+        game={makeGame()}
+        currentHole={1}
+        people={people}
+        isSaving={false}
+        onPrevious={() => {}}
+        onSaveAndNext={() => {}}
+        onSaveAndFinish={() => {}}
+        onExit={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId('cumulative-scores')).not.toBeInTheDocument();
+  });
+
+  it('shows cumulative scores from previous holes while playing', () => {
+    const previousHoles: Hole[] = [
+      {
+        id: 'h1',
+        path: 'games/g1/holes/h1',
+        hole_number: 1,
+        par: 3,
+        scores: [
+          { player: 'people/a', strokes: 4 },
+          { player: 'people/b', strokes: 2 },
+        ],
+        create_time: '',
+        update_time: '',
+      },
+      {
+        id: 'h2',
+        path: 'games/g1/holes/h2',
+        hole_number: 2,
+        par: 4,
+        scores: [
+          { player: 'people/a', strokes: 5 },
+          { player: 'people/b', strokes: 4 },
+        ],
+        create_time: '',
+        update_time: '',
+      },
+    ];
+    render(
+      <HolePlay
+        game={makeGame()}
+        currentHole={3}
+        previousHoles={previousHoles}
+        people={people}
+        isSaving={false}
+        onPrevious={() => {}}
+        onSaveAndNext={() => {}}
+        onSaveAndFinish={() => {}}
+        onExit={() => {}}
+      />,
+    );
+    const section = screen.getByTestId('cumulative-scores');
+    expect(section).toHaveTextContent(/Total through hole 2/i);
+    // Alice: 4 + 5 = 9, Bob: 2 + 4 = 6
+    expect(screen.getByTestId('cumulative-a-total')).toHaveTextContent('9');
+    expect(screen.getByTestId('cumulative-b-total')).toHaveTextContent('6');
+    // Total par = 3 + 4 = 7 ; Alice diff +2, Bob diff -1
+    expect(screen.getByTestId('cumulative-a')).toHaveTextContent('+2');
+    expect(screen.getByTestId('cumulative-b')).toHaveTextContent('-1');
+  });
+
   it('seeds par and strokes from an existing hole record', () => {
     const existing: Hole = {
       id: 'h1',

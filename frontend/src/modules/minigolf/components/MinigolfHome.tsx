@@ -236,6 +236,9 @@ export function MinigolfHome() {
           game={activeGame}
           currentHole={currentHole}
           existingHole={findHole(currentHole)}
+          previousHoles={(holes ?? []).filter(
+            (h) => h.hole_number < currentHole,
+          )}
           people={peopleLite}
           isSaving={saving}
           onPrevious={handlePrevious}
