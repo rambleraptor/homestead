@@ -1,8 +1,32 @@
+import { execSync } from 'child_process';
 import type { NextConfig } from 'next';
+
+// Capture git commit info at build time so the settings screen can display
+// which revision of homeOS is running. Falls back to 'unknown' if git is
+// unavailable (e.g. a shallow Docker build without the .git directory).
+function readGit(args: string): string {
+  try {
+    return execSync(`git ${args}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+const commitHash = readGit('rev-parse HEAD');
+const commitDate = readGit('log -1 --pretty=format:%cI');
+const commitMessage = readGit('log -1 --pretty=format:%s');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: [],
+
+  env: {
+    NEXT_PUBLIC_COMMIT_HASH: commitHash,
+    NEXT_PUBLIC_COMMIT_DATE: commitDate,
+    NEXT_PUBLIC_COMMIT_MESSAGE: commitMessage,
+  },
 
   images: {
     remotePatterns: [],
