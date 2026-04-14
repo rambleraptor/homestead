@@ -40,6 +40,7 @@ import { settingsModule } from './settings/module.config';
 import { hsaModule } from './hsa/module.config';
 import { creditCardsModule } from './credit-cards/module.config';
 import { usersModule } from './users/module.config';
+import { minigolfModule } from './minigolf/module.config';
 
 // =============================================================================
 // REGISTER MODULES HERE
@@ -56,6 +57,7 @@ const MODULES: HomeModule[] = [
   peopleModule,
   hsaModule,
   creditCardsModule,
+  minigolfModule,
   notificationsModule,
   usersModule,
   settingsModule,
