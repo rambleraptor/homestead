@@ -17,6 +17,7 @@ import { MerchantList } from './MerchantList';
 import { MerchantDetail } from './MerchantDetail';
 import { GiftCardForm } from './GiftCardForm';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { logger } from '@/core/utils/logger';
 import { formatCurrency } from '@/shared/utils/currencyUtils';
 import type { GiftCard, GiftCardFormData } from '../types';
@@ -91,7 +92,7 @@ export function GiftCardHome() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-accent-terracotta animate-spin" />
       </div>
     );
   }
@@ -123,34 +124,30 @@ export function GiftCardHome() {
       {/* Header */}
       {view === 'list' && (
         <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Gift Cards
-              </h1>
-              <p className="mt-2 text-gray-600">
-                Manage your household gift cards
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => router.push('/gift-cards/import')}
-                data-testid="import-gift-cards-button"
-                className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-lg font-medium transition-colors shadow-md"
-              >
-                <Upload className="w-4 h-4" />
-                Import
-              </button>
-              <button
-                onClick={handleAddCard}
-                data-testid="add-gift-card-button"
-                className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-gray-900 rounded-lg font-medium transition-colors shadow-md"
-              >
-                <Plus className="w-5 h-5" />
-                Add Gift Card
-              </button>
-            </div>
-          </div>
+          <PageHeader
+            title="Gift Cards"
+            subtitle="Manage your household gift cards"
+            actions={
+              <>
+                <button
+                  onClick={() => router.push('/gift-cards/import')}
+                  data-testid="import-gift-cards-button"
+                  className="flex items-center gap-2 px-4 py-2 bg-bg-pearl hover:bg-gray-100 text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
+                >
+                  <Upload className="w-4 h-4" />
+                  Import
+                </button>
+                <button
+                  onClick={handleAddCard}
+                  data-testid="add-gift-card-button"
+                  className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Gift Card
+                </button>
+              </>
+            }
+          />
 
           {/* Stats Overview */}
           {stats && stats.totalCards > 0 && (
@@ -161,7 +158,7 @@ export function GiftCardHome() {
                     <p className="text-sm font-medium text-gray-600">
                       Total Balance
                     </p>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">
+                    <p className="mt-2 text-3xl font-display font-bold text-brand-navy">
                       {formatCurrency(stats.totalAmount)}
                     </p>
                   </div>
@@ -177,7 +174,7 @@ export function GiftCardHome() {
                     <p className="text-sm font-medium text-gray-600">
                       Total Cards
                     </p>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">
+                    <p className="mt-2 text-3xl font-display font-bold text-brand-navy">
                       {stats.totalCards}
                     </p>
                   </div>

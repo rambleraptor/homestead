@@ -51,7 +51,7 @@ export function CreditCardDashboard({ stats }: CreditCardDashboardProps) {
       {/* YTD Redeemed */}
       <div className="rounded-lg p-4 border border-gray-200 bg-white">
         <div className="flex items-center gap-2 mb-1">
-          <Target className="w-4 h-4 text-primary-500" />
+          <Target className="w-4 h-4 text-accent-terracotta" />
           <span className="text-xs font-medium text-gray-600">YTD Redeemed</span>
         </div>
         <div className="text-xl font-bold text-gray-900">

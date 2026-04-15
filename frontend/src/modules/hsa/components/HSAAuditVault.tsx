@@ -26,7 +26,7 @@ function HSAReceiptLink({ receipt }: { receipt: HSAReceipt }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
+      className="inline-flex items-center gap-1 text-accent-terracotta hover:text-accent-terracotta-hover font-medium"
     >
       View
       <ExternalLink className="w-3 h-3" />
@@ -73,7 +73,7 @@ export function HSAAuditVault({
               id="status-filter"
               value={statusFilter}
               onChange={(e) => onStatusFilterChange(e.target.value as ReceiptStatus | 'All')}
-              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
             >
               <option value="All">All ({stats.totalReceipts})</option>
               <option value="Stored">Stored ({stats.storedReceipts})</option>
@@ -89,7 +89,7 @@ export function HSAAuditVault({
           {statusFilter !== 'All' && (
             <button
               onClick={() => onStatusFilterChange('All')}
-              className="mt-2 text-sm text-primary-600 hover:text-primary-700"
+              className="mt-2 text-sm text-accent-terracotta hover:text-accent-terracotta-hover"
             >
               View all receipts
             </button>

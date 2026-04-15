@@ -23,6 +23,7 @@ import { GameSetup } from './GameSetup';
 import { HolePlay } from './HolePlay';
 import { GameResults } from './GameResults';
 import { logger } from '@/core/utils/logger';
+import { PageHeader } from '@/shared/components/PageHeader';
 import type { Game, GameFormData, Hole, PlayerScore } from '../types';
 
 type View = 'list' | 'setup' | 'play' | 'results';
@@ -166,7 +167,7 @@ export function MinigolfHome() {
   if (gamesLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-accent-terracotta animate-spin" />
       </div>
     );
   }
@@ -194,23 +195,21 @@ export function MinigolfHome() {
     <div className="space-y-6">
       {view === 'list' && (
         <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Mini Golf</h1>
-              <p className="mt-2 text-gray-600">
-                Score games hole-by-hole and track winners.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setView('setup')}
-              data-testid="new-game-button"
-              className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-gray-900 rounded-lg font-medium transition-colors shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              New Game
-            </button>
-          </div>
+          <PageHeader
+            title="Mini Golf"
+            subtitle="Score games hole-by-hole and track winners."
+            actions={
+              <button
+                type="button"
+                onClick={() => setView('setup')}
+                data-testid="new-game-button"
+                className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm"
+              >
+                <Plus className="w-5 h-5" />
+                New Game
+              </button>
+            }
+          />
 
           <GameList
             games={games ?? []}

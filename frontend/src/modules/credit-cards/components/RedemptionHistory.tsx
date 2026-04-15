@@ -36,7 +36,7 @@ export function RedemptionHistory({
         <button
           onClick={onAddRedemption}
           data-testid="add-redemption-button"
-          className="flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+          className="flex items-center gap-1 text-sm font-medium text-accent-terracotta hover:text-accent-terracotta-hover transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Redemption
@@ -87,7 +87,7 @@ export function RedemptionHistory({
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => onEditRedemption(redemption)}
-                        className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
+                        className="p-1 text-gray-400 hover:text-accent-terracotta transition-colors"
                         data-testid={`edit-redemption-${redemption.id}`}
                       >
                         <Pencil className="w-3.5 h-3.5" />

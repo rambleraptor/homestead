@@ -78,7 +78,7 @@ export function UserForm({ initialData, onSubmit, onCancel, isSubmitting }: User
           id="user-type"
           value={type}
           onChange={(e) => setType(e.target.value as UserType)}
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
           data-testid="user-type-select"
         >
           <option value="regular">Regular</option>

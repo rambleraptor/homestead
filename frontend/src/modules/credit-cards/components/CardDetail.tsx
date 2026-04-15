@@ -93,7 +93,7 @@ export function CardDetail({
           <div className="flex items-center gap-2">
             <button
               onClick={onEditCard}
-              className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+              className="p-2 text-gray-400 hover:text-accent-terracotta transition-colors"
               data-testid="edit-card-detail"
             >
               <Pencil className="w-4 h-4" />
@@ -169,7 +169,7 @@ export function CardDetail({
           <button
             onClick={() => { setEditingPerk(null); setShowPerkForm(true); }}
             data-testid="add-perk-button"
-            className="flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+            className="flex items-center gap-1 text-sm font-medium text-accent-terracotta hover:text-accent-terracotta-hover transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Perk

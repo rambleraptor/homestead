@@ -78,7 +78,7 @@ export function ScoreStepper({
           disabled={!canInc}
           aria-label={label ? `Increase ${label}` : 'Increase'}
           data-testid={testId ? `${testId}-inc` : undefined}
-          className={`${buttonSize} flex items-center justify-center rounded-full bg-primary-500 text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed active:bg-primary-600 shadow-md transition-colors`}
+          className={`${buttonSize} flex items-center justify-center rounded-full bg-accent-terracotta text-white disabled:opacity-40 disabled:cursor-not-allowed active:bg-accent-terracotta-hover shadow-md transition-colors`}
         >
           <Plus className={iconSize} />
         </button>

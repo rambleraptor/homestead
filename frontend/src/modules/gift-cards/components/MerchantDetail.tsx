@@ -118,18 +118,18 @@ export function MerchantDetail({
       </div>
 
       {/* Merchant Summary */}
-      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg shadow-md p-6 text-gray-900">
+      <div className="bg-gradient-to-r from-accent-terracotta to-accent-terracotta-hover rounded-2xl shadow-sm p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold mb-2">{merchant}</h2>
-            <p className="text-gray-700">
+            <h2 className="font-display text-2xl font-bold mb-2">{merchant}</h2>
+            <p className="text-white/90">
               {activeCards.length} active {activeCards.length === 1 ? 'card' : 'cards'}
               {archivedCards.length > 0 && ` • ${archivedCards.length} archived`}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-700 mb-1">Total Balance</p>
-            <p className="text-4xl font-bold">{formatCurrency(totalAmount)}</p>
+            <p className="text-sm text-white/90 mb-1">Total Balance</p>
+            <p className="font-display text-4xl font-bold">{formatCurrency(totalAmount)}</p>
           </div>
         </div>
       </div>
@@ -147,8 +147,8 @@ export function MerchantDetail({
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                    <CreditCard className="w-6 h-6 text-primary-600" />
+                  <div className="w-12 h-12 bg-accent-terracotta/10 rounded-lg flex items-center justify-center">
+                    <CreditCard className="w-6 h-6 text-accent-terracotta" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
@@ -194,7 +194,7 @@ export function MerchantDetail({
                       setTransactionAmount((prev) => ({ ...prev, [card.id]: e.target.value }))
                     }
                     placeholder="Amount"
-                    className="w-full sm:flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full sm:flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-accent-terracotta focus:border-transparent"
                   />
                   <div className="flex gap-2">
                     <button
@@ -229,7 +229,7 @@ export function MerchantDetail({
                     </label>
                     <button
                       onClick={() => toggleNumberVisibility(card.id)}
-                      className="text-xs text-primary-600 hover:underline flex items-center gap-1"
+                      className="text-xs text-accent-terracotta hover:underline flex items-center gap-1"
                     >
                       {visibleNumbers.has(card.id) ? (
                         <>
@@ -256,7 +256,7 @@ export function MerchantDetail({
                       </label>
                       <button
                         onClick={() => togglePinVisibility(card.id)}
-                        className="text-xs text-primary-600 hover:underline flex items-center gap-1"
+                        className="text-xs text-accent-terracotta hover:underline flex items-center gap-1"
                       >
                         {visiblePins.has(card.id) ? (
                           <>
@@ -389,7 +389,7 @@ export function MerchantDetail({
                         </label>
                         <button
                           onClick={() => toggleNumberVisibility(card.id)}
-                          className="text-xs text-primary-600 hover:underline flex items-center gap-1"
+                          className="text-xs text-accent-terracotta hover:underline flex items-center gap-1"
                         >
                           {visibleNumbers.has(card.id) ? (
                             <>
@@ -416,7 +416,7 @@ export function MerchantDetail({
                           </label>
                           <button
                             onClick={() => togglePinVisibility(card.id)}
-                            className="text-xs text-primary-600 hover:underline flex items-center gap-1"
+                            className="text-xs text-accent-terracotta hover:underline flex items-center gap-1"
                           >
                             {visiblePins.has(card.id) ? (
                               <>
