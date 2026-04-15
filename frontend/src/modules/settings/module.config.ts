@@ -7,6 +7,7 @@
 
 import { Settings } from 'lucide-react';
 import type { HomeModule } from '../types';
+import { SettingsHome } from './components/SettingsHome';
 
 export const settingsModule: HomeModule = {
   id: 'settings',
@@ -19,4 +20,8 @@ export const settingsModule: HomeModule = {
   showInNav: true,
   navOrder: 100,
   enabled: true,
+  omnibox: {
+    synonyms: ['settings', 'preferences', 'config', 'options'],
+    listComponent: SettingsHome,
+  },
 };

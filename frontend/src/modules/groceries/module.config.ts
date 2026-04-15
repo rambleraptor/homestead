@@ -6,6 +6,7 @@
 
 import type { HomeModule } from '../types';
 import { ShoppingCart } from 'lucide-react';
+import { groceriesOmnibox } from './omnibox';
 
 export const groceriesModule: HomeModule = {
   id: 'groceries',
@@ -18,4 +19,5 @@ export const groceriesModule: HomeModule = {
   showInNav: true,
   navOrder: 2,
   enabled: true,
+  omnibox: groceriesOmnibox,
 };

@@ -7,6 +7,7 @@
 
 import type { HomeModule } from '../types';
 import { LayoutDashboard } from 'lucide-react';
+import { DashboardHome } from './components/DashboardHome';
 
 export const dashboardModule: HomeModule = {
   id: 'dashboard',
@@ -18,4 +19,8 @@ export const dashboardModule: HomeModule = {
   showInNav: false,
   navOrder: 1,
   enabled: true,
+  omnibox: {
+    synonyms: ['dashboard', 'home', 'overview', 'summary'],
+    listComponent: DashboardHome,
+  },
 };

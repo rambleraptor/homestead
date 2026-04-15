@@ -6,6 +6,7 @@
 
 import type { HomeModule } from '../types';
 import { Receipt } from 'lucide-react';
+import { HSAHome } from './components/HSAHome';
 
 export const hsaModule: HomeModule = {
   id: 'hsa',
@@ -20,4 +21,19 @@ export const hsaModule: HomeModule = {
   navOrder: 4,
   section: 'Money',
   enabled: true,
+  omnibox: {
+    synonyms: [
+      'hsa',
+      'medical',
+      'receipt',
+      'receipts',
+      'dental',
+      'vision',
+      'rx',
+      'prescription',
+      'doctor',
+      'pharmacy',
+    ],
+    listComponent: HSAHome,
+  },
 };

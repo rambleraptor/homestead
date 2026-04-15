@@ -6,6 +6,7 @@
 
 import type { HomeModule } from '../types';
 import { CreditCard } from 'lucide-react';
+import { CreditCardsHome } from './components/CreditCardsHome';
 
 export const creditCardsModule: HomeModule = {
   id: 'credit-cards',
@@ -20,4 +21,17 @@ export const creditCardsModule: HomeModule = {
   navOrder: 5,
   section: 'Money',
   enabled: true,
+  omnibox: {
+    synonyms: [
+      'credit',
+      'card',
+      'cards',
+      'perk',
+      'perks',
+      'rewards',
+      'chase',
+      'amex',
+    ],
+    listComponent: CreditCardsHome,
+  },
 };
