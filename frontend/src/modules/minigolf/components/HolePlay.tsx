@@ -11,12 +11,21 @@
  *   - Typing never required; no select dropdowns; no keyboard.
  *
  * State is seeded from any existing hole record (if the user is
- * revisiting), otherwise par defaults to 3 and strokes default to par
- * for each player. The record is persisted on `Next` / `Finish`.
+ * revisiting), otherwise par defaults to 0 (meaning "unset" — par is
+ * optional) and strokes default to 0 for each player. 0 is not a
+ * valid stroke count, so it also nudges the user to enter a real value.
+ * The record is persisted on `Next` / `Finish`.
  */
 
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+} from 'lucide-react';
 import { ScoreStepper } from './ScoreStepper';
 import { computeTotalPar, computeTotals } from '../utils/scoring';
 import type { Game, Hole, PlayerScore } from '../types';
@@ -40,7 +49,8 @@ interface HolePlayProps {
   onExit: () => void;
 }
 
-const DEFAULT_PAR = 3;
+const DEFAULT_PAR = 0;
+const DEFAULT_STROKES = 0;
 
 function displayNameFor(playerPath: string, people: Person[]): string {
   const id = playerPath.replace(/^people\//, '');
@@ -64,8 +74,9 @@ export function HolePlay({
   // matching `key`, so we don't need a syncing effect here.
   const [par, setPar] = useState<number>(existingHole?.par ?? DEFAULT_PAR);
   const [scores, setScores] = useState<Record<string, number>>(() =>
-    seedScores(game.players, existingHole, existingHole?.par ?? DEFAULT_PAR),
+    seedScores(game.players, existingHole),
   );
+  const [totalsOpen, setTotalsOpen] = useState(false);
 
   const cumulativeTotals = useMemo(
     () => computeTotals(previousHoles, game.players),
@@ -89,7 +100,7 @@ export function HolePlay({
       par,
       scores: game.players.map<PlayerScore>((player) => ({
         player,
-        strokes: scores[player] ?? par,
+        strokes: scores[player] ?? DEFAULT_STROKES,
       })),
     }),
     [par, scores, game.players],
@@ -129,60 +140,12 @@ export function HolePlay({
           label="Par"
           value={par}
           onChange={setPar}
-          min={1}
+          min={0}
           max={20}
           size="md"
           testId="par"
         />
       </section>
-
-      {/* Cumulative scores through the previous hole — only shown once
-          at least one hole has been recorded. Kept compact so the
-          per-player steppers remain in the thumb-friendly bottom half. */}
-      {hasCumulative && (
-        <section
-          className="bg-white rounded-lg shadow-md p-3 border border-gray-200 mt-3"
-          data-testid="cumulative-scores"
-        >
-          <div className="flex items-center justify-between text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-            <span>Total through hole {currentHole - 1}</span>
-            {cumulativePar > 0 && (
-              <span className="tabular-nums">Par {cumulativePar}</span>
-            )}
-          </div>
-          <div className="space-y-1">
-            {game.players.map((player) => {
-              const id = player.replace(/^people\//, '');
-              const total = cumulativeTotals[player] ?? 0;
-              const diff = total - cumulativePar;
-              return (
-                <div
-                  key={player}
-                  className="flex items-center justify-between text-sm"
-                  data-testid={`cumulative-${id}`}
-                >
-                  <span className="font-medium text-gray-900 truncate">
-                    {displayNameFor(player, people)}
-                  </span>
-                  <span className="tabular-nums">
-                    <span
-                      className="font-semibold text-gray-900"
-                      data-testid={`cumulative-${id}-total`}
-                    >
-                      {total}
-                    </span>
-                    {cumulativePar > 0 && (
-                      <span className="ml-2 text-xs text-gray-500">
-                        ({diff === 0 ? 'E' : diff > 0 ? `+${diff}` : diff})
-                      </span>
-                    )}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
       {/* Per-player strokes — takes up the main body, thumb-accessible */}
       <section className="flex-1 mt-4 space-y-3 pb-4">
@@ -197,9 +160,9 @@ export function HolePlay({
             >
               <ScoreStepper
                 label={name}
-                value={scores[player] ?? par}
+                value={scores[player] ?? DEFAULT_STROKES}
                 onChange={(v) => handleSetStrokes(player, v)}
-                min={1}
+                min={0}
                 max={30}
                 size="lg"
                 testId={`strokes-${id}`}
@@ -208,6 +171,79 @@ export function HolePlay({
           );
         })}
       </section>
+
+      {/* Cumulative totals through the previous hole — only shown once
+          at least one hole has been recorded. Lives at the bottom of the
+          content, above the sticky nav, and is collapsed by default so
+          the per-player steppers stay in the thumb-friendly zone. */}
+      {hasCumulative && (
+        <section
+          className="bg-white rounded-lg shadow-md border border-gray-200 mb-3"
+          data-testid="cumulative-scores"
+        >
+          <button
+            type="button"
+            onClick={() => setTotalsOpen((v) => !v)}
+            aria-expanded={totalsOpen}
+            aria-controls="cumulative-totals-body"
+            data-testid="cumulative-scores-toggle"
+            className="w-full flex items-center justify-between p-3 text-left"
+          >
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Total through hole {currentHole - 1}
+            </span>
+            <span className="flex items-center gap-2">
+              {cumulativePar > 0 && (
+                <span className="tabular-nums text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Par {cumulativePar}
+                </span>
+              )}
+              {totalsOpen ? (
+                <ChevronUp className="w-4 h-4 text-gray-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-500" />
+              )}
+            </span>
+          </button>
+          {totalsOpen && (
+            <div
+              id="cumulative-totals-body"
+              className="px-3 pb-3 space-y-1"
+              data-testid="cumulative-scores-body"
+            >
+              {game.players.map((player) => {
+                const id = player.replace(/^people\//, '');
+                const total = cumulativeTotals[player] ?? 0;
+                const diff = total - cumulativePar;
+                return (
+                  <div
+                    key={player}
+                    className="flex items-center justify-between text-sm"
+                    data-testid={`cumulative-${id}`}
+                  >
+                    <span className="font-medium text-gray-900 truncate">
+                      {displayNameFor(player, people)}
+                    </span>
+                    <span className="tabular-nums">
+                      <span
+                        className="font-semibold text-gray-900"
+                        data-testid={`cumulative-${id}-total`}
+                      >
+                        {total}
+                      </span>
+                      {cumulativePar > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({diff === 0 ? 'E' : diff > 0 ? `+${diff}` : diff})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Bottom nav */}
       <div className="sticky bottom-0 bg-white/80 backdrop-blur pt-3 pb-4 -mx-4 px-4 border-t border-gray-200 flex gap-3">
@@ -253,12 +289,11 @@ export function HolePlay({
 function seedScores(
   players: string[],
   existingHole: Hole | undefined,
-  fallbackPar: number,
 ): Record<string, number> {
   const seeded: Record<string, number> = {};
   for (const p of players) {
     const found = existingHole?.scores.find((s) => s.player === p);
-    seeded[p] = found?.strokes ?? fallbackPar;
+    seeded[p] = found?.strokes ?? DEFAULT_STROKES;
   }
   return seeded;
 }
