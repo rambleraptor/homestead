@@ -3,12 +3,13 @@
 /**
  * Dashboard Home Component
  *
- * Home screen showing upcoming birthdays and anniversaries
+ * Home screen showing upcoming birthdays and anniversaries.
+ * Styled per HomeOS design system tokens (see globals.css).
  */
 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/core/auth/useAuth';
-import { Users, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Cake, Loader2, Users } from 'lucide-react';
 import { useUpcomingPeople } from '../hooks/useUpcomingPeople';
 import { format } from 'date-fns';
 import { getTodaysHoliday } from '@/shared/utils/dateUtils';
@@ -28,98 +29,99 @@ export function DashboardHome() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-display font-bold text-brand-navy tracking-tight">
           {getGreeting()}
         </h1>
-        <p className="mt-2 text-gray-600">
-          Here's what's happening
+        <p className="text-base font-body text-text-muted mt-1">
+          Here&apos;s what&apos;s happening
         </p>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-3xl">
-        {/* Upcoming Birthdays & Anniversaries Section */}
-        <div className="bg-white rounded-lg shadow-md border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Users className="w-5 h-5 text-purple-600" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Upcoming Birthdays & Anniversaries
-                </h2>
+      <div className="max-w-3xl space-y-6">
+        {/* Upcoming Birthdays & Anniversaries Card */}
+        <section className="bg-surface-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {/* Card Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-50">
+            <div className="flex items-center gap-3">
+              <div className="bg-gray-50 rounded-lg p-2">
+                <Cake className="w-5 h-5 text-brand-navy" aria-hidden="true" />
               </div>
-              <button
-                onClick={() => router.push('/people')}
-                className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
-              >
-                View all
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <h2 className="font-display font-semibold text-lg text-brand-navy">
+                Upcoming
+              </h2>
             </div>
+            <button
+              onClick={() => router.push('/people')}
+              className="text-sm font-medium text-accent-terracotta hover:text-accent-terracotta-hover flex items-center gap-1 transition-colors"
+            >
+              View all
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
 
-          <div className="p-6">
+          {/* Card Body */}
+          <div className="px-4">
             {peopleLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
               </div>
             ) : upcomingPeople && upcomingPeople.length > 0 ? (
-              <div className="space-y-4">
+              <ul className="divide-y divide-gray-50">
                 {upcomingPeople.map(({ person, type, date }) => {
                   const daysUntil = Math.ceil(
-                    (date.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                    (date.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
                   );
 
+                  const relative =
+                    daysUntil === 0
+                      ? 'Today'
+                      : daysUntil === 1
+                      ? 'Tomorrow'
+                      : `in ${daysUntil} days`;
+
+                  const badgeClass =
+                    type === 'Birthday'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'bg-orange-50 text-orange-700';
+
                   return (
-                    <div
-                      key={`${person.id}-${type}`}
-                      className="p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer"
-                      onClick={() => router.push('/people')}
-                    >
-                      <div className="flex items-start justify-between gap-3">
+                    <li key={`${person.id}-${type}`}>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/people')}
+                        className="w-full text-left py-4 flex items-start justify-between gap-3 hover:bg-bg-pearl/60 transition-colors rounded-lg px-2 -mx-2"
+                      >
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">
+                          <p className="font-body font-medium text-text-main text-base truncate">
                             {person.name}
-                          </h3>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className="text-xs font-medium text-gray-700">
-                              {format(date, 'MMM dd')}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {daysUntil === 0
-                                ? 'Today'
-                                : daysUntil === 1
-                                ? 'Tomorrow'
-                                : `in ${daysUntil} days`}
-                            </span>
-                          </div>
+                          </p>
+                          <p className="font-body text-sm text-text-muted mt-0.5">
+                            {format(date, 'MMM dd')} &middot; {relative}
+                          </p>
                         </div>
                         <span
-                          className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            type === 'Birthday'
-                              ? 'bg-pink-100 text-pink-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${badgeClass}`}
                         >
                           {type}
                         </span>
-                      </div>
-                    </div>
+                      </button>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             ) : (
-              <div className="text-center py-8">
+              <div className="text-center py-10">
                 <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No upcoming birthdays or anniversaries in the next 30 days</p>
+                <p className="font-body text-text-muted">
+                  No upcoming birthdays or anniversaries in the next 30 days
+                </p>
               </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

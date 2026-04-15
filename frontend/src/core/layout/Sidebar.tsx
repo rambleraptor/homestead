@@ -124,27 +124,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 z-50 h-full w-64 bg-white
-          shadow-lg transform transition-transform duration-300 ease-in-out
+          fixed top-0 left-0 z-50 h-full w-64 bg-surface-white
+          border-r border-gray-100 shadow-sm transform transition-transform duration-300 ease-in-out
           lg:translate-x-0 lg:static
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         <div className="flex flex-col h-full">
           {/* Logo/Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <Home className="w-6 h-6 text-primary-600" />
-              <h1 className="text-xl font-bold text-gray-900">
+              <Home className="w-6 h-6 text-brand-navy" />
+              <h1 className="text-xl font-display font-bold text-brand-navy tracking-tight">
                 HomeOS
               </h1>
             </div>
             <button
               onClick={onClose}
-              className="lg:hidden p-1 rounded-md hover:bg-gray-100"
+              className="lg:hidden p-1 rounded-md hover:bg-bg-pearl"
               aria-label="Close sidebar"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-brand-navy" />
             </button>
           </div>
 
@@ -168,7 +168,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         aria-expanded={!collapsed}
                         aria-controls={contentId}
                         data-testid={`sidebar-section-toggle-${section}`}
-                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider rounded-md hover:bg-gray-100 transition-colors"
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-text-muted uppercase tracking-wider rounded-md hover:bg-bg-pearl transition-colors"
                       >
                         <span>{section}</span>
                         {collapsed ? (
@@ -192,8 +192,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                               onClick={onClose}
                               className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                                 active
-                                  ? 'bg-primary-100 text-primary-700'
-                                  : 'text-gray-700 hover:bg-gray-100'
+                                  ? 'bg-accent-terracotta/10 text-accent-terracotta'
+                                  : 'text-brand-slate hover:bg-bg-pearl'
                               }`}
                             >
                               <Icon className="w-5 h-5 flex-shrink-0" />
@@ -210,10 +210,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </nav>
 
           {/* Bottom Actions */}
-          <div className="p-4 border-t border-gray-200 space-y-1">
+          <div className="p-4 border-t border-gray-100 space-y-1">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-brand-slate hover:bg-bg-pearl transition-colors"
               data-testid="logout-button"
             >
               <LogOut className="w-5 h-5" />
