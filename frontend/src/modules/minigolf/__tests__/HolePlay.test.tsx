@@ -24,7 +24,7 @@ const people = [
 ];
 
 describe('HolePlay', () => {
-  it('renders a stepper per player and seeds strokes from par by default', () => {
+  it('renders a stepper per player with default par 0 and strokes 0', () => {
     render(
       <HolePlay
         game={makeGame()}
@@ -40,10 +40,11 @@ describe('HolePlay', () => {
     expect(screen.getByTestId('hole-title')).toHaveTextContent('Hole 1 of 3');
     expect(screen.getByTestId('player-score-a')).toBeInTheDocument();
     expect(screen.getByTestId('player-score-b')).toBeInTheDocument();
-    // Default par is 3, strokes default to par
-    expect(screen.getByTestId('par-value')).toHaveTextContent('3');
-    expect(screen.getByTestId('strokes-a-value')).toHaveTextContent('3');
-    expect(screen.getByTestId('strokes-b-value')).toHaveTextContent('3');
+    // Par defaults to 0 (unset), strokes default to 0 (invalid placeholder
+    // that nudges the user to enter a real value).
+    expect(screen.getByTestId('par-value')).toHaveTextContent('0');
+    expect(screen.getByTestId('strokes-a-value')).toHaveTextContent('0');
+    expect(screen.getByTestId('strokes-b-value')).toHaveTextContent('0');
   });
 
   it('passes the current par + scores when Next is tapped', async () => {
@@ -62,11 +63,12 @@ describe('HolePlay', () => {
       />,
     );
 
-    // Bump par, alice strokes, bob strokes
-    await user.click(screen.getByTestId('par-inc')); // 4
-    await user.click(screen.getByTestId('strokes-a-inc')); // 4
-    await user.click(screen.getByTestId('strokes-b-inc')); // 4
-    await user.click(screen.getByTestId('strokes-b-inc')); // 5
+    // Starting from par=0 and strokes=0, bump par to 4, Alice to 4, Bob to 5.
+    for (let i = 0; i < 4; i++) await user.click(screen.getByTestId('par-inc'));
+    for (let i = 0; i < 4; i++)
+      await user.click(screen.getByTestId('strokes-a-inc'));
+    for (let i = 0; i < 5; i++)
+      await user.click(screen.getByTestId('strokes-b-inc'));
 
     await user.click(screen.getByTestId('hole-next'));
 
@@ -128,7 +130,8 @@ describe('HolePlay', () => {
     expect(screen.queryByTestId('cumulative-scores')).not.toBeInTheDocument();
   });
 
-  it('shows cumulative scores from previous holes while playing', () => {
+  it('shows cumulative scores from previous holes when expanded', async () => {
+    const user = userEvent.setup();
     const previousHoles: Hole[] = [
       {
         id: 'h1',
@@ -170,12 +173,55 @@ describe('HolePlay', () => {
     );
     const section = screen.getByTestId('cumulative-scores');
     expect(section).toHaveTextContent(/Total through hole 2/i);
+    // Collapsed by default — the body and per-player totals are hidden.
+    expect(screen.queryByTestId('cumulative-scores-body')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cumulative-a-total')).not.toBeInTheDocument();
+
+    // Expand to see the per-player breakdown.
+    await user.click(screen.getByTestId('cumulative-scores-toggle'));
+
     // Alice: 4 + 5 = 9, Bob: 2 + 4 = 6
     expect(screen.getByTestId('cumulative-a-total')).toHaveTextContent('9');
     expect(screen.getByTestId('cumulative-b-total')).toHaveTextContent('6');
     // Total par = 3 + 4 = 7 ; Alice diff +2, Bob diff -1
     expect(screen.getByTestId('cumulative-a')).toHaveTextContent('+2');
     expect(screen.getByTestId('cumulative-b')).toHaveTextContent('-1');
+  });
+
+  it('collapses the cumulative totals panel on toggle', async () => {
+    const user = userEvent.setup();
+    const previousHoles: Hole[] = [
+      {
+        id: 'h1',
+        path: 'games/g1/holes/h1',
+        hole_number: 1,
+        par: 3,
+        scores: [{ player: 'people/a', strokes: 3 }],
+        create_time: '',
+        update_time: '',
+      },
+    ];
+    render(
+      <HolePlay
+        game={makeGame()}
+        currentHole={2}
+        previousHoles={previousHoles}
+        people={people}
+        isSaving={false}
+        onPrevious={() => {}}
+        onSaveAndNext={() => {}}
+        onSaveAndFinish={() => {}}
+        onExit={() => {}}
+      />,
+    );
+    const toggle = screen.getByTestId('cumulative-scores-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('cumulative-scores-body')).toBeInTheDocument();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('cumulative-scores-body')).not.toBeInTheDocument();
   });
 
   it('seeds par and strokes from an existing hole record', () => {
