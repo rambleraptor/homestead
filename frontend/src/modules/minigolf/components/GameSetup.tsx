@@ -90,7 +90,7 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
                   aria-pressed={active}
                   className={`h-14 px-4 rounded-lg text-base font-medium border-2 transition-colors ${
                     active
-                      ? 'bg-primary-500 border-primary-600 text-gray-900'
+                      ? 'bg-accent-terracotta border-accent-terracotta text-white'
                       : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -128,7 +128,7 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
           onChange={(e) => setLocation(e.target.value)}
           placeholder="e.g. Riverside Mini Golf"
           data-testid="game-location"
-          className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full h-12 px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
         />
       </section>
 
@@ -138,7 +138,7 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
         onClick={handleStart}
         disabled={!canStart}
         data-testid="start-game-button"
-        className="w-full h-14 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-900 font-semibold text-lg shadow-md transition-colors"
+        className="w-full h-14 rounded-lg bg-accent-terracotta hover:bg-accent-terracotta-hover disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-lg shadow-md transition-colors"
       >
         {isSubmitting ? 'Starting…' : 'Start Game'}
       </button>

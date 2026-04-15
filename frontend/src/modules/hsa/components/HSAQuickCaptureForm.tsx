@@ -232,7 +232,7 @@ export function HSAQuickCaptureForm({
             required
             value={formData.merchant}
             onChange={(e) => setFormData({ ...formData, merchant: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
             placeholder="Doctor's Office, Pharmacy, etc."
           />
         </div>
@@ -248,7 +248,7 @@ export function HSAQuickCaptureForm({
             required
             value={formData.service_date}
             onChange={(e) => setFormData({ ...formData, service_date: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
           />
         </div>
 
@@ -267,7 +267,7 @@ export function HSAQuickCaptureForm({
               step="0.01"
               value={formData.amount || ''}
               onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
               placeholder="0.00"
             />
           </div>
@@ -283,7 +283,7 @@ export function HSAQuickCaptureForm({
             required
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value as ReceiptCategory })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
           >
             <option value="Medical">Medical</option>
             <option value="Dental">Dental</option>
@@ -302,7 +302,7 @@ export function HSAQuickCaptureForm({
             id="patient"
             value={formData.patient}
             onChange={(e) => setFormData({ ...formData, patient: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
             placeholder="Self, Spouse, Child, etc."
           />
         </div>
@@ -314,7 +314,7 @@ export function HSAQuickCaptureForm({
           Receipt File <span className="text-red-500">*</span>
         </label>
         {!selectedFile ? (
-          <label className="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
+          <label className="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-accent-terracotta transition-colors">
             <Upload className="w-5 h-5 text-gray-400 mr-2" />
             <span className="text-sm text-gray-600">
               Upload receipt (Image or PDF, max 10MB)
@@ -382,7 +382,7 @@ export function HSAQuickCaptureForm({
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
           placeholder="Additional notes about this expense..."
         />
       </div>
@@ -401,7 +401,7 @@ export function HSAQuickCaptureForm({
           type="submit"
           disabled={isSubmitting}
           data-testid="hsa-receipt-form-submit"
-          className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-gray-900 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isSubmitting ? (
             <>

@@ -262,7 +262,7 @@ export function HolePlay({
           onClick={handleNext}
           disabled={isSaving}
           data-testid={isLast ? 'hole-finish' : 'hole-next'}
-          className="flex-[2] h-14 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-900 font-semibold flex items-center justify-center gap-2 shadow-md"
+          className="flex-[2] h-14 rounded-lg bg-accent-terracotta hover:bg-accent-terracotta-hover disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 shadow-md"
         >
           {isSaving ? (
             <>
@@ -309,7 +309,7 @@ function HoleProgress({ current, total }: { current: number; total: number }) {
         <span
           key={i}
           className={`h-1.5 w-1.5 rounded-full ${
-            i < current ? 'bg-primary-500' : 'bg-gray-300'
+            i < current ? 'bg-accent-terracotta' : 'bg-gray-300'
           }`}
         />
       ))}

@@ -81,7 +81,7 @@ export function GameResults({
 
       {/* Winner */}
       <section
-        className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg shadow-md p-6 border border-primary-200"
+        className="bg-gradient-to-br from-accent-terracotta/5 to-accent-terracotta/10 rounded-lg shadow-md p-6 border border-accent-terracotta/20"
         data-testid="game-winner"
       >
         <div className="flex items-center gap-4">

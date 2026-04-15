@@ -18,6 +18,7 @@ import {
 } from '@/core/utils/notifications';
 import { ChangePasswordForm } from './ChangePasswordForm';
 import { useToast } from '@/shared/components/ToastProvider';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { logger } from '@/core/utils/logger';
 import type { MapProvider } from '@/core/auth/types';
 
@@ -100,14 +101,10 @@ export function SettingsHome() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Settings
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Manage your preferences and notifications
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        subtitle="Manage your preferences and notifications"
+      />
 
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">

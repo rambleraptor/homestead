@@ -55,7 +55,7 @@ export function CardList({
         return (
           <div
             key={card.id}
-            className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 hover:bg-gray-50 transition-colors cursor-pointer"
+            className="border border-gray-200 rounded-lg p-4 hover:border-accent-terracotta/30 hover:bg-gray-50 transition-colors cursor-pointer"
             onClick={() => onSelectCard(card)}
             data-testid={`card-row-${card.id}`}
           >
@@ -90,7 +90,7 @@ export function CardList({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={(e) => { e.stopPropagation(); onEditCard(card); }}
-                    className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
+                    className="p-1.5 text-gray-400 hover:text-accent-terracotta transition-colors"
                     data-testid={`edit-card-${card.id}`}
                   >
                     <Pencil className="w-4 h-4" />

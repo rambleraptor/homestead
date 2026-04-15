@@ -63,11 +63,11 @@ export function GameList({ games, people, onOpen }: GameListProps) {
               data-testid={`game-item-${game.id}`}
               className="w-full text-left bg-white rounded-lg shadow-md p-4 border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-4"
             >
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent-terracotta/10 flex items-center justify-center">
                 {game.completed ? (
                   <Trophy className="w-6 h-6 text-amber-500" />
                 ) : (
-                  <Play className="w-6 h-6 text-primary-600" />
+                  <Play className="w-6 h-6 text-accent-terracotta" />
                 )}
               </div>
               <div className="flex-1 min-w-0">

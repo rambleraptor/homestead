@@ -4,6 +4,7 @@ import { Bell, Check, Calendar } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
 import { Spinner } from '@/shared/components/Spinner';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { useNotifications } from '../hooks/useNotifications';
 import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
 import { logger } from '@/core/utils/logger';
@@ -53,14 +54,10 @@ export function NotificationsHome() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Notification Center
-        </h1>
-        <p className="mt-2 text-gray-600">
-          View and manage your notifications
-        </p>
-      </div>
+      <PageHeader
+        title="Notification Center"
+        subtitle="View and manage your notifications"
+      />
 
       {unreadNotifications.length > 0 && (
         <div>

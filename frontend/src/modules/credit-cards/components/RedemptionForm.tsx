@@ -169,7 +169,7 @@ function RedemptionFormBody({
           disabled={!!initialData}
           value={formData.perk}
           onChange={(e) => handlePerkChange(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:text-gray-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta disabled:bg-gray-100 disabled:text-gray-500"
         >
           {perks.map((p) => (
             <option key={p.id} value={p.id}>
@@ -189,7 +189,7 @@ function RedemptionFormBody({
           required
           value={periodSelectValue}
           onChange={(e) => handlePeriodChange(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
         >
           {periodOptions.map((period) => {
             const key = `${toISODate(period.start)}|${toISODate(period.end)}`;
@@ -214,7 +214,7 @@ function RedemptionFormBody({
             required
             value={formData.redeemed_at}
             onChange={(e) => setFormData({ ...formData, redeemed_at: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
           />
         </div>
 
@@ -233,7 +233,7 @@ function RedemptionFormBody({
               step="0.01"
               value={formData.amount || ''}
               onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
               placeholder="0.00"
             />
           </div>
@@ -250,7 +250,7 @@ function RedemptionFormBody({
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
           placeholder="Optional notes..."
         />
       </div>
@@ -269,7 +269,7 @@ function RedemptionFormBody({
           type="submit"
           disabled={isSubmitting}
           data-testid="redemption-form-submit"
-          className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-gray-900 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isSubmitting ? (
             <>

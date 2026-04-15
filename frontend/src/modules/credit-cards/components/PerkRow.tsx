@@ -96,7 +96,7 @@ export function PerkRow({
         )}
         <button
           onClick={onEdit}
-          className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
+          className="p-1 text-gray-400 hover:text-accent-terracotta transition-colors"
           data-testid={`edit-perk-${perk.id}`}
         >
           <Pencil className="w-3.5 h-3.5" />

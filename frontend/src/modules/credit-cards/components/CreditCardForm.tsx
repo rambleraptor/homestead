@@ -78,7 +78,7 @@ export function CreditCardForm({
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
             placeholder="e.g. Amex Gold"
           />
         </div>
@@ -94,7 +94,7 @@ export function CreditCardForm({
             required
             value={formData.issuer}
             onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
             placeholder="e.g. American Express"
           />
         </div>
@@ -110,7 +110,7 @@ export function CreditCardForm({
             maxLength={4}
             value={formData.last_four}
             onChange={(e) => setFormData({ ...formData, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
             placeholder="1234"
           />
         </div>
@@ -130,7 +130,7 @@ export function CreditCardForm({
               step="1"
               value={formData.annual_fee || ''}
               onChange={(e) => setFormData({ ...formData, annual_fee: parseFloat(e.target.value) || 0 })}
-              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
               placeholder="0"
             />
           </div>
@@ -147,7 +147,7 @@ export function CreditCardForm({
             required
             value={formData.anniversary_date}
             onChange={(e) => setFormData({ ...formData, anniversary_date: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
           />
         </div>
 
@@ -161,7 +161,7 @@ export function CreditCardForm({
             required
             value={formData.reset_mode}
             onChange={(e) => setFormData({ ...formData, reset_mode: e.target.value as ResetMode })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
           >
             <option value="calendar_year">Calendar Year (Jan-Dec)</option>
             <option value="anniversary">Anniversary Date</option>
@@ -176,7 +176,7 @@ export function CreditCardForm({
               id="card-archived"
               checked={formData.archived}
               onChange={(e) => setFormData({ ...formData, archived: e.target.checked })}
-              className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+              className="w-4 h-4 text-accent-terracotta border-gray-300 rounded focus:ring-accent-terracotta"
             />
             <label htmlFor="card-archived" className="text-sm font-medium text-gray-700">
               Archived (hidden from main view)
@@ -195,7 +195,7 @@ export function CreditCardForm({
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
           placeholder="Optional notes about this card..."
         />
       </div>
@@ -214,7 +214,7 @@ export function CreditCardForm({
           type="submit"
           disabled={isSubmitting}
           data-testid="credit-card-form-submit"
-          className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-gray-900 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isSubmitting ? (
             <>

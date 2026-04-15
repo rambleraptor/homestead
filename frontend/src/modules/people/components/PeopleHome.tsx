@@ -16,6 +16,7 @@ import { useUpdatePerson } from '../hooks/useUpdatePerson';
 import { useDeletePerson } from '../hooks/useDeletePerson';
 import { PersonForm } from './PersonForm';
 import { PersonCard } from './PersonCard';
+import { PageHeader } from '@/shared/components/PageHeader';
 import type { Person, PersonFormData } from '../types';
 
 export function PeopleHome() {
@@ -114,26 +115,22 @@ export function PeopleHome() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            People
-          </h1>
-          <p className="mt-2 text-gray-600">
-            Track important dates and information about people you know
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => router.push('/people/import')}>
-            <Upload className="w-4 h-4 mr-2" />
-            Import
-          </Button>
-          <Button onClick={() => setIsCreateModalOpen(true)} data-testid="add-person-button">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Person
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="People"
+        subtitle="Track important dates and information about people you know"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => router.push('/people/import')}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+            <Button onClick={() => setIsCreateModalOpen(true)} data-testid="add-person-button">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Person
+            </Button>
+          </>
+        }
+      />
 
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">

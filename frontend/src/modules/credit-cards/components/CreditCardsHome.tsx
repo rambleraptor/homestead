@@ -29,6 +29,7 @@ import { CardList } from './CardList';
 import { CardDetail } from './CardDetail';
 import { UpcomingPerks } from './UpcomingPerks';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { logger } from '@/core/utils/logger';
 import type { CreditCardFormData, PerkFormData, RedemptionFormData, CreditCard as CreditCardType } from '../types';
 
@@ -157,7 +158,7 @@ export function CreditCardsHome() {
   if (cardsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-accent-terracotta animate-spin" />
       </div>
     );
   }
@@ -183,14 +184,11 @@ export function CreditCardsHome() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Credit Cards</h1>
-          <p className="mt-2 text-gray-600">Track perks and maximize rewards</p>
-        </div>
-        <CreditCard className="w-8 h-8 text-primary-500" />
-      </div>
+      <PageHeader
+        title="Credit Cards"
+        subtitle="Track perks and maximize rewards"
+        actions={<CreditCard className="w-8 h-8 text-accent-terracotta" />}
+      />
 
       {/* Dashboard KPIs */}
       {stats && <CreditCardDashboard stats={stats} />}
@@ -259,7 +257,7 @@ export function CreditCardsHome() {
             <button
               onClick={() => setView({ type: 'add-card' })}
               data-testid="add-credit-card-button"
-              className="flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+              className="flex items-center gap-2 text-sm font-medium text-accent-terracotta hover:text-accent-terracotta-hover transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add Card

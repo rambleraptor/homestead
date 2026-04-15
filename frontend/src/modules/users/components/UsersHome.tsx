@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/Button';
 import { Modal } from '@/shared/components/Modal';
 import { Spinner } from '@/shared/components/Spinner';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { useToast } from '@/shared/components/ToastProvider';
 import { useAuth } from '@/core/auth/useAuth';
 import { useUsers } from '../hooks/useUsers';
@@ -70,16 +71,16 @@ export function UsersHome() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-          <p className="mt-2 text-gray-600">Create and manage user accounts.</p>
-        </div>
-        <Button onClick={() => setIsCreateOpen(true)} data-testid="add-user-button">
-          <Plus className="w-4 h-4 mr-2" />
-          Add User
-        </Button>
-      </div>
+      <PageHeader
+        title="Users"
+        subtitle="Create and manage user accounts."
+        actions={
+          <Button onClick={() => setIsCreateOpen(true)} data-testid="add-user-button">
+            <Plus className="w-4 h-4 mr-2" />
+            Add User
+          </Button>
+        }
+      />
 
       {!users || users.length === 0 ? (
         <Card>
@@ -95,7 +96,7 @@ export function UsersHome() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     {isSuper ? (
-                      <Shield className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                      <Shield className="w-5 h-5 text-accent-terracotta flex-shrink-0" />
                     ) : (
                       <UserIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
                     )}
@@ -105,7 +106,7 @@ export function UsersHome() {
                           {u.display_name || u.email}
                         </span>
                         {isSuper && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-accent-terracotta/10 text-accent-terracotta-hover">
                             superuser
                           </span>
                         )}

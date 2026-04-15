@@ -48,14 +48,14 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
             className={`w-12 h-12 rounded-lg flex items-center justify-center ${
               isArchived
                 ? 'bg-gray-100'
-                : 'bg-primary-100'
+                : 'bg-accent-terracotta/10'
             }`}
           >
             <Store
               className={`w-6 h-6 ${
                 isArchived
                   ? 'text-gray-400'
-                  : 'text-primary-600'
+                  : 'text-accent-terracotta'
               }`}
             />
           </div>
@@ -74,7 +74,7 @@ export function MerchantList({ merchants, onMerchantClick }: MerchantListProps) 
             <p className={`text-2xl font-bold ${
               isArchived
                 ? 'text-gray-400'
-                : 'text-primary-600'
+                : 'text-accent-terracotta'
             }`}>
               {formatCurrency(merchant.totalAmount)}
             </p>

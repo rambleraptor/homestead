@@ -16,6 +16,7 @@ import { HSAKPICard } from './HSAKPICard';
 import { HSAQuickCaptureForm } from './HSAQuickCaptureForm';
 import { HSAAuditVault } from './HSAAuditVault';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { logger } from '@/core/utils/logger';
 import type { HSAReceiptFormData, ReceiptStatus } from '../types';
 
@@ -70,7 +71,7 @@ export function HSAHome() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-accent-terracotta animate-spin" />
       </div>
     );
   }
@@ -95,18 +96,11 @@ export function HSAHome() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            HSA Receipts
-          </h1>
-          <p className="mt-2 text-gray-600">
-            Track unreimbursed medical expenses
-          </p>
-        </div>
-        <Receipt className="w-8 h-8 text-primary-500" />
-      </div>
+      <PageHeader
+        title="HSA Receipts"
+        subtitle="Track unreimbursed medical expenses"
+        actions={<Receipt className="w-8 h-8 text-accent-terracotta" />}
+      />
 
       {/* KPI Card - Liquidatable Tax-Free Cash */}
       {stats && (
@@ -125,7 +119,7 @@ export function HSAHome() {
           <button
             onClick={() => setShowForm(!showForm)}
             data-testid="add-hsa-receipt-button"
-            className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+            className="text-sm font-medium text-accent-terracotta hover:text-accent-terracotta-hover transition-colors"
           >
             {showForm ? 'Hide Form' : 'Add Receipt'}
           </button>
