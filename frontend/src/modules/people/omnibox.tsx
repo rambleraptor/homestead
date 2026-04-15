@@ -11,7 +11,7 @@ import React from 'react';
 import { z } from 'zod';
 import type { OmniboxAdapter } from '@/shared/omnibox/types';
 import type { PersonFormData } from './types';
-import { PeopleHome } from './components/PeopleHome';
+import { PeopleList } from './components/PeopleList';
 import { PersonForm } from './components/PersonForm';
 import { useCreatePerson } from './hooks/useCreatePerson';
 
@@ -45,7 +45,7 @@ export const peopleOmnibox: OmniboxAdapter = {
         "A substring of the person's name. Used by the People list's name filter.",
     },
   ],
-  listComponent: PeopleHome,
+  listComponent: PeopleList,
   forms: [
     {
       id: 'create-person',

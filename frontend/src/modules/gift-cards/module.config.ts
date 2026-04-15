@@ -6,7 +6,7 @@
 
 import type { HomeModule } from '../types';
 import { Gift } from 'lucide-react';
-import { GiftCardHome } from './components/GiftCardHome';
+import { GiftCardsList } from './components/GiftCardsList';
 
 export const giftCardsModule: HomeModule = {
   id: 'gift-cards',
@@ -34,6 +34,6 @@ export const giftCardsModule: HomeModule = {
       'unredeemed',
       'balance',
     ],
-    listComponent: GiftCardHome,
+    listComponent: GiftCardsList,
   },
 };

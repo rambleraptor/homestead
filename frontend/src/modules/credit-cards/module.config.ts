@@ -6,7 +6,7 @@
 
 import type { HomeModule } from '../types';
 import { CreditCard } from 'lucide-react';
-import { CreditCardsHome } from './components/CreditCardsHome';
+import { CreditCardsList } from './components/CreditCardsList';
 
 export const creditCardsModule: HomeModule = {
   id: 'credit-cards',
@@ -32,6 +32,6 @@ export const creditCardsModule: HomeModule = {
       'chase',
       'amex',
     ],
-    listComponent: CreditCardsHome,
+    listComponent: CreditCardsList,
   },
 };

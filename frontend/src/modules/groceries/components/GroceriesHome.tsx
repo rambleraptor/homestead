@@ -7,15 +7,12 @@
  */
 
 import { useState, useRef } from 'react';
-import { Plus, ShoppingCart, Loader2, AlertCircle, CheckCircle2, Image, ListRestart, Store as StoreIcon, Bell } from 'lucide-react';
+import { Plus, ShoppingCart, Loader2, CheckCircle2, Image, ListRestart, Store as StoreIcon, Bell } from 'lucide-react';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
 import { useStores } from '../hooks/useStores';
 import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
-import { useUpdateGroceryItem } from '../hooks/useUpdateGroceryItem';
-import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
 import { useDeleteAllGroceries } from '../hooks/useDeleteAllGroceries';
-import { useMarkStoreCompleted } from '../hooks/useMarkStoreCompleted';
-import { GroceryList } from './GroceryList';
+import { GroceriesList } from './GroceriesList';
 import { ImageUploadDialog } from './ImageUploadDialog';
 import { StoreManagement } from './StoreManagement';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -28,16 +25,12 @@ export function GroceriesHome() {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [showStoreManagement, setShowStoreManagement] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [storeToClear, setStoreToClear] = useState<{ id: string | null; name: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { stats, isLoading, isError, error } = useGroupedGroceries();
+  const { stats } = useGroupedGroceries();
   const { data: stores = [] } = useStores();
   const createMutation = useCreateGroceryItem();
-  const updateMutation = useUpdateGroceryItem();
-  const deleteMutation = useDeleteGroceryItem();
   const deleteAllMutation = useDeleteAllGroceries();
-  const markStoreCompletedMutation = useMarkStoreCompleted();
   const notifyMutation = useSendGroceryNotification();
 
   const handleQuickAdd = async () => {
@@ -61,22 +54,6 @@ export function GroceriesHome() {
     }
   };
 
-  const handleToggleItem = async (id: string, checked: boolean) => {
-    try {
-      await updateMutation.mutateAsync({ id, data: { checked } });
-    } catch (err) {
-      logger.error('Failed to toggle grocery item', err);
-    }
-  };
-
-  const handleDeleteItem = async (id: string) => {
-    try {
-      await deleteMutation.mutateAsync(id);
-    } catch (err) {
-      logger.error('Failed to delete grocery item', err);
-    }
-  };
-
   const handleNewList = () => {
     setShowClearConfirm(true);
   };
@@ -90,23 +67,6 @@ export function GroceriesHome() {
     }
   };
 
-  const handleMarkStoreCompleted = (storeId: string | null) => {
-    const storeGroup = stats.stores.find((s) => (s.store?.id || null) === storeId);
-    const storeName = storeGroup?.store?.name || 'No Store';
-    setStoreToClear({ id: storeId, name: storeName });
-  };
-
-  const handleConfirmStoreClear = async () => {
-    if (!storeToClear) return;
-    try {
-      const result = await markStoreCompletedMutation.mutateAsync({ storeId: storeToClear.id });
-      logger.info(`Deleted ${result.deleted} items from completed store`);
-      setStoreToClear(null);
-    } catch (err) {
-      logger.error('Failed to mark store as completed', err);
-    }
-  };
-
   const handleNotify = async () => {
     try {
       await notifyMutation.mutateAsync();
@@ -115,33 +75,8 @@ export function GroceriesHome() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
-          <p className="mt-2 text-gray-600">Loading groceries...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center text-red-600">
-          <AlertCircle className="w-8 h-8 mx-auto" />
-          <p className="mt-2">Failed to load groceries</p>
-          <p className="text-sm mt-1">{error?.message}</p>
-        </div>
-      </div>
-    );
-  }
-
   const isSubmitting = createMutation.isPending;
-  // Only track bulk operations that should disable the entire UI
-  // Individual item updates/deletes should not disable other items
-  const isBulkUpdating = deleteAllMutation.isPending || markStoreCompletedMutation.isPending;
+  const isBulkUpdating = deleteAllMutation.isPending;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -259,13 +194,7 @@ export function GroceriesHome() {
       </div>
 
       {/* Grocery List */}
-      <GroceryList
-        storeGroups={stats.stores}
-        onToggleItem={handleToggleItem}
-        onDeleteItem={handleDeleteItem}
-        onMarkStoreCompleted={handleMarkStoreCompleted}
-        isUpdating={isBulkUpdating}
-      />
+      <GroceriesList />
 
       {/* Image Upload Dialog */}
       <ImageUploadDialog
@@ -283,18 +212,6 @@ export function GroceriesHome() {
         confirmLabel="Clear List"
         variant="danger"
         isLoading={deleteAllMutation.isPending}
-      />
-
-      {/* Clear Store Confirmation */}
-      <ConfirmDialog
-        isOpen={storeToClear !== null}
-        onClose={() => setStoreToClear(null)}
-        onConfirm={handleConfirmStoreClear}
-        title={`Clear ${storeToClear?.name ?? 'Store'}`}
-        message={`Are you sure you want to clear all items from ${storeToClear?.name ?? 'this store'}? This action cannot be undone.`}
-        confirmLabel="Clear Store"
-        variant="danger"
-        isLoading={markStoreCompletedMutation.isPending}
       />
     </div>
   );

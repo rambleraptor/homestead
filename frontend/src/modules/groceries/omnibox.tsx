@@ -16,7 +16,7 @@ import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import type { OmniboxAdapter } from '@/shared/omnibox/types';
 import type { GroceryItemFormData } from './types';
-import { GroceriesHome } from './components/GroceriesHome';
+import { GroceriesList } from './components/GroceriesList';
 import { useCreateGroceryItem } from './hooks/useCreateGroceryItem';
 import { useStores } from './hooks/useStores';
 
@@ -142,7 +142,7 @@ export const groceriesOmnibox: OmniboxAdapter = {
     'supermarket',
   ],
   filters: [],
-  listComponent: GroceriesHome,
+  listComponent: GroceriesList,
   forms: [
     {
       id: 'add-grocery-item',
