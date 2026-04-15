@@ -6,6 +6,7 @@
  */
 
 import type { LucideIcon } from 'lucide-react';
+import type { OmniboxAdapter } from '@/shared/omnibox/types';
 
 /**
  * Route definition for Next.js App Router
@@ -92,6 +93,13 @@ export interface HomeModule {
    * Additional module-specific metadata
    */
   metadata?: Record<string, unknown>;
+
+  /**
+   * Optional declarative integration with the natural-language omnibox
+   * (`/search`). When present, the module is discoverable + addressable
+   * via the omnibox. See `@/shared/omnibox/types` for the shape.
+   */
+  omnibox?: OmniboxAdapter;
 }
 
 /**

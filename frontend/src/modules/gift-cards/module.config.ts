@@ -6,6 +6,7 @@
 
 import type { HomeModule } from '../types';
 import { Gift } from 'lucide-react';
+import { GiftCardHome } from './components/GiftCardHome';
 
 export const giftCardsModule: HomeModule = {
   id: 'gift-cards',
@@ -21,4 +22,18 @@ export const giftCardsModule: HomeModule = {
   navOrder: 4,
   section: 'Money',
   enabled: true,
+  omnibox: {
+    synonyms: [
+      'gift',
+      'gifts',
+      'card',
+      'cards',
+      'gift-cards',
+      'giftcards',
+      'redeem',
+      'unredeemed',
+      'balance',
+    ],
+    listComponent: GiftCardHome,
+  },
 };

@@ -7,8 +7,9 @@
  */
 
 import { useRouter } from 'next/navigation';
-import { Menu, Bell } from 'lucide-react';
+import { Menu, Bell, Search } from 'lucide-react';
 import { useNotificationStats } from '../../modules/notifications/hooks/useNotificationStats';
+import { useAuth } from '@/core/auth/useAuth';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -17,9 +18,15 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const { data: stats } = useNotificationStats();
+  const { user } = useAuth();
+  const isSuperuser = user?.type === 'superuser';
 
   const handleNotificationsClick = () => {
     router.push('/notifications');
+  };
+
+  const handleSearchClick = () => {
+    router.push('/search');
   };
 
   return (
@@ -41,6 +48,18 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-2 ml-auto">
+          {/* Omnibox search (superuser-only) */}
+          {isSuperuser && (
+            <button
+              onClick={handleSearchClick}
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+              aria-label="Open natural-language search"
+              data-testid="header-search-button"
+            >
+              <Search className="w-5 h-5 text-gray-600" />
+            </button>
+          )}
+
           {/* Notifications */}
           <button
             onClick={handleNotificationsClick}

@@ -6,6 +6,7 @@
 
 import type { HomeModule } from '../types';
 import { Flag } from 'lucide-react';
+import { MinigolfHome } from './components/MinigolfHome';
 
 export const minigolfModule: HomeModule = {
   id: 'minigolf',
@@ -18,4 +19,8 @@ export const minigolfModule: HomeModule = {
   navOrder: 20,
   section: 'Games',
   enabled: true,
+  omnibox: {
+    synonyms: ['minigolf', 'golf', 'mini-golf', 'game', 'games'],
+    listComponent: MinigolfHome,
+  },
 };

@@ -7,6 +7,7 @@
 
 import { Users } from 'lucide-react';
 import type { HomeModule } from '../types';
+import { peopleOmnibox } from './omnibox';
 
 export const peopleModule: HomeModule = {
   id: 'people',
@@ -22,4 +23,5 @@ export const peopleModule: HomeModule = {
   showInNav: true,
   navOrder: 3,
   enabled: true,
+  omnibox: peopleOmnibox,
 };

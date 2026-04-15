@@ -10,6 +10,7 @@ import { Modal } from '@/shared/components/Modal';
 import { Spinner } from '@/shared/components/Spinner';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { useToast } from '@/shared/components/ToastProvider';
+import { useOmniboxFilter } from '@/shared/omnibox/OmniboxContext';
 import { usePeople } from '../hooks/usePeople';
 import { useCreatePerson } from '../hooks/useCreatePerson';
 import { useUpdatePerson } from '../hooks/useUpdatePerson';
@@ -30,6 +31,15 @@ export function PeopleHome() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [nameFilter, setNameFilter] = useState('');
+
+  // Seed the name filter from an omnibox intent (no-op on the normal
+  // /people route where there is no omnibox context).
+  useOmniboxFilter((filters) => {
+    if (typeof filters.name === 'string') {
+      setNameFilter(filters.name);
+    }
+  });
+
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     personId: string | null;

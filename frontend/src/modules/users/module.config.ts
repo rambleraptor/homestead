@@ -1,5 +1,6 @@
 import { UserCog } from 'lucide-react';
 import type { HomeModule } from '../types';
+import { UsersHome } from './components/UsersHome';
 
 export const usersModule: HomeModule = {
   id: 'users',
@@ -13,4 +14,8 @@ export const usersModule: HomeModule = {
   navOrder: 90,
   enabled: true,
   metadata: { requiresSuperuser: true },
+  omnibox: {
+    synonyms: ['users', 'accounts', 'members', 'admin'],
+    listComponent: UsersHome,
+  },
 };
