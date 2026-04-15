@@ -93,7 +93,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, {} as Record<string, typeof modules>);
 
   // Get sections in a defined order, with any unlisted sections at the end
-  const sectionOrder = ['Money', 'Food', 'Relationships', 'Games', 'General'];
+  const sectionOrder = ['Money', 'Food', 'Relationships', 'Games', 'Settings'];
   const sections = Object.keys(modulesBySection).sort((a, b) => {
     const aIndex = sectionOrder.indexOf(a);
     const bIndex = sectionOrder.indexOf(b);
@@ -133,12 +133,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex flex-col h-full">
           {/* Logo/Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
-            <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard"
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-md hover:bg-bg-pearl px-1 -mx-1 py-0.5 transition-colors"
+              data-testid="sidebar-home-link"
+            >
               <Home className="w-6 h-6 text-brand-navy" />
               <h1 className="text-xl font-display font-bold text-brand-navy tracking-tight">
                 HomeOS
               </h1>
-            </div>
+            </Link>
             <button
               onClick={onClose}
               className="lg:hidden p-1 rounded-md hover:bg-bg-pearl"

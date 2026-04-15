@@ -8,7 +8,7 @@ export const usersModule: HomeModule = {
   icon: UserCog,
   basePath: '/users',
   routes: [{ path: '', index: true }],
-  section: 'Admin',
+  section: 'Settings',
   showInNav: true,
   navOrder: 90,
   enabled: true,
