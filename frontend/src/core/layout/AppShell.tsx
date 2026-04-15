@@ -24,7 +24,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="flex h-screen overflow-hidden bg-bg-pearl">
         {/* Sidebar */}
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
@@ -35,7 +35,7 @@ export function AppShell({ children }: AppShellProps) {
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto">
-            <div className="container mx-auto p-4 lg:p-6 max-w-7xl">
+            <div className="container mx-auto px-4 py-6 lg:px-6 lg:py-8 max-w-7xl">
               {children}
             </div>
           </main>
