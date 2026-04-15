@@ -15,7 +15,7 @@ export const settingsModule: HomeModule = {
   icon: Settings,
   basePath: '/settings',
   routes: [{ path: '', index: true }],
-  section: 'General',
+  section: 'Settings',
   showInNav: true,
   navOrder: 100,
   enabled: true,
