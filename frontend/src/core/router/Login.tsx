@@ -121,7 +121,7 @@ export function Login() {
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                <p className="text-sm font-body text-red-700">{error}</p>
+                <p className="text-sm font-body text-red-600">{error}</p>
               </div>
             )}
 
