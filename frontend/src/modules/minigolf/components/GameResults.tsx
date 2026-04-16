@@ -6,9 +6,10 @@
  * completed game.
  */
 
-import React, { useState } from 'react';
-import { ArrowLeft, Trophy, Flag, Trash2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ArrowLeft, Trophy, Flag, Sparkles, Trash2 } from 'lucide-react';
 import { computeTotals, computeWinners, computeTotalPar } from '../utils/scoring';
+import { computeHighlights } from '../utils/highlights';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { Game, Hole } from '../types';
 
@@ -44,6 +45,10 @@ export function GameResults({
   const totals = computeTotals(holes, game.players);
   const winners = computeWinners(totals);
   const totalPar = computeTotalPar(holes);
+  const highlights = useMemo(
+    () => computeHighlights(holes, game.players),
+    [holes, game.players],
+  );
 
   const sortedHoles = [...holes].sort((a, b) => a.hole_number - b.hole_number);
 
@@ -96,6 +101,47 @@ export function GameResults({
           </div>
         </div>
       </section>
+
+      {/* Highlights */}
+      {highlights.length > 0 && sortedHoles.length > 0 && (
+        <section
+          className="bg-white rounded-lg shadow-md p-5 border border-gray-200"
+          data-testid="game-highlights"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-accent-terracotta" />
+            Highlights
+          </h3>
+          <ul className="space-y-3">
+            {highlights.map((h) => {
+              const id = h.player.replace(/^people\//, '');
+              return (
+                <li
+                  key={h.player}
+                  data-testid={`highlight-${id}`}
+                  className="flex items-start gap-3"
+                >
+                  <div className="flex-shrink-0 w-9 h-9 rounded-full bg-accent-terracotta/10 flex items-center justify-center mt-0.5">
+                    <Sparkles className="w-4 h-4 text-accent-terracotta" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm">
+                      <span className="font-semibold text-gray-900">
+                        {displayNameFor(h.player, people)}
+                      </span>
+                      <span className="text-gray-500"> · </span>
+                      <span className="font-medium text-accent-terracotta">
+                        {h.title}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-700">{h.description}</div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* Totals */}
       <section className="bg-white rounded-lg shadow-md p-5 border border-gray-200">
