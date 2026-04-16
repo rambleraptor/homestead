@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Input } from '@/shared/components/Input';
@@ -7,17 +8,55 @@ import { Checkbox } from '@/shared/components/Checkbox';
 import { Spinner } from '@/shared/components/Spinner';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { useToast } from '@/shared/components/ToastProvider';
+import { useQueryClient } from '@tanstack/react-query';
+import { aepbase } from '@/core/api/aepbase';
+import { syncModuleFlagsSchema } from '@/core/module-flags/sync';
 import { getAllModuleFlagDefs, getModuleById } from '@/modules/registry';
 import { useModuleFlags } from '@/modules/settings/hooks/useModuleFlags';
 import { useUpdateModuleFlag } from '@/modules/settings/hooks/useUpdateModuleFlag';
+import { unflatten } from '@/modules/settings/flags';
 import { logger } from '@/core/utils/logger';
+import {
+  MODULE_FLAGS_DEFINITION_QUERY_KEY,
+  useModuleFlagsDefinition,
+} from '../hooks/useModuleFlagsDefinition';
 import type { ModuleFlagDef, ModuleFlagValue } from '@/modules/types';
 
 export function FlagManagementHome() {
-  const defs = getAllModuleFlagDefs();
-  const { values, isLoading } = useModuleFlags();
+  const { defs, isLoading: defsLoading, isMissing } = useModuleFlagsDefinition();
+  const { record, isLoading: valuesLoading } = useModuleFlags();
+  const values = unflatten(record, defs);
   const update = useUpdateModuleFlag();
   const toast = useToast();
+  const queryClient = useQueryClient();
+
+  // If aepbase has no `module-flag` resource definition yet (e.g. the
+  // Next.js instrumentation hook skipped the sync because the admin env
+  // vars weren't set), register it on page load using the superuser's
+  // own token. This page is superuser-gated so the token has the
+  // permissions required.
+  useEffect(() => {
+    if (!isMissing) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await syncModuleFlagsSchema({
+          aepbaseUrl: '/api/aep',
+          token: aepbase.authStore.token,
+          defs: getAllModuleFlagDefs(),
+        });
+        if (cancelled) return;
+        await queryClient.invalidateQueries({
+          queryKey: MODULE_FLAGS_DEFINITION_QUERY_KEY,
+        });
+      } catch (error) {
+        logger.error('Failed to register module-flags schema', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMissing, queryClient]);
 
   const handleChange = async (
     moduleId: string,
@@ -32,13 +71,14 @@ export function FlagManagementHome() {
     }
   };
 
+  const isLoading = defsLoading || valuesLoading;
   const moduleIds = Object.keys(defs);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Flag Management"
-        subtitle="View and edit every module flag declared in the app."
+        subtitle="View and edit every module flag registered in aepbase."
       />
 
       {isLoading ? (
@@ -51,7 +91,7 @@ export function FlagManagementHome() {
       ) : moduleIds.length === 0 ? (
         <Card>
           <p className="text-center text-gray-600 py-8">
-            No modules have declared any flags yet.
+            No module flags are registered in aepbase yet.
           </p>
         </Card>
       ) : (

@@ -132,27 +132,36 @@ function coerceValue(
 }
 
 /**
- * JSON-schema property object for a single flag. Enum flags are
- * declared as plain strings with options listed in the description
- * because aepbase strips `enum` on round-trip.
+ * JSON-schema property object for a single flag.
+ *
+ * aepbase strips JSON-schema `enum`, `minimum`, `maximum`, `default`
+ * on round-trip, so the allowed values + declared default both ride
+ * inside `description` using marker suffixes:
+ *
+ *   "Base description. (default: foo) (one of: a, b, c)"
+ *
+ * Order matters: `default` precedes `options` so the parser can peel
+ * them off from the right. See `parseDescription` in
+ * `modules/flag-management/hooks/useModuleFlagsDefinition.ts`.
  */
 function propertyFor(def: ModuleFlagDef): Record<string, unknown> {
-  switch (def.type) {
-    case 'string':
-      return { type: 'string', description: def.description ?? def.label };
-    case 'number':
-      return { type: 'number', description: def.description ?? def.label };
-    case 'boolean':
-      return { type: 'boolean', description: def.description ?? def.label };
-    case 'enum': {
-      const base = def.description ?? def.label;
-      const opts = `one of: ${def.options.join(', ')}`;
-      return {
-        type: 'string',
-        description: base ? `${base} (${opts})` : opts,
-      };
-    }
+  const base = def.description ?? def.label;
+  const parts: string[] = [];
+  if (def.default !== undefined) {
+    parts.push(`default: ${String(def.default)}`);
   }
+  const description =
+    def.type === 'enum'
+      ? decorate(base, [...parts, `one of: ${def.options.join(', ')}`])
+      : decorate(base, parts);
+  const jsonType = def.type === 'enum' ? 'string' : def.type;
+  return { type: jsonType, description };
+}
+
+function decorate(base: string, parts: string[]): string {
+  if (parts.length === 0) return base;
+  const suffix = parts.map((p) => `(${p})`).join(' ');
+  return base ? `${base} ${suffix}` : suffix;
 }
 
 /**

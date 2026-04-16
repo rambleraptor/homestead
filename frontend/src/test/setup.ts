@@ -29,7 +29,18 @@ afterEach(() => {
 
 // Mock the aepbase client. Tests that need specific behavior can override
 // these via vi.mocked(...) on the exported names.
+class MockAepbaseError extends Error {
+  constructor(
+    public readonly code: number,
+    message: string,
+    public readonly url: string,
+  ) {
+    super(message);
+    this.name = 'AepbaseError';
+  }
+}
 vi.mock('@/core/api/aepbase', () => ({
+  AepbaseError: MockAepbaseError,
   aepbase: {
     list: vi.fn(async () => []),
     get: vi.fn(),

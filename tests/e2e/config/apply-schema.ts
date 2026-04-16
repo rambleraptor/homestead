@@ -400,12 +400,12 @@ const DEFINITIONS: ResourceDefinition[] = [
         people__server_search: {
           type: 'string',
           description:
-            'Who gets server-side People search (CEL filter on aepbase) instead of client-side filtering of the fetched collection. (one of: superuser, all, none)',
+            'Who gets server-side People search (CEL filter on aepbase) instead of client-side filtering of the fetched collection. (default: none) (one of: superuser, all, none)',
         },
         settings__omnibox_access: {
           type: 'string',
           description:
-            'Who can use the natural-language omnibox (⌘K / search bar). (one of: superuser, all)',
+            'Who can use the natural-language omnibox (⌘K / search bar). (default: superuser) (one of: superuser, all)',
         },
       },
     },

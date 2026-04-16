@@ -71,7 +71,8 @@ describe('syncModuleFlagsSchema', () => {
       properties: {
         settings__omnibox_access: {
           type: 'string',
-          description: 'Who can use the omnibox. (one of: superuser, all)',
+          description:
+            'Who can use the omnibox. (default: superuser) (one of: superuser, all)',
         },
       },
     };

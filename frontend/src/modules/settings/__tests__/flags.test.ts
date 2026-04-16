@@ -128,4 +128,17 @@ describe('buildResourceSchema', () => {
       description: expect.stringContaining('superuser, all'),
     });
   });
+
+  it('encodes declared defaults in the description so aepbase can round-trip them', () => {
+    const schema = buildResourceSchema(defs);
+    expect(schema.properties.settings__omnibox_access.description).toContain(
+      '(default: superuser)',
+    );
+    expect(schema.properties.gift_cards__show_archived.description).toContain(
+      '(default: false)',
+    );
+    expect(schema.properties.groceries__refill_threshold.description).toContain(
+      '(default: 3)',
+    );
+  });
 });

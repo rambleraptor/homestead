@@ -9,8 +9,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { aepbase } from '@/core/api/aepbase';
+import { aepbase, AepbaseError } from '@/core/api/aepbase';
+import { syncModuleFlagsSchema } from '@/core/module-flags/sync';
 import { useModuleFlag } from '../hooks/useModuleFlag';
+
+vi.mock('@/core/module-flags/sync', () => ({
+  syncModuleFlagsSchema: vi.fn(async () => ({ action: 'created' as const })),
+}));
 
 const createWrapper = () => {
   const client = new QueryClient({
@@ -96,6 +101,35 @@ describe('useModuleFlag', () => {
       await result.current.setValue('all');
     });
 
+    expect(aepbase.create).toHaveBeenCalledWith('module-flags', {
+      settings__omnibox_access: 'all',
+    });
+  });
+
+  it('registers the schema and retries if the first upsert 404s', async () => {
+    // Simulate module-flags not yet registered on aepbase: list 404s on the
+    // initial read AND on the retry inside the mutation, then succeeds on
+    // the post-sync retry.
+    vi.mocked(aepbase.list)
+      .mockRejectedValueOnce(new AepbaseError(404, 'not found', '/module-flags'))
+      .mockRejectedValueOnce(new AepbaseError(404, 'not found', '/module-flags'))
+      .mockResolvedValueOnce([]);
+    vi.mocked(aepbase.create).mockResolvedValue({
+      id: 'new-rec',
+      settings__omnibox_access: 'all',
+    });
+
+    const { result } = renderHook(
+      () => useModuleFlag<string>('settings', 'omnibox_access'),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => {
+      await result.current.setValue('all');
+    });
+
+    expect(syncModuleFlagsSchema).toHaveBeenCalledTimes(1);
     expect(aepbase.create).toHaveBeenCalledWith('module-flags', {
       settings__omnibox_access: 'all',
     });
