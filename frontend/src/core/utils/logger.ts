@@ -1,11 +1,3 @@
-/**
- * Logging utility for structured logging
- *
- * Provides a consistent logging interface across the application.
- * In development, logs to console. In production, can be configured
- * to send logs to external services.
- */
-
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LogContext {
@@ -48,5 +40,4 @@ class Logger {
   }
 }
 
-// Export singleton instance
 export const logger = new Logger();
