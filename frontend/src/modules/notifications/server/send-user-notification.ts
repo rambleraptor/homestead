@@ -13,7 +13,7 @@ import {
   aepList,
   aepCreate,
   aepRemove,
-} from '../../_lib/aepbase-server';
+} from '@/core/api/aepbase-server';
 
 interface NotificationSubscriptionRecord {
   id: string;

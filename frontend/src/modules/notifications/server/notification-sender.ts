@@ -14,7 +14,7 @@ import {
   aepUpdate,
   aepRemove,
   aepGet,
-} from '../../_lib/aepbase-server';
+} from '@/core/api/aepbase-server';
 
 type NotificationTiming = 'day_of' | 'day_before' | 'week_before';
 

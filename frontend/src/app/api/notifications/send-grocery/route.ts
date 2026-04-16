@@ -1,22 +1,7 @@
 /**
- * API Route: Send Grocery List Notification
- *
- * POST /api/notifications/send-grocery
- * Returns: { success: boolean, message: string, timestamp: string }
- *
- * Sends a push notification about the grocery list.
- * Requires user authentication (PocketBase token in Authorization header).
+ * Thin Next.js route shim — the handler lives in the notifications module.
+ * Next.js App Router requires route handlers under `app/api/`, so we
+ * re-export from `@/modules/notifications/server` to keep module-specific
+ * API logic inside the module.
  */
-
-import { NextRequest } from 'next/server';
-import { sendUserNotification } from '../utils/send-user-notification';
-
-export async function POST(request: NextRequest) {
-  return sendUserNotification(request, {
-    title: 'Grocery List Updated',
-    body: 'The grocery list has been updated. Check it out!',
-    tag: 'grocery-notification',
-    url: '/groceries',
-    sourceCollection: 'grocery_items',
-  });
-}
+export { POST } from '@/modules/notifications/server/send-grocery';

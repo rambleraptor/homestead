@@ -175,10 +175,14 @@ src/modules/<feature>/
 ### Frontend (`frontend/`)
 
 - `src/core/api/aepbase.ts` — thin REST client wrapper for aepbase
-- `src/core/auth/` — AuthContext, types, route guards
-- `src/app/api/` — Next.js server routes (notifications, OCR, actions)
-- `src/app/api/_lib/aepbase-server.ts` — server-side aepbase helper (the
+- `src/core/api/aepbase-server.ts` — server-side aepbase helper (the
   client-side wrapper uses localStorage, so server routes use this instead)
+- `src/core/auth/` — AuthContext, types, route guards
+- `src/app/api/` — Next.js server route shims. Each `route.ts` re-exports
+  the real handler from the owning module's `server/` directory, so
+  module-specific API logic lives with the module.
+- `src/modules/<feature>/server/` — module-owned API handlers and
+  server-only utilities (e.g. `modules/groceries/server/process-image.ts`)
 - `src/modules/` — feature modules (gift-cards, credit-cards, etc.)
 - `src/shared/` — shared components + utilities
 
@@ -297,7 +301,7 @@ See the script header for all flags (`--dry-run`, `--collection`, etc.).
    components. Module hooks own their data access.
 3. **Respect existing patterns** — review similar code before implementing.
 4. **Use the aepbase wrapper** (`@/core/api/aepbase`) for client-side data
-   access, and `@/app/api/_lib/aepbase-server` for server routes.
+   access, and `@/core/api/aepbase-server` for server routes.
 5. **Ask before touching schema** — terraform changes affect real data.
 6. **Security first** — validate inputs, sanitize outputs, follow OWASP.
 
