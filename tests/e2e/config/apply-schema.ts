@@ -398,9 +398,9 @@ const DEFINITIONS: ResourceDefinition[] = [
       type: 'object',
       properties: {
         people__server_search: {
-          type: 'boolean',
+          type: 'string',
           description:
-            'Route the People search bar through the aepbase list endpoint via a CEL filter instead of filtering the fetched collection in the browser.',
+            'Who gets server-side People search (CEL filter on aepbase) instead of client-side filtering of the fetched collection. (one of: superuser, all, none)',
         },
         settings__omnibox_access: {
           type: 'string',

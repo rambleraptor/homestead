@@ -17,11 +17,13 @@ import { Modal } from '@/shared/components/Modal';
 import { Spinner } from '@/shared/components/Spinner';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { useToast } from '@/shared/components/ToastProvider';
+import { useAuth } from '@/core/auth/useAuth';
 import { useOmniboxFilter } from '@/shared/omnibox/OmniboxContext';
 import { useModuleFlag } from '@/modules/settings/hooks/useModuleFlag';
 import { usePeople } from '../hooks/usePeople';
 import { useUpdatePerson } from '../hooks/useUpdatePerson';
 import { useDeletePerson } from '../hooks/useDeletePerson';
+import type { PeopleServerSearchAccess } from '../module.config';
 import { PersonForm } from './PersonForm';
 import { PersonCard } from './PersonCard';
 import type { Person, PersonFormData } from '../types';
@@ -44,8 +46,14 @@ function buildPeopleCelFilter(raw: string): string | undefined {
 }
 
 export function PeopleList() {
-  const { value: serverSearchFlag } = useModuleFlag<boolean>('people', 'server_search');
-  const useServerSearch = serverSearchFlag === true;
+  const { user } = useAuth();
+  const { value: serverSearchAccess } = useModuleFlag<PeopleServerSearchAccess>(
+    'people',
+    'server_search',
+  );
+  const useServerSearch =
+    serverSearchAccess === 'all' ||
+    (serverSearchAccess === 'superuser' && user?.type === 'superuser');
 
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [nameFilter, setNameFilter] = useState('');

@@ -9,6 +9,10 @@ import { Users } from 'lucide-react';
 import type { HomeModule } from '../types';
 import { peopleOmnibox } from './omnibox';
 
+export const PEOPLE_SERVER_SEARCH_OPTIONS = ['superuser', 'all', 'none'] as const;
+export type PeopleServerSearchAccess =
+  (typeof PEOPLE_SERVER_SEARCH_OPTIONS)[number];
+
 export const peopleModule: HomeModule = {
   id: 'people',
   name: 'People',
@@ -26,11 +30,12 @@ export const peopleModule: HomeModule = {
   omnibox: peopleOmnibox,
   flags: {
     server_search: {
-      type: 'boolean',
+      type: 'enum',
       label: 'Server-side people search',
       description:
-        'Route the People search bar through the aepbase list endpoint via a CEL filter instead of filtering the fetched collection in the browser.',
-      default: false,
+        'Who gets server-side People search (CEL filter on aepbase) instead of client-side filtering of the fetched collection.',
+      options: PEOPLE_SERVER_SEARCH_OPTIONS,
+      default: 'none',
     },
   },
 };
