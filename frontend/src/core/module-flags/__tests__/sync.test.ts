@@ -57,13 +57,12 @@ describe('syncModuleFlagsSchema', () => {
     expect(result.action).toBe('created');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const [postUrl, postInit] = fetchMock.mock.calls[1];
-    expect(postUrl).toBe(`${BASE}/resource-definitions`);
+    expect(postUrl).toBe(`${BASE}/aep-resource-definitions?id=module-flag`);
     expect(postInit.method).toBe('POST');
     const body = JSON.parse(postInit.body as string);
     expect(body.singular).toBe('module-flag');
     expect(body.plural).toBe('module-flags');
-    const schema = JSON.parse(body.schema);
-    expect(schema.properties.settings__omnibox_access.type).toBe('string');
+    expect(body.schema.properties.settings__omnibox_access.type).toBe('string');
   });
 
   it('is a no-op when the existing schema already matches', async () => {
@@ -80,7 +79,7 @@ describe('syncModuleFlagsSchema', () => {
       new Response(
         JSON.stringify({
           singular: 'module-flag',
-          schema: JSON.stringify(existingSchema),
+          schema: existingSchema,
         }),
         { status: 200 },
       ),
@@ -95,6 +94,8 @@ describe('syncModuleFlagsSchema', () => {
 
     expect(result.action).toBe('noop');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [getUrl] = fetchMock.mock.calls[0];
+    expect(getUrl).toBe(`${BASE}/aep-resource-definitions/module-flag`);
   });
 
   it('PATCHes the resource definition when the schema has drifted', async () => {
@@ -102,10 +103,10 @@ describe('syncModuleFlagsSchema', () => {
       new Response(
         JSON.stringify({
           singular: 'module-flag',
-          schema: JSON.stringify({
+          schema: {
             type: 'object',
             properties: { old_field: { type: 'string' } },
-          }),
+          },
         }),
         { status: 200 },
       ),
@@ -122,11 +123,13 @@ describe('syncModuleFlagsSchema', () => {
     expect(result.action).toBe('updated');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const [patchUrl, patchInit] = fetchMock.mock.calls[1];
-    expect(patchUrl).toBe(`${BASE}/resource-definitions/module-flag`);
+    expect(patchUrl).toBe(`${BASE}/aep-resource-definitions/module-flag`);
     expect(patchInit.method).toBe('PATCH');
     expect(patchInit.headers['Content-Type']).toBe(
       'application/merge-patch+json',
     );
+    const patchBody = JSON.parse(patchInit.body as string);
+    expect(patchBody.schema.properties.settings__omnibox_access).toBeDefined();
   });
 
   it('throws when aepbase returns an unexpected status on GET', async () => {

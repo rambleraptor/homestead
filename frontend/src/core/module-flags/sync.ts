@@ -5,7 +5,7 @@
  * Idempotent: on repeat runs it PATCHes the existing resource
  * definition when the schema has drifted.
  *
- * aepbase's `/resource-definitions` endpoint mirrors the shape used
+ * aepbase's `/aep-resource-definitions` endpoint mirrors the shape used
  * by the terraform provider (singular/plural/schema/parents). See
  * `aepbase/terraform/*.tf` for equivalent HCL examples.
  */
@@ -14,6 +14,7 @@ import { buildResourceSchema, type ModuleFlagDefs } from '@/modules/settings/fla
 
 const RESOURCE_SINGULAR = 'module-flag';
 const RESOURCE_PLURAL = 'module-flags';
+const DEFINITIONS_PATH = 'aep-resource-definitions';
 
 interface AepResourceDefinition {
   singular?: string;
@@ -81,27 +82,17 @@ async function fetchExisting(
   token: string,
 ): Promise<AepResourceDefinition | null> {
   const res = await fetch(
-    `${aepbaseUrl}/resource-definitions/${RESOURCE_SINGULAR}`,
+    `${aepbaseUrl}/${DEFINITIONS_PATH}/${RESOURCE_SINGULAR}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (res.status === 404) return null;
   if (!res.ok) {
     const text = await res.text();
     throw new Error(
-      `aepbase GET /resource-definitions/${RESOURCE_SINGULAR} → ${res.status}: ${text}`,
+      `aepbase GET /${DEFINITIONS_PATH}/${RESOURCE_SINGULAR} → ${res.status}: ${text}`,
     );
   }
-  const raw = (await res.json()) as AepResourceDefinition & { schema?: unknown };
-  // aepbase returns `schema` as a JSON-encoded string; normalize to an
-  // object so we can diff it structurally.
-  if (typeof raw.schema === 'string') {
-    try {
-      raw.schema = JSON.parse(raw.schema);
-    } catch {
-      raw.schema = undefined;
-    }
-  }
-  return raw;
+  return (await res.json()) as AepResourceDefinition;
 }
 
 async function createDefinition(
@@ -109,19 +100,21 @@ async function createDefinition(
   token: string,
   body: AepResourceDefinition,
 ): Promise<void> {
-  const payload = { ...body, schema: JSON.stringify(body.schema) };
-  const res = await fetch(`${aepbaseUrl}/resource-definitions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
+  const res = await fetch(
+    `${aepbaseUrl}/${DEFINITIONS_PATH}?id=${RESOURCE_SINGULAR}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(payload),
-  });
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(
-      `aepbase POST /resource-definitions → ${res.status}: ${text}`,
+      `aepbase POST /${DEFINITIONS_PATH} → ${res.status}: ${text}`,
     );
   }
 }
@@ -131,25 +124,21 @@ async function patchDefinition(
   token: string,
   body: Partial<AepResourceDefinition>,
 ): Promise<void> {
-  const payload =
-    body.schema !== undefined
-      ? { ...body, schema: JSON.stringify(body.schema) }
-      : body;
   const res = await fetch(
-    `${aepbaseUrl}/resource-definitions/${RESOURCE_SINGULAR}`,
+    `${aepbaseUrl}/${DEFINITIONS_PATH}/${RESOURCE_SINGULAR}`,
     {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/merge-patch+json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     },
   );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(
-      `aepbase PATCH /resource-definitions/${RESOURCE_SINGULAR} → ${res.status}: ${text}`,
+      `aepbase PATCH /${DEFINITIONS_PATH}/${RESOURCE_SINGULAR} → ${res.status}: ${text}`,
     );
   }
 }
