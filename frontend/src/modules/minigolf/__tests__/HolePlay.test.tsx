@@ -34,6 +34,7 @@ describe('HolePlay', () => {
         onPrevious={() => {}}
         onSaveAndNext={() => {}}
         onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
         onExit={() => {}}
       />,
     );
@@ -59,6 +60,7 @@ describe('HolePlay', () => {
         onPrevious={() => {}}
         onSaveAndNext={onSaveAndNext}
         onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
         onExit={() => {}}
       />,
     );
@@ -91,11 +93,78 @@ describe('HolePlay', () => {
         onPrevious={() => {}}
         onSaveAndNext={() => {}}
         onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
         onExit={() => {}}
       />,
     );
     expect(screen.getByTestId('hole-finish')).toBeInTheDocument();
     expect(screen.queryByTestId('hole-next')).not.toBeInTheDocument();
+  });
+
+  it('only offers "Add Another Hole" on the last hole', () => {
+    const { rerender } = render(
+      <HolePlay
+        game={makeGame({ hole_count: 3 })}
+        currentHole={2}
+        people={people}
+        isSaving={false}
+        onPrevious={() => {}}
+        onSaveAndNext={() => {}}
+        onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
+        onExit={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId('hole-add')).not.toBeInTheDocument();
+
+    rerender(
+      <HolePlay
+        game={makeGame({ hole_count: 3 })}
+        currentHole={3}
+        people={people}
+        isSaving={false}
+        onPrevious={() => {}}
+        onSaveAndNext={() => {}}
+        onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
+        onExit={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('hole-add')).toBeInTheDocument();
+  });
+
+  it('calls onSaveAndAddHole with the current par + scores', async () => {
+    const user = userEvent.setup();
+    const onSaveAndAddHole = vi.fn();
+    render(
+      <HolePlay
+        game={makeGame({ hole_count: 1 })}
+        currentHole={1}
+        people={people}
+        isSaving={false}
+        onPrevious={() => {}}
+        onSaveAndNext={() => {}}
+        onSaveAndFinish={() => {}}
+        onSaveAndAddHole={onSaveAndAddHole}
+        onExit={() => {}}
+      />,
+    );
+
+    for (let i = 0; i < 3; i++) await user.click(screen.getByTestId('par-inc'));
+    for (let i = 0; i < 2; i++)
+      await user.click(screen.getByTestId('strokes-a-inc'));
+    for (let i = 0; i < 4; i++)
+      await user.click(screen.getByTestId('strokes-b-inc'));
+
+    await user.click(screen.getByTestId('hole-add'));
+
+    expect(onSaveAndAddHole).toHaveBeenCalledWith({
+      par: 3,
+      scores: [
+        { player: 'people/a', strokes: 2 },
+        { player: 'people/b', strokes: 4 },
+      ],
+    });
   });
 
   it('disables the Previous button on hole 1', () => {
@@ -108,6 +177,7 @@ describe('HolePlay', () => {
         onPrevious={() => {}}
         onSaveAndNext={() => {}}
         onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
         onExit={() => {}}
       />,
     );
@@ -124,6 +194,7 @@ describe('HolePlay', () => {
         onPrevious={() => {}}
         onSaveAndNext={() => {}}
         onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
         onExit={() => {}}
       />,
     );
@@ -168,6 +239,7 @@ describe('HolePlay', () => {
         onPrevious={() => {}}
         onSaveAndNext={() => {}}
         onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
         onExit={() => {}}
       />,
     );
@@ -211,6 +283,7 @@ describe('HolePlay', () => {
         onPrevious={() => {}}
         onSaveAndNext={() => {}}
         onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
         onExit={() => {}}
       />,
     );
@@ -247,6 +320,7 @@ describe('HolePlay', () => {
         onPrevious={() => {}}
         onSaveAndNext={() => {}}
         onSaveAndFinish={() => {}}
+        onSaveAndAddHole={() => {}}
         onExit={() => {}}
       />,
     );

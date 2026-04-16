@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Plus,
 } from 'lucide-react';
 import { ScoreStepper } from './ScoreStepper';
 import { computeTotalPar, computeTotals } from '../utils/scoring';
@@ -46,6 +47,9 @@ interface HolePlayProps {
   onPrevious: () => void;
   onSaveAndNext: (data: { par: number; scores: PlayerScore[] }) => void;
   onSaveAndFinish: (data: { par: number; scores: PlayerScore[] }) => void;
+  /** Save the current hole and extend the game by one more hole. Only
+   *  exercised from the last-hole view. */
+  onSaveAndAddHole: (data: { par: number; scores: PlayerScore[] }) => void;
   onExit: () => void;
 }
 
@@ -67,6 +71,7 @@ export function HolePlay({
   onPrevious,
   onSaveAndNext,
   onSaveAndFinish,
+  onSaveAndAddHole,
   onExit,
 }: HolePlayProps) {
   // Local state is seeded once on mount. The parent forces a remount
@@ -110,6 +115,11 @@ export function HolePlay({
     if (isSaving) return;
     if (isLast) onSaveAndFinish(payload);
     else onSaveAndNext(payload);
+  };
+
+  const handleAddHole = () => {
+    if (isSaving) return;
+    onSaveAndAddHole(payload);
   };
 
   return (
@@ -246,41 +256,55 @@ export function HolePlay({
       )}
 
       {/* Bottom nav */}
-      <div className="sticky bottom-0 bg-white/80 backdrop-blur pt-3 pb-4 -mx-4 px-4 border-t border-gray-200 flex gap-3">
-        <button
-          type="button"
-          onClick={onPrevious}
-          disabled={isFirst || isSaving}
-          data-testid="hole-prev"
-          className="flex-1 h-14 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed text-gray-900 font-semibold flex items-center justify-center gap-2"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Previous
-        </button>
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={isSaving}
-          data-testid={isLast ? 'hole-finish' : 'hole-next'}
-          className="flex-[2] h-14 rounded-lg bg-accent-terracotta hover:bg-accent-terracotta-hover disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 shadow-md"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Saving…
-            </>
-          ) : isLast ? (
-            <>
-              <CheckCircle2 className="w-5 h-5" />
-              Finish
-            </>
-          ) : (
-            <>
-              Next Hole
-              <ArrowRight className="w-5 h-5" />
-            </>
-          )}
-        </button>
+      <div className="sticky bottom-0 bg-white/80 backdrop-blur pt-3 pb-4 -mx-4 px-4 border-t border-gray-200 flex flex-col gap-3">
+        {isLast && (
+          <button
+            type="button"
+            onClick={handleAddHole}
+            disabled={isSaving}
+            data-testid="hole-add"
+            className="h-12 rounded-lg border border-accent-terracotta bg-white hover:bg-accent-terracotta/5 disabled:opacity-40 disabled:cursor-not-allowed text-accent-terracotta font-semibold flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add Another Hole
+          </button>
+        )}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onPrevious}
+            disabled={isFirst || isSaving}
+            data-testid="hole-prev"
+            className="flex-1 h-14 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed text-gray-900 font-semibold flex items-center justify-center gap-2"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={isSaving}
+            data-testid={isLast ? 'hole-finish' : 'hole-next'}
+            className="flex-[2] h-14 rounded-lg bg-accent-terracotta hover:bg-accent-terracotta-hover disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 shadow-md"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Saving…
+              </>
+            ) : isLast ? (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                Finish
+              </>
+            ) : (
+              <>
+                Next Hole
+                <ArrowRight className="w-5 h-5" />
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

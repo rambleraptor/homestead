@@ -10,7 +10,9 @@ import type { Game } from '../types';
 
 interface UpdateGameParams {
   id: string;
-  data: Partial<Pick<Game, 'location' | 'notes' | 'completed' | 'played_at'>>;
+  data: Partial<
+    Pick<Game, 'location' | 'notes' | 'completed' | 'played_at' | 'hole_count'>
+  >;
 }
 
 export function useUpdateGame() {

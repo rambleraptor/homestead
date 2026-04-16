@@ -138,6 +138,23 @@ export function MinigolfHome() {
     }
   };
 
+  const handleSaveAndAddHole = async (payload: {
+    par: number;
+    scores: PlayerScore[];
+  }) => {
+    if (!activeGame) return;
+    try {
+      await persistHole(activeGame, currentHole, payload);
+      await updateGame.mutateAsync({
+        id: activeGame.id,
+        data: { hole_count: activeGame.hole_count + 1 },
+      });
+      setCurrentHole((h) => h + 1);
+    } catch (err) {
+      logger.error('Failed to add another hole', err);
+    }
+  };
+
   const handlePrevious = () => {
     setCurrentHole((h) => Math.max(1, h - 1));
   };
@@ -243,6 +260,7 @@ export function MinigolfHome() {
           onPrevious={handlePrevious}
           onSaveAndNext={handleSaveAndNext}
           onSaveAndFinish={handleSaveAndFinish}
+          onSaveAndAddHole={handleSaveAndAddHole}
           onExit={handleExitGame}
         />
       )}
