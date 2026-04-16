@@ -9,7 +9,7 @@
 import { useRouter } from 'next/navigation';
 import { Menu, Bell, Search } from 'lucide-react';
 import { useNotificationStats } from '../../modules/notifications/hooks/useNotificationStats';
-import { useAuth } from '@/core/auth/useAuth';
+import { useCanUseOmnibox } from '@/shared/omnibox/useCanUseOmnibox';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -18,8 +18,7 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const { data: stats } = useNotificationStats();
-  const { user } = useAuth();
-  const isSuperuser = user?.type === 'superuser';
+  const canUseOmnibox = useCanUseOmnibox();
 
   const handleNotificationsClick = () => {
     router.push('/notifications');
@@ -48,8 +47,8 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-2 ml-auto">
-          {/* Omnibox search (superuser-only) */}
-          {isSuperuser && (
+          {/* Omnibox search (gated by settings.omnibox_access) */}
+          {canUseOmnibox && (
             <button
               onClick={handleSearchClick}
               className="p-2 rounded-md hover:bg-gray-100 transition-colors"

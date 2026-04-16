@@ -23,7 +23,7 @@
  * ```
  */
 
-import type { HomeModule, ModuleRegistry } from './types';
+import type { HomeModule, ModuleRegistry, ModuleFlagDef } from './types';
 import { logger } from '@/core/utils/logger';
 
 // =============================================================================
@@ -179,6 +179,22 @@ export function getAllRoutes(): HomeModule['routes'] {
  */
 export function moduleExists(id: string): boolean {
   return moduleRegistry.getModule(id) !== undefined;
+}
+
+/**
+ * Collect every declared flag across all registered modules, keyed by
+ * module id. Consumed by the settings UI, the aepbase schema syncer,
+ * and the `useModuleFlag` hook.
+ */
+export function getAllModuleFlagDefs(): Record<
+  string,
+  Record<string, ModuleFlagDef>
+> {
+  return Object.fromEntries(
+    moduleRegistry.modules
+      .filter((m) => m.flags && Object.keys(m.flags).length > 0)
+      .map((m) => [m.id, m.flags!]),
+  );
 }
 
 /**

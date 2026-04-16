@@ -3,16 +3,19 @@
  * Body: { query: string }
  * Returns: { intent: OmniboxIntent | null, fallback: boolean, message?: string }
  *
- * Superuser-only. Parses a natural-language query into a structured
- * intent the client dispatcher can route to a module. Uses Gemini when
- * `GEMINI_API_KEY` is set, falls back to keyword matching otherwise.
+ * Access is gated by the `settings.omnibox_access` module setting:
+ * superusers always pass; other users only when it is `'all'`.
+ * Parses a natural-language query into a structured intent the client
+ * dispatcher can route to a module. Uses Gemini when `GEMINI_API_KEY`
+ * is set, falls back to keyword matching otherwise.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticate } from '../../_lib/aepbase-server';
+import { aepList, authenticate } from '../../_lib/aepbase-server';
 import { buildManifest } from '@/shared/omnibox/manifest';
 import { parseFallback } from '@/shared/omnibox/parseFallback';
+import { fieldName } from '@/modules/settings/flags';
 import type {
   OmniboxIntent,
   OmniboxParseResponse,
@@ -91,6 +94,26 @@ async function callGemini(
   return parsed;
 }
 
+/**
+ * Consult the household's module-flags singleton and return true if
+ * omnibox access has been opened up to all users. Returns false on any
+ * failure (missing resource, empty singleton, network error) — the
+ * default policy stays superuser-only.
+ */
+async function omniboxAllowedForAll(token: string): Promise<boolean> {
+  try {
+    const records = await aepList<Record<string, unknown>>(
+      'module-flags',
+      token,
+    );
+    if (records.length === 0) return false;
+    const value = records[0][fieldName('settings', 'omnibox_access')];
+    return value === 'all';
+  } catch {
+    return false;
+  }
+}
+
 function isValidIntent(value: unknown): value is OmniboxIntent {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
@@ -111,10 +134,13 @@ export async function POST(request: NextRequest) {
       );
     }
     if (auth.user.type !== 'superuser') {
-      return NextResponse.json(
-        { error: 'Forbidden - superuser access required' },
-        { status: 403 },
-      );
+      const allowed = await omniboxAllowedForAll(auth.token);
+      if (!allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden - omnibox access is restricted to superusers' },
+          { status: 403 },
+        );
+      }
     }
 
     const body = (await request.json().catch(() => null)) as

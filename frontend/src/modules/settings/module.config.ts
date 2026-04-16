@@ -9,6 +9,9 @@ import { Settings } from 'lucide-react';
 import type { HomeModule } from '../types';
 import { SettingsHome } from './components/SettingsHome';
 
+export const OMNIBOX_ACCESS_OPTIONS = ['superuser', 'all'] as const;
+export type OmniboxAccess = (typeof OMNIBOX_ACCESS_OPTIONS)[number];
+
 export const settingsModule: HomeModule = {
   id: 'settings',
   name: 'Settings',
@@ -23,5 +26,15 @@ export const settingsModule: HomeModule = {
   omnibox: {
     synonyms: ['settings', 'preferences', 'config', 'options'],
     listComponent: SettingsHome,
+  },
+  flags: {
+    omnibox_access: {
+      type: 'enum',
+      label: 'Omnibox access',
+      description:
+        'Who can use the natural-language omnibox (⌘K / search bar).',
+      options: OMNIBOX_ACCESS_OPTIONS,
+      default: 'superuser',
+    },
   },
 };

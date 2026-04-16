@@ -100,7 +100,55 @@ export interface HomeModule {
    * via the omnibox. See `@/shared/omnibox/types` for the shape.
    */
   omnibox?: OmniboxAdapter;
+
+  /**
+   * Optional module-scoped flags. Each entry declares a typed knob
+   * that a household member can tweak from the settings UI.
+   *
+   * The registry flattens all declared flags across modules into a
+   * single aepbase-backed singleton (`module-flags` resource) whose
+   * field names are `${moduleId_snake}__${key}`.
+   */
+  flags?: Record<string, ModuleFlagDef>;
 }
+
+/**
+ * Runtime value a flag can hold. Matches `ModuleFlagDef.type`
+ * one-to-one — `enum` flags store their selected option as a string.
+ */
+export type ModuleFlagValue = string | number | boolean;
+
+/**
+ * Declarative description of a single module flag. The settings UI
+ * renders the right input widget based on `type`; the aepbase schema
+ * syncer converts `type` into a JSON-schema property.
+ */
+export type ModuleFlagDef =
+  | {
+      type: 'string';
+      label: string;
+      description?: string;
+      default?: string;
+    }
+  | {
+      type: 'number';
+      label: string;
+      description?: string;
+      default?: number;
+    }
+  | {
+      type: 'boolean';
+      label: string;
+      description?: string;
+      default?: boolean;
+    }
+  | {
+      type: 'enum';
+      label: string;
+      description?: string;
+      options: readonly string[];
+      default?: string;
+    };
 
 /**
  * Module Registry

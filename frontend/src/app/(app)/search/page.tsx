@@ -3,14 +3,18 @@
 /**
  * Natural-language omnibox page.
  *
- * Superuser-only. Users type a query; the server parses it into an
- * `OmniboxIntent`; `OmniboxDispatcher` renders the resolved module's UI
- * inline. URL is kept in sync via `?q=` so intents are shareable.
+ * Access is gated by the `settings.omnibox_access` module setting:
+ * superusers always have access, other users only when it is `'all'`.
+ * Users type a query; the server parses it into an `OmniboxIntent`;
+ * `OmniboxDispatcher` renders the resolved module's UI inline. URL is
+ * kept in sync via `?q=` so intents are shareable.
  */
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/core/auth/useAuth';
+import { useCanUseOmnibox } from '@/shared/omnibox/useCanUseOmnibox';
+import { useModuleFlags } from '@/modules/settings/hooks/useModuleFlags';
 import { Spinner } from '@/shared/components/Spinner';
 import { OmniboxInput } from '@/shared/omnibox/OmniboxInput';
 import { OmniboxDispatcher } from '@/shared/omnibox/OmniboxDispatcher';
@@ -19,15 +23,20 @@ import type { OmniboxParseResponse } from '@/shared/omnibox/types';
 
 export default function SearchPage() {
   const { user, isLoading } = useAuth();
+  const { isLoading: isFlagsLoading } = useModuleFlags();
+  const canUseOmnibox = useCanUseOmnibox();
   const router = useRouter();
 
+  // Once auth + flags have resolved, redirect anyone who isn't
+  // allowed to use the omnibox back to the dashboard.
+  const isReady = !isLoading && !isFlagsLoading && !!user;
   useEffect(() => {
-    if (!isLoading && user && user.type !== 'superuser') {
+    if (isReady && !canUseOmnibox) {
       router.replace('/dashboard');
     }
-  }, [isLoading, user, router]);
+  }, [isReady, canUseOmnibox, router]);
 
-  if (isLoading || !user || user.type !== 'superuser') {
+  if (!isReady || !canUseOmnibox) {
     return (
       <div className="flex items-center justify-center h-64">
         <Spinner size="lg" />
