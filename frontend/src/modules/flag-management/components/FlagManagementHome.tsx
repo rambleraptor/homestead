@@ -5,14 +5,15 @@ import { Card } from '@/shared/components/Card';
 import { Input } from '@/shared/components/Input';
 import { Checkbox } from '@/shared/components/Checkbox';
 import { Spinner } from '@/shared/components/Spinner';
-import { getAllModuleFlagDefs, getModuleById } from '@/modules/registry';
-import { useModuleFlags } from '../hooks/useModuleFlags';
-import { useUpdateModuleFlag } from '../hooks/useUpdateModuleFlag';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { useToast } from '@/shared/components/ToastProvider';
+import { getAllModuleFlagDefs, getModuleById } from '@/modules/registry';
+import { useModuleFlags } from '@/modules/settings/hooks/useModuleFlags';
+import { useUpdateModuleFlag } from '@/modules/settings/hooks/useUpdateModuleFlag';
 import { logger } from '@/core/utils/logger';
 import type { ModuleFlagDef, ModuleFlagValue } from '@/modules/types';
 
-export function ModuleFlagsSection() {
+export function FlagManagementHome() {
   const defs = getAllModuleFlagDefs();
   const { values, isLoading } = useModuleFlags();
   const update = useUpdateModuleFlag();
@@ -32,13 +33,13 @@ export function ModuleFlagsSection() {
   };
 
   const moduleIds = Object.keys(defs);
-  if (moduleIds.length === 0) return null;
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
-        Module Flags
-      </h2>
+    <div className="space-y-6">
+      <PageHeader
+        title="Flag Management"
+        subtitle="View and edit every module flag declared in the app."
+      />
 
       {isLoading ? (
         <Card>
@@ -47,8 +48,14 @@ export function ModuleFlagsSection() {
             <span className="text-sm text-gray-600">Loading flags…</span>
           </div>
         </Card>
+      ) : moduleIds.length === 0 ? (
+        <Card>
+          <p className="text-center text-gray-600 py-8">
+            No modules have declared any flags yet.
+          </p>
+        </Card>
       ) : (
-        <div className="space-y-4" data-testid="module-flags-section">
+        <div className="space-y-4" data-testid="flag-management-list">
           {moduleIds.map((moduleId) => {
             const moduleDefs = defs[moduleId];
             const mod = getModuleById(moduleId);
@@ -58,7 +65,12 @@ export function ModuleFlagsSection() {
                 <div className="flex items-start gap-4">
                   <SlidersHorizontal className="w-6 h-6 text-blue-500 mt-1" />
                   <div className="flex-1 space-y-4">
-                    <h3 className="font-semibold text-gray-900">{moduleName}</h3>
+                    <h3
+                      className="font-semibold text-gray-900"
+                      data-testid={`flag-module-${moduleId}`}
+                    >
+                      {moduleName}
+                    </h3>
                     {Object.entries(moduleDefs).map(([key, def]) => (
                       <FlagField
                         key={key}
@@ -98,8 +110,8 @@ function FlagField({
   onChange,
   isSaving,
 }: FlagFieldProps) {
-  const fieldId = `module-flag-${moduleId}-${flagKey}`;
-  const testid = `module-flag-${moduleId}-${flagKey}`;
+  const fieldId = `flag-${moduleId}-${flagKey}`;
+  const testid = `flag-${moduleId}-${flagKey}`;
 
   switch (def.type) {
     case 'string':
@@ -113,9 +125,7 @@ function FlagField({
             disabled={isSaving}
             data-testid={testid}
           />
-          {def.description && (
-            <p className="mt-1 text-xs text-gray-500">{def.description}</p>
-          )}
+          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
         </div>
       );
 
@@ -134,9 +144,7 @@ function FlagField({
             disabled={isSaving}
             data-testid={testid}
           />
-          {def.description && (
-            <p className="mt-1 text-xs text-gray-500">{def.description}</p>
-          )}
+          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
         </div>
       );
 
@@ -157,9 +165,7 @@ function FlagField({
             >
               {def.label}
             </label>
-            {def.description && (
-              <p className="text-xs text-gray-500">{def.description}</p>
-            )}
+            <p className="text-xs text-gray-500">{def.description}</p>
           </div>
         </div>
       );
@@ -187,9 +193,7 @@ function FlagField({
               </option>
             ))}
           </select>
-          {def.description && (
-            <p className="mt-1 text-xs text-gray-500">{def.description}</p>
-          )}
+          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
         </div>
       );
   }

@@ -14,6 +14,7 @@ const defs: ModuleFlagDefs = {
     omnibox_access: {
       type: 'enum',
       label: 'Omnibox access',
+      description: 'Who can use the omnibox.',
       options: ['superuser', 'all'],
       default: 'superuser',
     },
@@ -71,7 +72,7 @@ describe('syncModuleFlagsSchema', () => {
       properties: {
         settings__omnibox_access: {
           type: 'string',
-          description: 'Omnibox access (one of: superuser, all)',
+          description: 'Who can use the omnibox. (one of: superuser, all)',
         },
       },
     };

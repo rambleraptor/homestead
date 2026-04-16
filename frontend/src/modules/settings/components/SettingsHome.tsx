@@ -17,7 +17,6 @@ import {
   unsubscribeFromPushNotifications,
 } from '@/core/utils/notifications';
 import { ChangePasswordForm } from './ChangePasswordForm';
-import { ModuleFlagsSection } from './ModuleFlagsSection';
 import { useToast } from '@/shared/components/ToastProvider';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { logger } from '@/core/utils/logger';
@@ -280,8 +279,6 @@ export function SettingsHome() {
           </div>
         </Card>
       </div>
-
-      <ModuleFlagsSection />
 
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">

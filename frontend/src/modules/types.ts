@@ -122,30 +122,33 @@ export type ModuleFlagValue = string | number | boolean;
  * Declarative description of a single module flag. The settings UI
  * renders the right input widget based on `type`; the aepbase schema
  * syncer converts `type` into a JSON-schema property.
+ *
+ * `description` is required so the Flag Management admin UI can always
+ * show an operator what a flag does before they toggle it.
  */
 export type ModuleFlagDef =
   | {
       type: 'string';
       label: string;
-      description?: string;
+      description: string;
       default?: string;
     }
   | {
       type: 'number';
       label: string;
-      description?: string;
+      description: string;
       default?: number;
     }
   | {
       type: 'boolean';
       label: string;
-      description?: string;
+      description: string;
       default?: boolean;
     }
   | {
       type: 'enum';
       label: string;
-      description?: string;
+      description: string;
       options: readonly string[];
       default?: string;
     };

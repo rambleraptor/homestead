@@ -41,6 +41,7 @@ import { hsaModule } from './hsa/module.config';
 import { creditCardsModule } from './credit-cards/module.config';
 import { usersModule } from './users/module.config';
 import { minigolfModule } from './minigolf/module.config';
+import { flagManagementModule } from './flag-management/module.config';
 
 // =============================================================================
 // REGISTER MODULES HERE
@@ -60,6 +61,7 @@ const MODULES: HomeModule[] = [
   minigolfModule,
   notificationsModule,
   usersModule,
+  flagManagementModule,
   settingsModule,
   // Add your modules here...
 ];

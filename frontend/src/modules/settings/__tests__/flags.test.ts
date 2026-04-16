@@ -10,18 +10,29 @@ import {
 
 const defs: ModuleFlagDefs = {
   'gift-cards': {
-    show_archived: { type: 'boolean', label: 'Show archived', default: false },
+    show_archived: {
+      type: 'boolean',
+      label: 'Show archived',
+      description: 'Show archived gift cards.',
+      default: false,
+    },
   },
   settings: {
     omnibox_access: {
       type: 'enum',
       label: 'Omnibox access',
+      description: 'Who can use the omnibox.',
       options: ['superuser', 'all'],
       default: 'superuser',
     },
   },
   groceries: {
-    refill_threshold: { type: 'number', label: 'Refill threshold', default: 3 },
+    refill_threshold: {
+      type: 'number',
+      label: 'Refill threshold',
+      description: 'How many items trigger a refill reminder.',
+      default: 3,
+    },
   },
 };
 
