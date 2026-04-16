@@ -1,7 +1,3 @@
-/**
- * Mark notification as read.
- */
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
@@ -14,7 +10,7 @@ export function useMarkNotificationAsRead() {
     mutationFn: async (id: string) => {
       const userId = aepbase.getCurrentUser()?.id;
       if (!userId) throw new Error('User not authenticated');
-      return await aepbase.update<Notification>(
+      return aepbase.update<Notification>(
         AepCollections.NOTIFICATIONS,
         id,
         { read: true, read_at: new Date().toISOString() },

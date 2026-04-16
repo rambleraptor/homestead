@@ -1,12 +1,5 @@
-/**
- * Reusable Bulk Import Framework - CSV Parser
- */
-
 import type { BulkImportSchema, ParsedItem, CSVParseResult } from './types';
 
-/**
- * Generic CSV parser that works with any schema
- */
 export function parseCSV<T>(
   csvContent: string,
   schema: BulkImportSchema<T>
@@ -63,9 +56,7 @@ export function parseCSV<T>(
   };
 }
 
-/**
- * Parse a single CSV line handling quoted values
- */
+// Handles quoted fields with `""` as an escaped quote.
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = '';
@@ -77,15 +68,12 @@ function parseCSVLine(line: string): string[] {
 
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
-        // Escaped quote
         current += '"';
-        i++; // Skip next quote
+        i++;
       } else {
-        // Toggle quote mode
         inQuotes = !inQuotes;
       }
     } else if (char === ',' && !inQuotes) {
-      // Field separator
       result.push(current.trim());
       current = '';
     } else {
@@ -93,15 +81,11 @@ function parseCSVLine(line: string): string[] {
     }
   }
 
-  // Add last field
   result.push(current.trim());
 
   return result;
 }
 
-/**
- * Parse and validate a single row using the schema
- */
 function parseRow<T>(
   row: Record<string, string>,
   rowNumber: number,
@@ -110,39 +94,25 @@ function parseRow<T>(
   const errors: string[] = [];
   const data: Record<string, unknown> = {};
 
-  // Process all fields (required and optional)
-  const allFields = [...schema.requiredFields, ...schema.optionalFields];
+  for (const field of [...schema.requiredFields, ...schema.optionalFields]) {
+    const value = row[field.name]?.trim() || '';
 
-  for (const field of allFields) {
-    const rawValue = row[field.name];
-    const value = rawValue?.trim() || '';
-
-    // Check if required field is missing
     if (field.required && !value) {
       errors.push(`${field.name} is required`);
       continue;
     }
-
-    // Skip validation for optional empty fields
     if (!field.required && !value) {
-      if (field.defaultValue !== undefined) {
-        data[field.name] = field.defaultValue;
-      }
+      if (field.defaultValue !== undefined) data[field.name] = field.defaultValue;
       continue;
     }
 
-    // Run validator
     try {
       const result = field.validator(value, row);
-
-      if (result.error) {
-        errors.push(result.error);
-      } else {
-        data[field.name] = result.value;
-      }
+      if (result.error) errors.push(result.error);
+      else data[field.name] = result.value;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Validation failed';
-      errors.push(`${field.name}: ${errorMessage}`);
+      const message = error instanceof Error ? error.message : 'Validation failed';
+      errors.push(`${field.name}: ${message}`);
     }
   }
 
@@ -154,9 +124,6 @@ function parseRow<T>(
   };
 }
 
-/**
- * Download a CSV template file
- */
 export function downloadCSVTemplate(
   templateContent: string,
   filename: string

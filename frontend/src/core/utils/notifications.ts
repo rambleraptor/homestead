@@ -1,7 +1,3 @@
-/**
- * Utility functions for managing web push notifications
- */
-
 import { logger } from './logger';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -14,9 +10,6 @@ if (!VAPID_PUBLIC_KEY) {
   );
 }
 
-/**
- * Convert VAPID public key to Uint8Array
- */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -30,23 +23,14 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
-/**
- * Check if the browser supports notifications
- */
 export function isNotificationSupported(): boolean {
   return 'Notification' in window && 'serviceWorker' in navigator;
 }
 
-/**
- * Check if notification permission is granted
- */
 export function isNotificationPermissionGranted(): boolean {
   return isNotificationSupported() && Notification.permission === 'granted';
 }
 
-/**
- * Request notification permission from the user
- */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!isNotificationSupported()) {
     throw new Error('Notifications are not supported in this browser');
@@ -56,39 +40,25 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return permission === 'granted';
 }
 
-/**
- * Register service worker and subscribe to push notifications
- */
 export async function subscribeToPushNotifications(): Promise<PushSubscription> {
   if (!isNotificationSupported()) {
     throw new Error('Notifications are not supported in this browser');
   }
 
-  // Register service worker
   const registration = await navigator.serviceWorker.register('/sw.js');
   await navigator.serviceWorker.ready;
 
-  // Subscribe to push notifications
-  const subscription = await registration.pushManager.subscribe({
+  return registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
   });
-
-  return subscription;
 }
 
-/**
- * Unsubscribe from push notifications
- */
 export async function unsubscribeFromPushNotifications(): Promise<void> {
-  if (!isNotificationSupported()) {
-    return;
-  }
+  if (!isNotificationSupported()) return;
 
   const registration = await navigator.serviceWorker.getRegistration();
-  if (!registration) {
-    return;
-  }
+  if (!registration) return;
 
   const subscription = await registration.pushManager.getSubscription();
   if (subscription) {
@@ -96,25 +66,15 @@ export async function unsubscribeFromPushNotifications(): Promise<void> {
   }
 }
 
-/**
- * Get the current push subscription
- */
 export async function getCurrentPushSubscription(): Promise<PushSubscription | null> {
-  if (!isNotificationSupported()) {
-    return null;
-  }
+  if (!isNotificationSupported()) return null;
 
   const registration = await navigator.serviceWorker.getRegistration();
-  if (!registration) {
-    return null;
-  }
+  if (!registration) return null;
 
-  return await registration.pushManager.getSubscription();
+  return registration.pushManager.getSubscription();
 }
 
-/**
- * Show a notification (fallback for browsers without push support)
- */
 export function showNotification(title: string, options?: NotificationOptions): void {
   if (!isNotificationSupported()) {
     logger.warn('Notifications are not supported');

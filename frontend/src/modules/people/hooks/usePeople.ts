@@ -1,8 +1,3 @@
-/**
- * People list hook. Joins people + person_shared_data + addresses
- * client-side since aepbase has no filter/join support.
- */
-
 import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
@@ -18,6 +13,26 @@ interface PersonRecord {
   update_time?: string;
 }
 
+function toPerson(
+  record: PersonRecord,
+  addresses: Address[],
+  anniversary?: string,
+  partner?: Person,
+): Person {
+  return {
+    ...record,
+    created: record.create_time || '',
+    updated: record.update_time || '',
+    notification_preferences: record.notification_preferences || [],
+    created_by: record.created_by || '',
+    addresses,
+    anniversary,
+    partner,
+  };
+}
+
+// Joins people + person_shared_data + addresses client-side — aepbase doesn't
+// support server-side filter/join.
 export function usePeople() {
   return useQuery({
     queryKey: queryKeys.module('people').list(),
@@ -30,70 +45,37 @@ export function usePeople() {
 
       peopleRecords.sort((a, b) => a.name.localeCompare(b.name));
 
-      const sharedDataByPersonA = new Map<string, PersonSharedData>();
-      const sharedDataByPersonB = new Map<string, PersonSharedData>();
-      const addressesById = new Map<string, Address>();
-
-      for (const sharedData of allSharedData) {
-        sharedDataByPersonA.set(sharedData.person_a, sharedData);
-        if (sharedData.person_b) sharedDataByPersonB.set(sharedData.person_b, sharedData);
+      const sharedByPerson = new Map<string, PersonSharedData>();
+      for (const sd of allSharedData) {
+        sharedByPerson.set(sd.person_a, sd);
+        if (sd.person_b) sharedByPerson.set(sd.person_b, sd);
       }
-      for (const address of allAddresses) addressesById.set(address.id, address);
+      const addressById = new Map(allAddresses.map((a) => [a.id, a]));
+      const recordById = new Map(peopleRecords.map((p) => [p.id, p]));
 
-      const people: Person[] = peopleRecords.map((record) => {
-        const sharedData =
-          sharedDataByPersonA.get(record.id) || sharedDataByPersonB.get(record.id);
-        const addresses: Address[] = [];
-        if (sharedData) {
-          if (sharedData.address_id) {
-            const primary = addressesById.get(sharedData.address_id);
-            if (primary) addresses.push(primary);
-          }
-          for (const address of allAddresses) {
-            if (
-              address.shared_data_id === sharedData.id &&
-              address.id !== sharedData.address_id
-            ) {
-              addresses.push(address);
-            }
-          }
-        }
+      const addressesFor = (sd?: PersonSharedData): Address[] => {
+        if (!sd) return [];
+        const primary = sd.address_id ? addressById.get(sd.address_id) : undefined;
+        const extras = allAddresses.filter(
+          (a) => a.shared_data_id === sd.id && a.id !== sd.address_id,
+        );
+        return primary ? [primary, ...extras] : extras;
+      };
 
-        let partner: Person | undefined;
+      return peopleRecords.map((record) => {
+        const sharedData = sharedByPerson.get(record.id);
+        const addresses = addressesFor(sharedData);
+
         const partnerId = sharedData
-          ? sharedData.person_a === record.id
-            ? sharedData.person_b
-            : sharedData.person_a
+          ? sharedData.person_a === record.id ? sharedData.person_b : sharedData.person_a
           : undefined;
-        if (partnerId) {
-          const partnerRecord = peopleRecords.find((p) => p.id === partnerId);
-          if (partnerRecord) {
-            partner = {
-              ...partnerRecord,
-              created: partnerRecord.create_time || '',
-              updated: partnerRecord.update_time || '',
-              notification_preferences: partnerRecord.notification_preferences || [],
-              created_by: partnerRecord.created_by || '',
-              addresses,
-              anniversary: sharedData?.anniversary,
-              partner: undefined,
-            };
-          }
-        }
+        const partnerRecord = partnerId ? recordById.get(partnerId) : undefined;
+        const partner = partnerRecord
+          ? toPerson(partnerRecord, addresses, sharedData?.anniversary)
+          : undefined;
 
-        return {
-          ...record,
-          created: record.create_time || '',
-          updated: record.update_time || '',
-          notification_preferences: record.notification_preferences || [],
-          created_by: record.created_by || '',
-          addresses,
-          anniversary: sharedData?.anniversary,
-          partner,
-        };
+        return toPerson(record, addresses, sharedData?.anniversary, partner);
       });
-
-      return people;
     },
   });
 }

@@ -1,21 +1,12 @@
-/**
- * Reusable Bulk Import Framework — Generic Bulk Import Hook
- *
- * Writes each row to aepbase via the thin wrapper. `collection` is the
- * aepbase plural (kebab-case URL segment), e.g. "gift-cards".
- */
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase } from '@/core/api/aepbase';
 import { logger } from '@/core/utils/logger';
 import type { ParsedItem, BulkImportResult } from './types';
 
 interface UseBulkImportOptions<T> {
-  /** aepbase collection plural (kebab-case URL segment, e.g. "gift-cards") */
+  // Kebab-case plural, e.g. "gift-cards".
   collection: string;
-  /** Query key to invalidate on success */
   queryKey: readonly unknown[];
-  /** Transform parsed data to create payload (optional) */
   transformData?: (data: T) => Record<string, unknown>;
 }
 

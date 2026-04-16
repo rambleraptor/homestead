@@ -1,10 +1,19 @@
-/**
- * Hook for computing HSA statistics
- */
-
 import { useMemo } from 'react';
 import { useHSAReceipts } from './useHSAReceipts';
-import type { HSAStats, CategoryBreakdown, PatientBreakdown, ReceiptCategory } from '../types';
+import type { HSAStats, CategoryBreakdown, PatientBreakdown, HSAReceipt } from '../types';
+
+function groupByKey<K>(
+  receipts: HSAReceipt[],
+  keyFn: (r: HSAReceipt) => K,
+): Map<K, { total: number; count: number }> {
+  const map = new Map<K, { total: number; count: number }>();
+  for (const r of receipts) {
+    const key = keyFn(r);
+    const existing = map.get(key) ?? { total: 0, count: 0 };
+    map.set(key, { total: existing.total + r.amount, count: existing.count + 1 });
+  }
+  return map;
+}
 
 export function useHSAStats() {
   const { data: receipts, ...queryResult } = useHSAReceipts();
@@ -12,61 +21,24 @@ export function useHSAStats() {
   const stats: HSAStats | undefined = useMemo(() => {
     if (!receipts) return undefined;
 
-    // Calculate totals
-    const totalStored = receipts
-      .filter((r) => r.status === 'Stored')
-      .reduce((sum, r) => sum + r.amount, 0);
+    const stored = receipts.filter((r) => r.status === 'Stored');
+    const reimbursed = receipts.filter((r) => r.status === 'Reimbursed');
+    const sum = (items: HSAReceipt[]) => items.reduce((acc, r) => acc + r.amount, 0);
 
-    const totalReimbursed = receipts
-      .filter((r) => r.status === 'Reimbursed')
-      .reduce((sum, r) => sum + r.amount, 0);
+    const categoryBreakdown: CategoryBreakdown[] = Array.from(
+      groupByKey(receipts, (r) => r.category).entries(),
+    ).map(([category, data]) => ({ category, ...data }));
 
-    const storedReceipts = receipts.filter((r) => r.status === 'Stored').length;
-    const reimbursedReceipts = receipts.filter((r) => r.status === 'Reimbursed').length;
-
-    // Category breakdown
-    const categoryMap = new Map<ReceiptCategory, { total: number; count: number }>();
-    receipts.forEach((receipt) => {
-      const existing = categoryMap.get(receipt.category) || { total: 0, count: 0 };
-      categoryMap.set(receipt.category, {
-        total: existing.total + receipt.amount,
-        count: existing.count + 1,
-      });
-    });
-
-    const categoryBreakdown: CategoryBreakdown[] = Array.from(categoryMap.entries()).map(
-      ([category, data]) => ({
-        category,
-        total: data.total,
-        count: data.count,
-      })
-    );
-
-    // Patient breakdown
-    const patientMap = new Map<string, { total: number; count: number }>();
-    receipts.forEach((receipt) => {
-      const patient = receipt.patient || 'Unknown';
-      const existing = patientMap.get(patient) || { total: 0, count: 0 };
-      patientMap.set(patient, {
-        total: existing.total + receipt.amount,
-        count: existing.count + 1,
-      });
-    });
-
-    const patientBreakdown: PatientBreakdown[] = Array.from(patientMap.entries()).map(
-      ([patient, data]) => ({
-        patient,
-        total: data.total,
-        count: data.count,
-      })
-    );
+    const patientBreakdown: PatientBreakdown[] = Array.from(
+      groupByKey(receipts, (r) => r.patient || 'Unknown').entries(),
+    ).map(([patient, data]) => ({ patient, ...data }));
 
     return {
-      totalStored,
-      totalReimbursed,
+      totalStored: sum(stored),
+      totalReimbursed: sum(reimbursed),
       totalReceipts: receipts.length,
-      storedReceipts,
-      reimbursedReceipts,
+      storedReceipts: stored.length,
+      reimbursedReceipts: reimbursed.length,
       categoryBreakdown,
       patientBreakdown,
     };

@@ -1,7 +1,3 @@
-/**
- * Single person hook. Client-side joins for address + partner.
- */
-
 import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
@@ -18,13 +14,21 @@ interface PersonRecord {
   update_time?: string;
 }
 
-function normalize(rec: PersonRecord): PersonRecord & { created: string; updated: string; notification_preferences: NotificationPreference[]; created_by: string } {
+function toPerson(
+  record: PersonRecord,
+  addresses: Address[],
+  anniversary?: string,
+  partner?: Person,
+): Person {
   return {
-    ...rec,
-    created: rec.create_time || '',
-    updated: rec.update_time || '',
-    notification_preferences: rec.notification_preferences || [],
-    created_by: rec.created_by || '',
+    ...record,
+    created: record.create_time || '',
+    updated: record.update_time || '',
+    notification_preferences: record.notification_preferences || [],
+    created_by: record.created_by || '',
+    addresses,
+    anniversary,
+    partner,
   };
 }
 
@@ -32,64 +36,33 @@ export function usePersonById(id: string) {
   return useQuery({
     queryKey: queryKeys.module('people').detail(id),
     queryFn: async () => {
-      const rawRecord = await aepbase.get<PersonRecord>(AepCollections.PEOPLE, id);
-      const record = normalize(rawRecord);
+      const record = await aepbase.get<PersonRecord>(AepCollections.PEOPLE, id);
       const sharedData = await findSharedDataForPerson(id);
 
       const addresses: Address[] = [];
       if (sharedData) {
-        if (sharedData.address_id) {
-          try {
-            const primary = await aepbase.get<Address>(
-              AepCollections.ADDRESSES,
-              sharedData.address_id,
-            );
-            addresses.push(primary);
-          } catch {
-            // missing; ignore
+        const all = await aepbase.list<Address>(AepCollections.ADDRESSES).catch(() => []);
+        const primary = sharedData.address_id
+          ? all.find((a) => a.id === sharedData.address_id)
+          : undefined;
+        if (primary) addresses.push(primary);
+        for (const address of all) {
+          if (address.shared_data_id === sharedData.id && address.id !== sharedData.address_id) {
+            addresses.push(address);
           }
-        }
-        try {
-          const all = await aepbase.list<Address>(AepCollections.ADDRESSES);
-          for (const address of all) {
-            if (
-              address.shared_data_id === sharedData.id &&
-              address.id !== sharedData.address_id
-            ) {
-              addresses.push(address);
-            }
-          }
-        } catch {
-          // ignore
         }
       }
 
       let partner: Person | undefined;
-      if (sharedData) {
-        const partnerId =
-          sharedData.person_a === id ? sharedData.person_b : sharedData.person_a;
-        if (partnerId) {
-          const partnerRaw = await aepbase.get<PersonRecord>(
-            AepCollections.PEOPLE,
-            partnerId,
-          );
-          const partnerRecord = normalize(partnerRaw);
-          partner = {
-            ...partnerRecord,
-            addresses,
-            anniversary: sharedData.anniversary,
-            partner: undefined,
-          };
-        }
+      const partnerId = sharedData
+        ? sharedData.person_a === id ? sharedData.person_b : sharedData.person_a
+        : undefined;
+      if (partnerId) {
+        const partnerRecord = await aepbase.get<PersonRecord>(AepCollections.PEOPLE, partnerId);
+        partner = toPerson(partnerRecord, addresses, sharedData?.anniversary);
       }
 
-      const person: Person = {
-        ...record,
-        addresses,
-        anniversary: sharedData?.anniversary,
-        partner,
-      };
-      return person;
+      return toPerson(record, addresses, sharedData?.anniversary, partner);
     },
     enabled: !!id,
   });
