@@ -40,13 +40,50 @@ Possible outputs (match one of these shapes exactly):
     "formPrefill": { ... }, "confidence": 0.0-1.0,
     "rationale": "<short phrase>" }
 
+About filters (IMPORTANT):
+Filters narrow a list to the records the user is actually asking about.
+A query almost never wants the whole collection — when it mentions a
+specific name, label, status, date, or attribute, lift that value into
+"filters". Proper nouns in the query ("Emily", "Chase Sapphire") are
+filter values, not just routing hints; do not drop them.
+
+Only use keys declared under that module's "filters", and supply values
+that match each filter's declared "type":
+  - "text": a substring the record's field should contain. Pass the
+    raw value as a string; the app does case-insensitive substring
+    matching. Example: name="Emily" matches "Emily Smith".
+  - "enum": exactly one of the declared "values".
+  - "boolean": true or false.
+  - "dateRange": { "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" } —
+    either side may be omitted.
+
+Leave "filters" empty only when the query explicitly asks for
+everything ("show me all people", "list every gift card"). A question
+like "what is X's Y" or "where does X live" wants a filter on X.
+
+Examples:
+- "what is Emily's address" →
+    { "kind": "list", "moduleId": "people",
+      "filters": { "name": "Emily" }, "confidence": 0.9,
+      "rationale": "Looking up a person by name" }
+- "when is Jordan's birthday" →
+    { "kind": "list", "moduleId": "people",
+      "filters": { "name": "Jordan" }, "confidence": 0.9,
+      "rationale": "Looking up a person by name" }
+- "show me all people" →
+    { "kind": "list", "moduleId": "people",
+      "filters": {}, "confidence": 0.9, "rationale": "All people" }
+- "add milk to groceries" →
+    { "kind": "form", "moduleId": "groceries", "formId": "create-grocery",
+      "formPrefill": { "name": "milk" }, "confidence": 0.9,
+      "rationale": "Adding a grocery item" }
+
 Rules:
 - Use a module's synonyms to route the query.
-- For a filter, only use a key declared under that module's "filters".
-- For a form, only use a formId declared under that module's "forms", and
-  only include keys that exist in its paramSchema.properties.
-- If the query is a read-style question ("show me", "what", "find",
-  "list"), prefer kind=list.
+- For a form, only use a formId declared under that module's "forms",
+  and only include keys that exist in its paramSchema.properties.
+- If the query is a read-style question ("show me", "what", "who",
+  "where", "when", "find", "list"), prefer kind=list.
 - If the query is an action ("add", "create", "new", "delete"), prefer
   kind=form.
 - If you are not sure, return kind=list with a lower confidence.
