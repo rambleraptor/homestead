@@ -18,7 +18,10 @@ export const recipesModule: HomeModule = {
   description: 'Manage household recipes with structured ingredients.',
   icon: ChefHat,
   basePath: '/recipes',
-  routes: [{ path: '', index: true }],
+  routes: [
+    { path: '', index: true },
+    { path: ':id' },
+  ],
   showInNav: true,
   navOrder: 5,
   section: 'Food',

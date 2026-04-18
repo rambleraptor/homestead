@@ -7,6 +7,7 @@
  * presentation — data fetching is handled by the caller.
  */
 
+import Link from 'next/link';
 import { ChefHat, Pencil, Trash2 } from 'lucide-react';
 import type { Recipe } from '../types';
 
@@ -38,58 +39,66 @@ export function RecipesList({ recipes, onEdit, onDelete }: RecipesListProps) {
         <li
           key={recipe.id}
           data-testid={`recipe-row-${recipe.title}`}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-col"
+          className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col relative focus-within:ring-2 focus-within:ring-accent-terracotta hover:shadow-md transition-shadow"
         >
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="text-lg font-display font-semibold text-brand-navy truncate">
-                {recipe.title}
-              </h3>
-              {recipe.source_pointer && (
-                <p className="text-xs text-text-muted truncate mt-0.5">
-                  {recipe.source_pointer}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => onEdit(recipe)}
-                aria-label={`Edit ${recipe.title}`}
-                data-testid={`recipe-edit-${recipe.title}`}
-                className="p-1.5 rounded-md text-text-muted hover:bg-bg-pearl hover:text-brand-navy"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(recipe.id)}
-                aria-label={`Delete ${recipe.title}`}
-                data-testid={`recipe-delete-${recipe.title}`}
-                className="p-1.5 rounded-md text-text-muted hover:bg-red-50 hover:text-red-600"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <p className="text-sm text-brand-slate mt-3">
-            {recipe.parsed_ingredients?.length ?? 0} ingredient
-            {(recipe.parsed_ingredients?.length ?? 0) === 1 ? '' : 's'}
-          </p>
-
-          {recipe.tags && recipe.tags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1">
-              {recipe.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-block px-2 py-0.5 text-xs rounded-full bg-bg-pearl text-brand-slate"
+          <Link
+            href={`/recipes/${recipe.id}`}
+            aria-label={`View ${recipe.title}`}
+            data-testid={`recipe-view-${recipe.title}`}
+            className="absolute inset-0 rounded-lg focus:outline-none"
+          />
+          <div className="p-4 flex flex-col pointer-events-none">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="text-lg font-display font-semibold text-brand-navy truncate">
+                  {recipe.title}
+                </h3>
+                {recipe.source_pointer && (
+                  <p className="text-xs text-text-muted truncate mt-0.5">
+                    {recipe.source_pointer}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-1 pointer-events-auto relative">
+                <button
+                  type="button"
+                  onClick={() => onEdit(recipe)}
+                  aria-label={`Edit ${recipe.title}`}
+                  data-testid={`recipe-edit-${recipe.title}`}
+                  className="p-1.5 rounded-md text-text-muted hover:bg-bg-pearl hover:text-brand-navy"
                 >
-                  {tag}
-                </span>
-              ))}
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(recipe.id)}
+                  aria-label={`Delete ${recipe.title}`}
+                  data-testid={`recipe-delete-${recipe.title}`}
+                  className="p-1.5 rounded-md text-text-muted hover:bg-red-50 hover:text-red-600"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          )}
+
+            <p className="text-sm text-brand-slate mt-3">
+              {recipe.parsed_ingredients?.length ?? 0} ingredient
+              {(recipe.parsed_ingredients?.length ?? 0) === 1 ? '' : 's'}
+            </p>
+
+            {recipe.tags && recipe.tags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1">
+                {recipe.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-block px-2 py-0.5 text-xs rounded-full bg-bg-pearl text-brand-slate"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </li>
       ))}
     </ul>
