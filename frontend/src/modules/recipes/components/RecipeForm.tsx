@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import { Plus, Save, Trash2, X } from 'lucide-react';
+import { splitSteps } from '../importers/textImporter';
 import type { Recipe, RecipeFormData, RecipeIngredient } from '../types';
 
 interface RecipeFormProps {
@@ -35,6 +36,12 @@ export function RecipeForm({
   const [title, setTitle] = useState(initialData?.title ?? '');
   const [sourcePointer, setSourcePointer] = useState(
     initialData?.source_pointer ?? '',
+  );
+  const [prepTime, setPrepTime] = useState(initialData?.prep_time ?? '');
+  const [cookTime, setCookTime] = useState(initialData?.cook_time ?? '');
+  const [servings, setServings] = useState(initialData?.servings ?? '');
+  const [stepsInput, setStepsInput] = useState(
+    (initialData?.steps ?? []).join('\n\n'),
   );
   const [method, setMethod] = useState(initialData?.method ?? '');
   const [tagsInput, setTagsInput] = useState(
@@ -89,11 +96,17 @@ export function RecipeForm({
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
+    const steps = splitSteps(stepsInput);
+
     onSubmit({
       title: title.trim(),
       source_pointer: sourcePointer.trim() || undefined,
       parsed_ingredients: cleanedIngredients,
+      steps: steps.length > 0 ? steps : undefined,
       method: method.trim() || undefined,
+      prep_time: prepTime.trim() || undefined,
+      cook_time: cookTime.trim() || undefined,
+      servings: servings.trim() || undefined,
       tags: tags.length > 0 ? tags : undefined,
     });
   };
@@ -136,6 +149,60 @@ export function RecipeForm({
           placeholder="https://... or 'Book: Food Lab pg 124'"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
         />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label
+            htmlFor="prep_time"
+            className="block text-sm font-medium text-brand-navy mb-1"
+          >
+            Prep Time
+          </label>
+          <input
+            id="prep_time"
+            name="prep_time"
+            type="text"
+            value={prepTime}
+            onChange={(e) => setPrepTime(e.target.value)}
+            placeholder="e.g. 10 mins"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="cook_time"
+            className="block text-sm font-medium text-brand-navy mb-1"
+          >
+            Cook Time
+          </label>
+          <input
+            id="cook_time"
+            name="cook_time"
+            type="text"
+            value={cookTime}
+            onChange={(e) => setCookTime(e.target.value)}
+            placeholder="e.g. 25 mins"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="servings"
+            className="block text-sm font-medium text-brand-navy mb-1"
+          >
+            Servings
+          </label>
+          <input
+            id="servings"
+            name="servings"
+            type="text"
+            value={servings}
+            onChange={(e) => setServings(e.target.value)}
+            placeholder="e.g. 8 bundles"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+          />
+        </div>
       </div>
 
       <div>
@@ -203,15 +270,34 @@ export function RecipeForm({
       </div>
 
       <div>
+        <label htmlFor="steps" className="block text-sm font-medium text-brand-navy mb-1">
+          Steps
+        </label>
+        <p className="text-xs text-text-muted mb-1">
+          One step per paragraph — separate with a blank line. Displayed as a numbered list.
+        </p>
+        <textarea
+          id="steps"
+          name="steps"
+          data-testid="recipe-form-steps"
+          value={stepsInput}
+          onChange={(e) => setStepsInput(e.target.value)}
+          rows={8}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta font-body text-sm"
+        />
+      </div>
+
+      <div>
         <label htmlFor="method" className="block text-sm font-medium text-brand-navy mb-1">
-          Method (Markdown)
+          Notes (Markdown)
         </label>
         <textarea
           id="method"
           name="method"
           value={method}
           onChange={(e) => setMethod(e.target.value)}
-          rows={8}
+          rows={6}
+          placeholder="Notes, nutrition info, serving suggestions…"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta font-mono text-sm"
         />
       </div>

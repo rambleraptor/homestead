@@ -183,6 +183,28 @@ export function parseIngredientLine(line: string): RecipeIngredient {
   return { qty, unit, item, raw };
 }
 
+/**
+ * Split directions text into discrete steps.
+ *
+ * Prefers paragraph boundaries (blank-line separated) when present, since
+ * that's how Paprika and most blog print views structure multi-sentence
+ * steps. Falls back to one step per non-blank line when the body is a
+ * flat list.
+ */
+export function splitSteps(text: string | undefined): string[] {
+  if (!text || !text.trim()) return [];
+  const normalized = text.replace(/\r\n/g, '\n');
+  const paragraphs = normalized
+    .split(/\n\s*\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  if (paragraphs.length > 1) return paragraphs;
+  return normalized
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+}
+
 interface Section {
   canonical: string;
   lines: string[];
@@ -234,26 +256,66 @@ function extractInlineSource(lines: string[]): string | undefined {
   return undefined;
 }
 
+/**
+ * Pull `Prep Time`, `Cook Time`, `Total Time`, `Servings`, and `Yield`
+ * values out of the free-form header lines. Matches each label (optionally
+ * followed by a colon) case-insensitively, handles single-line "pipe-
+ * separated" headers like `Prep Time: 10 mins | Cook Time: 25 mins`, and
+ * returns both the extracted values and the leftover lines that didn't
+ * match any known label.
+ */
+export function extractRecipeMeta(lines: string[]): {
+  prep_time?: string;
+  cook_time?: string;
+  servings?: string;
+  leftover: string[];
+} {
+  const metaRe = /(prep\s*time|cook\s*time|total\s*time|servings?|yields?)\s*:\s*([^|]+?)(?=\s*\||\s*$)/gi;
+
+  let prep_time: string | undefined;
+  let cook_time: string | undefined;
+  let servings: string | undefined;
+  const leftover: string[] = [];
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    let matched = false;
+    let m: RegExpExecArray | null;
+    metaRe.lastIndex = 0;
+    while ((m = metaRe.exec(line)) !== null) {
+      matched = true;
+      const key = m[1].toLowerCase().replace(/\s+/g, '');
+      const value = m[2].trim();
+      if (!value) continue;
+      if (key === 'preptime' && !prep_time) prep_time = value;
+      else if (key === 'cooktime' && !cook_time) cook_time = value;
+      else if (
+        (key === 'servings' || key === 'serving' || key === 'yield' || key === 'yields') &&
+        !servings
+      ) {
+        servings = value;
+      }
+      // total_time is captured but not stored — we keep the schema narrow.
+    }
+
+    if (!matched) leftover.push(raw);
+  }
+
+  return { prep_time, cook_time, servings, leftover };
+}
+
 function buildMethod(
-  directions: string[] | undefined,
   notes: string[] | undefined,
   nutrition: string[] | undefined,
-  metadata: string[],
+  extraHeaderLines: string[],
 ): string | undefined {
   const parts: string[] = [];
 
-  if (metadata.length) {
-    parts.push(metadata.join('\n'));
-  }
-
-  if (directions && directions.length) {
-    const cleaned = trimBlankEdges(directions).filter((l) => l.trim().length > 0);
-    if (cleaned.length) {
-      const numbered = cleaned
-        .map((line, idx) => `${idx + 1}. ${line.trim()}`)
-        .join('\n');
-      parts.push(`## Directions\n\n${numbered}`);
-    }
+  if (extraHeaderLines.length) {
+    const cleaned = extraHeaderLines.map((l) => l.trim()).filter((l) => l.length > 0);
+    if (cleaned.length) parts.push(cleaned.join('\n'));
   }
 
   if (notes && notes.length) {
@@ -318,9 +380,14 @@ export const textImporter: TextRecipeImporter = {
     const nutrition = sections.get('nutrition');
     const sourceLines = trimBlankEdges(sections.get('source') ?? []);
 
-    // Header lines that aren't an inline "Source:" become metadata we prepend
-    // to the method (prep time / cook time / servings / yield, etc.).
-    const metadata = header.filter((l) => !/^\s*(?:source|url)\s*:/i.test(l));
+    // Header lines that aren't an inline "Source:" are candidates for
+    // prep/cook/servings metadata; anything that doesn't match a known
+    // label falls through into the method.
+    const headerWithoutSource = header.filter(
+      (l) => !/^\s*(?:source|url)\s*:/i.test(l),
+    );
+    const { prep_time, cook_time, servings, leftover: extraHeaderLines } =
+      extractRecipeMeta(headerWithoutSource);
 
     const inlineSource = extractInlineSource(header);
     const trailingSource = extractInlineSource(
@@ -340,18 +407,24 @@ export const textImporter: TextRecipeImporter = {
       );
     }
 
-    if (!directions || directions.every((l) => !l.trim())) {
+    const steps = splitSteps(directions?.join('\n'));
+
+    if (steps.length === 0) {
       warnings.push(
         'No directions were detected. Add a "Directions:" section or edit the recipe after importing.',
       );
     }
 
-    const method = buildMethod(directions, notes, nutrition, metadata);
+    const method = buildMethod(notes, nutrition, extraHeaderLines);
 
     const data: RecipeFormData = {
       title,
       source_pointer,
       parsed_ingredients,
+      steps: steps.length > 0 ? steps : undefined,
+      prep_time,
+      cook_time,
+      servings,
       method,
     };
 

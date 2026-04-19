@@ -21,7 +21,11 @@ export interface Recipe {
   title: string;
   source_pointer?: string;
   parsed_ingredients: RecipeIngredient[];
+  steps?: string[];
   method?: string;
+  prep_time?: string;
+  cook_time?: string;
+  servings?: string;
   tags?: string[];
   created_by?: string;
   create_time: string;
@@ -35,6 +39,10 @@ export interface RecipeFormData {
   title: string;
   source_pointer?: string;
   parsed_ingredients: RecipeIngredient[];
+  steps?: string[];
   method?: string;
+  prep_time?: string;
+  cook_time?: string;
+  servings?: string;
   tags?: string[];
 }

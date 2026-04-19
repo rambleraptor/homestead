@@ -10,7 +10,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowLeft, ExternalLink, Loader2, Pencil } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  ChefHat,
+  Clock,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Users,
+} from 'lucide-react';
 import { useRecipe } from '../hooks/useRecipe';
 import { useUpdateRecipe } from '../hooks/useUpdateRecipe';
 import { RecipeForm } from './RecipeForm';
@@ -96,7 +105,9 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
   }
 
   const ingredients = recipe.parsed_ingredients ?? [];
+  const steps = recipe.steps ?? [];
   const sourceHref = toHref(recipe.source_pointer);
+  const hasMeta = Boolean(recipe.prep_time || recipe.cook_time || recipe.servings);
 
   return (
     <div className="space-y-6">
@@ -137,6 +148,35 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           </button>
         }
       />
+
+      {hasMeta && (
+        <div
+          data-testid="recipe-view-meta"
+          className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-brand-slate"
+        >
+          {recipe.prep_time && (
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-text-muted" />
+              <span className="text-text-muted">Prep:</span>
+              <span className="font-medium text-brand-navy">{recipe.prep_time}</span>
+            </span>
+          )}
+          {recipe.cook_time && (
+            <span className="inline-flex items-center gap-1.5">
+              <ChefHat className="w-4 h-4 text-text-muted" />
+              <span className="text-text-muted">Cook:</span>
+              <span className="font-medium text-brand-navy">{recipe.cook_time}</span>
+            </span>
+          )}
+          {recipe.servings && (
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-text-muted" />
+              <span className="text-text-muted">Serves:</span>
+              <span className="font-medium text-brand-navy">{recipe.servings}</span>
+            </span>
+          )}
+        </div>
+      )}
 
       {recipe.tags && recipe.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -186,23 +226,43 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 
         <section
           aria-labelledby="method-heading"
-          className="bg-white rounded-lg border border-gray-200 p-5"
+          className="bg-white rounded-lg border border-gray-200 p-5 space-y-6"
         >
-          <h2
-            id="method-heading"
-            className="text-xl font-display font-semibold text-brand-navy mb-3"
-          >
-            Method
-          </h2>
-          {recipe.method ? (
-            <div
-              data-testid="recipe-view-method"
-              className="whitespace-pre-wrap font-body text-base leading-relaxed text-brand-navy"
+          <div>
+            <h2
+              id="method-heading"
+              className="text-xl font-display font-semibold text-brand-navy mb-3"
             >
-              {recipe.method}
+              Steps
+            </h2>
+            {steps.length > 0 ? (
+              <ol
+                data-testid="recipe-view-steps"
+                className="list-decimal list-outside ml-6 space-y-3 font-body text-base leading-relaxed text-brand-navy marker:text-accent-terracotta marker:font-semibold"
+              >
+                {steps.map((step, idx) => (
+                  <li key={idx} className="pl-1 whitespace-pre-wrap">
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-text-muted">No steps listed.</p>
+            )}
+          </div>
+
+          {recipe.method && (
+            <div>
+              <h3 className="text-base font-display font-semibold text-brand-navy mb-2">
+                Notes
+              </h3>
+              <div
+                data-testid="recipe-view-method"
+                className="whitespace-pre-wrap font-body text-base leading-relaxed text-brand-navy"
+              >
+                {recipe.method}
+              </div>
             </div>
-          ) : (
-            <p className="text-sm text-text-muted">No method provided.</p>
           )}
         </section>
       </div>

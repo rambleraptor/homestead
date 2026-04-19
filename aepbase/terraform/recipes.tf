@@ -23,7 +23,15 @@ resource "aep_aep-resource-definition" "recipe" {
           }
         }
       }
-      method = { type = "string", description = "Step-by-step instructions formatted as Markdown." }
+      method = { type = "string", description = "Free-form notes, nutrition, or other context (Markdown)." }
+      steps = {
+        type        = "array"
+        items       = { type = "string" }
+        description = "Ordered cooking steps. Rendered as a numbered list."
+      }
+      prep_time = { type = "string", description = "Human-readable prep time (e.g. '10 mins')." }
+      cook_time = { type = "string", description = "Human-readable cook time (e.g. '25 mins')." }
+      servings  = { type = "string", description = "Human-readable yield / servings (e.g. '8 bundles')." }
       tags = {
         type        = "array"
         items       = { type = "string" }

@@ -254,6 +254,11 @@ export function RecipeImportModal({
   );
 }
 
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
 interface ImportPreviewProps {
   result: RecipeImportResult;
   totalRecipes: number;
@@ -308,6 +313,26 @@ function ImportPreview({ result, totalRecipes }: ImportPreviewProps) {
         </div>
       )}
 
+      {(data.prep_time || data.cook_time || data.servings) && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-brand-slate">
+          {data.prep_time && (
+            <span>
+              <span className="text-text-muted">Prep:</span> {data.prep_time}
+            </span>
+          )}
+          {data.cook_time && (
+            <span>
+              <span className="text-text-muted">Cook:</span> {data.cook_time}
+            </span>
+          )}
+          {data.servings && (
+            <span>
+              <span className="text-text-muted">Serves:</span> {data.servings}
+            </span>
+          )}
+        </div>
+      )}
+
       <div>
         <p className="text-xs uppercase tracking-wide text-text-muted">
           Ingredients ({data.parsed_ingredients.length})
@@ -333,9 +358,20 @@ function ImportPreview({ result, totalRecipes }: ImportPreviewProps) {
         )}
       </div>
 
+      {data.steps && data.steps.length > 0 && (
+        <div>
+          <p className="text-xs uppercase tracking-wide text-text-muted">
+            Steps ({data.steps.length})
+          </p>
+          <p className="text-xs text-text-muted">
+            First step: {truncate(data.steps[0], 140)}
+          </p>
+        </div>
+      )}
+
       {data.method && (
         <div>
-          <p className="text-xs uppercase tracking-wide text-text-muted">Method</p>
+          <p className="text-xs uppercase tracking-wide text-text-muted">Notes</p>
           <p className="text-xs text-text-muted">
             {data.method.length.toLocaleString()} characters ·{' '}
             {data.method.split('\n').filter((l) => l.trim().length > 0).length} lines

@@ -3,6 +3,8 @@ import {
   textImporter,
   parseQuantity,
   parseIngredientLine,
+  splitSteps,
+  extractRecipeMeta,
 } from '../importers/textImporter';
 
 describe('parseQuantity', () => {
@@ -98,6 +100,73 @@ describe('parseIngredientLine', () => {
   });
 });
 
+describe('splitSteps', () => {
+  it('splits on blank lines when present', () => {
+    const text = 'Preheat the oven.\n\nMix the dry ingredients.\n\nBake for 25 min.';
+    expect(splitSteps(text)).toEqual([
+      'Preheat the oven.',
+      'Mix the dry ingredients.',
+      'Bake for 25 min.',
+    ]);
+  });
+
+  it('falls back to per-line when there are no blank-line paragraphs', () => {
+    const text = 'Preheat the oven.\nMix the dry ingredients.\nBake for 25 min.';
+    expect(splitSteps(text)).toEqual([
+      'Preheat the oven.',
+      'Mix the dry ingredients.',
+      'Bake for 25 min.',
+    ]);
+  });
+
+  it('keeps a multi-line paragraph as a single step', () => {
+    const text = 'Gather the asparagus.\nWrap with bacon.\n\nBake for 25 min.';
+    expect(splitSteps(text)).toEqual([
+      'Gather the asparagus.\nWrap with bacon.',
+      'Bake for 25 min.',
+    ]);
+  });
+
+  it('returns an empty array for undefined or blank input', () => {
+    expect(splitSteps(undefined)).toEqual([]);
+    expect(splitSteps('  \n  ')).toEqual([]);
+  });
+});
+
+describe('extractRecipeMeta', () => {
+  it('pulls out pipe-separated prep/cook/servings', () => {
+    const { prep_time, cook_time, servings, leftover } = extractRecipeMeta([
+      'Prep Time: 10 mins | Cook Time: 25 mins | Servings: 8',
+    ]);
+    expect(prep_time).toBe('10 mins');
+    expect(cook_time).toBe('25 mins');
+    expect(servings).toBe('8');
+    expect(leftover).toEqual([]);
+  });
+
+  it('returns non-meta lines as leftover', () => {
+    const { leftover } = extractRecipeMeta([
+      'Prep Time: 10 mins',
+      'Author: Jane',
+    ]);
+    expect(leftover).toEqual(['Author: Jane']);
+  });
+
+  it('treats Yield as servings', () => {
+    const { servings } = extractRecipeMeta(['Yield: 12 cookies']);
+    expect(servings).toBe('12 cookies');
+  });
+
+  it('is case insensitive and trims values', () => {
+    const { prep_time, cook_time } = extractRecipeMeta([
+      'PREP TIME:   15 min   ',
+      'cook time: 1 hour',
+    ]);
+    expect(prep_time).toBe('15 min');
+    expect(cook_time).toBe('1 hour');
+  });
+});
+
 describe('textImporter.parse', () => {
   const SAMPLE = `Bacon Wrapped Asparagus
 
@@ -167,12 +236,27 @@ Source: https://www.wellplated.com/bacon-wrapped-asparagus/`;
     ]);
   });
 
-  it('builds a method with directions, notes, and nutrition as markdown', () => {
+  it('extracts prep time, cook time, and servings as discrete fields', () => {
+    const result = textImporter.parse(SAMPLE);
+    expect(result.data?.prep_time).toBe('10 mins');
+    expect(result.data?.cook_time).toBe('25 mins');
+    expect(result.data?.servings).toBe('Servings: 8 bundles');
+  });
+
+  it('puts directions into steps rather than method markdown', () => {
+    const result = textImporter.parse(SAMPLE);
+    expect(result.data?.steps).toEqual([
+      'Place a rack in the center of your oven and preheat the oven to 400 degrees F.',
+      'Place the asparagus in a large bowl or on the prepared baking sheet.',
+      'Bake until the bacon is crisp and the asparagus is tender.',
+    ]);
+    expect(result.data?.method ?? '').not.toContain('## Directions');
+    expect(result.data?.method ?? '').not.toContain('Prep Time:');
+  });
+
+  it('keeps notes and nutrition in the method markdown', () => {
     const result = textImporter.parse(SAMPLE);
     const method = result.data?.method ?? '';
-    expect(method).toContain('Prep Time: 10 mins');
-    expect(method).toContain('## Directions');
-    expect(method).toContain('1. Place a rack in the center of your oven');
     expect(method).toContain('## Notes');
     expect(method).toContain('## Nutrition');
     expect(method).toContain('CALORIES: 177kcal');
@@ -200,7 +284,7 @@ Ingredients:
 Instructions:
 Boil the water.`;
     const result = textImporter.parse(input);
-    expect(result.data?.method).toContain('1. Boil the water.');
+    expect(result.data?.steps).toEqual(['Boil the water.']);
   });
 
   it('tolerates CRLF line endings', () => {

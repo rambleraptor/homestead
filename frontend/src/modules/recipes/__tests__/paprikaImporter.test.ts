@@ -74,19 +74,39 @@ describe('paprikaJsonToRecipe', () => {
     ]);
   });
 
-  it('builds a method with metadata, directions, notes, and nutrition', () => {
+  it('maps prep_time, cook_time, and servings to their dedicated fields', () => {
+    const r = paprikaJsonToRecipe(SAMPLE);
+    expect(r.prep_time).toBe('10 mins');
+    expect(r.cook_time).toBe('25 mins');
+    expect(r.servings).toBe('Servings: 8 bundles');
+  });
+
+  it('splits directions into steps on paragraph boundaries', () => {
+    const r = paprikaJsonToRecipe(SAMPLE);
+    expect(r.steps).toEqual([
+      'Place a rack in the center of your oven and preheat the oven to 400 degrees F.',
+      'Place the asparagus in a large bowl or on the prepared baking sheet.',
+      'Bake until the bacon is crisp and the asparagus is tender.',
+    ]);
+  });
+
+  it('keeps notes, nutrition, and overflow metadata in method markdown', () => {
     const method = paprikaJsonToRecipe(SAMPLE).method ?? '';
-    expect(method).toContain('Prep Time: 10 mins');
-    expect(method).toContain('Cook Time: 25 mins');
-    expect(method).toContain('Servings: Servings: 8 bundles');
-    expect(method).not.toContain('Total Time'); // empty → skipped
-    expect(method).not.toContain('Difficulty'); // empty → skipped
-    expect(method).toContain('## Directions');
-    expect(method).toContain('1. Place a rack in the center of your oven');
+    expect(method).not.toContain('## Directions');
+    expect(method).not.toContain('Prep Time:');
+    expect(method).not.toContain('Cook Time:');
     expect(method).toContain('## Notes');
     expect(method).toContain('For storage tips');
     expect(method).toContain('## Nutrition');
     expect(method).toContain('- CALORIES: 177kcal');
+  });
+
+  it('folds Total Time and Difficulty into method when present', () => {
+    const method =
+      paprikaJsonToRecipe({ ...SAMPLE, total_time: '35 mins', difficulty: 'Easy' })
+        .method ?? '';
+    expect(method).toContain('Total Time: 35 mins');
+    expect(method).toContain('Difficulty: Easy');
   });
 
   it('propagates categories as tags', () => {
@@ -104,9 +124,13 @@ describe('paprikaJsonToRecipe', () => {
     expect(r.title).toBe('Untitled Recipe');
   });
 
-  it('returns no method when every method source is empty', () => {
+  it('returns no method/steps when every source is empty', () => {
     const r = paprikaJsonToRecipe({ name: 'Bare' });
     expect(r.method).toBeUndefined();
+    expect(r.steps).toBeUndefined();
+    expect(r.prep_time).toBeUndefined();
+    expect(r.cook_time).toBeUndefined();
+    expect(r.servings).toBeUndefined();
     expect(r.parsed_ingredients).toEqual([]);
     expect(r.source_pointer).toBeUndefined();
   });

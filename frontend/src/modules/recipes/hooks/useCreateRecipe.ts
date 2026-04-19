@@ -15,7 +15,11 @@ export function useCreateRecipe() {
         title: data.title,
         source_pointer: data.source_pointer,
         parsed_ingredients: data.parsed_ingredients,
+        steps: data.steps,
         method: data.method,
+        prep_time: data.prep_time,
+        cook_time: data.cook_time,
+        servings: data.servings,
         tags: data.tags,
         ...(createdBy ? { created_by: createdBy } : {}),
       });

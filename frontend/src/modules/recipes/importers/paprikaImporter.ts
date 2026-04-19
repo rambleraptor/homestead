@@ -16,7 +16,7 @@
  */
 
 import type { RecipeFormData, RecipeIngredient } from '../types';
-import { parseIngredientLine } from './textImporter';
+import { parseIngredientLine, splitSteps } from './textImporter';
 import type { FileRecipeImporter, RecipeImportResult } from './types';
 
 const GZIP_MAGIC = [0x1f, 0x8b];
@@ -134,25 +134,22 @@ function splitLines(text: string | undefined): string[] {
     .filter((l) => l.length > 0);
 }
 
+/**
+ * Paprika keeps "notes", "nutritional_info", "description", "total_time",
+ * and "difficulty" around with no first-class schema field of our own, so
+ * we roll them into the freeform method/Markdown blob. Prep time, cook
+ * time, servings, and steps live on their own columns now.
+ */
 function buildMethod(json: PaprikaRecipeJson): string | undefined {
   const parts: string[] = [];
 
-  const meta: string[] = [];
-  if (json.prep_time?.trim()) meta.push(`Prep Time: ${json.prep_time.trim()}`);
-  if (json.cook_time?.trim()) meta.push(`Cook Time: ${json.cook_time.trim()}`);
-  if (json.total_time?.trim()) meta.push(`Total Time: ${json.total_time.trim()}`);
-  if (json.servings?.trim()) meta.push(`Servings: ${json.servings.trim()}`);
-  if (json.difficulty?.trim()) meta.push(`Difficulty: ${json.difficulty.trim()}`);
-  if (meta.length) parts.push(meta.join(' | '));
+  const extras: string[] = [];
+  if (json.total_time?.trim()) extras.push(`Total Time: ${json.total_time.trim()}`);
+  if (json.difficulty?.trim()) extras.push(`Difficulty: ${json.difficulty.trim()}`);
+  if (extras.length) parts.push(extras.join(' | '));
 
   if (json.description?.trim()) {
     parts.push(json.description.trim());
-  }
-
-  const directionLines = splitLines(json.directions);
-  if (directionLines.length) {
-    const numbered = directionLines.map((l, i) => `${i + 1}. ${l}`).join('\n');
-    parts.push(`## Directions\n\n${numbered}`);
   }
 
   if (json.notes?.trim()) {
@@ -176,6 +173,8 @@ export function paprikaJsonToRecipe(json: PaprikaRecipeJson): RecipeFormData {
     parseIngredientLine,
   );
 
+  const steps = splitSteps(json.directions);
+
   const tags = (json.categories ?? [])
     .map((c) => c?.trim())
     .filter((c): c is string => Boolean(c && c.length > 0));
@@ -184,7 +183,11 @@ export function paprikaJsonToRecipe(json: PaprikaRecipeJson): RecipeFormData {
     title,
     source_pointer,
     parsed_ingredients,
+    steps: steps.length > 0 ? steps : undefined,
     method: buildMethod(json),
+    prep_time: json.prep_time?.trim() || undefined,
+    cook_time: json.cook_time?.trim() || undefined,
+    servings: json.servings?.trim() || undefined,
     tags: tags.length > 0 ? tags : undefined,
   };
 }
