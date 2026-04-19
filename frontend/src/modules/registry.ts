@@ -24,6 +24,11 @@
  */
 
 import type { HomeModule, ModuleRegistry, ModuleFlagDef } from './types';
+import {
+  DEFAULT_MODULE_VISIBILITY,
+  MODULE_VISIBILITY_OPTIONS,
+  type ModuleVisibility,
+} from './settings/visibility';
 import { logger } from '@/core/utils/logger';
 
 // =============================================================================
@@ -186,19 +191,56 @@ export function moduleExists(id: string): boolean {
 }
 
 /**
+ * Reserved key for the built-in `enabled` flag every module gets.
+ * Module-declared flags cannot override this name.
+ */
+export const BUILTIN_ENABLED_FLAG_KEY = 'enabled';
+
+function builtinEnabledFlagDef(
+  defaultValue: ModuleVisibility,
+): ModuleFlagDef {
+  return {
+    type: 'enum',
+    label: 'Module enabled for',
+    description:
+      "Who can use this module. 'superusers' restricts it to superusers; 'all' makes it available to every signed-in user; 'none' hides it from everyone (including superusers).",
+    options: MODULE_VISIBILITY_OPTIONS,
+    default: defaultValue,
+  };
+}
+
+/**
  * Collect every declared flag across all registered modules, keyed by
  * module id. Consumed by the settings UI, the aepbase schema syncer,
  * and the `useModuleFlag` hook.
+ *
+ * Every module automatically receives a built-in `enabled` flag (see
+ * `BUILTIN_ENABLED_FLAG_KEY`). Module-declared flags of the same name
+ * are ignored with a warning so the audience knob stays consistent
+ * across the app.
  */
 export function getAllModuleFlagDefs(): Record<
   string,
   Record<string, ModuleFlagDef>
 > {
-  return Object.fromEntries(
-    moduleRegistry.modules
-      .filter((m) => m.flags && Object.keys(m.flags).length > 0)
-      .map((m) => [m.id, m.flags!]),
-  );
+  const out: Record<string, Record<string, ModuleFlagDef>> = {};
+  for (const mod of moduleRegistry.modules) {
+    const declared = mod.flags ?? {};
+    if (BUILTIN_ENABLED_FLAG_KEY in declared) {
+      logger.warn(
+        `Module "${mod.id}" declares a reserved flag "${BUILTIN_ENABLED_FLAG_KEY}"; built-in definition takes precedence.`,
+        { moduleId: mod.id },
+      );
+    }
+    const builtin = builtinEnabledFlagDef(
+      mod.defaultEnabled ?? DEFAULT_MODULE_VISIBILITY,
+    );
+    out[mod.id] = {
+      ...declared,
+      [BUILTIN_ENABLED_FLAG_KEY]: builtin,
+    };
+  }
+  return out;
 }
 
 /**
