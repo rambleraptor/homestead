@@ -7,6 +7,7 @@
 
 import type { LucideIcon } from 'lucide-react';
 import type { OmniboxAdapter } from '@/shared/omnibox/types';
+import type { ModuleVisibility } from './settings/visibility';
 
 /**
  * Route definition for Next.js App Router
@@ -88,6 +89,14 @@ export interface HomeModule {
    * @default true
    */
   enabled?: boolean;
+
+  /**
+   * Default audience for the built-in `enabled` flag that the registry
+   * auto-injects for every module. Controls who can see/use the module
+   * until an admin overrides the flag in the Flag Management UI.
+   * @default 'all'
+   */
+  defaultEnabled?: ModuleVisibility;
 
   /**
    * Additional module-specific metadata
