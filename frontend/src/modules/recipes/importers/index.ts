@@ -6,10 +6,11 @@
  * this list directly, so no other wiring is needed.
  */
 
+import { paprikaImporter } from './paprikaImporter';
 import { textImporter } from './textImporter';
 import type { RecipeImporter } from './types';
 
-export const RECIPE_IMPORTERS: RecipeImporter[] = [textImporter];
+export const RECIPE_IMPORTERS: RecipeImporter[] = [textImporter, paprikaImporter];
 
 export const DEFAULT_IMPORTER_ID = textImporter.id;
 

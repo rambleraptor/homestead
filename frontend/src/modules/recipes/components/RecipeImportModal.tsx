@@ -3,16 +3,26 @@
 /**
  * Recipe Import Modal
  *
- * Lets the user paste a recipe in one of the registered formats
+ * Lets the user supply a recipe in one of the registered formats
  * (see `../importers/`), previews the parsed result, and submits it
  * through the same create mutation as the manual form.
  *
- * The modal is intentionally format-agnostic: adding a new `RecipeImporter`
- * to the registry is all it takes to expose another option here.
+ * Importers declare `inputType: 'text' | 'file'` so the modal can render
+ * the appropriate input (textarea vs file picker) and await async
+ * parsing when needed. Multi-recipe results (e.g. a Paprika archive of
+ * dozens of recipes) are imported sequentially.
  */
 
-import { useMemo, useState } from 'react';
-import { AlertCircle, Download, Info, Loader2, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  Download,
+  FileText,
+  Info,
+  Loader2,
+  Upload,
+  X,
+} from 'lucide-react';
 import { Modal } from '@/shared/components/Modal';
 import {
   DEFAULT_IMPORTER_ID,
@@ -37,17 +47,71 @@ export function RecipeImportModal({
 }: RecipeImportModalProps) {
   const [importerId, setImporterId] = useState(DEFAULT_IMPORTER_ID);
   const [input, setInput] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [asyncResult, setAsyncResult] = useState<RecipeImportResult | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
 
   const importer = getImporter(importerId) ?? RECIPE_IMPORTERS[0];
 
-  const result: RecipeImportResult | null = useMemo(() => {
+  const reset = () => {
+    setInput('');
+    setFile(null);
+    setAsyncResult(null);
+    setIsParsing(false);
+  };
+
+  const handleImporterChange = (id: string) => {
+    reset();
+    setImporterId(id);
+  };
+
+  const handleFileChange = (f: File | null) => {
+    setAsyncResult(null);
+    setIsParsing(Boolean(f));
+    setFile(f);
+  };
+
+  // Text-mode parsing is pure and synchronous — handle it via useMemo so
+  // we don't need effect roundtrips on every keystroke.
+  const textResult: RecipeImportResult | null = useMemo(() => {
+    if (importer.inputType !== 'text') return null;
     if (!input.trim()) return null;
     return importer.parse(input);
   }, [importer, input]);
 
+  // File-mode parsing is async. Run it when a file is chosen, and write
+  // results back through the completion callbacks only.
+  useEffect(() => {
+    if (importer.inputType !== 'file' || !file) return;
+    let cancelled = false;
+    importer
+      .parseFile(file)
+      .then((res) => {
+        if (!cancelled) {
+          setAsyncResult(res);
+          setIsParsing(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setAsyncResult({
+          warnings: [],
+          errors: [
+            `Failed to parse file: ${err instanceof Error ? err.message : 'unknown error'}`,
+          ],
+        });
+        setIsParsing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [importer, file]);
+
+  const result = importer.inputType === 'text' ? textResult : asyncResult;
+
   const handleClose = () => {
     if (isSubmitting) return;
-    setInput('');
+    reset();
     setImporterId(DEFAULT_IMPORTER_ID);
     onClose();
   };
@@ -55,11 +119,17 @@ export function RecipeImportModal({
   const handleImport = async () => {
     if (!result?.data) return;
     await onImport(result.data);
-    setInput('');
+    for (const extra of result.additional ?? []) {
+      await onImport(extra);
+    }
+    reset();
     setImporterId(DEFAULT_IMPORTER_ID);
   };
 
-  const canImport = Boolean(result?.data) && !isSubmitting;
+  const canImport = Boolean(result?.data) && !isSubmitting && !isParsing;
+  const totalRecipes = result?.data
+    ? 1 + (result.additional?.length ?? 0)
+    : 0;
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Import Recipe">
@@ -75,7 +145,7 @@ export function RecipeImportModal({
             id="recipe-import-format"
             data-testid="recipe-import-format"
             value={importerId}
-            onChange={(e) => setImporterId(e.target.value)}
+            onChange={(e) => handleImporterChange(e.target.value)}
             disabled={isSubmitting}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta bg-white"
           >
@@ -93,26 +163,60 @@ export function RecipeImportModal({
           )}
         </div>
 
-        <div>
-          <label
-            htmlFor="recipe-import-input"
-            className="block text-sm font-medium text-brand-navy mb-1"
-          >
-            Recipe text
-          </label>
-          <textarea
-            id="recipe-import-input"
-            data-testid="recipe-import-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={importer.placeholder}
-            rows={12}
-            disabled={isSubmitting}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta font-mono text-sm"
-          />
-        </div>
+        {importer.inputType === 'text' && (
+          <div>
+            <label
+              htmlFor="recipe-import-input"
+              className="block text-sm font-medium text-brand-navy mb-1"
+            >
+              Recipe text
+            </label>
+            <textarea
+              id="recipe-import-input"
+              data-testid="recipe-import-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={importer.placeholder}
+              rows={12}
+              disabled={isSubmitting}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta font-mono text-sm"
+            />
+          </div>
+        )}
 
-        {result && <ImportPreview result={result} />}
+        {importer.inputType === 'file' && (
+          <div>
+            <label
+              htmlFor="recipe-import-file"
+              className="block text-sm font-medium text-brand-navy mb-1"
+            >
+              Recipe file
+            </label>
+            <input
+              id="recipe-import-file"
+              data-testid="recipe-import-file"
+              type="file"
+              accept={importer.accept}
+              disabled={isSubmitting}
+              onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-brand-slate file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-accent-terracotta file:text-white file:font-medium hover:file:bg-accent-terracotta-hover disabled:opacity-50"
+            />
+            {file && (
+              <p className="mt-2 text-xs text-text-muted flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5" />
+                {file.name} · {(file.size / 1024).toFixed(1)} KB
+              </p>
+            )}
+            {isParsing && (
+              <p className="mt-2 text-xs text-text-muted flex items-center gap-1">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Parsing…
+              </p>
+            )}
+          </div>
+        )}
+
+        {result && <ImportPreview result={result} totalRecipes={totalRecipes} />}
 
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
@@ -133,10 +237,16 @@ export function RecipeImportModal({
           >
             {isSubmitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
+            ) : importer.inputType === 'file' ? (
+              <Upload className="w-4 h-4" />
             ) : (
               <Download className="w-4 h-4" />
             )}
-            {isSubmitting ? 'Importing...' : 'Import Recipe'}
+            {isSubmitting
+              ? 'Importing...'
+              : totalRecipes > 1
+                ? `Import ${totalRecipes} Recipes`
+                : 'Import Recipe'}
           </button>
         </div>
       </div>
@@ -146,9 +256,10 @@ export function RecipeImportModal({
 
 interface ImportPreviewProps {
   result: RecipeImportResult;
+  totalRecipes: number;
 }
 
-function ImportPreview({ result }: ImportPreviewProps) {
+function ImportPreview({ result, totalRecipes }: ImportPreviewProps) {
   const { data, warnings, errors } = result;
 
   if (errors.length > 0) {
@@ -179,6 +290,12 @@ function ImportPreview({ result }: ImportPreviewProps) {
       data-testid="recipe-import-preview"
       className="bg-bg-pearl/40 border border-gray-200 rounded-lg p-4 space-y-3"
     >
+      {totalRecipes > 1 && (
+        <div className="text-xs text-brand-navy bg-white/60 border border-gray-200 rounded px-2 py-1">
+          {totalRecipes} recipes detected — previewing the first.
+        </div>
+      )}
+
       <div>
         <p className="text-xs uppercase tracking-wide text-text-muted">Title</p>
         <p className="font-semibold text-brand-navy">{data.title}</p>

@@ -28,7 +28,7 @@
  */
 
 import type { RecipeFormData, RecipeIngredient } from '../types';
-import type { RecipeImporter, RecipeImportResult } from './types';
+import type { RecipeImportResult, TextRecipeImporter } from './types';
 
 // Known section headers. Keys are normalized (lowercased, trailing colon
 // stripped); values are the canonical bucket name. Duplicates here let us
@@ -274,9 +274,10 @@ function buildMethod(
   return method.length > 0 ? method : undefined;
 }
 
-export const textImporter: RecipeImporter = {
+export const textImporter: TextRecipeImporter = {
   id: 'text',
   label: 'Plain Text',
+  inputType: 'text',
   description:
     'Paste a recipe with sections like "Ingredients:", "Directions:", and "Source:". Headings are matched case-insensitively.',
   placeholder:
