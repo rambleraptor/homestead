@@ -20,5 +20,5 @@ export const flagManagementModule: HomeModule = {
   showInNav: true,
   navOrder: 95,
   enabled: true,
-  metadata: { requiresSuperuser: true },
+  defaultEnabled: 'superusers',
 };

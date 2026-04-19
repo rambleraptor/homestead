@@ -13,7 +13,7 @@ export const usersModule: HomeModule = {
   showInNav: true,
   navOrder: 90,
   enabled: true,
-  metadata: { requiresSuperuser: true },
+  defaultEnabled: 'superusers',
   omnibox: {
     synonyms: ['users', 'accounts', 'members', 'admin'],
     listComponent: UsersHome,
