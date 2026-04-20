@@ -1,26 +1,24 @@
 /**
- * Create Hand mutation. `created_by` is the aepbase resource path
- * `users/{id}`. `played_at` defaults to now if the caller didn't set one.
+ * Append a new hand to localStorage. Generates the id + timestamps
+ * here so callers only need to supply the per-direction bids + notes.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { logger } from '@/core/utils/logger';
+import { loadHands, newHandId, saveHands } from '../storage';
 import type { Hand, HandFormData } from '../types';
-
-function createdByPath(): string | undefined {
-  const id = aepbase.getCurrentUser()?.id;
-  return id ? `users/${id}` : undefined;
-}
 
 export function useCreateHand() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: HandFormData): Promise<Hand> => {
-      const payload = {
-        played_at: data.played_at || new Date().toISOString(),
+      const now = new Date().toISOString();
+      const hand: Hand = {
+        id: newHandId(),
+        path: '',
+        played_at: data.played_at || now,
         north_level: data.north_level,
         north_suit: data.north_suit,
         south_level: data.south_level,
@@ -30,9 +28,12 @@ export function useCreateHand() {
         west_level: data.west_level,
         west_suit: data.west_suit,
         notes: data.notes,
-        created_by: createdByPath(),
+        create_time: now,
+        update_time: now,
       };
-      return await aepbase.create<Hand>(AepCollections.BRIDGE_HANDS, payload);
+      hand.path = `hands/${hand.id}`;
+      saveHands([...loadHands(), hand]);
+      return hand;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -40,7 +41,7 @@ export function useCreateHand() {
       });
     },
     onError: (error) => {
-      logger.error('Failed to create bridge hand', error);
+      logger.error('Failed to save bridge hand', error);
     },
   });
 }

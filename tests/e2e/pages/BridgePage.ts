@@ -2,6 +2,8 @@
  * Bridge Page Object Model
  *
  * Covers the two views of the bridge module: hand list + new-hand form.
+ * Bridge data is persisted in `localStorage` (key `bridge:hands`), so
+ * `goto()` clears it via an init script to give every test a clean slate.
  */
 
 import { Page, expect } from '@playwright/test';
@@ -9,10 +11,16 @@ import { Page, expect } from '@playwright/test';
 type Direction = 'north' | 'south' | 'east' | 'west';
 type Suit = 'clubs' | 'diamonds' | 'hearts' | 'spades' | 'no-trump';
 
+const STORAGE_KEY = 'bridge:hands';
+
 export class BridgePage {
   constructor(private page: Page) {}
 
   async goto() {
+    await this.page.addInitScript(
+      (key) => window.localStorage.removeItem(key),
+      STORAGE_KEY,
+    );
     await this.page.goto('/bridge');
   }
 
@@ -32,14 +40,11 @@ export class BridgePage {
 
   async setBid(direction: Direction, level: number, suit: Suit) {
     await this.page.getByTestId(`bid-${direction}-level-${level}`).click();
-    await this.page
-      .getByTestId(`bid-${direction}-suit`)
-      .selectOption(suit);
+    await this.page.getByTestId(`bid-${direction}-suit`).selectOption(suit);
   }
 
   async setNotes(text: string) {
-    const notes = this.page.getByTestId('hand-notes');
-    await notes.fill(text);
+    await this.page.getByTestId('hand-notes').fill(text);
   }
 
   async saveHand() {
@@ -53,14 +58,22 @@ export class BridgePage {
     await expect(this.page.getByTestId('hand-list')).toBeVisible();
   }
 
-  async expectBidInCard(handId: string, direction: Direction, text: string) {
+  /**
+   * Assert the bid in a given direction on the first hand card.
+   * IDs are generated client-side, so we look the card up by position.
+   */
+  async expectFirstCardBid(direction: Direction, text: string) {
+    const card = this.page
+      .locator('[data-testid^="hand-card-"]')
+      .first();
     await expect(
-      this.page.getByTestId(`hand-${handId}-${direction}-bid`),
+      card.locator(`[data-testid$="-${direction}-bid"]`),
     ).toHaveText(text);
   }
 
-  async deleteFirstHand() {
-    const deleteButtons = this.page.locator('[data-testid^="hand-"][data-testid$="-delete"]');
-    await deleteButtons.first().click();
+  async expectCardCount(count: number) {
+    await expect(this.page.locator('[data-testid^="hand-card-"]')).toHaveCount(
+      count,
+    );
   }
 }
