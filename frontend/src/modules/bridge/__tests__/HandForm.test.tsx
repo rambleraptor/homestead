@@ -6,7 +6,7 @@ import { HandForm } from '../components/HandForm';
 
 describe('HandForm', () => {
   it('renders a bid entry block per cardinal direction', () => {
-    render(<HandForm onSubmit={() => {}} onCancel={() => {}} />);
+    render(<HandForm onSubmit={() => {}} />);
     expect(screen.getByTestId('bid-north')).toBeInTheDocument();
     expect(screen.getByTestId('bid-south')).toBeInTheDocument();
     expect(screen.getByTestId('bid-east')).toBeInTheDocument();
@@ -16,7 +16,7 @@ describe('HandForm', () => {
   it('submits all four bids with selected levels + suits', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
-    render(<HandForm onSubmit={onSubmit} onCancel={() => {}} />);
+    render(<HandForm onSubmit={onSubmit} />);
 
     await user.click(screen.getByTestId('bid-north-level-3'));
     await user.selectOptions(screen.getByTestId('bid-north-suit'), 'spades');
@@ -47,16 +47,8 @@ describe('HandForm', () => {
     });
   });
 
-  it('fires onCancel from the back button', async () => {
-    const user = userEvent.setup();
-    const onCancel = vi.fn();
-    render(<HandForm onSubmit={() => {}} onCancel={onCancel} />);
-    await user.click(screen.getByTestId('hand-form-back'));
-    expect(onCancel).toHaveBeenCalled();
-  });
-
   it('disables the save button while submitting', () => {
-    render(<HandForm onSubmit={() => {}} onCancel={() => {}} isSubmitting />);
+    render(<HandForm onSubmit={() => {}} isSubmitting />);
     expect(screen.getByTestId('save-hand-button')).toBeDisabled();
   });
 });

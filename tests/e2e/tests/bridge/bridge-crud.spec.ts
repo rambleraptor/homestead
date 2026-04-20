@@ -17,7 +17,6 @@ test.describe('Bridge CRUD', () => {
     await bridgePage.goto();
     await bridgePage.expectToBeOnBridgePage();
 
-    await bridgePage.clickNewHand();
     await bridgePage.setBid('north', 3, 'spades');
     await bridgePage.setBid('east', 4, 'no-trump');
     await bridgePage.setBid('south', 2, 'hearts');
@@ -36,16 +35,10 @@ test.describe('Bridge CRUD', () => {
   test('lists multiple hands newest-first', async () => {
     await bridgePage.goto();
 
-    // First hand
-    await bridgePage.clickNewHand();
-    await bridgePage.setBid('north', 1, 'clubs');
-    await bridgePage.setBid('east', 1, 'clubs');
-    await bridgePage.setBid('south', 1, 'clubs');
-    await bridgePage.setBid('west', 1, 'clubs');
+    // First hand — defaults are all 1♣, so just save.
     await bridgePage.saveHand();
 
     // Second hand
-    await bridgePage.clickNewHand();
     await bridgePage.setBid('north', 5, 'hearts');
     await bridgePage.setBid('east', 6, 'spades');
     await bridgePage.setBid('south', 7, 'no-trump');

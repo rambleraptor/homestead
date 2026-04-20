@@ -2,12 +2,13 @@
 
 /**
  * Hand entry form — captures the final bid for all four cardinal
- * directions in a single deal, plus optional notes. Defaults to 1♣ for
- * every direction so the form is valid as soon as it opens.
+ * directions in a single deal, plus optional notes. Rendered inline on
+ * the bridge home page so new hands can be entered without navigating
+ * away from the list; parent remounts the form (via `key`) to reset
+ * after a successful save.
  */
 
 import React, { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import type {
   BridgeLevel,
   BridgeSuit,
@@ -18,7 +19,6 @@ import { BidEntry } from './BidEntry';
 
 interface HandFormProps {
   onSubmit: (data: HandFormData) => void;
-  onCancel: () => void;
   isSubmitting?: boolean;
 }
 
@@ -29,7 +29,7 @@ interface BidState {
 
 const DEFAULT_BID: BidState = { level: 1, suit: 'clubs' };
 
-export function HandForm({ onSubmit, onCancel, isSubmitting }: HandFormProps) {
+export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
   const [bids, setBids] = useState<Record<string, BidState>>({
     north: { ...DEFAULT_BID },
     east: { ...DEFAULT_BID },
@@ -67,23 +67,12 @@ export function HandForm({ onSubmit, onCancel, isSubmitting }: HandFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-w-2xl mx-auto space-y-6"
+      className="space-y-4"
       data-testid="hand-form"
     >
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="Back"
-          className="p-2 rounded-md hover:bg-gray-100"
-          data-testid="hand-form-back"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h2 className="text-2xl font-bold text-gray-900">New Hand</h2>
-      </div>
+      <h2 className="text-lg font-semibold text-gray-900">New Hand</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {BRIDGE_DIRECTIONS.map((direction) => (
           <BidEntry
             key={direction}

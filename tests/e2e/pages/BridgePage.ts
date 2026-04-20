@@ -1,9 +1,11 @@
 /**
  * Bridge Page Object Model
  *
- * Covers the two views of the bridge module: hand list + new-hand form.
- * Bridge data is persisted in `localStorage` (key `bridge:hands`), so
- * `goto()` clears it via an init script to give every test a clean slate.
+ * The bridge home page shows the hand entry form inline above the list
+ * of saved hands, so adding a hand is a single scroll-free flow: fill
+ * in the bids and save. Bridge data is persisted in `localStorage`
+ * (key `bridge:hands`), so `goto()` clears it via an init script to
+ * give every test a clean slate.
  */
 
 import { Page, expect } from '@playwright/test';
@@ -22,6 +24,7 @@ export class BridgePage {
       STORAGE_KEY,
     );
     await this.page.goto('/bridge');
+    await this.page.getByTestId('hand-form').waitFor({ state: 'visible' });
   }
 
   async expectToBeOnBridgePage() {
@@ -29,13 +32,6 @@ export class BridgePage {
     await expect(
       this.page.getByRole('heading', { name: 'Bridge' }),
     ).toBeVisible();
-  }
-
-  async clickNewHand() {
-    const btn = this.page.getByTestId('new-hand-button');
-    await btn.waitFor({ state: 'visible' });
-    await btn.click();
-    await this.page.getByTestId('hand-form').waitFor({ state: 'visible' });
   }
 
   async setBid(direction: Direction, level: number, suit: Suit) {
@@ -51,7 +47,6 @@ export class BridgePage {
     const btn = this.page.getByTestId('save-hand-button');
     await btn.waitFor({ state: 'visible' });
     await btn.click();
-    await this.page.getByTestId('hand-list').waitFor({ state: 'visible' });
   }
 
   async expectHandInList() {
