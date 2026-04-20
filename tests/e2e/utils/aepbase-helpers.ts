@@ -408,6 +408,56 @@ export async function deleteAllGames(token: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Bridge (hands)
+// ---------------------------------------------------------------------------
+
+type BridgeSuit = 'clubs' | 'diamonds' | 'hearts' | 'spades' | 'no-trump';
+
+interface CreateBridgeHandInput {
+  north_level: number;
+  north_suit: BridgeSuit;
+  south_level: number;
+  south_suit: BridgeSuit;
+  east_level: number;
+  east_suit: BridgeSuit;
+  west_level: number;
+  west_suit: BridgeSuit;
+  played_at?: string;
+  notes?: string;
+}
+
+export interface BridgeHandRecord {
+  id: string;
+  north_level: number;
+  north_suit: BridgeSuit;
+  south_level: number;
+  south_suit: BridgeSuit;
+  east_level: number;
+  east_suit: BridgeSuit;
+  west_level: number;
+  west_suit: BridgeSuit;
+  played_at?: string;
+  notes?: string;
+}
+
+export async function createBridgeHand(
+  token: string,
+  data: CreateBridgeHandInput,
+): Promise<BridgeHandRecord> {
+  return aepCreate<BridgeHandRecord>(token, 'hands', {
+    ...data,
+    played_at: data.played_at || new Date().toISOString(),
+  });
+}
+
+export async function deleteAllBridgeHands(token: string) {
+  const items = await aepList<{ id: string }>(token, 'hands');
+  for (const item of items) {
+    await aepRemove(token, 'hands', item.id);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Recipes
 // ---------------------------------------------------------------------------
 
@@ -507,6 +557,7 @@ export async function cleanupUserData(token: string, userId: string) {
     deleteAllHSAReceipts(token),
     deleteAllRecurringNotifications(token, userId),
     deleteAllGames(token),
+    deleteAllBridgeHands(token),
   ]);
 }
 
