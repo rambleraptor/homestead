@@ -2,12 +2,12 @@
 
 /**
  * Quick-entry hand form. Three button rows at the top: level (1-7), suit
- * (clubs/diamonds/hearts/spades/no-trump), and direction (N/E/S/W).
+ * (clubs/diamonds/hearts/spades/no-trump/pass), and direction (N/E/S/W).
  *
- * Flow: pick a level + suit, then tap a direction to commit that bid for
- * the direction. Direction buttons disable once used, so a direction
- * can't repeat until the next hand. When the fourth direction is tapped
- * all four bids are submitted and the form resets for the next hand.
+ * Flow: pick a level + suit (or just pass), then tap a direction to commit
+ * that bid. Level and suit clear between directions so every direction is
+ * entered fresh. Direction buttons disable once used. When the fourth
+ * direction is tapped all four bids are submitted and the form resets.
  */
 
 import React, { useState } from 'react';
@@ -30,7 +30,7 @@ interface HandFormProps {
 }
 
 interface DirBid {
-  level: BridgeLevel;
+  level?: BridgeLevel;
   suit: BridgeSuit;
 }
 
@@ -50,22 +50,28 @@ function toFormData(entered: Record<BridgeDirection, DirBid>): HandFormData {
 }
 
 export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
-  const [level, setLevel] = useState<BridgeLevel>(1);
-  const [suit, setSuit] = useState<BridgeSuit>('clubs');
+  const [level, setLevel] = useState<BridgeLevel | null>(null);
+  const [suit, setSuit] = useState<BridgeSuit | null>(null);
   const [entered, setEntered] = useState<Partial<Record<BridgeDirection, DirBid>>>({});
 
+  const canCommit = suit === 'pass' || (level !== null && suit !== null);
+
   const handleDirection = (dir: BridgeDirection) => {
-    if (entered[dir] || isSubmitting) return;
-    const next = { ...entered, [dir]: { level, suit } };
+    if (entered[dir] || isSubmitting || !canCommit) return;
+    const bid: DirBid =
+      suit === 'pass' ? { suit: 'pass' } : { level: level!, suit: suit! };
+    const next = { ...entered, [dir]: bid };
     const complete = BRIDGE_DIRECTIONS.every((d) => next[d]);
     if (complete) {
       onSubmit(toFormData(next as Record<BridgeDirection, DirBid>));
       setEntered({});
-      setLevel(1);
-      setSuit('clubs');
+      setLevel(null);
+      setSuit(null);
       return;
     }
     setEntered(next);
+    setLevel(null);
+    setSuit(null);
   };
 
   return (
@@ -108,7 +114,7 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
         <div
           role="radiogroup"
           aria-label="Suit"
-          className="grid grid-cols-5 gap-1"
+          className="grid grid-cols-6 gap-1"
         >
           {BRIDGE_SUITS.map((s) => {
             const active = s === suit;
@@ -121,7 +127,9 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
                 aria-label={SUIT_LABEL[s]}
                 onClick={() => setSuit(s)}
                 data-testid={`suit-${s}`}
-                className={`h-12 rounded-md text-lg font-semibold border transition-colors ${
+                className={`h-12 rounded-md ${
+                  s === 'pass' ? 'text-sm' : 'text-lg'
+                } font-semibold border transition-colors ${
                   active
                     ? 'bg-accent-terracotta border-accent-terracotta text-white'
                     : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -140,11 +148,12 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
           {DIRECTION_ORDER.map((dir) => {
             const bid = entered[dir];
             const done = Boolean(bid);
+            const disabled = done || isSubmitting || !canCommit;
             return (
               <button
                 key={dir}
                 type="button"
-                disabled={done || isSubmitting}
+                disabled={disabled}
                 onClick={() => handleDirection(dir)}
                 data-testid={`direction-${dir}`}
                 className={`h-14 rounded-md text-base font-semibold border transition-colors flex flex-col items-center justify-center gap-0.5 ${

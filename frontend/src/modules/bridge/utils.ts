@@ -11,6 +11,7 @@ export const SUIT_SYMBOL: Record<BridgeSuit, string> = {
   hearts: '♥',
   spades: '♠',
   'no-trump': 'NT',
+  pass: 'Pass',
 };
 
 export const SUIT_LABEL: Record<BridgeSuit, string> = {
@@ -19,6 +20,7 @@ export const SUIT_LABEL: Record<BridgeSuit, string> = {
   hearts: 'Hearts',
   spades: 'Spades',
   'no-trump': 'No Trump',
+  pass: 'Pass',
 };
 
 export const DIRECTION_LABEL: Record<BridgeDirection, string> = {
@@ -35,7 +37,8 @@ export const DIRECTION_SHORT: Record<BridgeDirection, string> = {
   west: 'W',
 };
 
-export function formatBid(level: number, suit: BridgeSuit): string {
+export function formatBid(level: number | undefined, suit: BridgeSuit): string {
+  if (suit === 'pass') return 'Pass';
   const symbol = SUIT_SYMBOL[suit];
   return suit === 'no-trump' ? `${level} ${symbol}` : `${level}${symbol}`;
 }
