@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { Modal } from '@/shared/components/Modal';
+import { decimalToFraction } from '@/shared/utils/fractionUtils';
 import {
   DEFAULT_IMPORTER_ID,
   getImporter,
@@ -342,7 +343,7 @@ function ImportPreview({ result, totalRecipes }: ImportPreviewProps) {
             {data.parsed_ingredients.slice(0, 8).map((ing, idx) => (
               <li key={idx}>
                 <span className="font-mono text-xs text-text-muted">
-                  {ing.qty} {ing.unit}
+                  {ing.qty > 0 ? decimalToFraction(ing.qty) : ''} {ing.unit}
                 </span>{' '}
                 {ing.item}
               </li>
