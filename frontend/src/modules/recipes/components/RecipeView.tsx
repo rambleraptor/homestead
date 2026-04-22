@@ -25,6 +25,7 @@ import { useUpdateRecipe } from '../hooks/useUpdateRecipe';
 import { RecipeForm } from './RecipeForm';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { logger } from '@/core/utils/logger';
+import { decimalToFraction } from '@/shared/utils/fractionUtils';
 import type { RecipeFormData, RecipeIngredient } from '../types';
 
 interface RecipeViewProps {
@@ -271,7 +272,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 }
 
 function formatQty(ing: RecipeIngredient): string {
-  const qty = ing.qty > 0 ? String(ing.qty) : '';
+  const qty = ing.qty > 0 ? decimalToFraction(ing.qty) : '';
   const unit = ing.unit?.trim() ?? '';
   return [qty, unit].filter(Boolean).join(' ');
 }
