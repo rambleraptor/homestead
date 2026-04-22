@@ -12,7 +12,7 @@
 import { Page, expect } from '@playwright/test';
 
 type Direction = 'north' | 'south' | 'east' | 'west';
-type Suit = 'clubs' | 'diamonds' | 'hearts' | 'spades' | 'no-trump';
+type Suit = 'clubs' | 'diamonds' | 'hearts' | 'spades' | 'no-trump' | 'pass';
 
 const STORAGE_KEY = 'bridge:hands';
 
@@ -35,9 +35,14 @@ export class BridgePage {
     ).toBeVisible();
   }
 
-  /** Enter a single direction's bid: level → suit → direction. */
-  async enterBid(direction: Direction, level: number, suit: Suit) {
-    await this.page.getByTestId(`level-${level}`).click();
+  /**
+   * Enter a single direction's bid: level → suit → direction. For a
+   * pass, omit level and pass `suit: 'pass'`.
+   */
+  async enterBid(direction: Direction, level: number | undefined, suit: Suit) {
+    if (suit !== 'pass' && level !== undefined) {
+      await this.page.getByTestId(`level-${level}`).click();
+    }
     await this.page.getByTestId(`suit-${suit}`).click();
     await this.page.getByTestId(`direction-${direction}`).click();
   }
@@ -47,7 +52,7 @@ export class BridgePage {
    * when the fourth direction is committed.
    */
   async enterHand(
-    bids: Record<Direction, { level: number; suit: Suit }>,
+    bids: Record<Direction, { level?: number; suit: Suit }>,
   ) {
     const order: Direction[] = ['north', 'east', 'south', 'west'];
     for (const dir of order) {

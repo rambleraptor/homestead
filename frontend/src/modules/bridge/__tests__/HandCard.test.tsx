@@ -47,4 +47,14 @@ describe('HandCard', () => {
     render(<HandCard hand={BASE} />);
     expect(screen.queryByTestId('hand-hand-1-delete')).toBeNull();
   });
+
+  it('renders a pass bid as "Pass"', () => {
+    const hand: Hand = {
+      ...BASE,
+      west_level: undefined,
+      west_suit: 'pass',
+    };
+    render(<HandCard hand={hand} />);
+    expect(screen.getByTestId('hand-hand-1-west-bid')).toHaveTextContent('Pass');
+  });
 });

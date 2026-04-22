@@ -12,6 +12,7 @@ export const BRIDGE_SUITS = [
   'hearts',
   'spades',
   'no-trump',
+  'pass',
 ] as const;
 
 export type BridgeSuit = (typeof BRIDGE_SUITS)[number];
@@ -22,10 +23,10 @@ export type BridgeDirection = (typeof BRIDGE_DIRECTIONS)[number];
 export const BRIDGE_LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
 export type BridgeLevel = (typeof BRIDGE_LEVELS)[number];
 
-/** A single direction's bid within a hand. */
+/** A single direction's bid within a hand. Level is absent for a pass. */
 export interface BridgeBid {
   direction: BridgeDirection;
-  level: BridgeLevel;
+  level?: BridgeLevel;
   suit: BridgeSuit;
 }
 
@@ -33,13 +34,13 @@ export interface Hand {
   id: string;
   path: string;
   played_at?: string;
-  north_level: BridgeLevel;
+  north_level?: BridgeLevel;
   north_suit: BridgeSuit;
-  south_level: BridgeLevel;
+  south_level?: BridgeLevel;
   south_suit: BridgeSuit;
-  east_level: BridgeLevel;
+  east_level?: BridgeLevel;
   east_suit: BridgeSuit;
-  west_level: BridgeLevel;
+  west_level?: BridgeLevel;
   west_suit: BridgeSuit;
   notes?: string;
   created_by?: string;
@@ -49,13 +50,13 @@ export interface Hand {
 
 export interface HandFormData {
   played_at?: string;
-  north_level: BridgeLevel;
+  north_level?: BridgeLevel;
   north_suit: BridgeSuit;
-  south_level: BridgeLevel;
+  south_level?: BridgeLevel;
   south_suit: BridgeSuit;
-  east_level: BridgeLevel;
+  east_level?: BridgeLevel;
   east_suit: BridgeSuit;
-  west_level: BridgeLevel;
+  west_level?: BridgeLevel;
   west_suit: BridgeSuit;
   notes?: string;
 }

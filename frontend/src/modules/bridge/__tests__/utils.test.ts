@@ -23,4 +23,9 @@ describe('bridge/utils', () => {
   it('uses NT for no-trump in the symbol map', () => {
     expect(SUIT_SYMBOL['no-trump']).toBe('NT');
   });
+
+  it('formats a pass bid as "Pass" regardless of level', () => {
+    expect(formatBid(undefined, 'pass')).toBe('Pass');
+    expect(formatBid(3, 'pass')).toBe('Pass');
+  });
 });
