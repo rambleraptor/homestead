@@ -8,6 +8,7 @@
 import { Users } from 'lucide-react';
 import type { HomeModule } from '../types';
 import { peopleOmnibox } from './omnibox';
+import { UpcomingEventsWidget } from './components/UpcomingEventsWidget';
 
 export const PEOPLE_SERVER_SEARCH_OPTIONS = ['superuser', 'all', 'none'] as const;
 export type PeopleServerSearchAccess =
@@ -38,4 +39,11 @@ export const peopleModule: HomeModule = {
       default: 'none',
     },
   },
+  widgets: [
+    {
+      id: 'people-upcoming-events',
+      component: UpcomingEventsWidget,
+      order: 10,
+    },
+  ],
 };

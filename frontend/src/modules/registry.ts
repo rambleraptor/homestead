@@ -23,7 +23,12 @@
  * ```
  */
 
-import type { HomeModule, ModuleRegistry, ModuleFlagDef } from './types';
+import type {
+  DashboardWidget,
+  HomeModule,
+  ModuleFlagDef,
+  ModuleRegistry,
+} from './types';
 import {
   DEFAULT_MODULE_VISIBILITY,
   MODULE_VISIBILITY_OPTIONS,
@@ -190,6 +195,18 @@ export function getAllRoutes(): HomeModule['routes'] {
  */
 export function moduleExists(id: string): boolean {
   return moduleRegistry.getModule(id) !== undefined;
+}
+
+/**
+ * Collect all dashboard widgets contributed by registered modules,
+ * sorted by their declared `order` (default 100). Used by the
+ * dashboard to render module-owned widgets without hardcoding any
+ * module-specific imports.
+ */
+export function getAllDashboardWidgets(): DashboardWidget[] {
+  return moduleRegistry.modules
+    .flatMap((m) => m.widgets ?? [])
+    .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 }
 
 /**
