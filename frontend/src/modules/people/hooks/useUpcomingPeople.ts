@@ -1,12 +1,13 @@
 /**
- * Upcoming birthdays/anniversaries for dashboard.
+ * Upcoming birthdays/anniversaries for any consumer that wants a
+ * sorted list of imminent people events (e.g. the dashboard widget).
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
 import { getUpcomingEvents } from '@/shared/utils/dateUtils';
-import type { Person, PersonSharedData, NotificationPreference } from '@/modules/people/types';
+import type { Person, PersonSharedData, NotificationPreference } from '../types';
 
 interface PersonRecord {
   id: string;
@@ -30,7 +31,7 @@ function normalize(rec: PersonRecord) {
 
 export function useUpcomingPeople() {
   return useQuery({
-    queryKey: queryKeys.module('dashboard').list({ type: 'people-upcoming' }),
+    queryKey: queryKeys.module('people').list({ type: 'upcoming' }),
     queryFn: async () => {
       const [allPeople, allShared] = await Promise.all([
         aepbase.list<PersonRecord>(AepCollections.PEOPLE),

@@ -5,9 +5,24 @@
  * All modules registered in the system must implement the HomeModule interface.
  */
 
+import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type { OmniboxAdapter } from '@/shared/omnibox/types';
 import type { ModuleVisibility } from './settings/visibility';
+
+/**
+ * A widget a module contributes to the dashboard. The component is
+ * responsible for its own data fetching and chrome (typically a
+ * `SectionCard`); the dashboard just lays widgets out in `order`.
+ */
+export interface DashboardWidget {
+  /** Stable id, unique across all modules. */
+  id: string;
+  /** Self-contained widget component. Receives no props. */
+  component: ComponentType;
+  /** Lower numbers render first. Defaults to 100. */
+  order?: number;
+}
 
 /**
  * Route definition for Next.js App Router
@@ -119,6 +134,13 @@ export interface HomeModule {
    * field names are `${moduleId_snake}__${key}`.
    */
   flags?: Record<string, ModuleFlagDef>;
+
+  /**
+   * Optional widgets this module contributes to the dashboard. Each
+   * widget is an independent React component that owns its own data
+   * fetching and presentation.
+   */
+  widgets?: DashboardWidget[];
 }
 
 /**
