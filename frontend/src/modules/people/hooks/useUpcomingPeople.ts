@@ -17,7 +17,7 @@ interface PersonRecord {
 
 export interface UpcomingEvent {
   id: string;
-  name: string;
+  names: string[];
   type: 'Birthday' | 'Anniversary';
   date: Date;
 }
@@ -38,7 +38,7 @@ export function useUpcomingPeople() {
         for (const ev of getUpcomingEvents(person.birthday ?? null, null, 30)) {
           events.push({
             id: `${person.id}-birthday`,
-            name: person.name,
+            names: [person.name],
             type: ev.type,
             date: ev.date,
           });
@@ -55,7 +55,7 @@ export function useUpcomingPeople() {
           if (names.length === 0) continue;
           events.push({
             id: `${shared.id}-anniversary`,
-            name: names.join(' & '),
+            names,
             type: ev.type,
             date: ev.date,
           });

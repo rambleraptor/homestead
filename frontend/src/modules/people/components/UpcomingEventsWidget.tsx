@@ -38,7 +38,7 @@ export function UpcomingEventsWidget() {
         </div>
       ) : upcomingPeople && upcomingPeople.length > 0 ? (
         <ul className="divide-y divide-gray-50">
-          {upcomingPeople.map(({ id, name, type, date }) => {
+          {upcomingPeople.map(({ id, names, type, date }) => {
             const daysUntil = Math.ceil(
               (date.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
             );
@@ -58,9 +58,14 @@ export function UpcomingEventsWidget() {
                   className="w-full text-left py-4 flex items-start justify-between gap-3 hover:bg-bg-pearl/60 transition-colors rounded-lg px-2 -mx-2"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-body font-medium text-text-main text-base truncate">
-                      {name}
-                    </p>
+                    {names.map((n) => (
+                      <p
+                        key={n}
+                        className="font-body font-medium text-text-main text-base truncate"
+                      >
+                        {n}
+                      </p>
+                    ))}
                     <p className="font-body text-sm text-text-muted mt-0.5">
                       {format(date, 'MMM dd')} &middot; {relative}
                     </p>
