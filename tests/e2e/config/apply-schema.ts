@@ -442,10 +442,10 @@ const DEFINITIONS: ResourceDefinition[] = [
     schema: {
       type: 'object',
       properties: {
-        recipes__visibility: {
+        recipes__enabled: {
           type: 'string',
           description:
-            "Who sees the Recipes module in navigation. 'superuser' shows it only to superusers; 'all' shows it to every signed-in user; 'none' hides it from everyone (including superusers). (default: superuser) (one of: superuser, all, none)",
+            "Who can use the Recipes module. 'superusers' restricts it to superusers; 'all' makes it available to every signed-in user; 'none' hides it from everyone (including superusers). (default: superusers) (one of: superusers, all, none)",
         },
         settings__omnibox_access: {
           type: 'string',

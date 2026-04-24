@@ -1,11 +1,11 @@
 /**
  * Recipes module E2E tests
  *
- * Covers CRUD on /recipes plus the visibility flag (`recipes.visibility`)
- * which gates the sidebar entry. The flag has three values:
- *   - 'superuser' (default): only superusers see Recipes in the sidebar
- *   - 'all':       every signed-in user sees it
- *   - 'none':      nobody sees it (no superuser bypass)
+ * Covers CRUD on /recipes plus the module-level `enabled` flag which
+ * gates the sidebar entry. The flag has three values:
+ *   - 'superusers' (default): only superusers see Recipes in the sidebar
+ *   - 'all':        every signed-in user sees it
+ *   - 'none':       nobody sees it (no superuser bypass)
  *
  * All data operations use `adminToken` (the persistent superuser session
  * loaded once per worker). Earlier runs that used a per-test `userToken`
@@ -145,7 +145,7 @@ test.describe('Recipes visibility flag', () => {
     adminToken,
     authenticatedPage,
   }) => {
-    await setModuleFlag(adminToken, 'recipes', 'visibility', 'all');
+    await setModuleFlag(adminToken, 'recipes', 'enabled', 'all');
     await authenticatedPage.goto('/dashboard');
     const recipesPage = new RecipesPage(authenticatedPage);
     await recipesPage.expectSidebarLinkVisible();
@@ -155,7 +155,7 @@ test.describe('Recipes visibility flag', () => {
     adminToken,
     authenticatedAdminPage,
   }) => {
-    await setModuleFlag(adminToken, 'recipes', 'visibility', 'none');
+    await setModuleFlag(adminToken, 'recipes', 'enabled', 'none');
     await authenticatedAdminPage.goto('/dashboard');
     const recipesPage = new RecipesPage(authenticatedAdminPage);
     await recipesPage.expectSidebarLinkHidden();
