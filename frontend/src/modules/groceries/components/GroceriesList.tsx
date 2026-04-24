@@ -64,22 +64,23 @@ export function GroceriesList() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
-          <p className="mt-2 text-gray-600">Loading groceries...</p>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 text-accent-terracotta animate-spin" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-center text-red-600">
-          <AlertCircle className="w-8 h-8 mx-auto" />
-          <p className="mt-2">Failed to load groceries</p>
-          <p className="text-sm mt-1">{error?.message}</p>
+      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-6 h-6 text-red-600" />
+          <div>
+            <h3 className="font-semibold text-red-900">Failed to load groceries</h3>
+            <p className="text-sm text-red-700">
+              {error instanceof Error ? error.message : 'An error occurred'}
+            </p>
+          </div>
         </div>
       </div>
     );

@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef } from 'react';
-import { Plus, ShoppingCart, Loader2, CheckCircle2, Image, ListRestart, Store as StoreIcon, Bell } from 'lucide-react';
+import { Plus, Loader2, CheckCircle2, Image as ImageIcon, ListRestart, Store as StoreIcon, Bell } from 'lucide-react';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
 import { useStores } from '../hooks/useStores';
 import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
@@ -16,6 +16,7 @@ import { GroceriesList } from './GroceriesList';
 import { ImageUploadDialog } from './ImageUploadDialog';
 import { StoreManagement } from './StoreManagement';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
 import { logger } from '@/core/utils/logger';
 
@@ -78,89 +79,80 @@ export function GroceriesHome() {
   const isSubmitting = createMutation.isPending;
   const isBulkUpdating = deleteAllMutation.isPending;
 
+  const subtitle =
+    stats.totalItems > 0 ? (
+      <span className="inline-flex items-center gap-2">
+        {stats.checkedItems} / {stats.totalItems} items checked
+        {stats.checkedItems === stats.totalItems && (
+          <CheckCircle2 className="w-4 h-4 text-green-600" />
+        )}
+      </span>
+    ) : (
+      'Plan and track items across your stores.'
+    );
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <ShoppingCart className="w-7 h-7" />
-              Grocery List
-            </h1>
-            {stats.totalItems > 0 && (
-              <p className="text-sm text-gray-600 mt-1">
-                {stats.checkedItems} / {stats.totalItems} items checked
-                {stats.checkedItems === stats.totalItems && stats.totalItems > 0 && (
-                  <CheckCircle2 className="w-4 h-4 inline ml-2 text-green-600" />
-                )}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons - Mobile Friendly */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setShowStoreManagement(!showStoreManagement)}
-            className="bg-gray-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-gray-700 flex items-center gap-2 text-sm sm:text-base"
-            data-testid="manage-stores-button"
-          >
-            <StoreIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden xs:inline">Stores</span>
-            <span className="xs:hidden">Stores</span>
-          </button>
-          <button
-            onClick={handleNotify}
-            disabled={notifyMutation.isPending}
-            className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-            data-testid="notify-grocery-button"
-          >
-            {notifyMutation.isPending ? (
-              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-            ) : (
-              <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-            )}
-            <span className="hidden xs:inline">{notifyMutation.isPending ? 'Sending...' : 'Notify'}</span>
-            <span className="xs:hidden">{notifyMutation.isPending ? 'Sending...' : 'Notify'}</span>
-          </button>
-          <button
-            onClick={() => setShowImageUpload(true)}
-            disabled={isBulkUpdating}
-            className="bg-green-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-            data-testid="upload-grocery-list-button"
-          >
-            <Image className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
-            <span className="hidden xs:inline">Upload List</span>
-            <span className="xs:hidden">Upload</span>
-          </button>
-          {stats.totalItems > 0 && (
+    <div className="space-y-6">
+      <PageHeader
+        title="Grocery List"
+        subtitle={subtitle}
+        actions={
+          <>
             <button
-              onClick={handleNewList}
-              disabled={isBulkUpdating}
-              className="bg-red-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-              data-testid="new-grocery-list-button"
+              onClick={() => setShowStoreManagement(!showStoreManagement)}
+              data-testid="manage-stores-button"
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
             >
-              <ListRestart className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">New List</span>
-              <span className="sm:hidden">New</span>
+              <StoreIcon className="w-5 h-5" />
+              Stores
             </button>
-          )}
-        </div>
-      </div>
+            <button
+              onClick={handleNotify}
+              disabled={notifyMutation.isPending}
+              data-testid="notify-grocery-button"
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {notifyMutation.isPending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Bell className="w-5 h-5" />
+              )}
+              {notifyMutation.isPending ? 'Sending...' : 'Notify'}
+            </button>
+            <button
+              onClick={() => setShowImageUpload(true)}
+              disabled={isBulkUpdating}
+              data-testid="upload-grocery-list-button"
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ImageIcon className="w-5 h-5" aria-hidden="true" />
+              Upload List
+            </button>
+            {stats.totalItems > 0 && (
+              <button
+                onClick={handleNewList}
+                disabled={isBulkUpdating}
+                data-testid="new-grocery-list-button"
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium font-body transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ListRestart className="w-5 h-5" />
+                New List
+              </button>
+            )}
+          </>
+        }
+      />
 
-      {/* Store Management */}
       {showStoreManagement && <StoreManagement />}
 
-      {/* Quick Add Item */}
-      <div className="bg-white rounded-lg border p-4">
+      <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
         <div className="flex gap-2">
           <select
             value={selectedStore}
             onChange={(e) => setSelectedStore(e.target.value)}
             disabled={isSubmitting}
-            className="px-2 py-2 sm:px-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 bg-white text-sm sm:text-base w-20 sm:w-auto"
             data-testid="store-select"
+            className="px-2 py-2 sm:px-3 border border-gray-200 rounded-lg font-body bg-white text-brand-navy focus:outline-none focus:ring-2 focus:ring-accent-terracotta focus:border-transparent disabled:opacity-50 text-sm sm:text-base w-20 sm:w-auto"
           >
             <option value="">No Store</option>
             {stores.map((store) => (
@@ -177,32 +169,29 @@ export function GroceriesHome() {
             onKeyPress={handleKeyPress}
             placeholder="Add item..."
             disabled={isSubmitting}
-            className="flex-1 min-w-0 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
             data-testid="quick-add-input"
             autoFocus
+            className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg font-body text-brand-navy placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-terracotta focus:border-transparent disabled:opacity-50 text-sm sm:text-base"
           />
           <button
             onClick={handleQuickAdd}
             disabled={isSubmitting || !itemName.trim()}
-            className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             data-testid="quick-add-button"
+            className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Plus className="w-5 h-5" />
             <span className="hidden sm:inline">Add</span>
           </button>
         </div>
       </div>
 
-      {/* Grocery List */}
       <GroceriesList />
 
-      {/* Image Upload Dialog */}
       <ImageUploadDialog
         isOpen={showImageUpload}
         onClose={() => setShowImageUpload(false)}
       />
 
-      {/* Clear List Confirmation */}
       <ConfirmDialog
         isOpen={showClearConfirm}
         onClose={() => setShowClearConfirm(false)}

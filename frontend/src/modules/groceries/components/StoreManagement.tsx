@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, Trash2, Loader2, Store as StoreIcon } from 'lucide-react';
+import { Plus, Trash2, Loader2, Store as StoreIcon, X } from 'lucide-react';
 import { useStores } from '../hooks/useStores';
 import { useCreateStore } from '../hooks/useCreateStore';
 import { useDeleteStore } from '../hooks/useDeleteStore';
@@ -56,23 +56,27 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg border p-6 space-y-4">
+    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <StoreIcon className="w-6 h-6" />
-          Manage Stores
-        </h2>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent-terracotta/10">
+            <StoreIcon className="w-5 h-5 text-accent-terracotta" />
+          </div>
+          <h2 className="text-lg font-display font-semibold text-brand-navy">
+            Manage Stores
+          </h2>
+        </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="p-2 text-text-muted hover:text-brand-navy hover:bg-bg-pearl rounded-lg transition-colors"
+            aria-label="Close"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         )}
       </div>
 
-      {/* Add Store */}
       <div className="flex gap-2">
         <input
           type="text"
@@ -81,27 +85,26 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
           onKeyPress={handleKeyPress}
           placeholder="Add store..."
           disabled={createMutation.isPending}
-          className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
           data-testid="add-store-input"
+          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg font-body text-brand-navy placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-terracotta focus:border-transparent disabled:opacity-50 text-sm sm:text-base"
         />
         <button
           onClick={handleAddStore}
           disabled={createMutation.isPending || !storeName.trim()}
-          className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
           data-testid="add-store-button"
+          className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
-          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+          <Plus className="w-5 h-5" />
           <span className="hidden sm:inline">Add</span>
         </button>
       </div>
 
-      {/* Store List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <Loader2 className="w-6 h-6 animate-spin text-accent-terracotta" />
         </div>
       ) : stores.length === 0 ? (
-        <p className="text-center text-gray-500 py-8">
+        <p className="text-center text-text-muted font-body py-8">
           No stores yet. Add your first store above!
         </p>
       ) : (
@@ -109,14 +112,14 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
           {stores.map((store) => (
             <div
               key={store.id}
-              className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 group"
+              className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-bg-pearl group transition-colors"
               data-testid="store-item"
             >
-              <span className="font-medium text-gray-900">{store.name}</span>
+              <span className="font-body font-medium text-brand-navy">{store.name}</span>
               <button
                 onClick={() => handleDeleteStore(store.id)}
                 disabled={deleteMutation.isPending}
-                className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded disabled:opacity-50 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 transition-all"
                 aria-label={`Delete ${store.name}`}
                 data-testid="delete-store-button"
               >
