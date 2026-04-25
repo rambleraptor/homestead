@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Homestead Auto-Update Setup Script
+# HomeOS Auto-Update Setup Script
 # Sets up systemd timer for automatic updates
 
 if [ "$EUID" -ne 0 ]; then
@@ -9,7 +9,7 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-echo "🔧 Setting up Homestead auto-update..."
+echo "🔧 Setting up HomeOS auto-update..."
 
 # Get the project root directory
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,13 +19,13 @@ echo "📂 Project root: $PROJECT_ROOT"
 echo "👤 User: $CURRENT_USER"
 
 # Update service file with actual paths
-SERVICE_FILE="/etc/systemd/system/homestead-auto-update.service"
-TIMER_FILE="/etc/systemd/system/homestead-auto-update.timer"
+SERVICE_FILE="/etc/systemd/system/homeos-auto-update.service"
+TIMER_FILE="/etc/systemd/system/homeos-auto-update.timer"
 
 echo "📝 Creating service file..."
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
-Description=Homestead Auto-Update Service
+Description=HomeOS Auto-Update Service
 After=network-online.target
 Wants=network-online.target
 
@@ -54,8 +54,8 @@ EOF
 echo "📝 Creating timer file..."
 cat > "$TIMER_FILE" <<EOF
 [Unit]
-Description=Homestead Auto-Update Timer
-Requires=homestead-auto-update.service
+Description=HomeOS Auto-Update Timer
+Requires=homeos-auto-update.service
 
 [Timer]
 # Check for updates every 10 minutes
@@ -77,22 +77,22 @@ systemctl daemon-reload
 echo "✅ Auto-update service and timer created"
 echo ""
 echo "To enable auto-updates:"
-echo "  sudo systemctl enable homestead-auto-update.timer"
-echo "  sudo systemctl start homestead-auto-update.timer"
+echo "  sudo systemctl enable homeos-auto-update.timer"
+echo "  sudo systemctl start homeos-auto-update.timer"
 echo ""
 echo "To check auto-update status:"
-echo "  sudo systemctl status homestead-auto-update.timer"
-echo "  sudo systemctl list-timers homestead-auto-update.timer"
+echo "  sudo systemctl status homeos-auto-update.timer"
+echo "  sudo systemctl list-timers homeos-auto-update.timer"
 echo ""
 echo "To view auto-update logs:"
-echo "  sudo journalctl -u homestead-auto-update.service -f"
+echo "  sudo journalctl -u homeos-auto-update.service -f"
 echo "  tail -f $PROJECT_ROOT/deployment.log"
 echo ""
 echo "To manually trigger an update check:"
-echo "  sudo systemctl start homestead-auto-update.service"
+echo "  sudo systemctl start homeos-auto-update.service"
 echo ""
 echo "To change update frequency, edit:"
-echo "  /etc/systemd/system/homestead-auto-update.timer"
+echo "  /etc/systemd/system/homeos-auto-update.timer"
 echo "  (Currently set to check every 10 minutes)"
 echo ""
 echo "🎉 Setup complete!"

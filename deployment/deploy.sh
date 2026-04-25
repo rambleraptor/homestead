@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Homestead Unified Deployment Script
+# HomeOS Unified Deployment Script
 # Handles deployment, updates, and service restarts with automatic rollback.
 #
 # Usage:
@@ -39,7 +39,7 @@ log() {
   echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-log "${BLUE}🚀 Homestead Deployment${NC}"
+log "${BLUE}🚀 HomeOS Deployment${NC}"
 cd "$PROJECT_ROOT"
 
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
@@ -165,11 +165,11 @@ if [ "$AEPBASE_CHANGED" = true ] || [ "$FORCE_BUILD" = true ]; then
   cd "$PROJECT_ROOT"
 
   log "${BLUE}🔄 Restarting aepbase...${NC}"
-  sudo systemctl restart homestead-aepbase 2>&1 | tee -a "$LOG_FILE"
+  sudo systemctl restart homeos-aepbase 2>&1 | tee -a "$LOG_FILE"
   sleep 3
-  if ! sudo systemctl is-active --quiet homestead-aepbase; then
+  if ! sudo systemctl is-active --quiet homeos-aepbase; then
     log "${RED}❌ aepbase failed to restart${NC}"
-    sudo journalctl -u homestead-aepbase -n 50 --no-pager | tee -a "$LOG_FILE"
+    sudo journalctl -u homeos-aepbase -n 50 --no-pager | tee -a "$LOG_FILE"
     exit 1
   fi
   log "${GREEN}✅ aepbase rebuilt and restarted${NC}"
@@ -177,14 +177,14 @@ fi
 
 if [ "$FRONTEND_CHANGED" = true ] || [ "$DEPS_CHANGED" = true ] || [ "$FORCE_BUILD" = true ]; then
   log "${BLUE}🔄 Restarting frontend...${NC}"
-  sudo systemctl restart homestead-frontend 2>&1 | tee -a "$LOG_FILE"
+  sudo systemctl restart homeos-frontend 2>&1 | tee -a "$LOG_FILE"
   sleep 2
 fi
 
-if ! sudo systemctl is-active --quiet homestead-aepbase || \
-   ! sudo systemctl is-active --quiet homestead-frontend; then
+if ! sudo systemctl is-active --quiet homeos-aepbase || \
+   ! sudo systemctl is-active --quiet homeos-frontend; then
   log "${RED}❌ Service verification failed${NC}"
-  sudo systemctl status homestead-aepbase homestead-frontend --no-pager | tee -a "$LOG_FILE"
+  sudo systemctl status homeos-aepbase homeos-frontend --no-pager | tee -a "$LOG_FILE"
   exit 1
 fi
 

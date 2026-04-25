@@ -1,13 +1,13 @@
-# Homestead Auto-Update Service Template
+# HomeOS Auto-Update Service Template
 #
 # NOTE: This is a TEMPLATE/EXAMPLE file only and is NOT used directly.
 # The actual service file is generated dynamically by setup-auto-update.sh
-# and installed to /etc/systemd/system/homestead-auto-update.service
+# and installed to /etc/systemd/system/homeos-auto-update.service
 #
 # This file shows the structure of the generated service file for reference.
 
 [Unit]
-Description=Homestead Auto-Update Service
+Description=HomeOS Auto-Update Service
 After=network-online.target
 Wants=network-online.target
 

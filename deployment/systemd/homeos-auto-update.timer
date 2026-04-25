@@ -1,14 +1,14 @@
-# Homestead Auto-Update Timer Template
+# HomeOS Auto-Update Timer Template
 #
 # NOTE: This is a TEMPLATE/EXAMPLE file only and is NOT used directly.
 # The actual timer file is generated dynamically by setup-auto-update.sh
-# and installed to /etc/systemd/system/homestead-auto-update.timer
+# and installed to /etc/systemd/system/homeos-auto-update.timer
 #
 # This file shows the structure of the generated timer file for reference.
 
 [Unit]
-Description=Homestead Auto-Update Timer
-Requires=homestead-auto-update.service
+Description=HomeOS Auto-Update Timer
+Requires=homeos-auto-update.service
 
 [Timer]
 # Check for updates every 10 minutes

@@ -1,12 +1,12 @@
 [Unit]
-Description=aepbase for Homestead
+Description=aepbase for HomeOS
 After=network.target
 
 [Service]
 Type=simple
-User=homesteaduser
-WorkingDirectory=/path/to/homestead/aepbase
-ExecStart=/path/to/homestead/aepbase/bin/aepbase -port 8091 -data-dir /path/to/homestead/aepbase/data -db aepbase.db -cors-allowed-origins *
+User=homeosuser
+WorkingDirectory=/path/to/homeOS/aepbase
+ExecStart=/path/to/homeOS/aepbase/bin/aepbase -port 8091 -data-dir /path/to/homeOS/aepbase/data -db aepbase.db -cors-allowed-origins *
 Restart=on-failure
 RestartSec=5s
 
@@ -14,10 +14,10 @@ RestartSec=5s
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/path/to/homestead/aepbase/data
+ReadWritePaths=/path/to/homeOS/aepbase/data
 
 # Environment
-Environment="HOME=/path/to/homestead/aepbase"
+Environment="HOME=/path/to/homeOS/aepbase"
 
 [Install]
 WantedBy=multi-user.target

@@ -1,6 +1,6 @@
-# Homestead Deployment Guide
+# HomeOS Deployment Guide
 
-Simple deployment for Homestead on Linux with systemd.
+Simple deployment for HomeOS on Linux with systemd.
 
 ## Quick Setup
 
@@ -35,7 +35,7 @@ sudo make setup-services
 # 7. Start services
 sudo make start
 
-# 8. Access Homestead at http://localhost:3000
+# 8. Access HomeOS at http://localhost:3000
 ```
 
 ## Prerequisites
@@ -114,19 +114,19 @@ Set up automatic deployment (pulls from GitHub every 10 minutes):
 
 ```bash
 sudo make setup-auto-update
-sudo systemctl enable homestead-auto-update.timer
-sudo systemctl start homestead-auto-update.timer
-sudo systemctl status homestead-auto-update.timer
+sudo systemctl enable homeos-auto-update.timer
+sudo systemctl start homeos-auto-update.timer
+sudo systemctl status homeos-auto-update.timer
 ```
 
-Configure update frequency by editing `/etc/systemd/system/homestead-auto-update.timer`:
+Configure update frequency by editing `/etc/systemd/system/homeos-auto-update.timer`:
 ```ini
 [Timer]
 OnBootSec=1min
 OnUnitActiveSec=10min
 ```
 
-Then reload: `sudo systemctl daemon-reload && sudo systemctl restart homestead-auto-update.timer`
+Then reload: `sudo systemctl daemon-reload && sudo systemctl restart homeos-auto-update.timer`
 
 ### Rollback
 
@@ -134,7 +134,7 @@ If deployment fails, the script automatically `git reset --hard`s to the
 previous commit and restarts services. For manual rollback:
 
 ```bash
-sudo systemctl stop homestead-aepbase homestead-frontend
+sudo systemctl stop homeos-aepbase homeos-frontend
 
 # aepbase data lives in aepbase/data/. Back it up if concerned before
 # touching the binary:
@@ -146,12 +146,12 @@ git reset --hard HEAD~1
 # Rebuild aepbase if its Go source changed
 cd aepbase && ./install.sh && cd ..
 
-sudo systemctl start homestead-aepbase homestead-frontend
+sudo systemctl start homeos-aepbase homeos-frontend
 ```
 
 ## Tailscale Access (Optional)
 
-Access Homestead from anywhere on your Tailscale network:
+Access HomeOS from anywhere on your Tailscale network:
 
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
@@ -199,16 +199,16 @@ cd frontend && npx web-push generate-vapid-keys
 
 Systemd services are in `deployment/systemd/`:
 - `aepbase.service` — aepbase on port 8090
-- `homestead-frontend.service` — Next.js on port 3000
-- `homestead-auto-update.service` — Auto-update service
-- `homestead-auto-update.timer` — Update schedule
+- `homeos-frontend.service` — Next.js on port 3000
+- `homeos-auto-update.service` — Auto-update service
+- `homeos-auto-update.timer` — Update schedule
 
 View logs:
 ```bash
 make logs                    # Both services
 make logs-aepbase            # aepbase only
 make logs-frontend           # Frontend only
-sudo journalctl -u homestead-aepbase -n 100
+sudo journalctl -u homeos-aepbase -n 100
 ```
 
 ## Troubleshooting
@@ -216,8 +216,8 @@ sudo journalctl -u homestead-aepbase -n 100
 ### Services won't start
 ```bash
 make status
-sudo journalctl -u homestead-aepbase -n 50
-sudo journalctl -u homestead-frontend -n 50
+sudo journalctl -u homeos-aepbase -n 50
+sudo journalctl -u homeos-frontend -n 50
 ```
 
 ### Port already in use
@@ -261,10 +261,10 @@ cp frontend/.env backups/.env.$(date +%Y%m%d_%H%M%S)
 
 ### Restore
 ```bash
-sudo systemctl stop homestead-aepbase
+sudo systemctl stop homeos-aepbase
 rm -rf aepbase/data
 cp -a backups/aepbase-data.YYYYMMDD_HHMMSS aepbase/data
-sudo systemctl start homestead-aepbase
+sudo systemctl start homeos-aepbase
 ```
 
 ## Scripts Reference

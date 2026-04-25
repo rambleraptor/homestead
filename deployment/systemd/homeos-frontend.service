@@ -1,12 +1,12 @@
 [Unit]
-Description=Homestead Frontend
-After=network.target homestead-aepbase.service
-Requires=homestead-aepbase.service
+Description=HomeOS Frontend
+After=network.target homeos-aepbase.service
+Requires=homeos-aepbase.service
 
 [Service]
 Type=simple
-User=homesteaduser
-WorkingDirectory=/path/to/homestead/frontend
+User=homeosuser
+WorkingDirectory=/path/to/homeOS/frontend
 ExecStart=/opt/node22/bin/npm start -- -p 3000
 Restart=on-failure
 RestartSec=5s
