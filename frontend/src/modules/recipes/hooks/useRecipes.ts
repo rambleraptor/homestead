@@ -5,19 +5,13 @@
  * `create_time` desc (newest first).
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { AepCollections } from '@/core/api/aepbase';
+import { useAepList } from '@/core/api/resourceHooks';
 import type { Recipe } from '../types';
 
 export function useRecipes() {
-  return useQuery({
-    queryKey: queryKeys.module('recipes').list(),
-    queryFn: async (): Promise<Recipe[]> => {
-      const recipes = await aepbase.list<Recipe>(AepCollections.RECIPES);
-      return recipes.sort((a, b) =>
-        (b.create_time || '').localeCompare(a.create_time || ''),
-      );
-    },
+  return useAepList<Recipe>(AepCollections.RECIPES, {
+    moduleId: 'recipes',
+    sort: (a, b) => (b.create_time || '').localeCompare(a.create_time || ''),
   });
 }

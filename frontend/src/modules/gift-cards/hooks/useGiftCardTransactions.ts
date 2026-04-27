@@ -5,24 +5,21 @@
  * (`/gift-cards/{id}/transactions`) rather than a filter.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { useAepList } from '@/core/api/resourceHooks';
 import type { GiftCardTransaction } from '../types';
 
 export function useGiftCardTransactions(giftCardId: string | null) {
-  return useQuery({
-    queryKey: [...queryKeys.module('gift-cards').all(), 'transactions', giftCardId || ''],
-    queryFn: async () => {
-      if (!giftCardId) return [];
-      const txs = await aepbase.list<GiftCardTransaction>(
-        AepCollections.GIFT_CARD_TRANSACTIONS,
-        { parent: [AepCollections.GIFT_CARDS, giftCardId] },
-      );
-      return txs.sort((a, b) =>
-        (b.create_time || '').localeCompare(a.create_time || ''),
-      );
-    },
+  return useAepList<GiftCardTransaction>(AepCollections.GIFT_CARD_TRANSACTIONS, {
+    moduleId: 'gift-cards',
+    queryKey: [
+      ...queryKeys.module('gift-cards').all(),
+      'transactions',
+      giftCardId || '',
+    ],
+    parent: giftCardId ? [AepCollections.GIFT_CARDS, giftCardId] : undefined,
     enabled: !!giftCardId,
+    sort: (a, b) => (b.create_time || '').localeCompare(a.create_time || ''),
   });
 }

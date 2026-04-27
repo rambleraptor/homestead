@@ -5,19 +5,13 @@
  * `create_time` desc (newest first).
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { AepCollections } from '@/core/api/aepbase';
+import { useAepList } from '@/core/api/resourceHooks';
 import type { GiftCard } from '../types';
 
 export function useGiftCards() {
-  return useQuery({
-    queryKey: queryKeys.module('gift-cards').list(),
-    queryFn: async (): Promise<GiftCard[]> => {
-      const cards = await aepbase.list<GiftCard>(AepCollections.GIFT_CARDS);
-      return cards.sort((a, b) =>
-        (b.create_time || '').localeCompare(a.create_time || ''),
-      );
-    },
+  return useAepList<GiftCard>(AepCollections.GIFT_CARDS, {
+    moduleId: 'gift-cards',
+    sort: (a, b) => (b.create_time || '').localeCompare(a.create_time || ''),
   });
 }
