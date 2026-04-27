@@ -8,6 +8,14 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+# `next.config.ts`'s `rewrites()` is evaluated by `next build` and the
+# resolved destination URL is baked into `.next/routes-manifest.json`.
+# Setting AEPBASE_URL only at runtime is too late, so we have to bake
+# the in-cluster service URL at build time. Compose's frontend service
+# overrides this at runtime for the `instrumentation.ts` server hook,
+# but the rewrite manifest target is fixed once built.
+ARG AEPBASE_URL=http://aepbase:8090
+ENV AEPBASE_URL=$AEPBASE_URL
 # next.config.ts shells out to git for commit metadata; without `.git`
 # (excluded by .dockerignore) it falls back to 'unknown', which is fine
 # for the integration-test stack.
