@@ -19,6 +19,7 @@ import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
 import { useMarkStoreCompleted } from '../hooks/useMarkStoreCompleted';
 import { GroceryList } from './GroceryList';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
 import { logger } from '@/core/utils/logger';
 
 export function GroceriesList() {
@@ -28,6 +29,7 @@ export function GroceriesList() {
   const updateMutation = useUpdateGroceryItem();
   const deleteMutation = useDeleteGroceryItem();
   const markStoreCompletedMutation = useMarkStoreCompleted();
+  const { isOffline } = useOnlineStatus();
 
   const handleToggleItem = async (id: string, checked: boolean) => {
     try {
@@ -95,7 +97,8 @@ export function GroceriesList() {
         onToggleItem={handleToggleItem}
         onDeleteItem={handleDeleteItem}
         onMarkStoreCompleted={handleMarkStoreCompleted}
-        isUpdating={isBulkUpdating}
+        // Mark Complete is a bulk delete — online-only, like New List.
+        isUpdating={isBulkUpdating || isOffline}
       />
 
       <ConfirmDialog

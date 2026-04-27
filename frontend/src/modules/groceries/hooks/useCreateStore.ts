@@ -1,24 +1,30 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { queryKeys } from '@/core/api/queryClient';
-import { logger } from '@/core/utils/logger';
+import { useMutation } from '@tanstack/react-query';
+import {
+  GroceryMutationKeys,
+  newTempId,
+  type CreateStoreVars,
+} from '../registerMutationDefaults';
 import type { Store } from '../types';
 
+interface CreateStoreInput {
+  name: string;
+  sort_order?: number;
+}
+
+/**
+ * Thin shell — see `registerMutationDefaults.ts`. Injects a stable tempId
+ * so optimistic + persisted state share one handle.
+ */
 export function useCreateStore() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: { name: string; sort_order?: number }) => {
-      logger.info(`Creating store: ${data.name}`);
-      return await aepbase.create<Store>(AepCollections.STORES, {
-        name: data.name,
-        sort_order: data.sort_order ?? 0,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('groceries').detail('stores'),
-      });
-    },
-    onError: (error) => logger.error('Failed to create store', error),
+  const mutation = useMutation<Store, Error, CreateStoreVars>({
+    mutationKey: GroceryMutationKeys.createStore,
   });
+
+  return {
+    ...mutation,
+    mutate: (vars: CreateStoreInput) =>
+      mutation.mutate({ ...vars, tempId: newTempId() }),
+    mutateAsync: (vars: CreateStoreInput) =>
+      mutation.mutateAsync({ ...vars, tempId: newTempId() }),
+  };
 }

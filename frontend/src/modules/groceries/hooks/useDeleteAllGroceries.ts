@@ -7,6 +7,9 @@ import type { GroceryItem } from '../types';
 export function useDeleteAllGroceries() {
   const queryClient = useQueryClient();
   return useMutation({
+    // Bulk N-delete is online-only — the UI disables the trigger when
+    // offline (see GroceriesHome.tsx) instead of queueing N writes.
+    networkMode: 'online',
     mutationFn: async () => {
       const items = await aepbase.list<GroceryItem>(AepCollections.GROCERIES);
       await Promise.all(

@@ -15,6 +15,8 @@ interface MarkStoreCompletedParams {
 export function useMarkStoreCompleted() {
   const queryClient = useQueryClient();
   return useMutation({
+    // Bulk delete — online-only. UI disables the trigger offline.
+    networkMode: 'online',
     mutationFn: async ({ storeId }: MarkStoreCompletedParams) => {
       const all = await aepbase.list<GroceryItem>(AepCollections.GROCERIES);
       const items = all.filter((item) => (storeId ? item.store === storeId : !item.store));

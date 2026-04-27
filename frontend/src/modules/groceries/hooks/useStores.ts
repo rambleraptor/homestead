@@ -31,5 +31,8 @@ export function useStores() {
           return a.name.localeCompare(b.name);
         });
     },
+    // See useGroceries — survives the persister maxAge so a cold offline
+    // reload still shows the user's stores.
+    gcTime: 24 * 60 * 60 * 1000,
   });
 }

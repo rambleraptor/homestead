@@ -22,6 +22,9 @@ export function useCreateGroceryItemsFromImage() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // Image extraction is server-side (Gemini); persisting a multipart
+    // image to localStorage is impractical, so this fails fast offline.
+    networkMode: 'online',
     mutationFn: async (imageFile: File) => {
       logger.info('Extracting grocery items from image');
       const extractedItems = await extractGroceryItemsFromImage(imageFile);

@@ -29,5 +29,9 @@ export function useGroceries() {
           return a.name.localeCompare(b.name);
         });
     },
+    // Long enough to survive within the persister's 7-day maxAge window;
+    // the global default of 10 minutes would let cache be GC'd before
+    // hydration restores it on a cold offline reload.
+    gcTime: 24 * 60 * 60 * 1000,
   });
 }

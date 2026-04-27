@@ -9,6 +9,8 @@ interface GroceryNotificationResponse {
 
 export function useSendGroceryNotification() {
   return useMutation({
+    // Notifications make no sense queued — fail fast offline.
+    networkMode: 'online',
     mutationFn: async () => {
       const token = aepbase.authStore.token;
       const userId = aepbase.getCurrentUser()?.id || '';
