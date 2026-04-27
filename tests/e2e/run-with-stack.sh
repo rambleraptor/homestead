@@ -18,9 +18,22 @@ cleanup() {
 }
 trap cleanup EXIT
 
+dump_logs_and_die() {
+  local msg=$1
+  echo ">> $msg"
+  echo ">> ---- aepbase logs ----"
+  docker compose logs --no-color aepbase 2>&1 || true
+  echo ">> ---- bootstrap logs ----"
+  docker compose logs --no-color bootstrap 2>&1 || true
+  echo ">> ---- frontend logs ----"
+  docker compose logs --no-color frontend 2>&1 || true
+  exit 1
+}
+
 echo ">> bringing up integration stack"
 docker compose down -v --remove-orphans
-docker compose up -d --build --wait
+docker compose up -d --build --wait \
+  || dump_logs_and_die "compose up failed; container logs follow"
 
 echo ">> reading admin creds from bootstrap volume"
 TMP_ENV=$(mktemp)
