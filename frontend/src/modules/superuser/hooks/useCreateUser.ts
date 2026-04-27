@@ -1,22 +1,20 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
+import { useAepCreate } from '@/core/api/resourceHooks';
 import type { ManagedUser, UserFormData } from '../types';
 
 export function useCreateUser() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: UserFormData) => {
+  return useAepCreate<ManagedUser, UserFormData>(AepCollections.USERS, {
+    moduleId: 'superuser',
+    invalidateKeys: [queryKeys.users.all()],
+    transform: (data) => {
       if (!data.password) throw new Error('Password is required');
-      return aepbase.create<ManagedUser>(AepCollections.USERS, {
+      return {
         email: data.email,
         display_name: data.display_name,
         type: data.type,
         password: data.password,
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.users.all() });
+      };
     },
   });
 }

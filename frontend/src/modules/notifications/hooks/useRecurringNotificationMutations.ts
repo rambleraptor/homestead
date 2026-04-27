@@ -2,14 +2,19 @@
  * Recurring notification mutations.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
+import {
+  useAepCreate,
+  useAepUpdate,
+  useAepRemove,
+} from '@/core/api/resourceHooks';
 import type {
   RecurringNotification,
   RecurringNotificationInput,
   NotificationTiming,
 } from '../types';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface AepRecurring extends RecurringNotification {
   path: string;
@@ -23,173 +28,156 @@ function requireUserId(): string {
   return id;
 }
 
+function userParent(): string[] {
+  return [AepCollections.USERS, requireUserId()];
+}
+
+function recurringInvalidateAlso(sourceCollection: string, sourceId: string) {
+  return [
+    queryKeys
+      .module('recurring_notifications')
+      .detail(`${sourceCollection}:${sourceId}`),
+    queryKeys.module('recurring_notifications').list(),
+  ] as const;
+}
+
 export function useCreateRecurringNotification() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: RecurringNotificationInput) => {
-      const userId = requireUserId();
-      return await aepbase.create<AepRecurring>(
-        AepCollections.RECURRING_NOTIFICATIONS,
-        {
-          user_id: userId,
-          source_collection: input.source_collection,
-          source_id: input.source_id,
-          title_template: input.title_template,
-          message_template: input.message_template,
-          reference_date_field: input.reference_date_field,
-          timing: input.timing,
-          enabled: input.enabled ?? true,
-        },
-        { parent: [AepCollections.USERS, userId] },
-      );
+  return useAepCreate<AepRecurring, RecurringNotificationInput>(
+    AepCollections.RECURRING_NOTIFICATIONS,
+    {
+      moduleId: 'recurring_notifications',
+      parent: userParent,
+      transform: (input) => ({
+        user_id: requireUserId(),
+        source_collection: input.source_collection,
+        source_id: input.source_id,
+        title_template: input.title_template,
+        message_template: input.message_template,
+        reference_date_field: input.reference_date_field,
+        timing: input.timing,
+        enabled: input.enabled ?? true,
+      }),
+      invalidateAlso: [], // both list + detail are under module(...).all() already
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys
-          .module('recurring_notifications')
-          .detail(`${variables.source_collection}:${variables.source_id}`),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('recurring_notifications').list(),
-      });
-    },
-  });
+  );
+}
+
+interface DeleteRecurringVars {
+  id: string;
+  sourceCollection: string;
+  sourceId: string;
 }
 
 export function useDeleteRecurringNotification() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      sourceCollection,
-      sourceId,
-    }: {
-      id: string;
-      sourceCollection: string;
-      sourceId: string;
-    }) => {
-      const userId = requireUserId();
-      await aepbase.remove(AepCollections.RECURRING_NOTIFICATIONS, id, {
-        parent: [AepCollections.USERS, userId],
-      });
-      return { id, sourceCollection, sourceId };
+  const remove = useAepRemove<DeleteRecurringVars>(
+    AepCollections.RECURRING_NOTIFICATIONS,
+    {
+      moduleId: 'recurring_notifications',
+      parent: userParent,
+      getId: (vars) => vars.id,
+      onSuccess: async (_, vars) => {
+        // Per-source detail key lives outside module.all(), invalidate explicitly.
+        await Promise.all(
+          recurringInvalidateAlso(vars.sourceCollection, vars.sourceId).map(
+            (key) => queryClient.invalidateQueries({ queryKey: key }),
+          ),
+        );
+      },
     },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys
-          .module('recurring_notifications')
-          .detail(`${result.sourceCollection}:${result.sourceId}`),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('recurring_notifications').list(),
-      });
-    },
-  });
+  );
+  return remove;
+}
+
+interface UpdateRecurringEnabledVars {
+  id: string;
+  enabled: boolean;
+  sourceCollection: string;
+  sourceId: string;
 }
 
 export function useUpdateRecurringNotificationEnabled() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      enabled,
-      sourceCollection,
-      sourceId,
-    }: {
-      id: string;
-      enabled: boolean;
-      sourceCollection: string;
-      sourceId: string;
-    }) => {
-      const userId = requireUserId();
-      const notification = await aepbase.update<AepRecurring>(
-        AepCollections.RECURRING_NOTIFICATIONS,
-        id,
-        { enabled },
-        { parent: [AepCollections.USERS, userId] },
-      );
-      return { notification, sourceCollection, sourceId };
+  return useAepUpdate<AepRecurring, UpdateRecurringEnabledVars>(
+    AepCollections.RECURRING_NOTIFICATIONS,
+    {
+      moduleId: 'recurring_notifications',
+      parent: userParent,
+      transform: (vars) => ({ enabled: vars.enabled }),
+      onSuccess: async (_, vars) => {
+        await Promise.all(
+          recurringInvalidateAlso(vars.sourceCollection, vars.sourceId).map(
+            (key) => queryClient.invalidateQueries({ queryKey: key }),
+          ),
+        );
+      },
     },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys
-          .module('recurring_notifications')
-          .detail(`${result.sourceCollection}:${result.sourceId}`),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('recurring_notifications').list(),
-      });
-    },
-  });
+  );
+}
+
+interface SyncRecurringVars {
+  sourceCollection: string;
+  sourceId: string;
+  referenceDateField: string;
+  titleTemplate: string;
+  messageTemplate: string;
+  desiredTimings: NotificationTiming[];
 }
 
 export function useSyncRecurringNotifications() {
   const queryClient = useQueryClient();
+  // Multi-step: list → diff → create/remove. Custom mutationFn since the
+  // primitives don't compose multiple network calls.
   return useMutation({
-    mutationFn: async ({
-      sourceCollection,
-      sourceId,
-      referenceDateField,
-      titleTemplate,
-      messageTemplate,
-      desiredTimings,
-    }: {
-      sourceCollection: string;
-      sourceId: string;
-      referenceDateField: string;
-      titleTemplate: string;
-      messageTemplate: string;
-      desiredTimings: NotificationTiming[];
-    }) => {
+    mutationFn: async (vars: SyncRecurringVars) => {
       const userId = requireUserId();
+      const parent = [AepCollections.USERS, userId];
       const all = await aepbase.list<AepRecurring>(
         AepCollections.RECURRING_NOTIFICATIONS,
-        { parent: [AepCollections.USERS, userId] },
+        { parent },
       );
       const existing = all.filter(
         (n) =>
-          n.source_collection === sourceCollection &&
-          n.source_id === sourceId &&
-          n.reference_date_field === referenceDateField,
+          n.source_collection === vars.sourceCollection &&
+          n.source_id === vars.sourceId &&
+          n.reference_date_field === vars.referenceDateField,
       );
-
       const existingTimings = new Set(existing.map((n) => n.timing));
-      const desiredSet = new Set(desiredTimings);
+      const desiredSet = new Set(vars.desiredTimings);
 
-      for (const timing of desiredTimings) {
+      for (const timing of vars.desiredTimings) {
         if (existingTimings.has(timing)) continue;
         await aepbase.create(
           AepCollections.RECURRING_NOTIFICATIONS,
           {
             user_id: userId,
-            source_collection: sourceCollection,
-            source_id: sourceId,
-            title_template: titleTemplate,
-            message_template: messageTemplate,
-            reference_date_field: referenceDateField,
+            source_collection: vars.sourceCollection,
+            source_id: vars.sourceId,
+            title_template: vars.titleTemplate,
+            message_template: vars.messageTemplate,
+            reference_date_field: vars.referenceDateField,
             timing,
             enabled: true,
           },
-          { parent: [AepCollections.USERS, userId] },
+          { parent },
         );
       }
       for (const notification of existing) {
         if (desiredSet.has(notification.timing)) continue;
-        await aepbase.remove(AepCollections.RECURRING_NOTIFICATIONS, notification.id, {
-          parent: [AepCollections.USERS, userId],
-        });
+        await aepbase.remove(
+          AepCollections.RECURRING_NOTIFICATIONS,
+          notification.id,
+          { parent },
+        );
       }
-      return { sourceCollection, sourceId, referenceDateField };
+      return vars;
     },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys
-          .module('recurring_notifications')
-          .detail(`${result.sourceCollection}:${result.sourceId}`),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('recurring_notifications').list(),
-      });
+    onSuccess: async (vars) => {
+      await Promise.all(
+        recurringInvalidateAlso(vars.sourceCollection, vars.sourceId).map(
+          (key) => queryClient.invalidateQueries({ queryKey: key }),
+        ),
+      );
     },
   });
 }

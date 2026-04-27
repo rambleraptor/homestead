@@ -3,21 +3,17 @@
  * played_at (then create_time) desc — newest first.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { AepCollections } from '@/core/api/aepbase';
+import { useAepList } from '@/core/api/resourceHooks';
 import type { Game } from '../types';
 
 export function useGames() {
-  return useQuery({
-    queryKey: queryKeys.module('minigolf').list(),
-    queryFn: async (): Promise<Game[]> => {
-      const games = await aepbase.list<Game>(AepCollections.GAMES);
-      return games.sort((a, b) => {
-        const aKey = a.played_at || a.create_time || '';
-        const bKey = b.played_at || b.create_time || '';
-        return bKey.localeCompare(aKey);
-      });
+  return useAepList<Game>(AepCollections.GAMES, {
+    moduleId: 'minigolf',
+    sort: (a, b) => {
+      const aKey = a.played_at || a.create_time || '';
+      const bKey = b.played_at || b.create_time || '';
+      return bKey.localeCompare(aKey);
     },
   });
 }

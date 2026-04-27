@@ -2,18 +2,10 @@
  * Single game hook. Reads one game by id.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { AepCollections } from '@/core/api/aepbase';
+import { useAepGet } from '@/core/api/resourceHooks';
 import type { Game } from '../types';
 
 export function useGame(gameId: string | null) {
-  return useQuery({
-    queryKey: queryKeys.module('minigolf').detail(gameId || ''),
-    queryFn: async (): Promise<Game | null> => {
-      if (!gameId) return null;
-      return await aepbase.get<Game>(AepCollections.GAMES, gameId);
-    },
-    enabled: !!gameId,
-  });
+  return useAepGet<Game>(AepCollections.GAMES, gameId, { moduleId: 'minigolf' });
 }

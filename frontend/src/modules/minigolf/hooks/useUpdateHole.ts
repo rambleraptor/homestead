@@ -1,12 +1,14 @@
 /**
  * Update Hole Mutation Hook — used when a player revisits a hole and
  * changes par or strokes.
+ *
+ * Stays on a plain `useMutation` rather than `useAepUpdate` because the
+ * variables shape uses `holeId` (not `id`) at the call site.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { queryKeys } from '@/core/api/queryClient';
 import type { Hole, HoleFormData } from '../types';
 
 interface UpdateHoleParams {
@@ -17,23 +19,14 @@ interface UpdateHoleParams {
 
 export function useUpdateHole() {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({ gameId, holeId, data }: UpdateHoleParams): Promise<Hole> => {
-      return await aepbase.update<Hole>(
-        AepCollections.GAME_HOLES,
-        holeId,
-        data,
-        { parent: [AepCollections.GAMES, gameId] },
-      );
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
+    mutationFn: async ({ gameId, holeId, data }: UpdateHoleParams) =>
+      aepbase.update<Hole>(AepCollections.GAME_HOLES, holeId, data, {
+        parent: [AepCollections.GAMES, gameId],
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
         queryKey: queryKeys.module('minigolf').all(),
-      });
-    },
-    onError: (error) => {
-      logger.error('Failed to update hole', error);
-    },
+      }),
   });
 }

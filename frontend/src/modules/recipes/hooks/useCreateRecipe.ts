@@ -1,17 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { AepCollections } from '@/core/api/aepbase';
+import { currentUserPath, useAepCreate } from '@/core/api/resourceHooks';
 import type { Recipe, RecipeFormData } from '../types';
 
 export function useCreateRecipe() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: RecipeFormData): Promise<Recipe> => {
-      const userId = aepbase.getCurrentUser()?.id;
-      const createdBy = userId ? `users/${userId}` : undefined;
-      return aepbase.create<Recipe>(AepCollections.RECIPES, {
+  return useAepCreate<Recipe, RecipeFormData>(AepCollections.RECIPES, {
+    moduleId: 'recipes',
+    transform: (data) => {
+      const createdBy = currentUserPath();
+      return {
         title: data.title,
         source_pointer: data.source_pointer,
         parsed_ingredients: data.parsed_ingredients,
@@ -22,16 +18,7 @@ export function useCreateRecipe() {
         servings: data.servings,
         tags: data.tags,
         ...(createdBy ? { created_by: createdBy } : {}),
-      });
+      };
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.module('recipes').all(),
-      });
-      await queryClient.refetchQueries({
-        queryKey: queryKeys.module('recipes').all(),
-      });
-    },
-    onError: (error) => logger.error('Recipe creation mutation error', error),
   });
 }

@@ -6,15 +6,16 @@
  * each result so the compute hooks can keep joining by it.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { queryKeys } from '@/core/api/queryClient';
+import { useAepList } from '@/core/api/resourceHooks';
 import type { CreditCard, CreditCardPerk, PerkRedemption } from '../types';
 
 export function usePerkRedemptions() {
-  return useQuery({
+  return useAepList<PerkRedemption>(AepCollections.PERK_REDEMPTIONS, {
+    moduleId: 'credit-cards',
     queryKey: queryKeys.module('credit-cards').list({ type: 'redemptions' }),
-    queryFn: async (): Promise<PerkRedemption[]> => {
+    queryFn: async () => {
       const cards = await aepbase.list<CreditCard>(AepCollections.CREDIT_CARDS);
       const all: PerkRedemption[] = [];
       for (const card of cards) {
@@ -35,9 +36,8 @@ export function usePerkRedemptions() {
           for (const r of reds) all.push({ ...r, perk: perk.id });
         }
       }
-      return all.sort((a, b) =>
-        (b.redeemed_at || '').localeCompare(a.redeemed_at || ''),
-      );
+      return all;
     },
+    sort: (a, b) => (b.redeemed_at || '').localeCompare(a.redeemed_at || ''),
   });
 }

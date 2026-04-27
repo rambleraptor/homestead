@@ -2,9 +2,9 @@
  * Create Person Mutation Hook.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
+import { currentUserPath, useAepCreate } from '@/core/api/resourceHooks';
 import { logger } from '@/core/utils/logger';
 import type { PersonFormData, NotificationPreference } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
@@ -21,57 +21,47 @@ interface PersonRecord {
 }
 
 export function useCreatePerson() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: PersonFormData) => {
-      try {
-        const userId = aepbase.getCurrentUser()?.id;
-        const personRecord = await aepbase.create<PersonRecord>(AepCollections.PEOPLE, {
+  return useAepCreate<PersonRecord, PersonFormData>(AepCollections.PEOPLE, {
+    moduleId: 'people',
+    invalidateAlso: [queryKeys.module('recurring_notifications').list()],
+    mutationFn: async (data) => {
+      const personRecord = await aepbase.create<PersonRecord>(
+        AepCollections.PEOPLE,
+        {
           name: data.name,
           birthday: data.birthday,
-          created_by: userId ? `users/${userId}` : undefined,
+          created_by: currentUserPath(),
+        },
+      );
+
+      if (data.partner_id) {
+        await setPartner(personRecord.id, data.partner_id, {
+          addresses: data.addresses,
+          anniversary: data.anniversary,
         });
-
-        if (data.partner_id) {
-          await setPartner(personRecord.id, data.partner_id, {
-            addresses: data.addresses,
-            anniversary: data.anniversary,
-          });
-        } else if (data.addresses.length > 0 || data.anniversary) {
-          await createSharedData({
-            personId: personRecord.id,
-            addresses: data.addresses,
-            anniversary: data.anniversary,
-          });
-        }
-
-        try {
-          await syncRecurringNotificationsForPerson(
-            personRecord.id,
-            personRecord.name,
-            data.birthday,
-            data.anniversary,
-            data.notification_preferences,
-          );
-        } catch (syncError) {
-          logger.error('Failed to sync recurring notifications', syncError, {
-            personId: personRecord.id,
-          });
-        }
-
-        return personRecord;
-      } catch (error) {
-        logger.error('Failed to create person', error, { personData: data });
-        throw error;
+      } else if (data.addresses.length > 0 || data.anniversary) {
+        await createSharedData({
+          personId: personRecord.id,
+          addresses: data.addresses,
+          anniversary: data.anniversary,
+        });
       }
+
+      try {
+        await syncRecurringNotificationsForPerson(
+          personRecord.id,
+          personRecord.name,
+          data.birthday,
+          data.anniversary,
+          data.notification_preferences,
+        );
+      } catch (syncError) {
+        logger.error('Failed to sync recurring notifications', syncError, {
+          personId: personRecord.id,
+        });
+      }
+
+      return personRecord;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.module('people').list() });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('recurring_notifications').list(),
-      });
-    },
-    onError: (error) => logger.error('Person creation mutation error', error),
   });
 }

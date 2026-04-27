@@ -1,6 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { queryKeys } from '@/core/api/queryClient';
+import { useAepList } from '@/core/api/resourceHooks';
 import type { Person, NotificationPreference, PersonSharedData, Address } from '../types';
 
 interface PersonRecord {
@@ -35,8 +34,8 @@ function toPerson(
 // support server-side joining. Filtering happens in the list component via
 // the shared FilterBar; this hook always returns the full collection.
 export function usePeople() {
-  return useQuery({
-    queryKey: queryKeys.module('people').list(),
+  return useAepList<Person>(AepCollections.PEOPLE, {
+    moduleId: 'people',
     queryFn: async () => {
       const [peopleRecords, allSharedData, allAddresses] = await Promise.all([
         aepbase.list<PersonRecord>(AepCollections.PEOPLE),

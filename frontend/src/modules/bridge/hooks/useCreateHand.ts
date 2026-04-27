@@ -3,17 +3,14 @@
  * here so callers only need to supply the per-direction bids + notes.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { logger } from '@/core/utils/logger';
+import { useAepCreate } from '@/core/api/resourceHooks';
 import { loadHands, newHandId, saveHands } from '../storage';
 import type { Hand, HandFormData } from '../types';
 
 export function useCreateHand() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: HandFormData): Promise<Hand> => {
+  return useAepCreate<Hand, HandFormData>('hands', {
+    moduleId: 'bridge',
+    mutationFn: async (data) => {
       const now = new Date().toISOString();
       const hand: Hand = {
         id: newHandId(),
@@ -34,14 +31,6 @@ export function useCreateHand() {
       hand.path = `hands/${hand.id}`;
       saveHands([...loadHands(), hand]);
       return hand;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.module('bridge').all(),
-      });
-    },
-    onError: (error) => {
-      logger.error('Failed to save bridge hand', error);
     },
   });
 }

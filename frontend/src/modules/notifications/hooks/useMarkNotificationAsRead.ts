@@ -1,24 +1,25 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { queryKeys } from '@/core/api/queryClient';
+import { useAepUpdate } from '@/core/api/resourceHooks';
 import type { Notification } from '../types';
 
-export function useMarkNotificationAsRead() {
-  const queryClient = useQueryClient();
+function userParent() {
+  const userId = aepbase.getCurrentUser()?.id;
+  if (!userId) throw new Error('User not authenticated');
+  return [AepCollections.USERS, userId];
+}
 
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const userId = aepbase.getCurrentUser()?.id;
-      if (!userId) throw new Error('User not authenticated');
-      return aepbase.update<Notification>(
-        AepCollections.NOTIFICATIONS,
-        id,
-        { read: true, read_at: new Date().toISOString() },
-        { parent: [AepCollections.USERS, userId] },
-      );
+export function useMarkNotificationAsRead() {
+  const mutation = useAepUpdate<Notification, { id: string }>(
+    AepCollections.NOTIFICATIONS,
+    {
+      moduleId: 'notifications',
+      parent: userParent,
+      transform: () => ({ read: true, read_at: new Date().toISOString() }),
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.module('notifications').all() });
-    },
-  });
+  );
+  return {
+    ...mutation,
+    mutate: (id: string) => mutation.mutate({ id }),
+    mutateAsync: (id: string) => mutation.mutateAsync({ id }),
+  };
 }

@@ -2,17 +2,16 @@
  * Delete Redemption Mutation Hook.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
+import { useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { useAepRemove } from '@/core/api/resourceHooks';
 import { findRedemptionParents } from './_aepLookup';
 
 export function useDeleteRedemption() {
   const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
+  return useAepRemove<string>(AepCollections.PERK_REDEMPTIONS, {
+    moduleId: 'credit-cards',
+    mutationFn: async (id) => {
       const { creditCardId, perkId } = findRedemptionParents(queryClient, id);
       await aepbase.remove(AepCollections.PERK_REDEMPTIONS, id, {
         parent: [
@@ -21,11 +20,5 @@ export function useDeleteRedemption() {
         ],
       });
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      await queryClient.refetchQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      logger.info('Redemption deleted successfully');
-    },
-    onError: (error) => logger.error('Failed to delete redemption', error),
   });
 }
