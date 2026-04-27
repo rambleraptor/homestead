@@ -5,9 +5,8 @@
  * purchased. Registered via `groceriesModule.widgets`.
  */
 
-import Link from 'next/link';
-import { ArrowRight, Loader2, ShoppingCart } from 'lucide-react';
-import { SectionCard } from '@/shared/components/SectionCard';
+import { Loader2, ShoppingCart } from 'lucide-react';
+import { WidgetCard } from '@/shared/components/WidgetCard';
 import { useGroceries } from '../hooks/useGroceries';
 
 export function GroceriesWidget() {
@@ -15,18 +14,11 @@ export function GroceriesWidget() {
   const remaining = items?.filter((item) => !item.checked).length ?? 0;
 
   return (
-    <SectionCard
+    <WidgetCard
       icon={ShoppingCart}
       title="Groceries"
-      action={
-        <Link
-          href="/groceries"
-          className="text-sm font-medium text-accent-terracotta hover:text-accent-terracotta-hover flex items-center gap-1 transition-colors"
-        >
-          View list
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-      }
+      href="/groceries"
+      data-testid="groceries-widget"
     >
       {isLoading ? (
         <div className="flex items-center justify-center py-6">
@@ -44,6 +36,6 @@ export function GroceriesWidget() {
           Nothing left to buy — your list is clear.
         </p>
       )}
-    </SectionCard>
+    </WidgetCard>
   );
 }

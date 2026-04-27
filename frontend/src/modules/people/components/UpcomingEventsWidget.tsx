@@ -5,12 +5,11 @@
  * the People module. Registered via `peopleModule.widgets`.
  */
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Cake, Loader2, Users } from 'lucide-react';
+import { Cake, Loader2, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/shared/components/Badge';
-import { SectionCard } from '@/shared/components/SectionCard';
+import { WidgetCard } from '@/shared/components/WidgetCard';
 import { useUpcomingPeople } from '../hooks/useUpcomingPeople';
 
 export function UpcomingEventsWidget() {
@@ -18,19 +17,12 @@ export function UpcomingEventsWidget() {
   const { data: upcomingPeople, isLoading } = useUpcomingPeople();
 
   return (
-    <SectionCard
+    <WidgetCard
       icon={Cake}
       title="Upcoming"
+      href="/people"
       bodyClassName="px-4 py-0"
-      action={
-        <Link
-          href="/people"
-          className="text-sm font-medium text-accent-terracotta hover:text-accent-terracotta-hover flex items-center gap-1 transition-colors"
-        >
-          View all
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-      }
+      data-testid="upcoming-events-widget"
     >
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
@@ -86,6 +78,6 @@ export function UpcomingEventsWidget() {
           </p>
         </div>
       )}
-    </SectionCard>
+    </WidgetCard>
   );
 }
