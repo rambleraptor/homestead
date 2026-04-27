@@ -25,7 +25,7 @@ export const groceriesModule: HomeModule = {
     {
       id: 'groceries-remaining',
       component: GroceriesWidget,
-      order: 20,
+      order: 10,
     },
   ],
 };

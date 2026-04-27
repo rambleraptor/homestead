@@ -38,7 +38,7 @@ export const peopleModule: HomeModule = {
     {
       id: 'people-upcoming-events',
       component: UpcomingEventsWidget,
-      order: 10,
+      order: 20,
     },
   ],
 };
