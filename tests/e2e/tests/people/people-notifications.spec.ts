@@ -73,7 +73,7 @@ test.describe('People Notification Preferences', () => {
   });
 
   test('should update notification preferences when editing person', async ({ userToken, userId }) => {
-    const created = await createPerson(userToken, {
+    const created = await createPerson(userToken, userId, {
       name: 'Update Test',
       birthday: '1995-12-25',
     });
@@ -108,8 +108,8 @@ test.describe('People Notification Preferences', () => {
     expect(after.length).toBe(0);
   });
 
-  test('should delete person successfully', async ({ userToken }) => {
-    await createPerson(userToken, {
+  test('should delete person successfully', async ({ userToken, userId }) => {
+    await createPerson(userToken, userId, {
       name: 'Delete Test',
       birthday: '2000-01-01',
     });

@@ -36,8 +36,8 @@ test.describe('People CRUD', () => {
     await peoplePage.expectPersonInList(personData.name);
   });
 
-  test('should edit an existing person', async ({ userToken }) => {
-    const created = await createPerson(userToken, {
+  test('should edit an existing person', async ({ userToken, userId }) => {
+    const created = await createPerson(userToken, userId, {
       name: 'Original Name',
       address: '123 Old St',
     });
@@ -66,8 +66,8 @@ test.describe('People CRUD', () => {
     await peoplePage.expectPersonNotInList('Original Name');
   });
 
-  test('should delete a person', async ({ userToken }) => {
-    await createPerson(userToken, {
+  test('should delete a person', async ({ userToken, userId }) => {
+    await createPerson(userToken, userId, {
       name: 'Person to Delete',
     });
 

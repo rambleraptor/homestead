@@ -203,11 +203,14 @@ export interface PersonRecord {
 
 export async function createPerson(
   token: string,
+  userId: string,
   data: CreatePersonInput,
 ): Promise<PersonRecord> {
+  const createdBy = `users/${userId}`;
   const person = await aepCreate<PersonRecord>(token, 'people', {
     name: data.name,
     birthday: data.birthday,
+    created_by: createdBy,
   });
 
   if (data.address || data.anniversary) {
@@ -215,6 +218,7 @@ export async function createPerson(
     if (data.address) {
       const address = await aepCreate<{ id: string }>(token, 'addresses', {
         line1: data.address,
+        created_by: createdBy,
       });
       addressId = address.id;
     }
@@ -223,6 +227,7 @@ export async function createPerson(
       person_b: undefined,
       address_id: addressId ?? undefined,
       anniversary: data.anniversary,
+      created_by: createdBy,
     });
   }
 
@@ -231,11 +236,12 @@ export async function createPerson(
 
 export async function createMultiplePeople(
   token: string,
+  userId: string,
   people: Array<CreatePersonInput>,
 ) {
   const results = [];
   for (const person of people) {
-    results.push(await createPerson(token, person));
+    results.push(await createPerson(token, userId, person));
   }
   return results;
 }

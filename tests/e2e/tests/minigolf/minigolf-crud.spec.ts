@@ -30,10 +30,11 @@ test.describe('Minigolf CRUD', () => {
 
   test('plays a 2-hole game, declares a winner, and lists it', async ({
     userToken,
+    userId,
   }) => {
     // Seed two players via API (fast path).
-    const alice = await createPerson(userToken, { name: 'Alice Stroker' });
-    const bob = await createPerson(userToken, { name: 'Bob Putts' });
+    const alice = await createPerson(userToken, userId, { name: 'Alice Stroker' });
+    const bob = await createPerson(userToken, userId, { name: 'Bob Putts' });
 
     await minigolfPage.goto();
     await minigolfPage.expectToBeOnMinigolfPage();
@@ -79,9 +80,9 @@ test.describe('Minigolf CRUD', () => {
     await minigolfPage.expectGameInList();
   });
 
-  test('records ties as multiple winners', async ({ userToken }) => {
-    const alice = await createPerson(userToken, { name: 'Alice Tie' });
-    const bob = await createPerson(userToken, { name: 'Bob Tie' });
+  test('records ties as multiple winners', async ({ userToken, userId }) => {
+    const alice = await createPerson(userToken, userId, { name: 'Alice Tie' });
+    const bob = await createPerson(userToken, userId, { name: 'Bob Tie' });
 
     await minigolfPage.goto();
     await minigolfPage.clickNewGame();
