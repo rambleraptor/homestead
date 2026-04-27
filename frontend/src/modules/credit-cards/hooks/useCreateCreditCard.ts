@@ -2,29 +2,20 @@
  * Create Credit Card Mutation Hook.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { AepCollections } from '@/core/api/aepbase';
+import { currentUserPath, useAepCreate } from '@/core/api/resourceHooks';
 import type { CreditCard, CreditCardFormData } from '../types';
 
 export function useCreateCreditCard() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: CreditCardFormData): Promise<CreditCard> => {
-      const userId = aepbase.getCurrentUser()?.id;
-      return await aepbase.create<CreditCard>(AepCollections.CREDIT_CARDS, {
+  return useAepCreate<CreditCard, CreditCardFormData>(
+    AepCollections.CREDIT_CARDS,
+    {
+      moduleId: 'credit-cards',
+      transform: (data) => ({
         ...data,
         archived: data.archived ?? false,
-        created_by: userId ? `users/${userId}` : undefined,
-      });
+        created_by: currentUserPath(),
+      }),
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      await queryClient.refetchQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      logger.info('Credit card created successfully');
-    },
-    onError: (error) => logger.error('Failed to create credit card', error),
-  });
+  );
 }

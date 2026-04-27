@@ -2,10 +2,9 @@
  * Update Redemption Mutation Hook.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
+import { useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { useAepUpdate } from '@/core/api/resourceHooks';
 import type { PerkRedemption, RedemptionFormData } from '../types';
 import { findRedemptionParents } from './_aepLookup';
 
@@ -16,29 +15,26 @@ interface UpdateRedemptionParams {
 
 export function useUpdateRedemption() {
   const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, data }: UpdateRedemptionParams): Promise<PerkRedemption> => {
-      const { creditCardId, perkId } = findRedemptionParents(queryClient, id);
-      const { perk: _ignore, ...body } = data;
-      const updated = await aepbase.update<PerkRedemption>(
-        AepCollections.PERK_REDEMPTIONS,
-        id,
-        body,
-        {
-          parent: [
-            AepCollections.CREDIT_CARDS, creditCardId,
-            AepCollections.CREDIT_CARD_PERKS, perkId,
-          ],
-        },
-      );
-      return { ...updated, perk: perkId };
+  return useAepUpdate<PerkRedemption, UpdateRedemptionParams>(
+    AepCollections.PERK_REDEMPTIONS,
+    {
+      moduleId: 'credit-cards',
+      mutationFn: async ({ id, data }) => {
+        const { creditCardId, perkId } = findRedemptionParents(queryClient, id);
+        const { perk: _ignore, ...body } = data;
+        const updated = await aepbase.update<PerkRedemption>(
+          AepCollections.PERK_REDEMPTIONS,
+          id,
+          body,
+          {
+            parent: [
+              AepCollections.CREDIT_CARDS, creditCardId,
+              AepCollections.CREDIT_CARD_PERKS, perkId,
+            ],
+          },
+        );
+        return { ...updated, perk: perkId };
+      },
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      await queryClient.refetchQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      logger.info('Redemption updated successfully');
-    },
-    onError: (error) => logger.error('Failed to update redemption', error),
-  });
+  );
 }

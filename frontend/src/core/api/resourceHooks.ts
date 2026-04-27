@@ -193,7 +193,10 @@ export interface UseAepUpdateOptions<T, V extends { id: string }>
   mutationFn?: (vars: V) => Promise<T>;
 }
 
-export function useAepUpdate<T, V extends { id: string; data: unknown } = { id: string; data: Record<string, unknown> }>(
+export function useAepUpdate<
+  T,
+  V extends { id: string } = { id: string; data: Record<string, unknown> },
+>(
   collection: string,
   options: UseAepUpdateOptions<T, V>,
 ): UseMutationResult<T, Error, V> {
@@ -214,7 +217,8 @@ export function useAepUpdate<T, V extends { id: string; data: unknown } = { id: 
       (async (vars: V) => {
         const body = transform
           ? transform(vars)
-          : (vars.data as Record<string, unknown> | FormData);
+          : ((vars as unknown as { data?: Record<string, unknown> | FormData })
+              .data as Record<string, unknown> | FormData);
         const resolvedParent = resolveParent(parent);
         return resolvedParent
           ? aepbase.update<T>(collection, vars.id, body, { parent: resolvedParent })
