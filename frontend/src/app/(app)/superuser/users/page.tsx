@@ -3,10 +3,10 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/core/auth/useAuth';
-import { FlagManagementHome } from '@/modules/flag-management/components/FlagManagementHome';
+import { UsersHome } from '@/modules/superuser/components/UsersHome';
 import { Spinner } from '@/shared/components/Spinner';
 
-export default function FlagManagementPage() {
+export default function SuperuserUsersPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
@@ -24,5 +24,5 @@ export default function FlagManagementPage() {
     );
   }
 
-  return <FlagManagementHome />;
+  return <UsersHome />;
 }

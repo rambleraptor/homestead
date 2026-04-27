@@ -8,11 +8,11 @@ export class UsersPage {
   constructor(private page: Page) {}
 
   async goto() {
-    await this.page.goto('/users');
+    await this.page.goto('/superuser/users');
   }
 
   async expectToBeOnUsersPage() {
-    await expect(this.page).toHaveURL(/\/users$/);
+    await expect(this.page).toHaveURL(/\/superuser\/users$/);
     await expect(this.page.getByRole('heading', { name: 'Users', level: 1 })).toBeVisible();
   }
 

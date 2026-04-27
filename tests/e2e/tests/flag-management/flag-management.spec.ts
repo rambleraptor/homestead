@@ -1,9 +1,10 @@
 /**
- * Flag Management module E2E tests.
+ * Superuser → Flag Management sub-page E2E tests.
  *
- * Only superusers may access /flag-management. These specs verify the
- * access gate, that declared flags render with their descriptions, and
- * that edits persist into the household-wide `module-flags` singleton.
+ * Only superusers may access /superuser/flag-management. These specs
+ * verify the access gate, that declared flags render with their
+ * descriptions, and that edits persist into the household-wide
+ * `module-flags` singleton.
  */
 
 import { test, expect } from '../../fixtures/aepbase.fixture';
@@ -23,7 +24,7 @@ async function resetModuleFlags(adminToken: string) {
   }
 }
 
-test.describe('Flag Management module (superuser)', () => {
+test.describe('Superuser → Flag Management sub-page (superuser)', () => {
   let flagPage: FlagManagementPage;
 
   test.beforeEach(async ({ authenticatedAdminPage, adminToken }) => {
@@ -72,18 +73,18 @@ test.describe('Flag Management module (superuser)', () => {
   });
 });
 
-test.describe('Flag Management module (regular user gate)', () => {
-  test('nav does not expose the Flag Management link for regular users', async ({
+test.describe('Superuser → Flag Management sub-page (regular user gate)', () => {
+  test('nav does not expose the Superuser link for regular users', async ({
     authenticatedPage,
   }) => {
-    const link = authenticatedPage.getByRole('link', { name: 'Flag Management' });
+    const link = authenticatedPage.getByRole('link', { name: 'Superuser' });
     await expect(link).toHaveCount(0);
   });
 
-  test('direct navigation to /flag-management redirects regular users to /dashboard', async ({
+  test('direct navigation to /superuser/flag-management redirects regular users to /dashboard', async ({
     authenticatedPage,
   }) => {
-    await authenticatedPage.goto('/flag-management');
+    await authenticatedPage.goto('/superuser/flag-management');
     await authenticatedPage.waitForURL('/dashboard', { timeout: 5000 });
     await expect(authenticatedPage).toHaveURL(/\/dashboard$/);
   });

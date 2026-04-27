@@ -1,8 +1,8 @@
 /**
  * Flag Management Page Object Model
  *
- * Drives the superuser-only /flag-management surface that lists every
- * declared module flag and lets an operator flip values.
+ * Drives the superuser-only /superuser/flag-management surface that
+ * lists every declared module flag and lets an operator flip values.
  */
 
 import { Page, expect } from '@playwright/test';
@@ -11,11 +11,11 @@ export class FlagManagementPage {
   constructor(private page: Page) {}
 
   async goto() {
-    await this.page.goto('/flag-management');
+    await this.page.goto('/superuser/flag-management');
   }
 
   async expectToBeOnFlagManagementPage() {
-    await expect(this.page).toHaveURL(/\/flag-management$/);
+    await expect(this.page).toHaveURL(/\/superuser\/flag-management$/);
     await expect(
       this.page.getByRole('heading', { name: 'Flag Management', level: 1 }),
     ).toBeVisible();

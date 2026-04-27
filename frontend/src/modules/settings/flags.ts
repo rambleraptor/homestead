@@ -142,7 +142,7 @@ function coerceValue(
  *
  * Order matters: `default` precedes `options` so the parser can peel
  * them off from the right. See `parseDescription` in
- * `modules/flag-management/hooks/useModuleFlagsDefinition.ts`.
+ * `modules/superuser/hooks/useModuleFlagsDefinition.ts`.
  */
 function propertyFor(def: ModuleFlagDef): Record<string, unknown> {
   const base = def.description ?? def.label;
