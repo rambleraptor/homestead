@@ -43,13 +43,11 @@ test: ## Run frontend tests with Vitest
 	@echo "Running frontend tests..."
 	cd $(FRONTEND_DIR) && npm run test
 
-test-e2e: ## Run end-to-end tests with Playwright
-	@echo "Running e2e tests..."
-	cd tests/e2e && npm install && npx playwright install --with-deps chromium && npm test
+test-e2e: ## Run e2e tests against the docker-compose stack
+	@./tests/e2e/run-with-stack.sh
 
-test-e2e-ui: ## Run e2e tests in UI mode
-	@echo "Running e2e tests in UI mode..."
-	cd tests/e2e && npm run test:ui
+test-e2e-ui: ## Run e2e tests in UI mode against the docker-compose stack
+	@./tests/e2e/run-with-stack.sh run test:ui
 
 test-all: test test-e2e ## Run all tests (frontend + e2e)
 	@echo "All tests completed!"

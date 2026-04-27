@@ -17,8 +17,46 @@
  */
 
 import { test as base, Page } from '@playwright/test';
-import { getAepbaseUrl, readAdminCreds } from '../config/aepbase.setup';
+import { getAepbaseUrl } from '../utils/aepbase-helpers';
 import { testUsers } from './test-data';
+
+interface AdminCreds {
+  email: string;
+  password: string;
+  id: string;
+  token: string;
+}
+
+/**
+ * Resolve admin credentials for the running compose stack. The
+ * `make test-e2e` target exports AEPBASE_ADMIN_EMAIL +
+ * AEPBASE_ADMIN_PASSWORD from the bootstrap container's
+ * /secrets/admin.env before invoking Playwright; this helper logs in
+ * to mint a fresh token per worker.
+ */
+async function readAdminCreds(): Promise<AdminCreds> {
+  const email = process.env.AEPBASE_ADMIN_EMAIL;
+  const password = process.env.AEPBASE_ADMIN_PASSWORD;
+  if (!email || !password) {
+    throw new Error(
+      'AEPBASE_ADMIN_EMAIL / AEPBASE_ADMIN_PASSWORD not set. ' +
+        'Run `make test-e2e` (which boots the docker-compose stack) ' +
+        'instead of invoking playwright directly.',
+    );
+  }
+  const res = await fetch(`${getAepbaseUrl()}/users/:login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      `admin login failed: ${res.status} ${await res.text()}`,
+    );
+  }
+  const parsed = (await res.json()) as { token: string; user: { id: string } };
+  return { email, password, id: parsed.user.id, token: parsed.token };
+}
 
 type TestUser = {
   id: string;

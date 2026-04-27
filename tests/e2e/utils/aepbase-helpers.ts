@@ -7,7 +7,17 @@
  * kebab-case collections and nested child URLs.
  */
 
-import { getAepbaseUrl } from '../config/aepbase.setup';
+/**
+ * Resolve the aepbase URL the suite should hit. The integration stack
+ * is brought up via docker-compose (`make test-e2e`) and publishes
+ * aepbase on localhost:8090; AEPBASE_URL overrides for other targets.
+ */
+export function getAepbaseUrl(): string {
+  return (process.env.AEPBASE_URL || 'http://localhost:8090').replace(
+    /\/$/,
+    '',
+  );
+}
 
 type ParentPath = string[];
 

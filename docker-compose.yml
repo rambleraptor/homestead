@@ -1,0 +1,68 @@
+# Local-dev / integration-test stack for Homestead.
+#
+#   docker compose up --build --wait
+#
+# brings up aepbase on :8090, runs `terraform apply` against it via the
+# one-shot bootstrap container, then starts the Next.js frontend on
+# :3000. Used by `make test-e2e` to host Playwright runs against a
+# fully-provisioned stack.
+
+services:
+  aepbase:
+    build:
+      context: ./aepbase
+    image: homestead/aepbase:dev
+    ports:
+      - "8090:8090"
+    volumes:
+      - aepbase-data:/data
+      - aepbase-logs:/var/log/aepbase
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8090/openapi.json"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+
+  bootstrap:
+    build:
+      context: ./bootstrap
+    image: homestead/bootstrap:dev
+    depends_on:
+      aepbase:
+        condition: service_healthy
+    environment:
+      AEPBASE_URL: http://aepbase:8090
+    volumes:
+      # RW so terraform can write its state + provider cache. Both
+      # are gitignored under aepbase/.gitignore.
+      - ./aepbase/terraform:/work
+      - aepbase-logs:/var/log/aepbase:ro
+      - admin-secrets:/secrets
+    restart: "no"
+
+  frontend:
+    build:
+      context: ./frontend
+    image: homestead/frontend:dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    environment:
+      AEPBASE_URL: http://aepbase:8090
+      NODE_ENV: production
+    volumes:
+      - admin-secrets:/secrets:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+      start_period: 5s
+
+volumes:
+  aepbase-data:
+  aepbase-logs:
+  admin-secrets:
