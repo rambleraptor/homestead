@@ -63,7 +63,6 @@ export const peopleOmnibox: OmniboxAdapter = {
               addresses: [],
               birthday: prefill.birthday,
               anniversary: prefill.anniversary,
-              notification_preferences: [],
               created_by: '',
               created: '',
               updated: '',

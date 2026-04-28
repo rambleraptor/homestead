@@ -100,21 +100,6 @@ export function PersonPreview({ item, isSelected, onToggle }: PersonPreviewProps
             <div className="flex-shrink-0">{statusIcon}</div>
           </div>
 
-          {/* Notification Preferences */}
-          {person.notification_preferences &&
-            person.notification_preferences.length > 0 &&
-            item.isValid && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {person.notification_preferences.map((pref) => (
-                  <span key={pref} className="text-xs bg-muted px-2 py-1 rounded">
-                    {pref === 'day_of' && '🔔 Day of'}
-                    {pref === 'day_before' && '🔔 Day before'}
-                    {pref === 'week_before' && '🔔 Week before'}
-                  </span>
-                ))}
-              </div>
-            )}
-
           {/* Partner Name */}
           {person.partner_name && item.isValid && (
             <div className="flex flex-wrap gap-1 mb-2">

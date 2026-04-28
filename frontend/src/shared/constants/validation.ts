@@ -18,12 +18,3 @@ export const ACCEPTED_IMAGE_TYPES = [
 export const MAX_EVENT_TITLE_LENGTH = 200;
 export const MAX_EVENT_PEOPLE_LENGTH = 500;
 export const MAX_EVENT_DETAILS_LENGTH = 2000;
-
-// Event notification preferences
-export const VALID_NOTIFICATION_PREFERENCES = [
-  'day_of',
-  'day_before',
-  'week_before',
-] as const;
-
-export type NotificationPreference = typeof VALID_NOTIFICATION_PREFERENCES[number];

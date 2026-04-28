@@ -46,7 +46,6 @@ describe('usePeopleStats', () => {
         name: 'John',
         addresses: [],
         birthday: '1990-06-20', // Upcoming birthday
-        notification_preferences: ['day_of', 'day_before'],
         created_by: 'user-1',
         created: '2024-01-01T00:00:00Z',
         updated: '2024-01-01T00:00:00Z',
@@ -56,7 +55,6 @@ describe('usePeopleStats', () => {
         name: 'Jane & Bob',
         addresses: [],
         anniversary: '2010-07-01', // Upcoming anniversary
-        notification_preferences: ['week_before'],
         created_by: 'user-1',
         created: '2024-01-01T00:00:00Z',
         updated: '2024-01-01T00:00:00Z',
@@ -66,7 +64,6 @@ describe('usePeopleStats', () => {
         name: 'Sarah',
         addresses: [],
         birthday: '1985-08-15', // Not upcoming in next 30 days
-        notification_preferences: ['day_of'],
         created_by: 'user-1',
         created: '2024-01-01T00:00:00Z',
         updated: '2024-01-01T00:00:00Z',
@@ -109,7 +106,6 @@ describe('usePeopleStats', () => {
         name: 'John',
         addresses: [],
         birthday: '1990-01-15', // Original date in 2023
-        notification_preferences: ['day_of'],
         created_by: 'user-1',
         created: '2024-01-01T00:00:00Z',
         updated: '2024-01-01T00:00:00Z',
@@ -119,7 +115,6 @@ describe('usePeopleStats', () => {
         name: 'Sarah',
         addresses: [],
         birthday: '1985-08-15', // Still upcoming this year
-        notification_preferences: ['day_of'],
         created_by: 'user-1',
         created: '2024-01-01T00:00:00Z',
         updated: '2024-01-01T00:00:00Z',

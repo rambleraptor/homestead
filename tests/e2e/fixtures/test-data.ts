@@ -142,9 +142,9 @@ Bob Williams
 Carol Davis`,
 
   // Full data import with all fields
-  fullDataImport: `name,address,wifi_network,wifi_password,birthday,anniversary,notification_preferences,partner_name
-John Smith,"123 Main St, Springfield, IL 62701",HomeNetwork,pass123,06/15/1985,08/20/2010,"day_of,week_before",Jane Smith
-Jane Smith,"123 Main St, Springfield, IL 62701",HomeNetwork,pass123,03/22/1987,08/20/2010,day_of,John Smith`,
+  fullDataImport: `name,address,wifi_network,wifi_password,birthday,anniversary,partner_name
+John Smith,"123 Main St, Springfield, IL 62701",HomeNetwork,pass123,06/15/1985,08/20/2010,Jane Smith
+Jane Smith,"123 Main St, Springfield, IL 62701",HomeNetwork,pass123,03/22/1987,08/20/2010,John Smith`,
 
   // Partner import - two people linked
   partnerImport: `name,address,birthday,partner_name

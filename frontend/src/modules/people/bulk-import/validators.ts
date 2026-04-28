@@ -3,7 +3,6 @@
  */
 
 import type { FieldValidator } from '@/shared/bulk-import';
-import type { NotificationPreference } from '../types';
 
 /**
  * Validates name field
@@ -127,32 +126,6 @@ export const validateAnniversary: FieldValidator<string | undefined> = (value) =
   return { value: parsedDate };
 };
 
-
-/**
- * Validates notification_preferences field
- */
-export const validateNotificationPreferences: FieldValidator<
-  NotificationPreference[]
-> = (value) => {
-  const notifValue = value.trim();
-
-  if (!notifValue) {
-    return { value: ['day_of'] };
-  }
-
-  const parsed = notifValue.split(',').map((v) => v.trim() as NotificationPreference);
-  const validPrefs = ['day_of', 'day_before', 'week_before'];
-  const invalidPrefs = parsed.filter((p) => !validPrefs.includes(p));
-
-  if (invalidPrefs.length > 0) {
-    return {
-      value: ['day_of'],
-      error: `Invalid notification preferences: ${invalidPrefs.join(', ')}`,
-    };
-  }
-
-  return { value: parsed };
-};
 
 /**
  * Validates optional string field with max length

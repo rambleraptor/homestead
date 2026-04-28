@@ -137,10 +137,6 @@ const DEFINITIONS: ResourceDefinition[] = [
       properties: {
         name: { type: 'string' },
         birthday: { type: 'string', format: 'date-time' },
-        notification_preferences: {
-          type: 'object',
-          description: 'legacy; kept for backward compatibility',
-        },
         created_by: { type: 'string' },
       },
       required: ['name'],
@@ -201,7 +197,6 @@ const DEFINITIONS: ResourceDefinition[] = [
         source_collection: { type: 'string' },
         source_id: { type: 'string' },
         person_id: { type: 'string' },
-        recurring_notification_id: { type: 'string' },
       },
       required: ['title', 'message', 'notification_type'],
     },
@@ -218,26 +213,6 @@ const DEFINITIONS: ResourceDefinition[] = [
         enabled: { type: 'boolean' },
       },
       required: ['subscription_data'],
-    },
-  },
-  {
-    singular: 'recurring-notification',
-    plural: 'recurring-notifications',
-    user_settable_create: true,
-    parents: ['user'],
-    schema: {
-      type: 'object',
-      properties: {
-        source_collection: { type: 'string' },
-        source_id: { type: 'string' },
-        title_template: { type: 'string' },
-        message_template: { type: 'string' },
-        reference_date_field: { type: 'string' },
-        timing: { type: 'string' },
-        enabled: { type: 'boolean' },
-        last_triggered: { type: 'string', format: 'date-time' },
-      },
-      required: ['source_collection', 'source_id', 'title_template', 'message_template', 'reference_date_field', 'timing'],
     },
   },
   {

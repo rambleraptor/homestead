@@ -5,12 +5,4 @@
  */
 
 export { peopleModule } from './module.config';
-export type {
-  Person,
-  PersonEventType,
-  PersonFormData,
-  PeopleStats,
-  NotificationPreference,
-  NotificationPreferenceOption,
-} from './types';
-export { NOTIFICATION_PREFERENCE_OPTIONS } from './types';
+export type { Person, PersonEventType, PersonFormData, PeopleStats } from './types';

@@ -414,11 +414,10 @@ export const AepCollections = {
   PEOPLE: 'people',
   PERSON_SHARED_DATA: 'person-shared-data',
   ADDRESSES: 'addresses',
-  // notifications + subscriptions + recurring are children of users — no
-  // top-level form. Always pass `parent: ['users', userId]`.
+  // notifications + subscriptions are children of users — no top-level form.
+  // Always pass `parent: ['users', userId]`.
   NOTIFICATIONS: 'notifications',
   NOTIFICATION_SUBSCRIPTIONS: 'notification-subscriptions',
-  RECURRING_NOTIFICATIONS: 'recurring-notifications',
   GROCERIES: 'groceries',
   STORES: 'stores',
   HSA_RECEIPTS: 'hsa-receipts',

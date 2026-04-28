@@ -8,10 +8,9 @@ resource "aep_aep-resource-definition" "person" {
   schema = jsonencode({
     type = "object"
     properties = {
-      name                     = { type = "string" }
-      birthday                 = { type = "string", format = "date-time" }
-      notification_preferences = { type = "object", description = "legacy; kept for backward compatibility" }
-      created_by               = { type = "string" }
+      name       = { type = "string" }
+      birthday   = { type = "string", format = "date-time" }
+      created_by = { type = "string" }
     }
     required = ["name"]
   })

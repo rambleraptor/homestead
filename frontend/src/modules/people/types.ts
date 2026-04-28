@@ -1,7 +1,5 @@
 export type PersonEventType = 'birthday' | 'anniversary';
 
-export type NotificationPreference = 'day_of' | 'day_before' | 'week_before';
-
 // Address type. PB-shape stays here so existing helpers compile; the
 // aepbase code path hydrates the same field names.
 export interface Address {
@@ -39,7 +37,6 @@ export interface Person {
   addresses: Address[]; // Array of addresses (can be empty)
   birthday?: string;
   anniversary?: string;
-  notification_preferences: NotificationPreference[];
   partner?: Person; // Partner info if exists
   created_by: string;
   created: string;
@@ -64,7 +61,6 @@ export interface PersonFormData {
   addresses: AddressFormData[]; // Array of addresses
   birthday?: string;
   anniversary?: string;
-  notification_preferences: NotificationPreference[];
   partner_id?: string; // Used in form to select partner
 }
 
@@ -78,7 +74,6 @@ export interface PersonCSVData {
   wifi_password?: string;
   birthday?: string;
   anniversary?: string;
-  notification_preferences?: NotificationPreference[];
   partner_name?: string; // Partner name for matching
 }
 
@@ -87,27 +82,3 @@ export interface PeopleStats {
   upcomingBirthdays: number;
   upcomingAnniversaries: number;
 }
-
-export interface NotificationPreferenceOption {
-  value: NotificationPreference;
-  label: string;
-  description: string;
-}
-
-export const NOTIFICATION_PREFERENCE_OPTIONS: NotificationPreferenceOption[] = [
-  {
-    value: 'day_of',
-    label: 'On the day',
-    description: 'Get notified on the day of the birthday or anniversary',
-  },
-  {
-    value: 'day_before',
-    label: 'The day before',
-    description: 'Get notified one day before the birthday or anniversary',
-  },
-  {
-    value: 'week_before',
-    label: 'A week before',
-    description: 'Get notified one week before the birthday or anniversary',
-  },
-];

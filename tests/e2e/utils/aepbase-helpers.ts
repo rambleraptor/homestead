@@ -335,36 +335,6 @@ export async function deleteAllHSAReceipts(token: string) {
   }
 }
 
-export async function getRecurringNotificationsForPerson(
-  token: string,
-  userId: string,
-  personId: string,
-) {
-  const all = await aepList<{
-    id: string;
-    source_collection: string;
-    source_id: string;
-    reference_date_field: string;
-    timing: string;
-  }>(token, 'recurring-notifications', ['users', userId]);
-  return all
-    .filter((n) => n.source_collection === 'people' && n.source_id === personId)
-    .sort((a, b) => {
-      const fieldCmp = a.reference_date_field.localeCompare(b.reference_date_field);
-      return fieldCmp !== 0 ? fieldCmp : a.timing.localeCompare(b.timing);
-    });
-}
-
-export async function deleteAllRecurringNotifications(token: string, userId: string) {
-  const items = await aepList<{ id: string }>(token, 'recurring-notifications', [
-    'users',
-    userId,
-  ]);
-  for (const item of items) {
-    await aepRemove(token, 'recurring-notifications', item.id, ['users', userId]);
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Minigolf (games + holes)
 // ---------------------------------------------------------------------------
@@ -573,14 +543,13 @@ export async function resetModuleFlags(token: string) {
 }
 
 /** Wipe everything the test user can see. */
-export async function cleanupUserData(token: string, userId: string) {
+export async function cleanupUserData(token: string, _userId: string) {
   await Promise.all([
     deleteAllGiftCards(token),
     deleteAllPersonSharedData(token),
     deleteAllPeople(token),
     deleteAllAddresses(token),
     deleteAllHSAReceipts(token),
-    deleteAllRecurringNotifications(token, userId),
     deleteAllGames(token),
     deleteAllPictionaryGames(token),
   ]);

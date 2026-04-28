@@ -3,13 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
-import type {
-  Person,
-  PersonFormData,
-  NotificationPreference,
-  AddressFormData,
-} from '../types';
-import { NOTIFICATION_PREFERENCE_OPTIONS } from '../types';
+import type { Person, PersonFormData, AddressFormData } from '../types';
 import { usePeople } from '../hooks/usePeople';
 import { AddressesInput } from './AddressesInput';
 
@@ -57,9 +51,6 @@ export function PersonForm({
     addresses: initialAddresses,
     birthday: formatDateForInput(initialData?.birthday),
     anniversary: formatDateForInput(initialData?.anniversary),
-    notification_preferences: initialData?.notification_preferences || [
-      'day_of',
-    ],
     partner_id: initialData?.partner?.id || '',
   });
 
@@ -69,14 +60,6 @@ export function PersonForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
-  };
-
-  const handleNotificationToggle = (value: NotificationPreference) => {
-    const current = formData.notification_preferences;
-    const updated = current.includes(value)
-      ? current.filter((v) => v !== value)
-      : [...current, value];
-    setFormData({ ...formData, notification_preferences: updated });
   };
 
   return (
@@ -178,34 +161,6 @@ export function PersonForm({
             setFormData({ ...formData, anniversary: e.target.value })
           }
         />
-      </div>
-
-      {/* Notification Preferences */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Notification Preferences
-        </label>
-        <div className="space-y-2">
-          {NOTIFICATION_PREFERENCE_OPTIONS.map((option) => (
-            <label
-              key={option.value}
-              className="flex items-start gap-3 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={formData.notification_preferences.includes(
-                  option.value
-                )}
-                onChange={() => handleNotificationToggle(option.value)}
-                className="mt-1"
-              />
-              <div>
-                <span className="font-medium">{option.label}</span>
-                <p className="text-sm text-gray-500">{option.description}</p>
-              </div>
-            </label>
-          ))}
-        </div>
       </div>
 
       <div className="flex gap-3 pt-4">

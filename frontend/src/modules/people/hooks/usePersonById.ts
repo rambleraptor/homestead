@@ -1,14 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
-import type { Person, NotificationPreference, Address } from '../types';
+import type { Person, Address } from '../types';
 import { findSharedDataForPerson } from '../utils/sharedDataSync';
 
 interface PersonRecord {
   id: string;
   name: string;
   birthday?: string;
-  notification_preferences?: NotificationPreference[];
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -24,7 +23,6 @@ function toPerson(
     ...record,
     created: record.create_time || '',
     updated: record.update_time || '',
-    notification_preferences: record.notification_preferences || [],
     created_by: record.created_by || '',
     addresses,
     anniversary,

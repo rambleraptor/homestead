@@ -9,7 +9,6 @@ import {
   validateAddress,
   validateBirthday,
   validateAnniversary,
-  validateNotificationPreferences,
   validatePartnerName,
   validateWifiNetwork,
   validateWifiPassword,
@@ -27,7 +26,6 @@ const OPTIONAL_HEADERS = [
   'wifi_password',
   'birthday',
   'anniversary',
-  'notification_preferences',
   'partner_name',
 ] as const;
 
@@ -40,13 +38,13 @@ function generateTemplate(): string {
   const headers = ALL_HEADERS.join(',');
   // Example 1: John with address, WiFi, dates, and partner
   const example1 =
-    'John Doe,"123 Main St, Anytown, CA 12345",HomeWiFi,password123,06/15/1990,08/20/2015,"day_of,week_before",Jane Doe';
+    'John Doe,"123 Main St, Anytown, CA 12345",HomeWiFi,password123,06/15/1990,08/20/2015,Jane Doe';
   // Example 2: Jane with address and partner
   const example2 =
-    'Jane Doe,"456 Oak Ave, Springfield, IL",,,,08/20/2015,day_of,John Doe';
+    'Jane Doe,"456 Oak Ave, Springfield, IL",,,,08/20/2015,John Doe';
   // Example 3: Solo person, minimal data
   const example3 =
-    'Peter Jones,"789 Pine Ln, Boston, MA",,,1985-12-01,,day_of,';
+    'Peter Jones,"789 Pine Ln, Boston, MA",,,1985-12-01,,';
 
   return `${headers}\n${example1}\n${example2}\n${example3}`;
 }
@@ -93,14 +91,6 @@ export const peopleImportSchema: BulkImportSchema<PersonCSVData> = {
       required: false,
       validator: validateAnniversary,
       description: 'Anniversary (YYYY-MM-DD or MM/DD/YYYY format)',
-    },
-    {
-      name: 'notification_preferences',
-      required: false,
-      validator: validateNotificationPreferences,
-      defaultValue: ['day_of'],
-      description:
-        'Comma-separated: "day_of", "day_before", "week_before" (default: "day_of")',
     },
     {
       name: 'partner_name',

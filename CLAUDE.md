@@ -257,7 +257,6 @@ TF_VAR_aepbase_token=$TOKEN \
 | `log`                       | `recipe`      | `/recipes/{id}/logs/{id}`                                   |
 | `notification`              | `user`        | `/users/{id}/notifications/{id}`                            |
 | `notification-subscription` | `user`        | `/users/{id}/notification-subscriptions/{id}`               |
-| `recurring-notification`    | `user`        | `/users/{id}/recurring-notifications/{id}`                  |
 | `user-preference`           | `user`        | `/users/{id}/preferences/{id}` (note the prefix strip)      |
 
 Parent-keyed children don't carry the parent id as a stored field; it's

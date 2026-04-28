@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
 import { logger } from '@/core/utils/logger';
-import type { PersonFormData, NotificationPreference } from '../types';
+import type { PersonFormData } from '../types';
 import {
   findSharedDataForPerson,
   updateSharedData,
@@ -14,7 +14,6 @@ import {
   setPartner,
   removePartner,
 } from '../utils/sharedDataSync';
-import { syncRecurringNotificationsForPerson } from '../utils/notificationSync';
 
 interface UpdatePersonData {
   id: string;
@@ -25,7 +24,6 @@ interface PersonRecord {
   id: string;
   name: string;
   birthday?: string;
-  notification_preferences?: NotificationPreference[];
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -79,27 +77,12 @@ export function useUpdatePerson() {
         });
       }
 
-      try {
-        await syncRecurringNotificationsForPerson(
-          id,
-          data.name,
-          data.birthday,
-          data.anniversary,
-          data.notification_preferences,
-        );
-      } catch (syncError) {
-        logger.error('Failed to sync recurring notifications', syncError, { personId: id });
-      }
-
       return { personRecord, oldPartnerId, newPartnerId };
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.module('people').list() });
       queryClient.invalidateQueries({
         queryKey: queryKeys.module('people').detail(variables.id),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('recurring_notifications').list(),
       });
       if (result.newPartnerId) {
         queryClient.invalidateQueries({

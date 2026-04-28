@@ -79,7 +79,6 @@ vi.mock('@/core/api/aepbase', () => ({
     ADDRESSES: 'addresses',
     NOTIFICATIONS: 'notifications',
     NOTIFICATION_SUBSCRIPTIONS: 'notification-subscriptions',
-    RECURRING_NOTIFICATIONS: 'recurring-notifications',
     GROCERIES: 'groceries',
     STORES: 'stores',
     HSA_RECEIPTS: 'hsa-receipts',

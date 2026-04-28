@@ -6,15 +6,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { queryKeys } from '@/core/api/queryClient';
 import { logger } from '@/core/utils/logger';
-import type { PersonFormData, NotificationPreference } from '../types';
+import type { PersonFormData } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
-import { syncRecurringNotificationsForPerson } from '../utils/notificationSync';
 
 interface PersonRecord {
   id: string;
   name: string;
   birthday?: string;
-  notification_preferences?: NotificationPreference[];
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -46,20 +44,6 @@ export function useCreatePerson() {
           });
         }
 
-        try {
-          await syncRecurringNotificationsForPerson(
-            personRecord.id,
-            personRecord.name,
-            data.birthday,
-            data.anniversary,
-            data.notification_preferences,
-          );
-        } catch (syncError) {
-          logger.error('Failed to sync recurring notifications', syncError, {
-            personId: personRecord.id,
-          });
-        }
-
         return personRecord;
       } catch (error) {
         logger.error('Failed to create person', error, { personData: data });
@@ -68,9 +52,6 @@ export function useCreatePerson() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.module('people').list() });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.module('recurring_notifications').list(),
-      });
     },
     onError: (error) => logger.error('Person creation mutation error', error),
   });
