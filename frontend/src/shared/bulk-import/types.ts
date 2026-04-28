@@ -39,6 +39,14 @@ export interface BulkImportSchema<T> {
   optionalFields: FieldConfig[];
   /** Generate CSV template content */
   generateTemplate: () => string;
+  /**
+   * Optional reshape step. Runs after every field validator on a row has
+   * passed; receives the per-field validated values keyed by column name
+   * and returns the clean `T` the save layer wants. Useful when several
+   * CSV columns collapse into a single nested field (e.g. team_1..team_6
+   * → teams[]). Skipped on invalid rows.
+   */
+  transformParsed?: (raw: Record<string, unknown>) => T;
   /** Custom preview component (optional) */
   PreviewComponent?: React.ComponentType<{
     item: ParsedItem<T>;

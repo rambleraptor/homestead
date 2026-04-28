@@ -3,27 +3,59 @@ import { aepbase } from '@/core/api/aepbase';
 import { logger } from '@/core/utils/logger';
 import type { ParsedItem, BulkImportResult } from './types';
 
-interface UseBulkImportOptions<T> {
-  // Kebab-case plural, e.g. "gift-cards".
-  collection: string;
-  queryKey: readonly unknown[];
-  transformData?: (data: T) => Record<string, unknown>;
+export interface SaveItemHelpers<C> {
+  ctx: C;
+  createdBy: string | undefined;
 }
 
-export function useBulkImport<T>({
-  collection,
-  queryKey,
-  transformData,
-}: UseBulkImportOptions<T>) {
+interface BaseOptions<C> {
+  queryKey: readonly unknown[];
+  /**
+   * Loaded once before the first row is saved. Useful for fetching
+   * lookup data the per-row save needs (e.g. an existing-records map
+   * for name → id resolution). Result is passed to every saveItem call.
+   */
+  prepare?: () => Promise<C>;
+}
+
+interface SimpleOptions<T> extends BaseOptions<undefined> {
+  /** Kebab-case plural URL segment, e.g. "gift-cards". */
+  collection: string;
+  transformData?: (data: T) => Record<string, unknown>;
+  saveItem?: never;
+}
+
+interface CustomOptions<T, C> extends BaseOptions<C> {
+  /**
+   * Translate a single CSV row into one or more aepbase writes. Throw to
+   * mark the row as failed; the framework records the error against the
+   * row number and continues with the next item.
+   */
+  saveItem: (data: T, helpers: SaveItemHelpers<C>) => Promise<void>;
+  collection?: never;
+  transformData?: never;
+}
+
+export type UseBulkImportOptions<T, C = undefined> =
+  | SimpleOptions<T>
+  | CustomOptions<T, C>;
+
+export function useBulkImport<T, C = undefined>(
+  options: UseBulkImportOptions<T, C>,
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (items: ParsedItem<T>[]): Promise<BulkImportResult> => {
+    mutationFn: async (
+      items: ParsedItem<T>[],
+    ): Promise<BulkImportResult> => {
       const userId = aepbase.getCurrentUser()?.id;
       if (!userId) {
         throw new Error('You must be logged in to import items');
       }
       const createdBy = `users/${userId}`;
+
+      const ctx = (options.prepare ? await options.prepare() : undefined) as C;
 
       const results: BulkImportResult = {
         successful: 0,
@@ -35,11 +67,17 @@ export function useBulkImport<T>({
 
       for (const item of validItems) {
         try {
-          const data = transformData ? transformData(item.data) : item.data;
-          await aepbase.create(collection, {
-            ...(data as Record<string, unknown>),
-            created_by: createdBy,
-          });
+          if (options.saveItem) {
+            await options.saveItem(item.data, { ctx, createdBy });
+          } else {
+            const data = options.transformData
+              ? options.transformData(item.data)
+              : item.data;
+            await aepbase.create(options.collection, {
+              ...(data as Record<string, unknown>),
+              created_by: createdBy,
+            });
+          }
           results.successful++;
         } catch (error) {
           results.failed++;
@@ -59,7 +97,7 @@ export function useBulkImport<T>({
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: options.queryKey });
     },
   });
 }

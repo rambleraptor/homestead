@@ -15,7 +15,7 @@ export const pictionaryModule: HomeModule = {
   description: 'Track Pictionary games, teams, and winning words',
   icon: Pencil,
   basePath: '/pictionary',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true }, { path: 'import' }],
   showInNav: true,
   navOrder: 21,
   section: 'Games',
