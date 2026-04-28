@@ -412,7 +412,6 @@ export async function deleteAllGames(token: string) {
 // ---------------------------------------------------------------------------
 
 export interface CreatePictionaryTeamInput {
-  name: string;
   players: string[];
   won?: boolean;
   rank?: number;
@@ -436,7 +435,6 @@ export interface PictionaryGameRecord {
 
 export interface PictionaryTeamRecord {
   id: string;
-  name: string;
   players: string[];
   won?: boolean;
   rank?: number;
@@ -460,15 +458,15 @@ export async function createPictionaryGame(
     },
   );
   const teams: PictionaryTeamRecord[] = [];
-  for (const team of data.teams) {
+  for (let i = 0; i < data.teams.length; i++) {
+    const team = data.teams[i];
     const created = await aepCreate<PictionaryTeamRecord>(
       token,
       'pictionary-teams',
       {
-        name: team.name,
         players: team.players,
         won: team.won ?? false,
-        rank: team.rank,
+        rank: team.rank ?? i + 1,
       },
       ['pictionary-games', game.id],
     );

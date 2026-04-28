@@ -24,12 +24,14 @@ interface UpdateGameParams {
   existingTeams: PictionaryTeam[];
 }
 
-function teamPayload(team: PictionaryTeamFormData): Record<string, unknown> {
+function teamPayload(
+  team: PictionaryTeamFormData,
+  index: number,
+): Record<string, unknown> {
   return {
-    name: team.name,
     players: team.players,
     won: team.won,
-    rank: team.rank ?? null,
+    rank: team.rank ?? index + 1,
   };
 }
 
@@ -64,18 +66,18 @@ export function useUpdateGame() {
           aepbase.remove(AepCollections.PICTIONARY_TEAMS, t.id, { parent }),
         );
 
-      const upserts = data.teams.map((team) => {
+      const upserts = data.teams.map((team, index) => {
         if (team.id) {
           return aepbase.update<PictionaryTeam>(
             AepCollections.PICTIONARY_TEAMS,
             team.id,
-            teamPayload(team),
+            teamPayload(team, index),
             { parent },
           );
         }
         return aepbase.create<PictionaryTeam>(
           AepCollections.PICTIONARY_TEAMS,
-          teamPayload(team),
+          teamPayload(team, index),
           { parent },
         );
       });

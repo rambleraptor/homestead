@@ -33,16 +33,15 @@ resource "aep_aep-resource-definition" "pictionary_team" {
   schema = jsonencode({
     type = "object"
     properties = {
-      name = { type = "string", description = "Team display name (e.g. 'Team 1')" }
       players = {
         type        = "array"
         items       = { type = "string" }
         description = "Player resource paths (people/{id})"
       }
       won        = { type = "boolean" }
-      rank       = { type = "number", description = "Optional final rank, 1 = best" }
+      rank       = { type = "number", description = "1-based position within the game; teams have no name" }
       created_by = { type = "string" }
     }
-    required = ["name", "players"]
+    required = ["players"]
   })
 }

@@ -2,8 +2,9 @@
  * Pictionary bulk import — CSV schema definition.
  *
  * Layout: a row per game with 4 game-level fields, 6 team columns
- * (`team_1`..`team_6`, only the first two required), and a `winner`
- * column naming the winning team.
+ * (`team_1`..`team_6`, only the first two required, each holding
+ * comma-separated player names), and a `winner` column whose value is
+ * the 1-based position of the winning team.
  */
 
 import type { BulkImportSchema, FieldConfig } from '@/shared/bulk-import';
@@ -28,8 +29,8 @@ const teamFieldDefs: FieldConfig[] = TEAM_COLUMNS.map((col, index) => ({
   validator: makeTeamValidator(col, index < 2),
   description:
     index < 2
-      ? `Team ${index + 1} as "Name:player1,player2" (required)`
-      : `Team ${index + 1} as "Name:player1,player2" (optional)`,
+      ? `Team ${index + 1} as comma-separated player names (required)`
+      : `Team ${index + 1} as comma-separated player names (optional)`,
 }));
 
 function generateTemplate(): string {
@@ -46,26 +47,26 @@ function generateTemplate(): string {
     'Living Room',
     'banana',
     'Fun night',
-    '"Reds:Alice,Bob"',
-    '"Blues:Charlie,Dave"',
+    '"Alice,Bob"',
+    '"Charlie,Dave"',
     '',
     '',
     '',
     '',
-    'Reds',
+    '1',
   ].join(',');
   const example2 = [
     '2026-04-26',
     'Kitchen',
     'eiffel tower',
     '',
-    '"Sharks:Eve"',
-    '"Otters:Frank,Grace"',
-    '"Wolves:Heidi,Ivan"',
+    '"Eve"',
+    '"Frank,Grace"',
+    '"Heidi,Ivan"',
     '',
     '',
     '',
-    'Otters',
+    '2',
   ].join(',');
   return `${headers}\n${example1}\n${example2}`;
 }
@@ -109,26 +110,26 @@ export const pictionaryImportSchema: BulkImportSchema<PictionaryGameCSVData> = {
       required: false,
       validator: validateWinner,
       description:
-        'Name of the winning team — must match one of the team_N cells',
+        '1-based position of the winning team (e.g. 1 for team_1)',
     },
   ],
   transformParsed: (raw) => {
     const teams: PictionaryTeamCSV[] = [];
-    const winner = (raw.winner as string | undefined) ?? undefined;
-    const winnerLower = winner?.toLowerCase();
+    const winnerPosition = raw.winner as number | undefined;
 
-    for (const col of TEAM_COLUMNS) {
+    TEAM_COLUMNS.forEach((col, index) => {
       const cell = raw[col] as
-        | { name: string; playerNames: string[] }
+        | { playerNames: string[] }
         | null
         | undefined;
-      if (!cell) continue;
+      if (!cell) return;
+      const position = index + 1;
       teams.push({
-        name: cell.name,
+        position,
         playerNames: cell.playerNames,
-        won: winnerLower !== undefined && cell.name.toLowerCase() === winnerLower,
+        won: winnerPosition === position,
       });
-    }
+    });
 
     return {
       played_at: raw.played_at as string,

@@ -47,10 +47,6 @@ export class PictionaryPage {
     await this.page.getByTestId('add-team-button').click();
   }
 
-  async setTeamName(index: number, name: string) {
-    await this.page.getByTestId(`team-${index}-name`).fill(name);
-  }
-
   async addPlayerToTeam(teamIndex: number, personId: string) {
     await this.page
       .getByTestId(`team-${teamIndex}-player-${personId}`)
@@ -77,10 +73,10 @@ export class PictionaryPage {
     await list.locator('button[data-testid^="pictionary-game-item-"]').first().click();
   }
 
-  async expectWinningTeam(teamName: string) {
+  async expectWinningTeamPlayer(playerName: string) {
     await expect(
       this.page.getByTestId('pictionary-winner-banner'),
-    ).toContainText(teamName);
+    ).toContainText(playerName);
   }
 
   async expectWinningWord(word: string) {

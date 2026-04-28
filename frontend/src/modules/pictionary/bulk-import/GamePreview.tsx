@@ -96,9 +96,9 @@ export function GamePreview({ item, isSelected, onToggle }: GamePreviewProps) {
 
           {item.isValid && game.teams.length > 0 && (
             <div className="mt-3 space-y-1">
-              {game.teams.map((team, idx) => (
+              {game.teams.map((team) => (
                 <div
-                  key={idx}
+                  key={team.position}
                   className={`flex items-center gap-2 text-sm rounded-md px-2 py-1 ${
                     team.won
                       ? 'bg-amber-50 border border-amber-200'
@@ -108,7 +108,7 @@ export function GamePreview({ item, isSelected, onToggle }: GamePreviewProps) {
                   {team.won && (
                     <Trophy className="h-4 w-4 text-amber-500 flex-shrink-0" />
                   )}
-                  <span className="font-medium">{team.name}</span>
+                  <span className="font-medium">Team {team.position}</span>
                   <span className="text-muted-foreground">
                     — {team.playerNames.join(', ')}
                   </span>

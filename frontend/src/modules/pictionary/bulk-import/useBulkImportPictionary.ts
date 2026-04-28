@@ -46,7 +46,7 @@ function resolvePlayers(
   }
   if (missing.length > 0) {
     throw new Error(
-      `Team "${team.name}" has unknown player(s): ${missing.join(', ')}`,
+      `Team ${team.position} has unknown player(s): ${missing.join(', ')}`,
     );
   }
   return resolved;
@@ -76,14 +76,13 @@ export function useBulkImportPictionary() {
       );
 
       await Promise.all(
-        resolvedTeams.map((team, index) =>
+        resolvedTeams.map((team) =>
           aepbase.create<PictionaryTeam>(
             AepCollections.PICTIONARY_TEAMS,
             {
-              name: team.name,
               players: team.playerPaths,
               won: team.won,
-              rank: index + 1,
+              rank: team.position,
               created_by: createdBy,
             },
             { parent: [AepCollections.PICTIONARY_GAMES, game.id] },

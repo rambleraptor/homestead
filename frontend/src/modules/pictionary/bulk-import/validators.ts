@@ -1,9 +1,9 @@
 /**
  * Field validators for the Pictionary CSV import.
  *
- * The teams live in `team_1`..`team_6` columns (each cell formatted as
- * `Name:player1,player2`). The winner column references a team by name
- * and must match one of the filled team cells in the same row.
+ * The teams live in `team_1`..`team_6` columns. Each cell is a
+ * comma-separated list of player names. The winner column references a
+ * team by its 1-based position (e.g. "1" picks the team in `team_1`).
  */
 
 import type { FieldValidator } from '@/shared/bulk-import';
@@ -62,7 +62,6 @@ export const validateNotes: FieldValidator<string | undefined> = (value) => {
 };
 
 interface ParsedTeamCell {
-  name: string;
   playerNames: string[];
 }
 
@@ -70,35 +69,23 @@ function parseTeamCell(raw: string): ParsedTeamCell | { error: string } {
   const cell = raw.trim();
   if (!cell) return { error: 'empty team cell' };
 
-  const colonIdx = cell.indexOf(':');
-  if (colonIdx === -1) {
-    return { error: `expected "Name:player1,player2", got "${cell}"` };
-  }
-
-  const name = cell.slice(0, colonIdx).trim();
-  const playersRaw = cell.slice(colonIdx + 1);
-
-  if (!name) return { error: 'team name is required' };
-
-  const playerNames = playersRaw
+  const playerNames = cell
     .split(',')
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
 
   if (playerNames.length === 0) {
-    return { error: `team "${name}" has no players` };
+    return { error: 'team has no players' };
   }
 
-  return { name, playerNames };
+  return { playerNames };
 }
 
 /**
  * Validator factory for one team_N column. The first two columns are
  * required (a Pictionary game needs ≥2 teams); columns 3-6 are optional.
  *
- * Returns the parsed team OR `null` for an empty optional column. The
- * row-level winner validator reads these via the `row` arg to verify the
- * winner cell matches one of the filled teams.
+ * Returns the parsed team OR `null` for an empty optional column.
  */
 export function makeTeamValidator(
   columnName: string,
@@ -122,33 +109,35 @@ export function makeTeamValidator(
 }
 
 /**
- * The winner column names a team. We re-parse the team_N cells from the
- * row to confirm the winner matches one of them. (The framework runs
- * each field validator independently, so we can't rely on a previously
- * parsed `teams` value here.)
+ * The winner column names a team by its 1-based position. We confirm
+ * the position is in range and that the corresponding team_N column has
+ * players.
  */
-export const validateWinner: FieldValidator<string | undefined> = (
+export const validateWinner: FieldValidator<number | undefined> = (
   value,
   row,
 ) => {
-  const winner = value.trim();
-  if (!winner) return { value: undefined };
+  const raw = value.trim();
+  if (!raw) return { value: undefined };
 
-  const teamNames = new Set<string>();
-  for (const col of TEAM_COLUMNS) {
-    const cellRaw = row[col]?.trim();
-    if (!cellRaw) continue;
-    const parsed = parseTeamCell(cellRaw);
-    if (!('error' in parsed)) {
-      teamNames.add(parsed.name.toLowerCase());
-    }
-  }
-
-  if (!teamNames.has(winner.toLowerCase())) {
+  const position = Number(raw);
+  if (
+    !Number.isInteger(position) ||
+    position < 1 ||
+    position > TEAM_COLUMNS.length
+  ) {
     return {
-      value: winner,
-      error: `winner "${winner}" does not match any team in this row`,
+      value: undefined,
+      error: `winner must be a team position between 1 and ${TEAM_COLUMNS.length}`,
     };
   }
-  return { value: winner };
+
+  const cellRaw = row[TEAM_COLUMNS[position - 1]]?.trim();
+  if (!cellRaw) {
+    return {
+      value: undefined,
+      error: `winner position ${position} has no team in this row`,
+    };
+  }
+  return { value: position };
 };

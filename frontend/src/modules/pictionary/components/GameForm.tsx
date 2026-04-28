@@ -3,9 +3,9 @@
 /**
  * Pictionary game form — captures the game record (date, location,
  * winning word, notes) plus a dynamic list of teams. Each team has a
- * name, a multi-select roster of People, and a "winner" radio. Used
- * for both create and edit; passing `initialGame` + `initialTeams`
- * switches it to edit mode.
+ * multi-select roster of People and a "winner" radio. Teams have no
+ * name; they're identified by position. Used for both create and edit;
+ * passing `initialGame` + `initialTeams` switches it to edit mode.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -50,9 +50,8 @@ function dateInputToIso(value: string): string {
   return new Date(`${value}T00:00:00Z`).toISOString();
 }
 
-function blankTeam(index: number): PictionaryTeamFormData {
+function blankTeam(): PictionaryTeamFormData {
   return {
-    name: `Team ${index + 1}`,
     players: [],
     won: false,
   };
@@ -61,7 +60,6 @@ function blankTeam(index: number): PictionaryTeamFormData {
 function teamFromRecord(team: PictionaryTeam): PictionaryTeamFormData {
   return {
     id: team.id,
-    name: team.name,
     players: team.players,
     won: team.won === true,
     rank: team.rank,
@@ -87,15 +85,12 @@ export function GameForm({
     if (initialTeams && initialTeams.length > 0) {
       return initialTeams.map(teamFromRecord);
     }
-    return [blankTeam(0), blankTeam(1)];
+    return [blankTeam(), blankTeam()];
   });
 
   const errors = useMemo(() => {
     const out: string[] = [];
     if (teams.length < 2) out.push('At least two teams are required.');
-    if (teams.some((t) => !t.name.trim())) {
-      out.push('Every team needs a name.');
-    }
     if (teams.some((t) => t.players.length === 0)) {
       out.push('Every team needs at least one player.');
     }
@@ -103,15 +98,6 @@ export function GameForm({
   }, [teams]);
 
   const canSubmit = errors.length === 0 && !isSubmitting;
-
-  const updateTeam = (
-    index: number,
-    patch: Partial<PictionaryTeamFormData>,
-  ) => {
-    setTeams((prev) =>
-      prev.map((t, i) => (i === index ? { ...t, ...patch } : t)),
-    );
-  };
 
   const setWinner = (index: number) => {
     setTeams((prev) => prev.map((t, i) => ({ ...t, won: i === index })));
@@ -134,7 +120,7 @@ export function GameForm({
   };
 
   const addTeam = () => {
-    setTeams((prev) => [...prev, blankTeam(prev.length)]);
+    setTeams((prev) => [...prev, blankTeam()]);
   };
 
   const removeTeam = (index: number) => {
@@ -158,10 +144,7 @@ export function GameForm({
       location: location.trim() || undefined,
       winning_word: winningWord.trim() || undefined,
       notes: notes.trim() || undefined,
-      teams: teams.map((t) => ({
-        ...t,
-        name: t.name.trim(),
-      })),
+      teams,
     });
   };
 
@@ -280,16 +263,12 @@ export function GameForm({
             }`}
           >
             <div className="flex items-center gap-3">
-              <input
-                type="text"
-                value={team.name}
-                onChange={(e) =>
-                  updateTeam(index, { name: e.target.value })
-                }
-                placeholder="Team name"
-                data-testid={`team-${index}-name`}
-                className="flex-1 h-10 px-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
-              />
+              <span
+                data-testid={`team-${index}-label`}
+                className="flex-1 text-base font-semibold text-gray-900"
+              >
+                Team {index + 1}
+              </span>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                 <input
                   type="radio"
@@ -305,7 +284,7 @@ export function GameForm({
                 <button
                   type="button"
                   onClick={() => removeTeam(index)}
-                  aria-label={`Remove team ${team.name || index + 1}`}
+                  aria-label={`Remove team ${index + 1}`}
                   data-testid={`team-${index}-remove`}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-md"
                 >

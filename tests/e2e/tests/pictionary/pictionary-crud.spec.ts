@@ -67,7 +67,7 @@ test.describe('Pictionary CRUD', () => {
     expect(games[0].location).toBe('Orlando');
     expect(games[0].winning_word).toBe('Eiffel Tower');
 
-    const teams = await aepList<{ id: string; name: string; won?: boolean }>(
+    const teams = await aepList<{ id: string; won?: boolean }>(
       userToken,
       'pictionary-teams',
       ['pictionary-games', games[0].id],
@@ -84,14 +84,14 @@ test.describe('Pictionary CRUD', () => {
       location: 'Michigan',
       winning_word: 'Bite the bullet',
       teams: [
-        { name: 'Reds', players: [`people/${alice.id}`], won: true },
-        { name: 'Blues', players: [`people/${bob.id}`], won: false },
+        { players: [`people/${alice.id}`], won: true },
+        { players: [`people/${bob.id}`], won: false },
       ],
     });
 
     await pictionaryPage.goto();
     await pictionaryPage.openFirstGame();
-    await pictionaryPage.expectWinningTeam('Reds');
+    await pictionaryPage.expectWinningTeamPlayer('Alice Win');
     await pictionaryPage.expectWinningWord('Bite the bullet');
   });
 
@@ -102,8 +102,8 @@ test.describe('Pictionary CRUD', () => {
     await createPictionaryGame(userToken, {
       location: 'Seattle',
       teams: [
-        { name: 'Red', players: [`people/${alice.id}`], won: true },
-        { name: 'Blue', players: [`people/${bob.id}`], won: false },
+        { players: [`people/${alice.id}`], won: true },
+        { players: [`people/${bob.id}`], won: false },
       ],
     });
 

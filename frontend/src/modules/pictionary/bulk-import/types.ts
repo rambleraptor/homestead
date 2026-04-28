@@ -1,10 +1,11 @@
 /**
  * Parsed shape of one CSV row in the Pictionary bulk import.
  * Player names are kept as raw strings here and resolved to
- * `people/{id}` paths at save time.
+ * `people/{id}` paths at save time. Teams are unnamed; the
+ * `position` is the 1-based column index (team_1 → position 1).
  */
 export interface PictionaryTeamCSV {
-  name: string;
+  position: number;
   playerNames: string[];
   won: boolean;
 }

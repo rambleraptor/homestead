@@ -135,7 +135,6 @@ describe('GameForm', () => {
           {
             id: 't1',
             path: 'pictionary-games/g1/pictionary-teams/t1',
-            name: 'Team 1',
             players: ['people/a'],
             won: true,
             create_time: '2024-09-21T00:00:00Z',
@@ -144,7 +143,6 @@ describe('GameForm', () => {
           {
             id: 't2',
             path: 'pictionary-games/g1/pictionary-teams/t2',
-            name: 'Team 2',
             players: ['people/b'],
             won: false,
             create_time: '2024-09-21T00:00:00Z',

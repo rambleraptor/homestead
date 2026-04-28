@@ -4,7 +4,8 @@
  * A Pictionary game session has a set of teams. Each team has a roster
  * of players (stored as `people/{id}` resource paths) and a `won` flag
  * marking the winning team. The `winning_word` lives on the game record
- * because it's a property of the round, not of the team.
+ * because it's a property of the round, not of the team. Teams are
+ * unnamed — they're identified positionally by `rank`.
  */
 
 export interface PictionaryGame {
@@ -22,7 +23,6 @@ export interface PictionaryGame {
 export interface PictionaryTeam {
   id: string;
   path: string; // pictionary-games/{gameId}/pictionary-teams/{id}
-  name: string;
   /** Player resource paths: `["people/{id}", ...]` */
   players: string[];
   won?: boolean;
@@ -36,7 +36,6 @@ export interface PictionaryTeam {
 export interface PictionaryTeamFormData {
   /** Present when editing an existing team; omitted for newly added rows. */
   id?: string;
-  name: string;
   players: string[];
   won: boolean;
   rank?: number;

@@ -121,9 +121,6 @@ export function GameDetail({
             <div className="text-xs uppercase font-medium text-amber-700">
               Winning team
             </div>
-            <div className="text-xl font-bold text-gray-900">
-              {winningTeam.name}
-            </div>
             <div className="text-sm text-gray-700">
               {winningTeam.players
                 .map((p) => displayNameFor(p, people))
@@ -144,7 +141,7 @@ export function GameDetail({
         {teams.length === 0 && (
           <p className="text-sm text-gray-600">No teams recorded.</p>
         )}
-        {teams.map((team) => (
+        {teams.map((team, index) => (
           <div
             key={team.id}
             data-testid={`pictionary-team-${team.id}`}
@@ -155,7 +152,9 @@ export function GameDetail({
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-gray-900">{team.name}</span>
+              <span className="font-semibold text-gray-900">
+                Team {index + 1}
+              </span>
               {team.won && (
                 <span className="text-xs font-semibold uppercase text-amber-600 flex items-center gap-1">
                   <Trophy className="w-3.5 h-3.5" /> Winner

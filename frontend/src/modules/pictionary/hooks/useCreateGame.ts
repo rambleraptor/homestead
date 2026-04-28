@@ -24,13 +24,13 @@ function createdByPath(): string | undefined {
 
 function teamPayload(
   team: PictionaryTeamFormData,
+  index: number,
   createdBy: string | undefined,
 ): Record<string, unknown> {
   return {
-    name: team.name,
     players: team.players,
     won: team.won,
-    rank: team.rank,
+    rank: team.rank ?? index + 1,
     created_by: createdBy,
   };
 }
@@ -53,10 +53,10 @@ export function useCreateGame() {
       );
 
       await Promise.all(
-        data.teams.map((team) =>
+        data.teams.map((team, index) =>
           aepbase.create<PictionaryTeam>(
             AepCollections.PICTIONARY_TEAMS,
-            teamPayload(team, createdBy),
+            teamPayload(team, index, createdBy),
             { parent: [AepCollections.PICTIONARY_GAMES, game.id] },
           ),
         ),

@@ -414,13 +414,12 @@ const DEFINITIONS: ResourceDefinition[] = [
     schema: {
       type: 'object',
       properties: {
-        name: { type: 'string' },
         players: { type: 'array', items: { type: 'string' } },
         won: { type: 'boolean' },
         rank: { type: 'number' },
         created_by: { type: 'string' },
       },
-      required: ['name', 'players'],
+      required: ['players'],
     },
   },
   {
