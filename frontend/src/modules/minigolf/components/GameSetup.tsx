@@ -7,8 +7,9 @@
  */
 
 import React, { useState } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { usePeople } from '@/modules/people/hooks/usePeople';
+import { PersonSelector } from '@/shared/components/PersonSelector';
 import { ScoreStepper } from './ScoreStepper';
 import type { GameFormData } from '../types';
 
@@ -68,38 +69,16 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
           </span>
         </div>
 
-        {peopleLoading ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-          </div>
-        ) : !people || people.length === 0 ? (
-          <p className="text-sm text-gray-600">
-            Add people in the People module first, then come back to start a game.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2" data-testid="player-picker">
-            {people.map((person) => {
-              const path = `people/${person.id}`;
-              const active = selectedPlayers.includes(path);
-              return (
-                <button
-                  key={person.id}
-                  type="button"
-                  onClick={() => togglePlayer(person.id)}
-                  data-testid={`player-toggle-${person.id}`}
-                  aria-pressed={active}
-                  className={`h-14 px-4 rounded-lg text-base font-medium border-2 transition-colors ${
-                    active
-                      ? 'bg-accent-terracotta border-accent-terracotta text-white'
-                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {person.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <PersonSelector
+          people={people ?? []}
+          loading={peopleLoading}
+          isSelected={(id) => selectedPlayers.includes(`people/${id}`)}
+          onToggle={togglePlayer}
+          variant="grid"
+          emptyMessage="Add people in the People module first, then come back to start a game."
+          containerTestId="player-picker"
+          itemTestId={(id) => `player-toggle-${id}`}
+        />
       </section>
 
       {/* Hole count */}

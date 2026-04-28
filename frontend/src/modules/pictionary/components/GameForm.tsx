@@ -10,6 +10,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react';
+import {
+  PersonSelector,
+  type PersonOption,
+} from '@/shared/components/PersonSelector';
 import type {
   PictionaryGame,
   PictionaryGameFormData,
@@ -17,10 +21,7 @@ import type {
   PictionaryTeamFormData,
 } from '../types';
 
-interface PersonLite {
-  id: string;
-  name: string;
-}
+type PersonLite = PersonOption;
 
 interface GameFormProps {
   people: PersonLite[];
@@ -317,28 +318,17 @@ export function GameForm({
               <div className="text-xs uppercase font-medium text-gray-500 mb-2">
                 Players ({team.players.length})
               </div>
-              <div className="flex flex-wrap gap-2">
-                {people.map((person) => {
-                  const path = `people/${person.id}`;
-                  const active = team.players.includes(path);
-                  return (
-                    <button
-                      key={person.id}
-                      type="button"
-                      onClick={() => togglePlayer(index, person.id)}
-                      data-testid={`team-${index}-player-${person.id}`}
-                      aria-pressed={active}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                        active
-                          ? 'bg-accent-terracotta border-accent-terracotta text-white'
-                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {person.name}
-                    </button>
-                  );
-                })}
-              </div>
+              <PersonSelector
+                people={people}
+                isSelected={(id) =>
+                  team.players.includes(`people/${id}`)
+                }
+                onToggle={(id) => togglePlayer(index, id)}
+                variant="chips"
+                searchPlaceholder="Search players…"
+                containerTestId={`team-${index}-players`}
+                itemTestId={(id) => `team-${index}-player-${id}`}
+              />
             </div>
           </div>
         ))}
