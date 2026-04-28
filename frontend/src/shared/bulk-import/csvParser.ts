@@ -116,10 +116,14 @@ function parseRow<T>(
     }
   }
 
+  const isValid = errors.length === 0;
+  const finalData =
+    isValid && schema.transformParsed ? schema.transformParsed(data) : (data as T);
+
   return {
-    data: data as T,
+    data: finalData,
     rowNumber,
-    isValid: errors.length === 0,
+    isValid,
     errors,
   };
 }

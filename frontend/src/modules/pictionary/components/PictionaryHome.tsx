@@ -7,7 +7,8 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Plus, Loader2, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Upload, Loader2, AlertCircle } from 'lucide-react';
 import { usePeople } from '@/modules/people/hooks/usePeople';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { logger } from '@/core/utils/logger';
@@ -27,6 +28,7 @@ import type {
 type View = 'list' | 'create' | 'edit' | 'detail';
 
 export function PictionaryHome() {
+  const router = useRouter();
   const [view, setView] = useState<View>('list');
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
 
@@ -123,15 +125,26 @@ export function PictionaryHome() {
             title="Pictionary"
             subtitle="Record who played, what teams, and who won."
             actions={
-              <button
-                type="button"
-                onClick={() => setView('create')}
-                data-testid="new-pictionary-game-button"
-                className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm"
-              >
-                <Plus className="w-5 h-5" />
-                New Game
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push('/pictionary/import')}
+                  data-testid="pictionary-import-button"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium font-body transition-colors shadow-sm"
+                >
+                  <Upload className="w-5 h-5" />
+                  Import
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('create')}
+                  data-testid="new-pictionary-game-button"
+                  className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Game
+                </button>
+              </div>
             }
           />
           <GameList
