@@ -150,6 +150,18 @@ export interface HomeModule {
    * fetching and presentation.
    */
   widgets?: DashboardWidget[];
+
+  /**
+   * Optional sub-modules. When set, this module is a container —
+   * the registry validates each child's `basePath` is a prefix-match
+   * of the parent's, aggregates child routes and dashboard widgets,
+   * and a generic `<NestedModuleLanding>` renders cards for each
+   * child on the parent's index page (and as the omnibox
+   * `listComponent`). Children stay out of top-level navigation,
+   * `module-flags` rows, and `getModule(id)` lookups: the parent
+   * owns the audience, omnibox synonyms, and id namespace.
+   */
+  children?: HomeModule[];
 }
 
 /**

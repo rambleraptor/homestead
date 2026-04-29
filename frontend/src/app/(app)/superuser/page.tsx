@@ -3,7 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/core/auth/useAuth';
-import { SuperuserHome } from '@/modules/superuser/components/SuperuserHome';
+import { NestedModuleLanding } from '@/shared/components/NestedModuleLanding';
+import { superuserModule } from '@/modules/superuser/module.config';
 import { Spinner } from '@/shared/components/Spinner';
 
 export default function SuperuserPage() {
@@ -24,5 +25,5 @@ export default function SuperuserPage() {
     );
   }
 
-  return <SuperuserHome />;
+  return <NestedModuleLanding module={superuserModule} />;
 }

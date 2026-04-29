@@ -10,11 +10,11 @@ export class MinigolfPage {
   constructor(private page: Page) {}
 
   async goto() {
-    await this.page.goto('/minigolf');
+    await this.page.goto('/games/minigolf');
   }
 
   async expectToBeOnMinigolfPage() {
-    await expect(this.page).toHaveURL(/\/minigolf/);
+    await expect(this.page).toHaveURL(/\/games\/minigolf/);
     await expect(this.page.getByRole('heading', { name: 'Mini Golf' })).toBeVisible();
   }
 

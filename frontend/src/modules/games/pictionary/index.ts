@@ -1,7 +1,3 @@
-/**
- * Pictionary Module Exports
- */
-
 export { pictionaryModule } from './module.config';
 export type {
   PictionaryGame,

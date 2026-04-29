@@ -6,7 +6,7 @@
  * working as today.
  *
  * The sync persister mirrors the SSR-safe pattern from
- * `src/modules/bridge/storage.ts` — `createGroceriesPersister()` returns
+ * `src/modules/games/bridge/storage.ts` — `createGroceriesPersister()` returns
  * `null` on the server so `PersistQueryClientProvider` falls back to plain
  * cache-only behavior during render.
  */

@@ -131,7 +131,7 @@ export function PictionaryHome() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => router.push('/pictionary/import')}
+                  onClick={() => router.push('/games/pictionary/import')}
                   data-testid="pictionary-import-button"
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium font-body transition-colors shadow-sm"
                 >

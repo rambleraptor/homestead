@@ -11,11 +11,11 @@ export class PictionaryPage {
   constructor(private page: Page) {}
 
   async goto() {
-    await this.page.goto('/pictionary');
+    await this.page.goto('/games/pictionary');
   }
 
   async expectToBeOnPictionaryPage() {
-    await expect(this.page).toHaveURL(/\/pictionary/);
+    await expect(this.page).toHaveURL(/\/games\/pictionary/);
     await expect(
       this.page.getByRole('heading', { name: 'Pictionary' }),
     ).toBeVisible();

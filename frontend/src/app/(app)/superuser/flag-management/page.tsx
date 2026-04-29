@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/core/auth/useAuth';
-import { FlagManagementHome } from '@/modules/superuser/components/FlagManagementHome';
+import { FlagManagementHome } from '@/modules/superuser/flag-management/components/FlagManagementHome';
 import { Spinner } from '@/shared/components/Spinner';
 
 export default function SuperuserFlagManagementPage() {
