@@ -85,11 +85,15 @@ function parseTeamCell(raw: string): ParsedTeamCell | { error: string } {
  * Validator factory for one team_N column. The first two columns are
  * required (a Pictionary game needs ≥2 teams); columns 3-6 are optional.
  *
- * Returns the parsed team OR `null` for an empty optional column.
+ * If `peopleByName` is provided (lowercased name → id), each player is
+ * checked against it so unknown names surface as a per-row error in the
+ * preview rather than failing midway through the import. The save layer
+ * still has to resolve names → `people/{id}` paths anyway.
  */
 export function makeTeamValidator(
   columnName: string,
   required: boolean,
+  peopleByName?: Map<string, string>,
 ): FieldValidator<ParsedTeamCell | null> {
   return (value) => {
     const v = value.trim();
@@ -104,6 +108,19 @@ export function makeTeamValidator(
     if ('error' in parsed) {
       return { value: null, error: `${columnName}: ${parsed.error}` };
     }
+
+    if (peopleByName) {
+      const missing = parsed.playerNames.filter(
+        (name) => !peopleByName.has(name.toLowerCase()),
+      );
+      if (missing.length > 0) {
+        return {
+          value: parsed,
+          error: `${columnName}: unknown player(s): ${missing.join(', ')}`,
+        };
+      }
+    }
+
     return { value: parsed };
   };
 }

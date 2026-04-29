@@ -23,15 +23,19 @@ import {
   TEAM_COLUMNS,
 } from './types';
 
-const teamFieldDefs: FieldConfig[] = TEAM_COLUMNS.map((col, index) => ({
-  name: col,
-  required: index < 2,
-  validator: makeTeamValidator(col, index < 2),
-  description:
-    index < 2
-      ? `Team ${index + 1} as comma-separated player names (required)`
-      : `Team ${index + 1} as comma-separated player names (optional)`,
-}));
+function buildTeamFieldDefs(
+  peopleByName?: Map<string, string>,
+): FieldConfig[] {
+  return TEAM_COLUMNS.map((col, index) => ({
+    name: col,
+    required: index < 2,
+    validator: makeTeamValidator(col, index < 2, peopleByName),
+    description:
+      index < 2
+        ? `Team ${index + 1} as comma-separated player names (required)`
+        : `Team ${index + 1} as comma-separated player names (optional)`,
+  }));
+}
 
 function generateTemplate(): string {
   const headers = [
@@ -71,74 +75,85 @@ function generateTemplate(): string {
   return `${headers}\n${example1}\n${example2}`;
 }
 
-export const pictionaryImportSchema: BulkImportSchema<PictionaryGameCSVData> = {
-  requiredFields: [
-    {
-      name: 'played_at',
-      required: true,
-      validator: validatePlayedAt,
-      description: 'Date the game was played (YYYY-MM-DD or ISO 8601)',
-    },
-    teamFieldDefs[0],
-    teamFieldDefs[1],
-  ],
-  optionalFields: [
-    {
-      name: 'location',
-      required: false,
-      validator: validateLocation,
-      description: 'Where the game was played (max 200 characters)',
-    },
-    {
-      name: 'winning_word',
-      required: false,
-      validator: validateWinningWord,
-      description: 'The winning word/prompt (max 200 characters)',
-    },
-    {
-      name: 'notes',
-      required: false,
-      validator: validateNotes,
-      description: 'Free-text notes (max 2000 characters)',
-    },
-    teamFieldDefs[2],
-    teamFieldDefs[3],
-    teamFieldDefs[4],
-    teamFieldDefs[5],
-    {
-      name: 'winner',
-      required: false,
-      validator: validateWinner,
-      description:
-        '1-based position of the winning team (e.g. 1 for team_1)',
-    },
-  ],
-  transformParsed: (raw) => {
-    const teams: PictionaryTeamCSV[] = [];
-    const winnerPosition = raw.winner as number | undefined;
+/**
+ * Factory so the team validators can be wired up with a people lookup
+ * loaded asynchronously by the page. When `peopleByName` is omitted,
+ * the schema still parses team cells but skips the people-existence
+ * check (the save layer is the backstop).
+ */
+export function makePictionaryImportSchema(
+  peopleByName?: Map<string, string>,
+): BulkImportSchema<PictionaryGameCSVData> {
+  const teamFieldDefs = buildTeamFieldDefs(peopleByName);
+  return {
+    requiredFields: [
+      {
+        name: 'played_at',
+        required: true,
+        validator: validatePlayedAt,
+        description: 'Date the game was played (YYYY-MM-DD or ISO 8601)',
+      },
+      teamFieldDefs[0],
+      teamFieldDefs[1],
+    ],
+    optionalFields: [
+      {
+        name: 'location',
+        required: false,
+        validator: validateLocation,
+        description: 'Where the game was played (max 200 characters)',
+      },
+      {
+        name: 'winning_word',
+        required: false,
+        validator: validateWinningWord,
+        description: 'The winning word/prompt (max 200 characters)',
+      },
+      {
+        name: 'notes',
+        required: false,
+        validator: validateNotes,
+        description: 'Free-text notes (max 2000 characters)',
+      },
+      teamFieldDefs[2],
+      teamFieldDefs[3],
+      teamFieldDefs[4],
+      teamFieldDefs[5],
+      {
+        name: 'winner',
+        required: false,
+        validator: validateWinner,
+        description:
+          '1-based position of the winning team (e.g. 1 for team_1)',
+      },
+    ],
+    transformParsed: (raw) => {
+      const teams: PictionaryTeamCSV[] = [];
+      const winnerPosition = raw.winner as number | undefined;
 
-    TEAM_COLUMNS.forEach((col, index) => {
-      const cell = raw[col] as
-        | { playerNames: string[] }
-        | null
-        | undefined;
-      if (!cell) return;
-      const position = index + 1;
-      teams.push({
-        position,
-        playerNames: cell.playerNames,
-        won: winnerPosition === position,
+      TEAM_COLUMNS.forEach((col, index) => {
+        const cell = raw[col] as
+          | { playerNames: string[] }
+          | null
+          | undefined;
+        if (!cell) return;
+        const position = index + 1;
+        teams.push({
+          position,
+          playerNames: cell.playerNames,
+          won: winnerPosition === position,
+        });
       });
-    });
 
-    return {
-      played_at: raw.played_at as string,
-      location: raw.location as string | undefined,
-      winning_word: raw.winning_word as string | undefined,
-      notes: raw.notes as string | undefined,
-      teams,
-    };
-  },
-  generateTemplate,
-  PreviewComponent: GamePreview,
-};
+      return {
+        played_at: raw.played_at as string,
+        location: raw.location as string | undefined,
+        winning_word: raw.winning_word as string | undefined,
+        notes: raw.notes as string | undefined,
+        teams,
+      };
+    },
+    generateTemplate,
+    PreviewComponent: GamePreview,
+  };
+}
