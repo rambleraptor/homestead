@@ -12,7 +12,7 @@
 
 import { Gamepad2 } from 'lucide-react';
 import type { HomeModule } from '../types';
-import { makeNestedModuleLanding } from '@/shared/components/NestedModuleLanding';
+import { makeNestedModuleLanding } from '@/shared/components/makeNestedModuleLanding';
 import { minigolfModule } from './minigolf/module.config';
 import { pictionaryModule } from './pictionary/module.config';
 import { bridgeModule } from './bridge/module.config';

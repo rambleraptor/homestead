@@ -11,7 +11,7 @@
 
 import { ShieldCheck } from 'lucide-react';
 import type { HomeModule } from '../types';
-import { makeNestedModuleLanding } from '@/shared/components/NestedModuleLanding';
+import { makeNestedModuleLanding } from '@/shared/components/makeNestedModuleLanding';
 import { usersModule } from './users/module.config';
 import { flagManagementModule } from './flag-management/module.config';
 

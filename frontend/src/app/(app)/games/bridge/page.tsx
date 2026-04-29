@@ -1,5 +1,10 @@
 import { BridgeHome } from '@/modules/games/bridge/components/BridgeHome';
+import { ModuleEnabledGate } from '@/shared/components/ModuleEnabledGate';
 
 export default function BridgePage() {
-  return <BridgeHome />;
+  return (
+    <ModuleEnabledGate moduleId="bridge">
+      <BridgeHome />
+    </ModuleEnabledGate>
+  );
 }

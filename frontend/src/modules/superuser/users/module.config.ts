@@ -1,10 +1,10 @@
 /**
  * Users — child of the Superuser module.
  *
- * Visibility, sidebar placement, and the omnibox surface are owned
- * by the parent (`superuserModule`). This config exists so the
- * child has a first-class identity (id, icon, basePath) for the
- * parent's auto-generated landing page.
+ * Sidebar placement and the omnibox surface are owned by the parent
+ * (`superuserModule`); the page itself is gated by this module's own
+ * built-in `enabled` flag, defaulting to `'superusers'` to match the
+ * parent's audience.
  */
 
 import { UserCog } from 'lucide-react';
@@ -18,4 +18,5 @@ export const usersModule: HomeModule = {
   basePath: '/superuser/users',
   routes: [{ path: '', index: true }],
   enabled: true,
+  defaultEnabled: 'superusers',
 };

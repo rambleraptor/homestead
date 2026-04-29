@@ -1,28 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/core/auth/useAuth';
 import { UsersHome } from '@/modules/superuser/users/components/UsersHome';
-import { Spinner } from '@/shared/components/Spinner';
+import { ModuleEnabledGate } from '@/shared/components/ModuleEnabledGate';
 
 export default function SuperuserUsersPage() {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && user && user.type !== 'superuser') {
-      router.replace('/dashboard');
-    }
-  }, [isLoading, user, router]);
-
-  if (isLoading || !user || user.type !== 'superuser') {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
-  return <UsersHome />;
+  return (
+    <ModuleEnabledGate moduleId="users">
+      <UsersHome />
+    </ModuleEnabledGate>
+  );
 }

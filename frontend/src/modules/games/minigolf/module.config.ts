@@ -1,10 +1,9 @@
 /**
  * Mini Golf — child of the Games module.
  *
- * Visibility, sidebar placement, and the omnibox surface are owned
- * by the parent (`gamesModule`). This config exists so the child
- * has a first-class identity (id, icon, basePath) for the parent's
- * auto-generated landing page and for future extensions.
+ * Sidebar placement and the omnibox surface are owned by the parent
+ * (`gamesModule`); the page itself is gated by this module's own
+ * built-in `enabled` flag so it can be turned off independently.
  */
 
 import { Flag } from 'lucide-react';

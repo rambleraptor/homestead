@@ -25,10 +25,12 @@
  * Nested modules: a parent can declare `children: HomeModule[]` to
  * group related sub-features (e.g. `gamesModule` owns `minigolf`,
  * `pictionary`, `bridge`). Only the parent goes in `MODULES`; the
- * registry walks `children` for route/widget aggregation and
- * validation. Children stay out of top-level navigation, of the
- * `module-flags` schema, and of `getModule(id)` lookups — the parent
- * owns visibility and the omnibox surface.
+ * registry walks `children` for route/widget aggregation, validation,
+ * `module-flags` schema generation, and `getModule(id)` lookups, so a
+ * nested module gets its own `enabled` flag (and any other declared
+ * flags) and can be gated independently of its parent. Children still
+ * stay out of top-level navigation — the parent owns the sidebar
+ * placement and the omnibox surface.
  */
 
 import type {
@@ -146,10 +148,25 @@ class ModuleRegistryImpl implements ModuleRegistry {
   }
 
   /**
-   * Get a specific module by ID
+   * Get a specific module by ID. Walks `children` so nested modules
+   * are reachable; their flags live in the same id namespace as their
+   * parents, so flag consumers (and the Flag Management UI) need to
+   * resolve a child's `HomeModule` to render its name and metadata.
    */
   getModule(id: string): HomeModule | undefined {
-    return this.modules.find((m) => m.id === id);
+    const visit = (mod: HomeModule): HomeModule | undefined => {
+      if (mod.id === id) return mod;
+      for (const child of mod.children ?? []) {
+        const hit = visit(child);
+        if (hit) return hit;
+      }
+      return undefined;
+    };
+    for (const mod of this.modules) {
+      const hit = visit(mod);
+      if (hit) return hit;
+    }
+    return undefined;
   }
 
   /**
@@ -257,21 +274,21 @@ function builtinEnabledFlagDef(
 }
 
 /**
- * Collect every declared flag across all registered modules, keyed by
- * module id. Consumed by the settings UI, the aepbase schema syncer,
- * and the `useModuleFlag` hook.
+ * Collect every declared flag across all registered modules — top-level
+ * and nested — keyed by module id. Consumed by the settings UI, the
+ * aepbase schema syncer, and the `useModuleFlag` hook.
  *
- * Every module automatically receives a built-in `enabled` flag (see
- * `BUILTIN_ENABLED_FLAG_KEY`). Module-declared flags of the same name
- * are ignored with a warning so the audience knob stays consistent
- * across the app.
+ * Every module (including children) automatically receives a built-in
+ * `enabled` flag (see `BUILTIN_ENABLED_FLAG_KEY`) so it can be gated
+ * independently. Module-declared flags of the same name are ignored
+ * with a warning so the audience knob stays consistent across the app.
  */
 export function getAllModuleFlagDefs(): Record<
   string,
   Record<string, ModuleFlagDef>
 > {
   const out: Record<string, Record<string, ModuleFlagDef>> = {};
-  for (const mod of moduleRegistry.modules) {
+  const visit = (mod: HomeModule): void => {
     const declared = mod.flags ?? {};
     if (BUILTIN_ENABLED_FLAG_KEY in declared) {
       logger.warn(
@@ -286,6 +303,12 @@ export function getAllModuleFlagDefs(): Record<
       ...declared,
       [BUILTIN_ENABLED_FLAG_KEY]: builtin,
     };
+    for (const child of mod.children ?? []) {
+      visit(child);
+    }
+  };
+  for (const mod of moduleRegistry.modules) {
+    visit(mod);
   }
   return out;
 }
