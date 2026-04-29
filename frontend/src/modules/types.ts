@@ -157,9 +157,11 @@ export interface HomeModule {
    * of the parent's, aggregates child routes and dashboard widgets,
    * and a generic `<NestedModuleLanding>` renders cards for each
    * child on the parent's index page (and as the omnibox
-   * `listComponent`). Children stay out of top-level navigation,
-   * `module-flags` rows, and `getModule(id)` lookups: the parent
-   * owns the audience, omnibox synonyms, and id namespace.
+   * `listComponent`). Children get their own `enabled` flag (and any
+   * other declared flags) and can be reached via `getModule(id)`, so
+   * each nested page can be gated independently. Children still stay
+   * out of top-level navigation: the parent owns the sidebar placement
+   * and the omnibox synonyms.
    */
   children?: HomeModule[];
 }

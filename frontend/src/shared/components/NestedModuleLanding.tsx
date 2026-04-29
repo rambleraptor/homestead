@@ -1,8 +1,11 @@
-import type { ComponentType } from 'react';
+'use client';
+
+import React from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { Card } from './Card';
 import { PageHeader } from './PageHeader';
+import { useModuleEnabledPredicate } from '@/modules/settings/hooks/useIsModuleEnabled';
 import type { HomeModule } from '@/modules/types';
 
 interface Props {
@@ -10,31 +13,16 @@ interface Props {
 }
 
 /**
- * Bind a parent module to the generic landing as a no-arg
- * `ComponentType`, suitable for wiring into
- * `OmniboxAdapter.listComponent` from a `.ts` config file. The
- * getter-of-module dance avoids the temporal-dead-zone error you'd
- * get from referencing the in-flight const directly inside its own
- * object literal.
- */
-export function makeNestedModuleLanding(
-  getModule: () => HomeModule,
-): ComponentType {
-  function NestedLanding() {
-    return <NestedModuleLanding module={getModule()} />;
-  }
-  NestedLanding.displayName = 'NestedModuleLanding';
-  return NestedLanding;
-}
-
-/**
  * Generic landing page for a parent module that declares `children`.
- * Renders one card per child, linking to the child's `basePath`. The
+ * Renders one card per child the current viewer can use — children
+ * whose `enabled` flag excludes them are filtered out so the landing
+ * page stays consistent with the rest of the gating surface. The
  * test-id convention `${parent.id}-link-${child.id}` matches the ids
  * used by the hand-written landings this component replaces.
  */
 export function NestedModuleLanding({ module }: Props) {
-  const children = module.children ?? [];
+  const isEnabled = useModuleEnabledPredicate();
+  const children = (module.children ?? []).filter((child) => isEnabled(child.id));
 
   return (
     <div className="space-y-6">

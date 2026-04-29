@@ -1,3 +1,5 @@
+'use client';
+
 import { NestedModuleLanding } from '@/shared/components/NestedModuleLanding';
 import { gamesModule } from '@/modules/games/module.config';
 
