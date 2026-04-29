@@ -1,6 +1,6 @@
 'use client';
 
-import { PictionaryBulkImport } from '@/modules/pictionary/bulk-import';
+import { PictionaryBulkImport } from '@/modules/games/pictionary/bulk-import';
 
 export default function PictionaryImportPage() {
   return <PictionaryBulkImport />;

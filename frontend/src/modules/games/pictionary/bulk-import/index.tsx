@@ -28,7 +28,7 @@ export function PictionaryBulkImport() {
       config={{
         moduleName: 'Pictionary Games',
         moduleNamePlural: 'pictionary games',
-        backRoute: '/pictionary',
+        backRoute: '/games/pictionary',
         schema,
         onImport: bulkImport.mutateAsync,
         isImporting: bulkImport.isPending,
