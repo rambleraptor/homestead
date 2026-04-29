@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/core/auth/useAuth';
-import { UsersHome } from '@/modules/superuser/components/UsersHome';
+import { UsersHome } from '@/modules/superuser/users/components/UsersHome';
 import { Spinner } from '@/shared/components/Spinner';
 
 export default function SuperuserUsersPage() {

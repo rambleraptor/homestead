@@ -24,12 +24,12 @@ export class BridgePage {
       (key) => window.localStorage.removeItem(key),
       STORAGE_KEY,
     );
-    await this.page.goto('/bridge');
+    await this.page.goto('/games/bridge');
     await this.page.getByTestId('hand-form').waitFor({ state: 'visible' });
   }
 
   async expectToBeOnBridgePage() {
-    await expect(this.page).toHaveURL(/\/bridge/);
+    await expect(this.page).toHaveURL(/\/games\/bridge/);
     await expect(
       this.page.getByRole('heading', { name: 'Bridge' }),
     ).toBeVisible();

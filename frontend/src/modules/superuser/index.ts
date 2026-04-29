@@ -1,4 +1,3 @@
 export { superuserModule } from './module.config';
-export { SuperuserHome } from './components/SuperuserHome';
-export { UsersHome } from './components/UsersHome';
-export { FlagManagementHome } from './components/FlagManagementHome';
+export { usersModule, UsersHome } from './users';
+export { flagManagementModule, FlagManagementHome } from './flag-management';

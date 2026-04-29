@@ -1,14 +1,19 @@
 /**
- * Superuser Module Configuration
+ * Superuser — parent module that groups Users and Flag Management
+ * into a single superuser-only admin surface.
  *
- * Combines user account management and module-flag administration into
- * a single superuser-only admin surface. The landing page links to the
- * two sub-pages; each sub-page is gated independently in the App Router.
+ * Sub-pages are declared via `children` (full `HomeModule`s living
+ * in `./<area>/module.config.ts`); the registry handles route
+ * aggregation and validation, and the omnibox `listComponent` is a
+ * generic `<NestedModuleLanding>` that auto-renders one card per
+ * child. Each sub-page is gated independently in the App Router.
  */
 
 import { ShieldCheck } from 'lucide-react';
 import type { HomeModule } from '../types';
-import { SuperuserHome } from './components/SuperuserHome';
+import { makeNestedModuleLanding } from '@/shared/components/NestedModuleLanding';
+import { usersModule } from './users/module.config';
+import { flagManagementModule } from './flag-management/module.config';
 
 export const superuserModule: HomeModule = {
   id: 'superuser',
@@ -16,16 +21,13 @@ export const superuserModule: HomeModule = {
   description: 'User accounts and module flags (superuser only)',
   icon: ShieldCheck,
   basePath: '/superuser',
-  routes: [
-    { path: '', index: true },
-    { path: 'users' },
-    { path: 'flag-management' },
-  ],
+  routes: [{ path: '', index: true }],
   section: 'Settings',
   showInNav: true,
   navOrder: 90,
   enabled: true,
   defaultEnabled: 'superusers',
+  children: [usersModule, flagManagementModule],
   omnibox: {
     synonyms: [
       'superuser',
@@ -36,6 +38,6 @@ export const superuserModule: HomeModule = {
       'flags',
       'flag management',
     ],
-    listComponent: SuperuserHome,
+    listComponent: makeNestedModuleLanding(() => superuserModule),
   },
 };

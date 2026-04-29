@@ -21,6 +21,14 @@
  *   choresModule,
  * ];
  * ```
+ *
+ * Nested modules: a parent can declare `children: HomeModule[]` to
+ * group related sub-features (e.g. `gamesModule` owns `minigolf`,
+ * `pictionary`, `bridge`). Only the parent goes in `MODULES`; the
+ * registry walks `children` for route/widget aggregation and
+ * validation. Children stay out of top-level navigation, of the
+ * `module-flags` schema, and of `getModule(id)` lookups — the parent
+ * owns visibility and the omnibox surface.
  */
 
 import type {
@@ -51,7 +59,6 @@ import { hsaModule } from './hsa/module.config';
 import { creditCardsModule } from './credit-cards/module.config';
 import { superuserModule } from './superuser/module.config';
 import { gamesModule } from './games/module.config';
-import { bridgeModule } from './bridge/module.config';
 import { recipesModule } from './recipes/module.config';
 
 // =============================================================================
@@ -71,7 +78,6 @@ const MODULES: HomeModule[] = [
   hsaModule,
   creditCardsModule,
   gamesModule,
-  bridgeModule,
   notificationsModule,
   superuserModule,
   settingsModule,
@@ -96,13 +102,15 @@ class ModuleRegistryImpl implements ModuleRegistry {
   }
 
   /**
-   * Validate that all modules have unique IDs and base paths
+   * Validate IDs, base paths, and parent/child relationships across
+   * the whole tree. Walks `children` recursively so nested modules
+   * share the same id/path namespace as top-level modules.
    */
   private validateModules(): void {
     const ids = new Set<string>();
     const paths = new Set<string>();
 
-    for (const mod of this.modules) {
+    const visit = (mod: HomeModule, parent: HomeModule | null): void => {
       if (ids.has(mod.id)) {
         logger.warn(`Duplicate module ID detected: ${mod.id}`, { moduleId: mod.id });
       }
@@ -113,13 +121,27 @@ class ModuleRegistryImpl implements ModuleRegistry {
       }
       paths.add(mod.basePath);
 
-      // Validate base path starts with /
       if (!mod.basePath.startsWith('/')) {
         logger.warn(`Module "${mod.id}" base path should start with /`, {
           moduleId: mod.id,
-          basePath: mod.basePath
+          basePath: mod.basePath,
         });
       }
+
+      if (parent && !mod.basePath.startsWith(parent.basePath + '/')) {
+        logger.warn(
+          `Child module "${mod.id}" base path "${mod.basePath}" must be nested under parent "${parent.id}" (${parent.basePath})`,
+          { moduleId: mod.id, parentId: parent.id },
+        );
+      }
+
+      for (const child of mod.children ?? []) {
+        visit(child, mod);
+      }
+    };
+
+    for (const mod of this.modules) {
+      visit(mod, null);
     }
   }
 
@@ -138,10 +160,14 @@ class ModuleRegistryImpl implements ModuleRegistry {
   }
 
   /**
-   * Get all routes from all modules
+   * Get all routes from all modules, including nested children.
    */
   getAllRoutes(): HomeModule['routes'] {
-    return this.modules.flatMap((m) => m.routes);
+    const collect = (mod: HomeModule): HomeModule['routes'] => [
+      ...mod.routes,
+      ...(mod.children ?? []).flatMap(collect),
+    ];
+    return this.modules.flatMap(collect);
   }
 
   /**
@@ -202,8 +228,12 @@ export function moduleExists(id: string): boolean {
  * module-specific imports.
  */
 export function getAllDashboardWidgets(): DashboardWidget[] {
+  const collect = (mod: HomeModule): DashboardWidget[] => [
+    ...(mod.widgets ?? []),
+    ...(mod.children ?? []).flatMap(collect),
+  ];
   return moduleRegistry.modules
-    .flatMap((m) => m.widgets ?? [])
+    .flatMap(collect)
     .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 }
 

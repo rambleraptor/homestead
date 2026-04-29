@@ -1,7 +1,3 @@
-/**
- * Bridge Module Exports
- */
-
 export { bridgeModule } from './module.config';
 export type {
   Hand,
