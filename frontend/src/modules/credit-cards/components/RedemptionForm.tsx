@@ -8,7 +8,12 @@
 
 import { useMemo, useState } from 'react';
 import { Modal } from '@/shared/components/Modal';
-import { getCurrentPeriod, getPeriodsInRange, formatPeriod } from '../utils/periodUtils';
+import {
+  getCurrentPeriod,
+  getPeriodsInRange,
+  formatPeriod,
+  toLocalISODate,
+} from '../utils/periodUtils';
 import type {
   CreditCardPerk,
   CreditCard,
@@ -24,10 +29,6 @@ interface RedemptionFormProps {
   card: CreditCard;
   initialData?: PerkRedemption;
   isSubmitting: boolean;
-}
-
-function toISODate(d: Date): string {
-  return d.toISOString().split('T')[0];
 }
 
 function buildInitialFormData(
@@ -52,8 +53,8 @@ function buildInitialFormData(
 
   return {
     perk: perk?.id ?? '',
-    period_start: period ? toISODate(period.start) : '',
-    period_end: period ? toISODate(period.end) : '',
+    period_start: period ? toLocalISODate(period.start) : '',
+    period_end: period ? toLocalISODate(period.end) : '',
     amount: perk?.value ?? 0,
     notes: '',
   };
@@ -103,8 +104,8 @@ function RedemptionFormBody({
     setFormData({
       ...formData,
       perk: perkId,
-      period_start: toISODate(period.start),
-      period_end: toISODate(period.end),
+      period_start: toLocalISODate(period.start),
+      period_end: toLocalISODate(period.end),
       amount: perk.value,
     });
   };
@@ -186,7 +187,7 @@ function RedemptionFormBody({
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta"
         >
           {periodOptions.map((period) => {
-            const key = `${toISODate(period.start)}|${toISODate(period.end)}`;
+            const key = `${toLocalISODate(period.start)}|${toLocalISODate(period.end)}`;
             return (
               <option key={key} value={key}>
                 {selectedPerk ? formatPeriod(period, selectedPerk.frequency) : key}

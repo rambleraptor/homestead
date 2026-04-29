@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getAnnualizedValue } from '../utils/periodUtils';
+import { getAnnualizedValue, dateKey } from '../utils/periodUtils';
 import type { CreditCard, CreditCardPerk, PerkRedemption, DashboardStats, CardStats } from '../types';
 
 function coverage(redeemed: number, fee: number): number {
@@ -15,9 +15,7 @@ export function useCreditCardStats(
   return useMemo(() => {
     if (!cards.length) return undefined;
 
-    const now = new Date();
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    const yearEnd = new Date(now.getFullYear(), 11, 31);
+    const yearPrefix = `${new Date().getFullYear()}-`;
 
     const cardStats: CardStats[] = cards
       .filter((c) => !c.archived)
@@ -33,8 +31,7 @@ export function useCreditCardStats(
         const ytdRedeemed = redemptions
           .filter((r) => {
             if (!cardPerkIds.has(r.perk)) return false;
-            const at = new Date(r.period_start);
-            return at >= yearStart && at <= yearEnd;
+            return dateKey(r.period_start).startsWith(yearPrefix);
           })
           .reduce((sum, r) => sum + r.amount, 0);
 

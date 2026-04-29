@@ -5,7 +5,7 @@
  */
 
 import { Pencil, Trash2 } from 'lucide-react';
-import { getAnnualizedValue } from '../utils/periodUtils';
+import { getAnnualizedValue, dateKey } from '../utils/periodUtils';
 import { CoverageProgressBar } from './CoverageProgressBar';
 import type { CreditCard, CreditCardPerk, PerkRedemption } from '../types';
 
@@ -28,9 +28,7 @@ export function CardList({
 }: CardListProps) {
   if (cards.length === 0) return null;
 
-  const now = new Date();
-  const yearStart = new Date(now.getFullYear(), 0, 1);
-  const yearEnd = new Date(now.getFullYear(), 11, 31);
+  const yearPrefix = `${new Date().getFullYear()}-`;
 
   return (
     <div className="space-y-3">
@@ -45,8 +43,7 @@ export function CardList({
         const ytdRedeemed = redemptions
           .filter((r) => {
             if (!cardPerkIds.has(r.perk)) return false;
-            const periodStart = new Date(r.period_start);
-            return periodStart >= yearStart && periodStart <= yearEnd;
+            return dateKey(r.period_start).startsWith(yearPrefix);
           })
           .reduce((sum, r) => sum + r.amount, 0);
 

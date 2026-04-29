@@ -11,7 +11,7 @@ import { PerkForm } from './PerkForm';
 import { PerkRow } from './PerkRow';
 import { RedemptionForm } from './RedemptionForm';
 import { RedemptionHistory } from './RedemptionHistory';
-import { getAnnualizedValue, getCurrentPeriod, formatPeriod } from '../utils/periodUtils';
+import { getAnnualizedValue, getCurrentPeriod, formatPeriod, dateKey } from '../utils/periodUtils';
 import type { CreditCard, CreditCardPerk, PerkRedemption, PerkFormData, RedemptionFormData } from '../types';
 
 interface CardDetailProps {
@@ -60,9 +60,7 @@ export function CardDetail({
   const [showRedemptionForm, setShowRedemptionForm] = useState(false);
   const [editingRedemption, setEditingRedemption] = useState<PerkRedemption | null>(null);
 
-  const now = new Date();
-  const yearStart = new Date(now.getFullYear(), 0, 1);
-  const yearEnd = new Date(now.getFullYear(), 11, 31);
+  const yearPrefix = `${new Date().getFullYear()}-`;
 
   const totalAnnualValue = perks.reduce(
     (sum, p) => sum + getAnnualizedValue(p.value, p.frequency),
@@ -72,10 +70,7 @@ export function CardDetail({
   const perkIds = new Set(perks.map((p) => p.id));
   const cardRedemptions = redemptions.filter((r) => perkIds.has(r.perk));
   const ytdRedeemed = cardRedemptions
-    .filter((r) => {
-      const periodStart = new Date(r.period_start);
-      return periodStart >= yearStart && periodStart <= yearEnd;
-    })
+    .filter((r) => dateKey(r.period_start).startsWith(yearPrefix))
     .reduce((sum, r) => sum + r.amount, 0);
 
   return (
@@ -184,11 +179,12 @@ export function CardDetail({
           <div className="space-y-2">
             {perks.map((perk) => {
               const period = getCurrentPeriod(perk.frequency, card.reset_mode, card.anniversary_date);
+              const periodStartKey = dateKey(period.start);
+              const periodEndKey = dateKey(period.end);
               const isRedeemed = cardRedemptions.some((r) => {
                 if (r.perk !== perk.id) return false;
-                const rStart = new Date(r.period_start);
-                const rEnd = new Date(r.period_end);
-                return rStart.getTime() === period.start.getTime() && rEnd.getTime() === period.end.getTime();
+                return dateKey(r.period_start) === periodStartKey
+                  && dateKey(r.period_end) === periodEndKey;
               });
 
               return (

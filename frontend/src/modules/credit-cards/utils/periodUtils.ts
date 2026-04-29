@@ -124,3 +124,25 @@ export function isDateInPeriod(date: Date, period: PerkPeriod): boolean {
 export function getPeriodDeadline(period: PerkPeriod): string {
   return period.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+/**
+ * Local-time YYYY-MM-DD. Use this instead of `Date#toISOString().split('T')[0]`,
+ * which shifts the date across timezone boundaries (April 1 local can become
+ * "2026-03-31" UTC).
+ */
+export function toLocalISODate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Canonical YYYY-MM-DD key from either a local-component Date or a stored
+ * date string ("YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SSZ"). Use for comparing
+ * period boundaries across the wire.
+ */
+export function dateKey(value: Date | string): string {
+  if (typeof value === 'string') return value.slice(0, 10);
+  return toLocalISODate(value);
+}

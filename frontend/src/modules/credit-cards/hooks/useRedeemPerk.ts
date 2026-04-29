@@ -9,7 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/core/api/queryClient';
 import { aepbase, AepCollections } from '@/core/api/aepbase';
 import { logger } from '@/core/utils/logger';
-import { getCurrentPeriod } from '../utils/periodUtils';
+import { getCurrentPeriod, toLocalISODate } from '../utils/periodUtils';
 import type { PerkRedemption, CreditCardPerk, CreditCard } from '../types';
 
 interface RedeemPerkParams {
@@ -25,14 +25,13 @@ export function useRedeemPerk() {
   return useMutation({
     mutationFn: async ({ perk, card, amount, notes }: RedeemPerkParams): Promise<PerkRedemption> => {
       const period = getCurrentPeriod(perk.frequency, card.reset_mode, card.anniversary_date);
-      const toISODate = (d: Date) => d.toISOString().split('T')[0];
 
       const userId = aepbase.getCurrentUser()?.id;
       const created = await aepbase.create<PerkRedemption>(
         AepCollections.PERK_REDEMPTIONS,
         {
-          period_start: toISODate(period.start),
-          period_end: toISODate(period.end),
+          period_start: toLocalISODate(period.start),
+          period_end: toLocalISODate(period.end),
           amount,
           notes,
           created_by: userId ? `users/${userId}` : undefined,

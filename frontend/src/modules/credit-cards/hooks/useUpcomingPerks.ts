@@ -5,7 +5,7 @@
  */
 
 import { useMemo } from 'react';
-import { getCurrentPeriod } from '../utils/periodUtils';
+import { getCurrentPeriod, dateKey } from '../utils/periodUtils';
 import type { CreditCard, CreditCardPerk, PerkRedemption, UpcomingPerk } from '../types';
 
 export function useUpcomingPerks(
@@ -22,14 +22,13 @@ export function useUpcomingPerks(
 
       for (const perk of cardPerks) {
         const period = getCurrentPeriod(perk.frequency, card.reset_mode, card.anniversary_date);
+        const periodStartKey = dateKey(period.start);
+        const periodEndKey = dateKey(period.end);
 
-        // Check if this perk has been redeemed for the current period
         const isRedeemed = redemptions.some((r) => {
           if (r.perk !== perk.id) return false;
-          const rStart = new Date(r.period_start);
-          const rEnd = new Date(r.period_end);
-          // Match if the redemption's period overlaps with the current period
-          return rStart.getTime() === period.start.getTime() && rEnd.getTime() === period.end.getTime();
+          return dateKey(r.period_start) === periodStartKey
+            && dateKey(r.period_end) === periodEndKey;
         });
 
         result.push({
