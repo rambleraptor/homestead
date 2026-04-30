@@ -8,7 +8,7 @@
  */
 
 import Link from 'next/link';
-import { ChefHat, Pencil, Trash2 } from 'lucide-react';
+import { ChefHat, Clock, Pencil, Trash2 } from 'lucide-react';
 import type { Recipe } from '../types';
 
 interface RecipesListProps {
@@ -50,14 +50,9 @@ export function RecipesList({ recipes, onEdit, onDelete }: RecipesListProps) {
           <div className="p-4 flex flex-col pointer-events-none">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <h3 className="text-lg font-display font-semibold text-brand-navy truncate">
+                <h3 className="text-lg font-display font-semibold text-brand-navy break-words">
                   {recipe.title}
                 </h3>
-                {recipe.source_pointer && (
-                  <p className="text-xs text-text-muted truncate mt-0.5">
-                    {recipe.source_pointer}
-                  </p>
-                )}
               </div>
               <div className="flex items-center gap-1 pointer-events-auto relative">
                 <button
@@ -81,10 +76,13 @@ export function RecipesList({ recipes, onEdit, onDelete }: RecipesListProps) {
               </div>
             </div>
 
-            <p className="text-sm text-brand-slate mt-3">
-              {recipe.parsed_ingredients?.length ?? 0} ingredient
-              {(recipe.parsed_ingredients?.length ?? 0) === 1 ? '' : 's'}
-            </p>
+            {recipe.cook_time && (
+              <p className="text-sm text-brand-slate mt-3 inline-flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-text-muted" />
+                <span className="text-text-muted">Cook:</span>
+                <span className="font-medium text-brand-navy">{recipe.cook_time}</span>
+              </p>
+            )}
 
             {recipe.tags && recipe.tags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1">
