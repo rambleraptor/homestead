@@ -430,6 +430,7 @@ export const AepCollections = {
   GAME_HOLES: 'holes', // child of games
   PICTIONARY_GAMES: 'pictionary-games',
   PICTIONARY_TEAMS: 'pictionary-teams', // child of pictionary-games
+  TODOS: 'todos',
   // Household-wide module flags singleton. Resource definition is
   // pushed by the Next.js server at startup (see
   // `src/instrumentation.ts`) rather than via terraform, because the

@@ -62,6 +62,7 @@ import { creditCardsModule } from './credit-cards/module.config';
 import { superuserModule } from './superuser/module.config';
 import { gamesModule } from './games/module.config';
 import { recipesModule } from './recipes/module.config';
+import { todosModule } from './todos/module.config';
 
 // =============================================================================
 // REGISTER MODULES HERE
@@ -73,6 +74,7 @@ import { recipesModule } from './recipes/module.config';
  */
 const MODULES: HomeModule[] = [
   dashboardModule,
+  todosModule,
   giftCardsModule,
   groceriesModule,
   recipesModule,

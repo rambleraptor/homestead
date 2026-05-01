@@ -504,6 +504,40 @@ export async function deleteAllRecipes(token: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Todos
+// ---------------------------------------------------------------------------
+
+export type TodoStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'do_later'
+  | 'completed'
+  | 'cancelled';
+
+export interface TodoRecord {
+  id: string;
+  title: string;
+  status: TodoStatus;
+}
+
+export async function createTodo(
+  token: string,
+  data: { title: string; status?: TodoStatus },
+): Promise<TodoRecord> {
+  return aepCreate<TodoRecord>(token, 'todos', {
+    title: data.title,
+    status: data.status ?? 'pending',
+  });
+}
+
+export async function deleteAllTodos(token: string) {
+  const items = await aepList<{ id: string }>(token, 'todos');
+  for (const item of items) {
+    await aepRemove(token, 'todos', item.id);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Module flags (household-wide singleton)
 // ---------------------------------------------------------------------------
 
@@ -552,6 +586,7 @@ export async function cleanupUserData(token: string, _userId: string) {
     deleteAllHSAReceipts(token),
     deleteAllGames(token),
     deleteAllPictionaryGames(token),
+    deleteAllTodos(token),
   ]);
 }
 
