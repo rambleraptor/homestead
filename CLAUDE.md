@@ -189,7 +189,9 @@ src/modules/<feature>/
 - `install.sh` — builds the binary into `bin/aepbase`
 - `run.sh` — runs it on :8090
 - `data/` — sqlite db + uploaded files (gitignored)
-- `terraform/` — schema-as-code (see next section)
+- `terraform/` — legacy schema-as-code, kept as a dead reference until a
+  follow-up cleanup. Schema is now declared in TypeScript — see
+  `frontend/src/modules/<feature>/resources.ts` and `npm run apply-schema`.
 
 ### Scripts (`aepbase/scripts/`)
 
@@ -200,64 +202,101 @@ src/modules/<feature>/
 
 Systemd-based deployment. See `deployment/README.md`.
 
-## aepbase schema (Terraform)
+## aepbase schema (TypeScript)
 
-The schema lives in `aepbase/terraform/`, driven by the `aep-dev/aep`
-dynamic provider.
+The schema is declared in TypeScript: each module owns a sibling
+`resources.ts` (e.g. `frontend/src/modules/gift-cards/resources.ts`)
+that exports an array of `AepResourceDefinition` objects. The
+aggregator at `frontend/src/core/aep/registry.ts` stitches them all
+together. The `module-flag` resource is built dynamically from
+declared module flags (see "Module flags" below).
 
 ### Applying changes
 
 ```bash
-# Get an admin bearer token
-TOKEN=$(curl -sS -X POST http://localhost:8090/users/:login \
-    -H 'Content-Type: application/json' \
-    -d '{"email":"admin@example.com","password":"<pw>"}' | jq -r .token)
-
-cd aepbase/terraform
-TF_VAR_aepbase_token=$TOKEN \
-    AEP_OPENAPI=http://localhost:8090/openapi.json \
-    terraform apply
+cd frontend
+AEPBASE_ADMIN_EMAIL=admin@example.com \
+AEPBASE_ADMIN_PASSWORD='<pw>' \
+    npm run apply-schema
 ```
+
+The CLI is idempotent — repeat runs report `noop` for unchanged
+resources, `created` for new ones, `updated` when a schema has
+drifted. Override the target with `AEPBASE_URL=...` (default
+`http://127.0.0.1:8090`); pass `AEPBASE_TOKEN=...` to skip login.
+
+The Playwright e2e suite invokes the same CLI in its global setup
+(`tests/e2e/config/apply-schema.ts`), so e2e and prod schemas can't
+drift apart.
+
+### Authoring a resource
+
+```ts
+// frontend/src/modules/<feature>/resources.ts
+import type { AepResourceDefinition } from '../../core/aep/types';
+
+const widget: AepResourceDefinition = {
+  singular: 'widget',
+  plural: 'widgets',
+  description: 'Household widget.',
+  user_settable_create: true,
+  schema: {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      created_by: { type: 'string', description: 'users/{user_id}' },
+    },
+    required: ['name'],
+  },
+};
+
+export const widgetResources: AepResourceDefinition[] = [widget];
+```
+
+Then add the array to `frontend/src/core/aep/registry.ts`'s
+`ALL_DOMAIN_RESOURCES` list.
 
 ### Rules (gotchas we've hit)
 
-1. **Resource type in HCL is `aep_aep-resource-definition`** — yes, the
-   hyphen is real; it's what the dynamic provider generates.
-2. **Singular/plural must be kebab-case, not camelCase.** `gift-card`, not
-   `giftCard`. Terraform's plugin framework rejects URL params with
-   uppercase letters.
-3. **JSON-schema `enum`, `minimum`, `maximum` are stripped on round-trip.**
+1. **Singular/plural must be kebab-case, not camelCase.** `gift-card`,
+   not `giftCard`. aepbase rejects URL params with uppercase letters.
+2. **JSON-schema `enum`, `minimum`, `maximum` are stripped on round-trip.**
    Encode allowed values in `description`:
-   ```hcl
-   status = { type = "string", description = "one of: pending, success, error" }
+   ```ts
+   status: { type: 'string', description: 'one of: pending, success, error' },
    ```
-4. **Child resources need explicit `depends_on`.** Setting `parents = ["foo"]`
-   alone does not create a terraform dependency.
-5. **Schema field names stay snake_case** (matches the existing data from
-   the PB era, e.g. `card_number`, `created_by`, `service_date`).
-6. **Don't add autodate fields** (`created`, `updated`). aepbase manages
-   `create_time` and `update_time` itself (note the underscore).
-7. **After editing a resource definition out of band**, run
-   `terraform init -upgrade` so the provider re-reads `/openapi.json`.
-8. **aepbase disallows `type` changes and `parents` changes** on an
-   existing resource definition. Delete + recreate the definition
-   (destructive!) if you need either.
-9. **File fields**: declare with `type = "binary"` +
-   `"x-aepbase-file-field" = true`. aepbase writes files under
+3. **Schema field names stay snake_case** (matches the existing data
+   from the PB era, e.g. `card_number`, `created_by`, `service_date`).
+4. **Don't add autodate fields** (`created`, `updated`). aepbase
+   manages `create_time` and `update_time` itself (note the underscore).
+5. **aepbase disallows `type` changes and `parents` changes** on an
+   existing resource definition. The syncer only PATCHes the schema
+   field; if you need to change `parents`, delete + recreate the
+   definition (destructive!).
+6. **File fields**: declare with `type: 'binary'` +
+   `'x-aepbase-file-field': true`. aepbase writes files under
    `aepbase/data/files/...` and exposes a `:download` custom method.
+7. **Parents must exist before children.** The CLI topologically
+   sorts definitions by `parents` before applying, so author order in
+   `resources.ts` doesn't matter.
+8. **The CLI never deletes.** Removing a resource from TS leaves the
+   live aepbase resource in place — same posture as `terraform apply`
+   never destroys without explicit instruction. Drop them via curl
+   `DELETE /aep-resource-definitions/<singular>` if needed.
 
 ### Parent / child relationships
 
-| Child                       | Parent        | URL pattern                                                 |
-|-----------------------------|---------------|-------------------------------------------------------------|
-| `transaction`               | `gift-card`   | `/gift-cards/{id}/transactions/{id}`                        |
-| `perk`                      | `credit-card` | `/credit-cards/{id}/perks/{id}`                             |
-| `redemption`                | `perk`        | `/credit-cards/{id}/perks/{id}/redemptions/{id}`            |
-| `run`                       | `action`      | `/actions/{id}/runs/{id}`                                   |
-| `log`                       | `recipe`      | `/recipes/{id}/logs/{id}`                                   |
-| `notification`              | `user`        | `/users/{id}/notifications/{id}`                            |
-| `notification-subscription` | `user`        | `/users/{id}/notification-subscriptions/{id}`               |
-| `user-preference`           | `user`        | `/users/{id}/preferences/{id}` (note the prefix strip)      |
+| Child                       | Parent            | URL pattern                                                 |
+|-----------------------------|-------------------|-------------------------------------------------------------|
+| `transaction`               | `gift-card`       | `/gift-cards/{id}/transactions/{id}`                        |
+| `perk`                      | `credit-card`     | `/credit-cards/{id}/perks/{id}`                             |
+| `redemption`                | `perk`            | `/credit-cards/{id}/perks/{id}/redemptions/{id}`            |
+| `log`                       | `recipe`          | `/recipes/{id}/logs/{id}`                                   |
+| `hole`                      | `game`            | `/games/{id}/holes/{id}`                                    |
+| `pictionary-team`           | `pictionary-game` | `/pictionary-games/{id}/pictionary-teams/{id}`              |
+| `notification`              | `user`            | `/users/{id}/notifications/{id}`                            |
+| `notification-subscription` | `user`            | `/users/{id}/notification-subscriptions/{id}`               |
+| `user-preference`           | `user`            | `/users/{id}/preferences/{id}` (note the prefix strip)      |
 
 Parent-keyed children don't carry the parent id as a stored field; it's
 encoded in the URL path.
@@ -268,21 +307,24 @@ encoded in the URL path.
 - Realtime subscriptions (polling only)
 - Thumbnail generation for file fields
 
-### Module flags — not terraform
+### Module flags
 
-The `module-flags` resource is an exception to the terraform rule.
 Each module can declare typed flags in its `module.config.ts`
-(`flags: { ... }`). At Next.js server startup,
-`frontend/src/instrumentation.ts` aggregates every declared flag (via
-`getAllModuleFlagDefs` in `src/modules/registry.ts`), builds a
-JSON-schema payload, and POST/PATCHes it against aepbase's
-`/resource-definitions` endpoint. One record of `module-flags` is the
-household-wide singleton; fields are flattened as
-`${moduleId_snake}__${key}` on the wire.
+(`flags: { ... }`). The `module-flag` resource is built dynamically
+from those declarations — `getAllModuleFlagDefs` in
+`src/modules/registry.ts` walks the registry, and
+`buildModuleFlagsResourceDefinition` in `modules/settings/flags.ts`
+turns the result into an `AepResourceDefinition` that goes through
+the same syncer as every other resource.
 
-Set `AEPBASE_ADMIN_EMAIL` and `AEPBASE_ADMIN_PASSWORD` in the Next.js
-environment to enable the sync. Without them the app still works —
-the settings UI falls back to each declared default.
+`npm run apply-schema` includes it. `frontend/src/instrumentation.ts`
+also re-syncs it at every Next.js server boot (when
+`AEPBASE_ADMIN_EMAIL` / `AEPBASE_ADMIN_PASSWORD` are set in the
+environment) so freshly declared flags are picked up without a manual
+schema apply.
+
+The `module-flags` resource is the household-wide singleton; fields
+are flattened on the wire as `${moduleId_snake}__${key}`.
 
 Consumers: `useModuleFlag(moduleId, key)` from `@/modules/settings`
 is the one public hook for reading/writing a single flag from any
@@ -317,7 +359,7 @@ See the script header for all flags (`--dry-run`, `--collection`, etc.).
 3. **Respect existing patterns** — review similar code before implementing.
 4. **Use the aepbase wrapper** (`@/core/api/aepbase`) for client-side data
    access, and `@/app/api/_lib/aepbase-server` for server routes.
-5. **Ask before touching schema** — terraform changes affect real data.
+5. **Ask before touching schema** — `npm run apply-schema` affects real data.
 6. **Security first** — validate inputs, sanitize outputs, follow OWASP.
 
 ### Before every PR push

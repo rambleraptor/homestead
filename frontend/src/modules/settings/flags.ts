@@ -18,6 +18,7 @@
  *     the `description`.
  */
 
+import type { AepResourceDefinition } from '../../core/aep/types';
 import type { ModuleFlagDef, ModuleFlagValue } from '../types';
 
 /**
@@ -185,4 +186,28 @@ export function buildResourceSchema(defs: ModuleFlagDefs): {
     properties[flat] = propertyFor(def);
   }
   return { type: 'object', properties };
+}
+
+export const MODULE_FLAGS_SINGULAR = 'module-flag';
+export const MODULE_FLAGS_PLURAL = 'module-flags';
+export const MODULE_FLAGS_DESCRIPTION =
+  'Household-wide module flags. One singleton record per household; ' +
+  'fields are flattened as `${moduleId_snake}__${key}`. Synced from TS ' +
+  'via `frontend/scripts/apply-schema.ts` and the boot-time ' +
+  'instrumentation hook.';
+
+/**
+ * Wrap `buildResourceSchema` into a full `AepResourceDefinition` so it
+ * can be fed through the same syncer as every other resource.
+ */
+export function buildModuleFlagsResourceDefinition(
+  defs: ModuleFlagDefs,
+): AepResourceDefinition {
+  return {
+    singular: MODULE_FLAGS_SINGULAR,
+    plural: MODULE_FLAGS_PLURAL,
+    description: MODULE_FLAGS_DESCRIPTION,
+    user_settable_create: true,
+    schema: buildResourceSchema(defs) as AepResourceDefinition['schema'],
+  };
 }
