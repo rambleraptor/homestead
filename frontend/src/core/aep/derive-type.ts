@@ -18,14 +18,13 @@
  *
  * Two things this deliberately does NOT do (and why):
  *
- *   - String-literal unions for "enum-in-description" fields like
- *     `transaction_type: 'decrement' | 'set'`. aepbase strips
- *     JSON-schema `enum` on round-trip (CLAUDE.md § aepbase schema), so
- *     we encode allowed values in `description`. To narrow such fields,
- *     hand-declare the union and override the inferred type via
- *     `Omit<AepRecord<typeof res>, 'transaction_type'> & { transaction_type: TransactionType }`.
  *   - The write/form-data shape (file fields are `File | null` on
  *     write, `string` URLs on read). Hand-declare form types alongside.
+ *
+ * Enum support: the resource definition's `enums` map (e.g.
+ * `enums: { transaction_type: ['decrement', 'set'] }`) is rendered as
+ * a string-literal union on the matching field. Aepbase enforces the
+ * constraint server-side, so the schema field stays `type: 'string'`.
  *
  * Usage:
  *
@@ -111,8 +110,29 @@ type FromSchema<S extends AepResourceSchema> = S extends {
     : never;
 
 /**
+ * Narrow string fields whose name appears in the resource definition's
+ * `enums` map to the corresponding string-literal union. Other fields
+ * pass through unchanged. Optional modifiers are preserved by the
+ * mapped type (the `?` rides along regardless of value-type changes).
+ */
+type ApplyEnums<Base, E> = {
+  [K in keyof Base]: K extends keyof E
+    ? E[K] extends readonly string[]
+      ? E[K][number]
+      : Base[K]
+    : Base[K];
+};
+
+// `{}` (rather than `Record<string, never>`) is deliberate: `keyof {}`
+// is `never`, so when a resource declares no `enums` map every field
+// passes through `ApplyEnums` unchanged.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+type EnumsOf<D> = D extends { enums: infer E } ? E : {};
+
+/**
  * Read-side shape of one aepbase record, derived from its resource
- * definition. Includes the `AepEnvelope` fields aepbase manages.
+ * definition. Includes the `AepEnvelope` fields aepbase manages and
+ * narrows enum-constrained string fields to literal unions.
  */
 export type AepRecord<D extends AepResourceDefinition> = AepEnvelope &
-  FromSchema<D['schema']>;
+  ApplyEnums<FromSchema<D['schema']>, EnumsOf<D>>;

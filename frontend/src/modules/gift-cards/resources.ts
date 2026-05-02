@@ -51,13 +51,13 @@ export const giftCardTransactionResource = {
   description: 'A balance change recorded against a gift card.',
   user_settable_create: true,
   parents: ['gift-card'],
+  enums: {
+    transaction_type: ['decrement', 'set'],
+  },
   schema: {
     type: 'object',
     properties: {
-      transaction_type: {
-        type: 'string',
-        description: 'one of: decrement, set',
-      },
+      transaction_type: { type: 'string' },
       previous_amount: { type: 'number' },
       new_amount: { type: 'number' },
       amount_changed: { type: 'number' },

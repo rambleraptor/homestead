@@ -260,11 +260,21 @@ Then add the array to `frontend/src/core/aep/registry.ts`'s
 
 1. **Singular/plural must be kebab-case, not camelCase.** `gift-card`,
    not `giftCard`. aepbase rejects URL params with uppercase letters.
-2. **JSON-schema `enum`, `minimum`, `maximum` are stripped on round-trip.**
-   Encode allowed values in `description`:
+2. **Enums use the top-level `enums` field, not JSON-schema `enum`.**
+   aepbase strips JSON-schema `enum`/`minimum`/`maximum` on round-trip,
+   but exposes a sibling map for string enums it enforces server-side
+   (returns HTTP 400 on disallowed values):
    ```ts
-   status: { type: 'string', description: 'one of: pending, success, error' },
+   enums: {
+     status: ['pending', 'success', 'error'],
+   },
+   schema: {
+     type: 'object',
+     properties: { status: { type: 'string' } },
+   },
    ```
+   `AepRecord<typeof res>` reads this map and narrows the matching
+   field to the corresponding string-literal union automatically.
 3. **Schema field names stay snake_case** (matches the existing data
    from the PB era, e.g. `card_number`, `created_by`, `service_date`).
 4. **Don't add autodate fields** (`created`, `updated`). aepbase

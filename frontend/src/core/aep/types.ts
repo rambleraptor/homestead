@@ -57,5 +57,13 @@ export interface AepResourceDefinition {
    * to scope a resource to the built-in user resource.
    */
   parents?: readonly string[];
+  /**
+   * Map of property name → allowed string values. Aepbase enforces
+   * these on write (returns 400 for unknown values) and round-trips
+   * them on the resource definition. Property must be `type: 'string'`
+   * in the schema. Used by `AepRecord<>` to narrow the inferred TS
+   * type to a string-literal union.
+   */
+  enums?: Readonly<Record<string, readonly string[]>>;
   schema: AepResourceSchema;
 }

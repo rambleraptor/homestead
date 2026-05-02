@@ -6,12 +6,8 @@
  * and the TS type updates everywhere automatically. See
  * `@/core/aep/derive-type` for how `AepRecord<>` works (binary fields
  * become URL strings on read; `id`/`path`/`create_time`/`update_time`
- * come from the aepbase envelope).
- *
- * `transaction_type` is intentionally narrowed to a string literal
- * union via `Omit + intersection` — aepbase strips JSON-schema `enum`
- * on round-trip (CLAUDE.md § aepbase schema), so the values live in
- * the schema's `description` and the TS-side narrowing is hand-coded.
+ * come from the aepbase envelope; `enums` map entries become
+ * string-literal unions).
  *
  * Form-data shapes (`*FormData`) stay hand-written: file fields are
  * `File | null` on write but `string` URLs on read, and we don't try
@@ -39,17 +35,10 @@ export interface GiftCardFormData {
   back_image?: File | null;
 }
 
-/**
- * Transaction type — values encoded in the schema's description
- * (see `./resources.ts`); kept as a hand-declared union here because
- * aepbase strips JSON-schema `enum` on round-trip.
- */
-export type TransactionType = 'decrement' | 'set';
+export type GiftCardTransaction = AepRecord<typeof giftCardTransactionResource>;
 
-export type GiftCardTransaction = Omit<
-  AepRecord<typeof giftCardTransactionResource>,
-  'transaction_type'
-> & { transaction_type: TransactionType };
+/** Allowed values for `GiftCardTransaction.transaction_type`. */
+export type TransactionType = GiftCardTransaction['transaction_type'];
 
 /**
  * Form data for creating transactions
