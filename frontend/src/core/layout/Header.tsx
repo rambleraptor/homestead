@@ -8,7 +8,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Menu, Bell, Search } from 'lucide-react';
-import { useNotificationStats } from '../../modules/notifications/hooks/useNotificationStats';
+import { useNotificationStats } from '@rambleraptor/homestead-modules/notifications/hooks/useNotificationStats';
 import { useCanUseOmnibox } from '@/shared/omnibox/useCanUseOmnibox';
 
 interface HeaderProps {

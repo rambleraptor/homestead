@@ -5,7 +5,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { AuthProvider } from '@/core/auth/AuthContext';
 import { queryClient } from '@/core/api/queryClient';
 import { persistOptions } from '@/core/api/persistQueryClient';
-import { registerGroceryMutationDefaults } from '@/modules/groceries/registerMutationDefaults';
+import { registerGroceryMutationDefaults } from '@rambleraptor/homestead-modules/groceries/registerMutationDefaults';
 import { ToastProvider } from '@/shared/components/ToastProvider';
 import dynamic from 'next/dynamic';
 

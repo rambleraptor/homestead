@@ -107,12 +107,18 @@ Each module is a mini-app with:
 - `types.ts` - TypeScript definitions
 
 ### 3. Core vs Module Separation
-- **Core** (`src/core/`) - Shared infrastructure (auth, layout, API)
-- **Modules** (`src/modules/`) - Feature modules (dashboard, chores, meals)
-- **Shared** (`src/shared/`) - Reusable UI components and utilities
+- **Core** (`frontend/src/core/`) - Shared infrastructure (auth, layout, API)
+- **In-tree modules** (`frontend/src/modules/`) - Module registry, contract
+  types, and the `settings` + `superuser` modules (core experience)
+- **Feature modules package** (`packages/homestead-modules/`) - Workspace
+  package `@rambleraptor/homestead-modules` housing every user-facing
+  feature module (gift-cards, credit-cards, groceries, recipes, todos, etc.)
+- **Shared** (`frontend/src/shared/`) - Reusable UI components and utilities
 
 ### 4. Adding a New Module
-1. Create folder in `src/modules/my-module/`
-2. Define module configuration in `module.config.ts`
-3. Register in `src/modules/registry.ts`
-4. Module automatically appears in navigation (if user has permission)
+1. Create folder in `packages/homestead-modules/my-module/`
+2. Define module configuration in `module.config.ts` (import `HomeModule`
+   from `@/modules/types`)
+3. Re-export the module from `packages/homestead-modules/index.ts`
+4. Import and register it in `frontend/src/modules/registry.ts`
+5. Module automatically appears in navigation (if user has permission)

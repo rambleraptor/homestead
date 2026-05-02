@@ -1,6 +1,6 @@
 'use client';
 
-import { PictionaryBulkImport } from '@/modules/games/pictionary/bulk-import';
+import { PictionaryBulkImport } from '@rambleraptor/homestead-modules/games/pictionary/bulk-import';
 import { ModuleEnabledGate } from '@/shared/components/ModuleEnabledGate';
 
 export default function PictionaryImportPage() {

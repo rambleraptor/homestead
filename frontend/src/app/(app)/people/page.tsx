@@ -1,4 +1,4 @@
-import { PeopleHome } from '@/modules/people/components/PeopleHome';
+import { PeopleHome } from '@rambleraptor/homestead-modules/people/components/PeopleHome';
 
 export default function PeoplePage() {
   return <PeopleHome />;

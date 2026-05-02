@@ -20,7 +20,7 @@ const commitMessage = readGit('log -1 --pretty=format:%s');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: [],
+  transpilePackages: ['@rambleraptor/homestead-modules'],
 
   // Hide the Next.js dev-mode indicator (bottom-left overlay). It overlaps
   // the sidebar's logout button at the default Playwright viewport and

@@ -1,4 +1,4 @@
-import { MinigolfHome } from '@/modules/games/minigolf/components/MinigolfHome';
+import { MinigolfHome } from '@rambleraptor/homestead-modules/games/minigolf/components/MinigolfHome';
 import { ModuleEnabledGate } from '@/shared/components/ModuleEnabledGate';
 
 export default function MinigolfPage() {

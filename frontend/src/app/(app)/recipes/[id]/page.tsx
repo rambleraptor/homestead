@@ -1,4 +1,4 @@
-import { RecipeView } from '@/modules/recipes/components/RecipeView';
+import { RecipeView } from '@rambleraptor/homestead-modules/recipes/components/RecipeView';
 
 export default async function RecipeViewPage({
   params,

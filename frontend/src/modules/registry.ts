@@ -5,16 +5,19 @@
  * ===========================
  * This is the ONLY file you need to modify to add a new module to Homestead.
  *
- * To add a new module:
- * 1. Create your module directory in src/modules/your-module/
- * 2. Implement the module.config.ts file
- * 3. Import and register it in the MODULES array below
- * 4. That's it! The module will automatically appear in navigation and routing.
+ * Feature modules ship in the `@rambleraptor/homestead-modules` workspace
+ * package (under `packages/homestead-modules/`). Settings and superuser are
+ * part of the core experience and stay in this directory.
+ *
+ * To add a new feature module:
+ * 1. Create `packages/homestead-modules/<your-module>/` with `module.config.ts`
+ *    and `index.ts` (re-exporting the module).
+ * 2. Add the module to the barrel at `packages/homestead-modules/index.ts`.
+ * 3. Import and register it in the MODULES array below.
  *
  * Example:
  * ```
- * import { dashboardModule } from './dashboard/module.config';
- * import { choresModule } from './chores/module.config';
+ * import { choresModule } from '@rambleraptor/homestead-modules';
  *
  * const MODULES: HomeModule[] = [
  *   dashboardModule,
@@ -50,19 +53,23 @@ import { logger } from '@/core/utils/logger';
 // IMPORT YOUR MODULES HERE
 // =============================================================================
 
-// Import modules as they are created
-import { dashboardModule } from './dashboard/module.config';
-import { giftCardsModule } from './gift-cards/module.config';
-import { groceriesModule } from './groceries/module.config';
-import { peopleModule } from './people/module.config';
-import { notificationsModule } from './notifications/module.config';
+// Import modules as they are created. Feature modules ship in the
+// `@rambleraptor/homestead-modules` workspace package; settings and superuser
+// stay in-tree because they're part of the core experience.
+import {
+  creditCardsModule,
+  dashboardModule,
+  gamesModule,
+  giftCardsModule,
+  groceriesModule,
+  hsaModule,
+  notificationsModule,
+  peopleModule,
+  recipesModule,
+  todosModule,
+} from '@rambleraptor/homestead-modules';
 import { settingsModule } from './settings/module.config';
-import { hsaModule } from './hsa/module.config';
-import { creditCardsModule } from './credit-cards/module.config';
 import { superuserModule } from './superuser/module.config';
-import { gamesModule } from './games/module.config';
-import { recipesModule } from './recipes/module.config';
-import { todosModule } from './todos/module.config';
 
 // =============================================================================
 // REGISTER MODULES HERE

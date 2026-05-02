@@ -42,6 +42,9 @@ tests/migrations/test_pb_data/
 # Pocketbase
 pocketbase/
 
+# Workspace node_modules (root-hoisted)
+node_modules/
+
 # Scripts
 scripts/node_modules/
 

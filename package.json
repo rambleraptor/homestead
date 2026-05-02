@@ -1,0 +1,8 @@
+{
+  "name": "homestead",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "packages/*"
+  ]
+}

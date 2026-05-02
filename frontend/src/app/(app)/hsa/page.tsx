@@ -4,7 +4,7 @@
  * Main page for HSA receipt management
  */
 
-import { HSAHome } from '@/modules/hsa/components/HSAHome';
+import { HSAHome } from '@rambleraptor/homestead-modules/hsa/components/HSAHome';
 
 export default function HSAPage() {
   return <HSAHome />;

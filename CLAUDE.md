@@ -152,17 +152,27 @@ the UI. API seed is 10-100× faster.
 
 ### Modular architecture
 
+Feature modules ship in the `@rambleraptor/homestead-modules` workspace
+package at `packages/homestead-modules/<feature>/`. The registry, the
+`HomeModule`/`ModuleFlagDef` types, and the `settings` + `superuser`
+modules stay in `frontend/src/modules/` because they are part of the core
+experience.
+
 Every feature is a self-contained module:
 
 ```
-src/modules/<feature>/
+packages/homestead-modules/<feature>/
 ├── components/         # UI components
 ├── hooks/              # Custom hooks (data access lives here)
 ├── types.ts            # TypeScript types
-├── routes.tsx          # Route definitions
-├── module.config.ts    # Module metadata
+├── module.config.ts    # Module metadata (imports HomeModule from @/modules/types)
 └── index.ts            # Public exports
 ```
+
+Consumers import via the package, e.g.
+`import { GiftCardHome } from '@rambleraptor/homestead-modules/gift-cards/components/GiftCardHome'`.
+The package keeps its existing reliance on `@/core/...` and `@/shared/...`
+through a TypeScript path alias and Next.js `transpilePackages`.
 
 ### Style
 - Meaningful variable / function names
@@ -172,6 +182,10 @@ src/modules/<feature>/
 
 ## Project Structure
 
+The repo is an npm workspace. The root `package.json` declares
+`workspaces: ["frontend", "packages/*"]`; install once at the root with
+`npm install`.
+
 ### Frontend (`frontend/`)
 
 - `src/core/api/aepbase.ts` — thin REST client wrapper for aepbase
@@ -179,8 +193,19 @@ src/modules/<feature>/
 - `src/app/api/` — Next.js server routes (notifications, OCR, actions)
 - `src/app/api/_lib/aepbase-server.ts` — server-side aepbase helper (the
   client-side wrapper uses localStorage, so server routes use this instead)
-- `src/modules/` — feature modules (gift-cards, credit-cards, etc.)
+- `src/modules/` — module registry, contract types, and the in-tree
+  `settings` + `superuser` modules (core experience)
 - `src/shared/` — shared components + utilities
+
+### Feature modules package (`packages/homestead-modules/`)
+
+The user-facing feature modules (`credit-cards`, `dashboard`, `games`,
+`gift-cards`, `groceries`, `hsa`, `notifications`, `people`, `recipes`,
+`todos`) live here as the `@rambleraptor/homestead-modules` workspace
+package. Frontend lists it as a dependency and adds it to
+`next.config.ts`'s `transpilePackages`. Modules continue to import
+`@/core/...` and `@/shared/...` through a TypeScript path alias defined in
+`packages/homestead-modules/tsconfig.json`.
 
 ### Backend (`aepbase/`)
 
