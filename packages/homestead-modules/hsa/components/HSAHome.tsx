@@ -17,7 +17,7 @@ import { HSAQuickCaptureForm } from './HSAQuickCaptureForm';
 import { HSAAuditVault } from './HSAAuditVault';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { HSAReceiptFormData, ReceiptStatus } from '../types';
 
 export function HSAHome() {

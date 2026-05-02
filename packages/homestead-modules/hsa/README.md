@@ -63,10 +63,10 @@ pb_data/storage/abc123_hsa_receipts/xyz789_record/receipt_20240115.jpg
 Files are served by PocketBase through its built-in file server:
 
 ```typescript
-import { pb } from '@/core/api/pocketbase';
+import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 
 // Get URL for a receipt file
-const url = pb.files.getUrl(receipt, receipt.receipt_file);
+const url = aepbase.files.getUrl(receipt, receipt.receipt_file);
 ```
 
 The URL format is:

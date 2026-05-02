@@ -6,11 +6,11 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { queryKeys } from '@/core/api/queryClient';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { PersonCSVData } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { ParsedItem, BulkImportResult } from '@/shared/bulk-import/types';
 
 interface PersonRecord {

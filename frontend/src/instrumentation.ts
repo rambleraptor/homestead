@@ -37,7 +37,7 @@ export async function register(): Promise<void> {
   try {
     const { getAllModuleFlagDefs } = await import('@/modules/registry');
     const { syncModuleFlagsSchema } = await import(
-      '@/core/module-flags/sync'
+      '@rambleraptor/homestead-core/module-flags/sync'
     );
 
     const token = await login(aepbaseUrl, email, password);

@@ -12,7 +12,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Home, LogOut, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
-import { getNavigationModules } from '../../modules/registry';
+import { getNavigationModules } from '@/modules/registry';
 import { useModuleEnabledPredicate } from '@/modules/settings/hooks/useIsModuleEnabled';
 
 interface SidebarProps {

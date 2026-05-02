@@ -3,8 +3,8 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
 import type { PictionaryGame } from '../types';
 
 export function useGame(gameId: string | null) {

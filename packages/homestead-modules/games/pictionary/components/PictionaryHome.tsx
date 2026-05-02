@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Upload, Loader2, AlertCircle } from 'lucide-react';
 import { usePeople } from '../../../people/hooks/usePeople';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { useGames } from '../hooks/useGames';
 import { useGameTeams } from '../hooks/useGameTeams';
 import { useGameWinners } from '../hooks/useGameWinners';

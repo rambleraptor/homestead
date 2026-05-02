@@ -1,4 +1,4 @@
-import type { MapProvider } from '@/core/auth/types';
+import type { MapProvider } from '@rambleraptor/homestead-core/auth/types';
 
 /**
  * Generate a map URL based on the provider and address

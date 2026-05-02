@@ -7,7 +7,7 @@ import { Spinner } from '@/shared/components/Spinner';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { useNotifications } from '../hooks/useNotifications';
 import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { Notification } from '../types';
 
 export function NotificationsHome() {

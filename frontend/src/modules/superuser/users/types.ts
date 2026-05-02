@@ -1,4 +1,4 @@
-import type { UserType } from '@/core/auth/types';
+import type { UserType } from '@rambleraptor/homestead-core/auth/types';
 
 export interface ManagedUser {
   id: string;

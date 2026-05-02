@@ -10,7 +10,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { aepbase, AepbaseError } from '@/core/api/aepbase';
+import { aepbase, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
 import {
   MODULE_FLAG_SEPARATOR,
   parseFieldName,

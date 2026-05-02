@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import type { ManagedUser, UserFormData } from '../types';
-import type { UserType } from '@/core/auth/types';
+import type { UserType } from '@rambleraptor/homestead-core/auth/types';
 
 interface UserFormProps {
   initialData?: ManagedUser;

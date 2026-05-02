@@ -15,7 +15,7 @@ import {
 import {
   persistOptions,
   createGroceriesPersister,
-} from '@/core/api/persistQueryClient';
+} from '../persistQueryClient';
 
 const dehydrate = persistOptions.dehydrateOptions!;
 

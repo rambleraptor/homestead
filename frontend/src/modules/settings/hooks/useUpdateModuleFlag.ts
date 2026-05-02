@@ -16,8 +16,8 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { aepbase, AepCollections, AepbaseError } from '@/core/api/aepbase';
-import { syncModuleFlagsSchema } from '@/core/module-flags/sync';
+import { aepbase, AepCollections, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
+import { syncModuleFlagsSchema } from '@rambleraptor/homestead-core/module-flags/sync';
 import { getAllModuleFlagDefs } from '@/modules/registry';
 import type { ModuleFlagValue } from '../../types';
 import { fieldName } from '../flags';

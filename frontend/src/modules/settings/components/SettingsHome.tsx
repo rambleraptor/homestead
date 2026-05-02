@@ -4,7 +4,7 @@ import { Bell, BellOff, Bug, GitCommit, Map } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
 import { Spinner } from '@/shared/components/Spinner';
-import { useAuth } from '@/core/auth/useAuth';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useNotificationSubscription } from '../hooks/useNotificationSubscription';
 import { useUpdateNotificationSubscription } from '../hooks/useUpdateNotificationSubscription';
 import { useDeleteNotificationSubscription } from '../hooks/useDeleteNotificationSubscription';
@@ -15,12 +15,12 @@ import {
   requestNotificationPermission,
   subscribeToPushNotifications,
   unsubscribeFromPushNotifications,
-} from '@/core/utils/notifications';
+} from '@rambleraptor/homestead-core/utils/notifications';
 import { ChangePasswordForm } from './ChangePasswordForm';
 import { useToast } from '@/shared/components/ToastProvider';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { logger } from '@/core/utils/logger';
-import type { MapProvider } from '@/core/auth/types';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import type { MapProvider } from '@rambleraptor/homestead-core/auth/types';
 
 export function SettingsHome() {
   const toast = useToast();

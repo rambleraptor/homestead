@@ -21,7 +21,7 @@ import { Badge } from '@/shared/components/Badge';
 import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
 import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
 import { useModuleFlag } from '@/modules/settings';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 export function GroceriesHome() {
   const [itemName, setItemName] = useState('');

@@ -9,11 +9,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { aepbase, AepbaseError } from '@/core/api/aepbase';
-import { syncModuleFlagsSchema } from '@/core/module-flags/sync';
+import { aepbase, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
+import { syncModuleFlagsSchema } from '@rambleraptor/homestead-core/module-flags/sync';
 import { useModuleFlag } from '../hooks/useModuleFlag';
 
-vi.mock('@/core/module-flags/sync', () => ({
+vi.mock('@rambleraptor/homestead-core/module-flags/sync', () => ({
   syncModuleFlagsSchema: vi.fn(async () => ({ action: 'created' as const })),
 }));
 

@@ -22,7 +22,7 @@ import { GameList } from './GameList';
 import { GameSetup } from './GameSetup';
 import { HolePlay } from './HolePlay';
 import { GameResults } from './GameResults';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { PageHeader } from '@/shared/components/PageHeader';
 import type { Game, GameFormData, Hole, PlayerScore } from '../types';
 

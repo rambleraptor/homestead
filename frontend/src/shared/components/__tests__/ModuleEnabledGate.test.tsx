@@ -9,16 +9,16 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { ModuleEnabledGate } from '../ModuleEnabledGate';
-import { useAuth } from '@/core/auth/useAuth';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useModuleFlag } from '@/modules/settings/hooks/useModuleFlag';
-import type { User } from '@/core/auth/types';
+import type { User } from '@rambleraptor/homestead-core/auth/types';
 
 const replace = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace }),
 }));
 
-vi.mock('@/core/auth/useAuth', () => ({
+vi.mock('@rambleraptor/homestead-core/auth/useAuth', () => ({
   useAuth: vi.fn(),
 }));
 

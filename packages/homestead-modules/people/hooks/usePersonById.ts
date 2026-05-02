@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { queryKeys } from '@/core/api/queryClient';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { Person, Address } from '../types';
 import { findSharedDataForPerson } from '../utils/sharedDataSync';
 

@@ -7,9 +7,9 @@
  */
 
 import { useMutation } from '@tanstack/react-query';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { useAuth } from '@/core/auth/useAuth';
-import type { MapProvider } from '@/core/auth/types';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
+import type { MapProvider } from '@rambleraptor/homestead-core/auth/types';
 
 interface UserPreferenceRecord {
   id: string;

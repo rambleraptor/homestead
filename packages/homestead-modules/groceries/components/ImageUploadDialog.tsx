@@ -9,7 +9,7 @@
 import { useState, useRef } from 'react';
 import { X, Upload, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useCreateGroceryItemsFromImage } from '../hooks/useCreateGroceryItemsFromImage';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 interface ImageUploadDialogProps {
   isOpen: boolean;

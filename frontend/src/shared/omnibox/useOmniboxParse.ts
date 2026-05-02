@@ -1,8 +1,8 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { aepbase } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { OmniboxParseResponse } from '@/shared/omnibox/types';
 
 export function useOmniboxParse() {

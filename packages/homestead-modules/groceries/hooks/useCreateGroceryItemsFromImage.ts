@@ -6,10 +6,10 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { extractGroceryItemsFromImage } from '@/core/services/gemini';
-import { logger } from '@/core/utils/logger';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
+import { extractGroceryItemsFromImage } from '@rambleraptor/homestead-core/services/gemini';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { GroceryItem } from '../types';
 
 export interface CreateFromImageResult {

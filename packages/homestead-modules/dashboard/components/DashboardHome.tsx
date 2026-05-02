@@ -8,7 +8,7 @@
  * them through `getAllDashboardWidgets()` and lays them out in order.
  */
 
-import { useAuth } from '@/core/auth/useAuth';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { getTodaysHoliday } from '@/shared/utils/dateUtils';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { getAllDashboardWidgets } from '@/modules/registry';

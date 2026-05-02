@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Login } from '@/core/router/Login';
+import { Login } from '@rambleraptor/homestead-core/router/Login';
 
 export default function LoginPage() {
   return (

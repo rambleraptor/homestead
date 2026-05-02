@@ -13,7 +13,7 @@
 
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import type { PersistQueryClientOptions } from '@tanstack/react-query-persist-client';
-import { logger } from '@/core/utils/logger';
+import { logger } from '../utils/logger';
 
 const STORAGE_KEY = 'homeos:rq:groceries:v1';
 

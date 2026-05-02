@@ -5,8 +5,8 @@
  */
 
 import { BulkImportContainer, useBulkImport } from '@/shared/bulk-import';
-import { AepCollections } from '@/core/api/aepbase';
-import { queryKeys } from '@/core/api/queryClient';
+import { AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { giftCardsImportSchema } from './schema';
 
 export function GiftCardsBulkImport() {

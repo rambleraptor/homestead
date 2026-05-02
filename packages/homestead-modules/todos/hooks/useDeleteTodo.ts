@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
 
 export function useDeleteTodo() {
   const queryClient = useQueryClient();

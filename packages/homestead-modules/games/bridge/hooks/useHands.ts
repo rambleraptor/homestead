@@ -3,7 +3,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { loadHands } from '../storage';
 import type { Hand } from '../types';
 

@@ -10,8 +10,8 @@
  * caught if a person is deleted between preview and import.
  */
 
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { queryKeys } from '@/core/api/queryClient';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { useBulkImport } from '@/shared/bulk-import';
 import type { PictionaryGame, PictionaryTeam } from '../types';
 import { loadPeopleMap, type PeopleByName } from './peopleMap';

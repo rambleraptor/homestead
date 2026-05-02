@@ -9,7 +9,7 @@
  */
 
 import { useMutation } from '@tanstack/react-query';
-import { aepbase } from '@/core/api/aepbase';
+import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 
 export interface ChangePasswordData {
   oldPassword: string;

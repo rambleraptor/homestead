@@ -12,10 +12,10 @@
  */
 
 import { useMemo } from 'react';
-import { useAuth } from '@/core/auth/useAuth';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useModuleFlag } from './useModuleFlag';
 import { useModuleFlags } from './useModuleFlags';
-import type { User } from '@/core/auth/types';
+import type { User } from '@rambleraptor/homestead-core/auth/types';
 import {
   DEFAULT_MODULE_VISIBILITY,
   type ModuleVisibility,

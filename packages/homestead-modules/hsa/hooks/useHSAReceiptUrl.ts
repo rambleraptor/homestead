@@ -3,8 +3,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { HSAReceipt } from '../types';
 
 export function useHSAReceiptUrl(receipt: HSAReceipt | null | undefined): string | null {

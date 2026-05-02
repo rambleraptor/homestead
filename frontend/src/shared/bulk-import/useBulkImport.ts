@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { aepbase } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { ParsedItem, BulkImportResult } from './types';
 
 export interface SaveItemHelpers<C> {

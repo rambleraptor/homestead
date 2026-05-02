@@ -10,7 +10,7 @@
  */
 
 import type { QueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { CreditCardPerk, PerkRedemption } from '../types';
 
 export function findPerkParentCardId(

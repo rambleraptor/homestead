@@ -9,7 +9,7 @@ import { Spinner } from '@/shared/components/Spinner';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { useToast } from '@/shared/components/ToastProvider';
-import { useAuth } from '@/core/auth/useAuth';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useUsers } from '../hooks/useUsers';
 import { useCreateUser } from '../hooks/useCreateUser';
 import { useUpdateUser } from '../hooks/useUpdateUser';

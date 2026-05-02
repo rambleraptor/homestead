@@ -21,7 +21,7 @@ import { CardList } from './CardList';
 import { CreditCardForm } from './CreditCardForm';
 import { Modal } from '@/shared/components/Modal';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { CreditCard as CreditCardType, CreditCardFormData } from '../types';
 
 export function CreditCardsList() {

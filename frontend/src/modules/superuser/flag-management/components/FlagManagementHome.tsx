@@ -9,13 +9,13 @@ import { Spinner } from '@/shared/components/Spinner';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { useToast } from '@/shared/components/ToastProvider';
 import { useQueryClient } from '@tanstack/react-query';
-import { aepbase } from '@/core/api/aepbase';
-import { syncModuleFlagsSchema } from '@/core/module-flags/sync';
+import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
+import { syncModuleFlagsSchema } from '@rambleraptor/homestead-core/module-flags/sync';
 import { getAllModuleFlagDefs, getModuleById } from '@/modules/registry';
 import { useModuleFlags } from '@/modules/settings/hooks/useModuleFlags';
 import { useUpdateModuleFlag } from '@/modules/settings/hooks/useUpdateModuleFlag';
 import { unflatten } from '@/modules/settings/flags';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import {
   MODULE_FLAGS_DEFINITION_QUERY_KEY,
   useModuleFlagsDefinition,

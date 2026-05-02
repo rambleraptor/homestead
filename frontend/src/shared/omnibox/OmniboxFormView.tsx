@@ -11,7 +11,7 @@ import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Card } from '@/shared/components/Card';
 import { useToast } from '@/shared/components/ToastProvider';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { OmniboxAdapter, OmniboxForm } from '@/shared/omnibox/types';
 
 interface OmniboxFormViewProps {

@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Upload, X, Sparkles, Loader2 } from 'lucide-react';
-import { aepbase } from '@/core/api/aepbase';
+import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import type { HSAReceiptFormData, ReceiptCategory } from '../types';
 
 /**

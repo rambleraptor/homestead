@@ -5,7 +5,7 @@
  * the collection and filter client-side (household datasets are small).
  */
 
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
 import type { PersonSharedData, Address, AddressFormData } from '../types';
 
 interface AepAddressRecord {

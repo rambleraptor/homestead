@@ -23,7 +23,7 @@ import {
   ModuleFiltersProvider,
   useFilteredItems,
 } from '@/shared/filters';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { recipesModule } from '../module.config';
 import type { Recipe, RecipeFormData } from '../types';
 

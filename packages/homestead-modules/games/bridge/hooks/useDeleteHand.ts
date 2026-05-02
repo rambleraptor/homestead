@@ -3,7 +3,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/core/api/queryClient';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { loadHands, saveHands } from '../storage';
 
 export function useDeleteHand() {

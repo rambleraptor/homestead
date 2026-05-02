@@ -4,8 +4,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import { aepbase } from '@/core/api/aepbase';
-import { queryKeys } from '@/core/api/queryClient';
+import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import {
   registerGroceryMutationDefaults,
   GroceryMutationKeys,

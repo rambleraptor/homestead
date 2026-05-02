@@ -47,7 +47,7 @@ import {
   MODULE_VISIBILITY_OPTIONS,
   type ModuleVisibility,
 } from './settings/visibility';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 // =============================================================================
 // IMPORT YOUR MODULES HERE

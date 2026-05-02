@@ -11,7 +11,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { aepbase, AepbaseError } from '@/core/api/aepbase';
+import { aepbase, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
 import { useModuleFlagsDefinition } from '../useModuleFlagsDefinition';
 
 const createWrapper = () => {

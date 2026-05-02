@@ -7,8 +7,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
-import { logger } from '@/core/utils/logger';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { GiftCard } from '../types';
 
 type ImageField = 'front_image' | 'back_image';

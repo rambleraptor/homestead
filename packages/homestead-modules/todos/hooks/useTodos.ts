@@ -8,8 +8,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { queryKeys } from '@/core/api/queryClient';
-import { aepbase, AepCollections } from '@/core/api/aepbase';
+import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
+import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
 import type { Todo, TodoBuckets, TodoProgress } from '../types';
 
 export function useTodos() {

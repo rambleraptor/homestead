@@ -8,9 +8,9 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { aepbase, AepCollections, AepbaseError } from '@/core/api/aepbase';
+import { aepbase, AepCollections, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
 import { getAllModuleFlagDefs } from '@/modules/registry';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { unflatten, type ModuleFlagValues } from '../flags';
 
 export const MODULE_FLAGS_QUERY_KEY = ['module-flags'] as const;

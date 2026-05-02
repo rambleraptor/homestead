@@ -8,10 +8,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useIsModuleEnabled } from '../hooks/useIsModuleEnabled';
 import { useModuleFlag } from '../hooks/useModuleFlag';
-import { useAuth } from '@/core/auth/useAuth';
-import type { User } from '@/core/auth/types';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
+import type { User } from '@rambleraptor/homestead-core/auth/types';
 
-vi.mock('@/core/auth/useAuth', () => ({
+vi.mock('@rambleraptor/homestead-core/auth/useAuth', () => ({
   useAuth: vi.fn(),
 }));
 

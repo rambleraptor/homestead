@@ -1,4 +1,4 @@
-import { AppShell } from '@/core/layout/AppShell';
+import { AppShell } from '@rambleraptor/homestead-core/layout/AppShell';
 
 export default function AppLayout({
   children,

@@ -5,8 +5,8 @@
  * API to keep the API key secure.
  */
 
-import { logger } from '@/core/utils/logger';
-import { aepbase } from '@/core/api/aepbase';
+import { logger } from '../utils/logger';
+import { aepbase } from '../api/aepbase';
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

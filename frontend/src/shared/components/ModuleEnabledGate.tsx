@@ -14,7 +14,7 @@
 
 import React, { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/core/auth/useAuth';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useModuleFlag } from '@/modules/settings/hooks/useModuleFlag';
 import {
   DEFAULT_MODULE_VISIBILITY,

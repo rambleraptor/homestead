@@ -39,7 +39,7 @@ class MockAepbaseError extends Error {
     this.name = 'AepbaseError';
   }
 }
-vi.mock('@/core/api/aepbase', () => ({
+vi.mock('@rambleraptor/homestead-core/api/aepbase', () => ({
   AepbaseError: MockAepbaseError,
   aepbase: {
     list: vi.fn(async () => []),

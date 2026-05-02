@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { useChangePassword } from '../hooks/useChangePassword';
 import type { ChangePasswordData } from '../hooks/useChangePassword';
-import { aepbase } from '@/core/api/aepbase';
+import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 
 const createWrapper = () => {
   const queryClient = new QueryClient({

@@ -20,7 +20,7 @@ import { useMarkStoreCompleted } from '../hooks/useMarkStoreCompleted';
 import { GroceryList } from './GroceryList';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
-import { logger } from '@/core/utils/logger';
+import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 export function GroceriesList() {
   const [storeToClear, setStoreToClear] = useState<{ id: string | null; name: string } | null>(null);

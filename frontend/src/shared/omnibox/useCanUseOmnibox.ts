@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useAuth } from '@/core/auth/useAuth';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useModuleFlag } from '@/modules/settings/hooks/useModuleFlag';
 import type { OmniboxAccess } from '@/modules/settings/module.config';
 
