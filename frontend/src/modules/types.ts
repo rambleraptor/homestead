@@ -9,6 +9,7 @@ import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type { OmniboxAdapter } from '@/shared/omnibox/types';
 import type { ModuleFilterDecl } from '@/shared/filters/types';
+import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
 import type { ModuleVisibility } from './settings/visibility';
 
 /**
@@ -171,6 +172,15 @@ export interface HomeModule {
    * field names are `${moduleId_snake}__${key}`.
    */
   flags?: Record<string, ModuleFlagDef>;
+
+  /**
+   * Optional aepbase resource definitions owned by this module. The
+   * registry aggregates them across all modules (including children)
+   * and the Next.js instrumentation hook applies them to aepbase via
+   * `/aep-resource-definitions` on server boot. Each `singular` must
+   * be globally unique.
+   */
+  resources?: ResourceDefinition[];
 
   /**
    * Optional widgets this module contributes to the dashboard. Each

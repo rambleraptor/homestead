@@ -9,9 +9,10 @@ set -e
 #   ./deploy.sh --auto    - Check for updates, deploy if available (systemd timer)
 #   ./deploy.sh --force   - Force rebuild even if no changes detected
 #
-# Note: aepbase schema changes (aepbase/terraform/) are NOT applied by this
-# script. Run `terraform apply` manually in aepbase/terraform/ when the
-# schema changes. Data persists in aepbase/data/aepbase.db.
+# Note: aepbase schema changes are applied automatically when the Next.js
+# server starts (via `frontend/src/instrumentation.ts`). The frontend
+# service restarts as part of this deploy, so schema changes ride along.
+# Data persists in aepbase/data/aepbase.db.
 
 export PATH="/opt/node22/bin:$PATH"
 

@@ -36,10 +36,11 @@ test.describe('People CRUD', () => {
     await peoplePage.expectPersonInList(personData.name);
   });
 
-  test('should edit an existing person', async ({ userToken }) => {
+  test('should edit an existing person', async ({ userToken, userId }) => {
     const created = await createPerson(userToken, {
       name: 'Original Name',
       address: '123 Old St',
+      createdByUserId: userId,
     });
 
     await peoplePage.goto();

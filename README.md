@@ -39,33 +39,16 @@ cd aepbase
 ```
 
 On first start, aepbase prints the superuser email + password to stdout.
-**Save these credentials** — you'll need them to log in and to run
-`terraform apply`.
+**Save these credentials** — set them as `AEPBASE_ADMIN_EMAIL` /
+`AEPBASE_ADMIN_PASSWORD` so the schema sync runs at server boot.
 
-3. **Apply the schema**
-
-In a new terminal:
+3. **Install frontend dependencies**
 
 ```bash
-# Get an admin bearer token
-TOKEN=$(curl -sS -X POST http://localhost:8090/users/:login \
-    -H 'Content-Type: application/json' \
-    -d '{"email":"<admin-email>","password":"<admin-pw>"}' | jq -r .token)
-
-cd aepbase/terraform
-TF_VAR_aepbase_token=$TOKEN \
-    AEP_OPENAPI=http://localhost:8090/openapi.json \
-    terraform apply
-```
-
-4. **Install frontend dependencies**
-
-```bash
-cd frontend
 npm install
 ```
 
-5. **Start the development server**
+4. **Start the development server**
 
 ```bash
 npm run dev
@@ -74,7 +57,7 @@ npm run dev
 Open `http://localhost:3000` in your browser. The frontend proxies
 aepbase at same-origin `/api/aep`.
 
-6. **Log in**
+5. **Log in**
 
 Use the superuser credentials printed by aepbase, or create additional
 users through the app's sign-up flow.

@@ -10,6 +10,7 @@ import { Pencil } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
 import { PictionaryHome } from './components/PictionaryHome';
 import { PictionaryBulkImport } from './bulk-import';
+import { pictionaryResources } from './resources';
 
 export const pictionaryModule: HomeModule = {
   id: 'pictionary',
@@ -22,4 +23,5 @@ export const pictionaryModule: HomeModule = {
     { path: 'import', component: PictionaryBulkImport, gates: ['enabled'] },
   ],
   enabled: true,
+  resources: pictionaryResources,
 };

@@ -9,6 +9,7 @@ import { ShoppingCart } from 'lucide-react';
 import { groceriesOmnibox } from './omnibox';
 import { GroceriesWidget } from './components/GroceriesWidget';
 import { GroceriesHome } from './components/GroceriesHome';
+import { groceriesResources } from './resources';
 
 export const groceriesModule: HomeModule = {
   id: 'groceries',
@@ -21,6 +22,7 @@ export const groceriesModule: HomeModule = {
   showInNav: true,
   navOrder: 2,
   enabled: true,
+  resources: groceriesResources,
   omnibox: groceriesOmnibox,
   flags: {
     default_store: {

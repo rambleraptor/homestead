@@ -8,6 +8,7 @@
 import { Bell } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
 import { NotificationsHome } from './components/NotificationsHome';
+import { notificationsResources } from './resources';
 
 export const notificationsModule: HomeModule = {
   id: 'notifications',
@@ -19,6 +20,7 @@ export const notificationsModule: HomeModule = {
   showInNav: false,
   navOrder: 4,
   enabled: true,
+  resources: notificationsResources,
   omnibox: {
     synonyms: ['notifications', 'reminders', 'alerts', 'inbox'],
     listComponent: NotificationsHome,

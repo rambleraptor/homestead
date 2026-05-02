@@ -9,6 +9,7 @@ import { Gift } from 'lucide-react';
 import { GiftCardsList } from './components/GiftCardsList';
 import { GiftCardHome } from './components/GiftCardHome';
 import { GiftCardsBulkImport } from './bulk-import';
+import { giftCardsResources } from './resources';
 
 export const giftCardsModule: HomeModule = {
   id: 'gift-cards',
@@ -24,6 +25,7 @@ export const giftCardsModule: HomeModule = {
   navOrder: 4,
   section: 'Money',
   enabled: true,
+  resources: giftCardsResources,
   omnibox: {
     synonyms: [
       'gift',

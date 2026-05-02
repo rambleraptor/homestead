@@ -2,9 +2,9 @@
  * Next.js instrumentation hook.
  *
  * Runs once when the server boots (dev + production `next start`). We
- * use it to push the aggregated `module-flags` resource definition to
- * aepbase so that each declared flag is a real field on the singleton
- * resource.
+ * use it to push module-declared resource definitions to aepbase, then
+ * the aggregated `module-flags` schema. This replaces the old terraform
+ * `apply` step — schemas now ship with the modules that own them.
  *
  * Env vars required:
  *   AEPBASE_URL             (default: http://127.0.0.1:8090)
@@ -14,7 +14,8 @@
  * If the credentials aren't set (e.g. during `next build` in CI) the
  * sync is skipped with a warning. The app still works — callers of
  * `useModuleFlag` will see declared defaults until the schema is
- * registered.
+ * registered, and any aepbase collection write will 404 until the
+ * resource definition is applied.
  */
 
 export async function register(): Promise<void> {
@@ -29,18 +30,64 @@ export async function register(): Promise<void> {
 
   if (!email || !password) {
     console.warn(
-      '[module-flags] skipping schema sync — AEPBASE_ADMIN_EMAIL / AEPBASE_ADMIN_PASSWORD not set',
+      '[aepbase-sync] skipping schema sync — AEPBASE_ADMIN_EMAIL / AEPBASE_ADMIN_PASSWORD not set',
     );
     return;
   }
 
+  let token: string;
+  try {
+    token = await login(aepbaseUrl, email, password);
+  } catch (error) {
+    console.error('[aepbase-sync] login failed', error);
+    return;
+  }
+
+  await syncResources(aepbaseUrl, token);
+  await syncModuleFlags(aepbaseUrl, token);
+}
+
+async function syncResources(
+  aepbaseUrl: string,
+  token: string,
+): Promise<void> {
+  try {
+    const { getAllResourceDefs } = await import('@/modules/registry');
+    const { syncResourceDefinitions } = await import(
+      '@rambleraptor/homestead-core/resources/sync'
+    );
+    const { BUILTIN_RESOURCE_DEFS } = await import(
+      '@rambleraptor/homestead-core/resources/builtins'
+    );
+
+    const defs = [...BUILTIN_RESOURCE_DEFS, ...getAllResourceDefs()];
+    const result = await syncResourceDefinitions({
+      aepbaseUrl,
+      token,
+      defs,
+    });
+    if (!result.created.length && !result.updated.length) {
+      console.info(
+        `[resources] schema already in sync (${result.unchanged.length} definitions)`,
+      );
+    }
+  } catch (error) {
+    // Don't crash the server on sync failure — the app still serves
+    // pages, and a fix-and-restart cycle is fast.
+    console.error('[resources] schema sync failed', error);
+  }
+}
+
+async function syncModuleFlags(
+  aepbaseUrl: string,
+  token: string,
+): Promise<void> {
   try {
     const { getAllModuleFlagDefs } = await import('@/modules/registry');
     const { syncModuleFlagsSchema } = await import(
       '@rambleraptor/homestead-core/module-flags/sync'
     );
 
-    const token = await login(aepbaseUrl, email, password);
     const defs = getAllModuleFlagDefs();
     const result = await syncModuleFlagsSchema({
       aepbaseUrl,
@@ -51,8 +98,6 @@ export async function register(): Promise<void> {
       console.info('[module-flags] schema already in sync');
     }
   } catch (error) {
-    // Don't crash the server on sync failure — callers still get
-    // declared defaults. Log loudly so developers notice.
     console.error('[module-flags] schema sync failed', error);
   }
 }

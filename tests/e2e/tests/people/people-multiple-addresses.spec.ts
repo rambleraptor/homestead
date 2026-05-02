@@ -28,10 +28,11 @@ test.describe('People Multiple Addresses', () => {
     await peoplePage.goto();
   });
 
-  test('should add a second address to an existing person', async ({ authenticatedPage, userToken }) => {
+  test('should add a second address to an existing person', async ({ authenticatedPage, userToken, userId }) => {
     const person = await createPerson(userToken, {
       name: 'John Doe',
       address: '123 Main St',
+      createdByUserId: userId,
     });
 
     await peoplePage.goto();
@@ -124,10 +125,11 @@ test.describe('People Multiple Addresses', () => {
     expect(additionalAddresses[0].line1).toBe('321 Elm Dr');
   });
 
-  test('should remove a second address', async ({ authenticatedPage, userToken }) => {
+  test('should remove a second address', async ({ authenticatedPage, userToken, userId }) => {
     const person = await createPerson(userToken, {
       name: 'Bob Jones',
       address: '111 First St',
+      createdByUserId: userId,
     });
 
     const sharedData = await getPersonSharedData(userToken, person.id);
@@ -136,6 +138,7 @@ test.describe('People Multiple Addresses', () => {
     const secondAddress = await aepCreate<AddressRecord>(userToken, 'addresses', {
       line1: '222 Second St',
       shared_data_id: sharedData.id,
+      created_by: `users/${userId}`,
     });
 
     await peoplePage.goto();

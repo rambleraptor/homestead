@@ -7,6 +7,7 @@
 import type { HomeModule } from '@/modules/types';
 import { Receipt } from 'lucide-react';
 import { HSAHome } from './components/HSAHome';
+import { hsaResources } from './resources';
 
 export const hsaModule: HomeModule = {
   id: 'hsa',
@@ -19,6 +20,7 @@ export const hsaModule: HomeModule = {
   navOrder: 4,
   section: 'Money',
   enabled: true,
+  resources: hsaResources,
   omnibox: {
     synonyms: [
       'hsa',

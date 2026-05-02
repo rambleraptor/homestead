@@ -12,7 +12,7 @@ through a same-origin `/api/aep` proxy.
 - [Testing Guidelines](#testing-guidelines)
 - [Code Quality Standards](#code-quality-standards)
 - [Project Structure](#project-structure)
-- [aepbase schema (Terraform)](#aepbase-schema-terraform)
+- [aepbase schema (TypeScript)](#aepbase-schema-typescript)
 - [Data Migration from PocketBase](#data-migration-from-pocketbase)
 
 ## Pull Request Requirements
@@ -65,8 +65,9 @@ npm run dev
 ```
 
 On aepbase's first start, the superuser's email + password are printed to
-stdout. Save them; you'll need them to log in to the app and for
-`terraform apply`.
+stdout. Save them; you'll need them to log in to the app and to set
+`AEPBASE_ADMIN_EMAIL` / `AEPBASE_ADMIN_PASSWORD` in the Next.js
+environment so the schema sync runs at boot.
 
 ### Pre-push checklist
 
@@ -222,7 +223,6 @@ package. Frontend lists it as a dependency and adds it to
 - `install.sh` — builds the binary into `bin/aepbase`
 - `run.sh` — runs it on :8090
 - `data/` — sqlite db + uploaded files (gitignored)
-- `terraform/` — schema-as-code (see next section)
 
 ### Scripts (`aepbase/scripts/`)
 
@@ -233,51 +233,63 @@ package. Frontend lists it as a dependency and adds it to
 
 Systemd-based deployment. See `deployment/README.md`.
 
-## aepbase schema (Terraform)
+## aepbase schema (TypeScript)
 
-The schema lives in `aepbase/terraform/`, driven by the `aep-dev/aep`
-dynamic provider.
+Each feature module owns the schema for the aepbase collections it
+manages. Definitions live alongside the module in a `resources.ts` file
+and are wired into the module's config via `resources: [...]` on the
+exported `HomeModule`. Resource definitions that don't belong to a
+feature module (`user-preference`, `action`, `run`) live in
+`packages/homestead-core/resources/builtins.ts`.
 
-### Applying changes
+At Next.js server boot, `frontend/src/instrumentation.ts` aggregates
+every declared definition through `getAllResourceDefs()` plus
+`BUILTIN_RESOURCE_DEFS`, topologically sorts by `parents`, and applies
+the result via aepbase's `/aep-resource-definitions` endpoint. The
+runner (`@rambleraptor/homestead-core/resources/sync.ts`) is
+idempotent: it creates missing definitions, patches drifted ones, and
+no-ops when everything is in sync.
 
-```bash
-# Get an admin bearer token
-TOKEN=$(curl -sS -X POST http://localhost:8090/users/:login \
-    -H 'Content-Type: application/json' \
-    -d '{"email":"admin@example.com","password":"<pw>"}' | jq -r .token)
+Set `AEPBASE_ADMIN_EMAIL` and `AEPBASE_ADMIN_PASSWORD` in the Next.js
+environment to enable the sync. Without them the app still serves
+pages but aepbase will return 404 for unregistered collections — bring
+up the dev server with credentials at least once after a schema
+change.
 
-cd aepbase/terraform
-TF_VAR_aepbase_token=$TOKEN \
-    AEP_OPENAPI=http://localhost:8090/openapi.json \
-    terraform apply
-```
+The same runner is used by the e2e bootstrap
+(`tests/e2e/config/apply-schema.ts`) so e2e and runtime stay in sync.
 
-### Rules (gotchas we've hit)
+### Adding a new resource
 
-1. **Resource type in HCL is `aep_aep-resource-definition`** — yes, the
-   hyphen is real; it's what the dynamic provider generates.
-2. **Singular/plural must be kebab-case, not camelCase.** `gift-card`, not
-   `giftCard`. Terraform's plugin framework rejects URL params with
-   uppercase letters.
-3. **JSON-schema `enum`, `minimum`, `maximum` are stripped on round-trip.**
+1. Add a new entry in the relevant module's `resources.ts` (or in
+   `packages/homestead-core/resources/builtins.ts` if it's
+   platform-level).
+2. Restart the Next.js dev server with admin creds set; the new
+   definition is created on boot.
+3. If the change is to an existing definition, the runner emits a
+   PATCH automatically.
+
+### Rules (aepbase constraints, not TS-specific)
+
+1. **Singular/plural must be kebab-case.** `gift-card`, not `giftCard`.
+   aepbase rejects URL params with uppercase letters.
+2. **JSON-schema `enum`, `minimum`, `maximum` are stripped on round-trip.**
    Encode allowed values in `description`:
-   ```hcl
-   status = { type = "string", description = "one of: pending, success, error" }
+   ```ts
+   status: { type: 'string', description: 'one of: pending, success, error' }
    ```
-4. **Child resources need explicit `depends_on`.** Setting `parents = ["foo"]`
-   alone does not create a terraform dependency.
-5. **Schema field names stay snake_case** (matches the existing data from
-   the PB era, e.g. `card_number`, `created_by`, `service_date`).
-6. **Don't add autodate fields** (`created`, `updated`). aepbase manages
-   `create_time` and `update_time` itself (note the underscore).
-7. **After editing a resource definition out of band**, run
-   `terraform init -upgrade` so the provider re-reads `/openapi.json`.
-8. **aepbase disallows `type` changes and `parents` changes** on an
+3. **Schema field names stay snake_case** (matches the existing data
+   from the PB era, e.g. `card_number`, `created_by`, `service_date`).
+4. **Don't add autodate fields** (`created`, `updated`). aepbase
+   manages `create_time` and `update_time` itself (note the underscore).
+5. **aepbase disallows `type` changes and `parents` changes** on an
    existing resource definition. Delete + recreate the definition
    (destructive!) if you need either.
-9. **File fields**: declare with `type = "binary"` +
-   `"x-aepbase-file-field" = true`. aepbase writes files under
+6. **File fields**: declare with `type: 'binary'` and
+   `'x-aepbase-file-field': true`. aepbase writes files under
    `aepbase/data/files/...` and exposes a `:download` custom method.
+7. **`singular` is globally unique.** The registry throws on
+   duplicate declarations across modules.
 
 ### Parent / child relationships
 
@@ -293,7 +305,9 @@ TF_VAR_aepbase_token=$TOKEN \
 | `user-preference`           | `user`        | `/users/{id}/preferences/{id}` (note the prefix strip)      |
 
 Parent-keyed children don't carry the parent id as a stored field; it's
-encoded in the URL path.
+encoded in the URL path. Declare via `parents: ['<parent-singular>']`
+in the resource definition; the runner orders applies so parents land
+first.
 
 ### Not yet modeled
 
@@ -301,21 +315,18 @@ encoded in the URL path.
 - Realtime subscriptions (polling only)
 - Thumbnail generation for file fields
 
-### Module flags — not terraform
+### Module flags
 
-The `module-flags` resource is an exception to the terraform rule.
-Each module can declare typed flags in its `module.config.ts`
-(`flags: { ... }`). At Next.js server startup,
-`frontend/src/instrumentation.ts` aggregates every declared flag (via
-`getAllModuleFlagDefs` in `src/modules/registry.ts`), builds a
-JSON-schema payload, and POST/PATCHes it against aepbase's
-`/resource-definitions` endpoint. One record of `module-flags` is the
-household-wide singleton; fields are flattened as
-`${moduleId_snake}__${key}` on the wire.
-
-Set `AEPBASE_ADMIN_EMAIL` and `AEPBASE_ADMIN_PASSWORD` in the Next.js
-environment to enable the sync. Without them the app still works —
-the settings UI falls back to each declared default.
+The `module-flags` resource is generated dynamically from declared
+module flags rather than defined statically. Each module can declare
+typed flags in its `module.config.ts` (`flags: { ... }`). At Next.js
+server startup, `frontend/src/instrumentation.ts` aggregates every
+declared flag (via `getAllModuleFlagDefs` in
+`src/modules/registry.ts`), builds a JSON-schema payload, and
+POST/PATCHes it against aepbase's `/aep-resource-definitions`
+endpoint. One record of `module-flags` is the household-wide
+singleton; fields are flattened as `${moduleId_snake}__${key}` on the
+wire.
 
 Consumers: `useModuleFlag(moduleId, key)` from `@/modules/settings`
 is the one public hook for reading/writing a single flag from any
@@ -350,7 +361,7 @@ See the script header for all flags (`--dry-run`, `--collection`, etc.).
 3. **Respect existing patterns** — review similar code before implementing.
 4. **Use the aepbase wrapper** (`@/core/api/aepbase`) for client-side data
    access, and `@/app/api/_lib/aepbase-server` for server routes.
-5. **Ask before touching schema** — terraform changes affect real data.
+5. **Ask before touching schema** — `resources.ts` changes affect real data.
 6. **Security first** — validate inputs, sanitize outputs, follow OWASP.
 
 ### Before every PR push

@@ -1,9 +1,16 @@
 # aepbase
 
-This directory is the staging area for migrating Homestead off PocketBase and onto
-**aepbase** — a dynamic, AEP-compliant REST backend (https://github.com/rambleraptor/aepbase).
+Homestead's backend is **aepbase** — a dynamic, AEP-compliant REST
+backend (https://github.com/rambleraptor/aepbase). This directory is a
+thin Go wrapper that imports aepbase as a library so we can opt into
+the `EnableUsers` and `EnableFileFields` features (which are
+deliberately not exposed as CLI flags upstream).
 
-The schema is managed with **Terraform** using the `aep-dev/aep` provider.
+The schema is managed in **TypeScript**, not HCL. Each Homestead
+feature module declares the aepbase collections it owns in a
+`resources.ts` file next to its `module.config.ts`, and the Next.js
+server applies them via the `/aep-resource-definitions` endpoint at
+boot. See [`CLAUDE.md` § aepbase schema](../CLAUDE.md#aepbase-schema-typescript).
 
 ## Layout
 
@@ -14,23 +21,8 @@ aepbase/
 ├── install.sh        # `go build` the wrapper into ./bin/aepbase
 ├── run.sh            # run aepbase on :8090 with data in ./data
 ├── bin/              # built binary (gitignored)
-├── data/             # sqlite db + uploaded files (gitignored)
-└── terraform/        # schema-as-code
-    ├── provider.tf
-    ├── gift_cards.tf
-    ├── credit_cards.tf
-    ├── actions.tf
-    ├── notifications.tf
-    ├── people.tf
-    ├── groceries.tf
-    ├── recipes.tf
-    └── hsa_receipts.tf
+└── data/             # sqlite db + uploaded files (gitignored)
 ```
-
-The wrapper exists because two features we need (`EnableUsers` and
-`EnableFileFields`) are library-only opt-ins on upstream aepbase — they are
-deliberately *not* exposed as CLI flags by the upstream `main.go`. Our
-`main.go` flips both on before calling `aepbase.Run`.
 
 ## Quickstart
 
@@ -40,16 +32,16 @@ deliberately *not* exposed as CLI flags by the upstream `main.go`. Our
 
 # 2. Run it (leave this running in its own terminal)
 ./run.sh
-
-# 3. In another terminal, apply the schema
-cd terraform
-export AEP_OPENAPI=http://localhost:8090/openapi.json
-terraform init
-terraform apply
 ```
 
-After apply, the generated OpenAPI spec at `http://localhost:8090/openapi.json`
-exposes CRUD endpoints for every resource definition — e.g.:
+On first start, aepbase prints the superuser email + password to
+stdout. Set them as `AEPBASE_ADMIN_EMAIL` / `AEPBASE_ADMIN_PASSWORD`
+in `frontend/.env.local` so the schema sync runs when the Next.js
+server boots — that's the only step needed to register the schema.
+
+After the frontend has run once with admin credentials, the OpenAPI
+spec at `http://localhost:8090/openapi.json` exposes CRUD endpoints
+for every resource definition — e.g.:
 
 - `POST /gift-cards` — create a gift card
 - `GET  /gift-cards/{id}` — fetch one
@@ -58,8 +50,8 @@ exposes CRUD endpoints for every resource definition — e.g.:
 
 ## Parent / child resources
 
-Where PocketBase used a cascade-delete relation, we model it as an AEP parent.
-This gives nested URLs that encode ownership:
+Where PocketBase used a cascade-delete relation, we model it as an AEP
+parent. This gives nested URLs that encode ownership:
 
 | Child                  | Parent        | URL pattern                                              |
 |------------------------|---------------|----------------------------------------------------------|
@@ -69,52 +61,27 @@ This gives nested URLs that encode ownership:
 | `run`                  | `action`      | `/actions/{id}/runs/{id}`                                |
 | `log`                  | `recipe`      | `/recipes/{id}/logs/{id}`                                |
 
-All other PocketBase relations (e.g. `created_by → users`) are stored as plain
-string fields holding the referenced resource path.
-
-## Gotchas we hit (and how to avoid them)
-
-1. **Terraform attribute names must be lowercase.** The provider turns a
-   resource singular of `giftCard` into a URL param `giftCard_id`, which
-   Terraform's plugin framework rejects. Use **kebab-case singulars**
-   (`gift-card`) — they become valid `gift_card_id` params.
-
-2. **aepbase strips JSON-schema validation fields on round-trip.** `enum`,
-   `minimum`, `maximum`, etc. are silently dropped, which then causes the
-   Terraform provider to fail with *"Provider produced inconsistent result
-   after apply"*. Encode allowed values in `description` instead:
-   ```hcl
-   status = { type = "string", description = "one of: pending, running, success, error" }
-   ```
-
-3. **Child resources need explicit `depends_on`.** Terraform doesn't infer a
-   dependency from the `parents = ["foo"]` string, so a child can be planned
-   before its parent exists. Add `depends_on = [aep_aep-resource-definition.foo]`.
-
-4. **`terraform init` reads the spec at init time.** If you add a new resource
-   definition to aepbase out of band, run `terraform init -upgrade` so the
-   provider re-reads `/openapi.json` and regenerates its resource types.
+All other PocketBase relations (e.g. `created_by → users`) are stored
+as plain string fields holding the referenced resource path.
 
 ## Users and file fields
 
 Both are enabled by `main.go` via library opt-ins.
 
-- **Users** (`EnableUsers`): all requests except `POST /users/:login` require
-  a Bearer token. On first run a default superuser is created and its
-  credentials are printed to stdout — grab them from the `run.sh` log.
-  Resources with `parents = ["user"]` are automatically scoped to the
-  authenticated user.
+- **Users** (`EnableUsers`): all requests except `POST /users/:login`
+  require a Bearer token. On first run a default superuser is created
+  and its credentials are printed to stdout — grab them from the
+  `run.sh` log. Resources with `parents = ["user"]` are automatically
+  scoped to the authenticated user.
 - **File fields** (`EnableFileFields`): a property declared as
-  `type = "binary"` with `x-aepbase-file-field = true` is stored on disk
-  under `data/files/...` and exposed via a `:download` custom method.
-  Create/update such resources with `multipart/form-data`.
-
-See `src/docs/users.md` and `src/docs/file-fields.md` (or the upstream repo)
-for the full HTTP contract.
+  `type: 'binary'` with `'x-aepbase-file-field': true` is stored on
+  disk under `data/files/...` and exposed via a `:download` custom
+  method. Create/update such resources with `multipart/form-data`.
 
 ## Still NOT covered
 
-- **Access rules / row-level security beyond user scoping.** PocketBase had
-  per-collection CEL-style rules; aepbase only enforces user-parent scoping.
-- **The deleted `events` collection** (PB migration `1766131287`) is not
-  recreated.
+- **Access rules / row-level security beyond user scoping.** PocketBase
+  had per-collection CEL-style rules; aepbase only enforces
+  user-parent scoping.
+- **The deleted `events` collection** (PB migration `1766131287`) is
+  not recreated.

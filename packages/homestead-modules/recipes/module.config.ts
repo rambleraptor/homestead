@@ -10,6 +10,7 @@ import { ChefHat } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
 import { RecipesHome } from './components/RecipesHome';
 import { RecipeViewRoute } from './components/RecipeViewRoute';
+import { recipesResources } from './resources';
 
 export const recipesModule: HomeModule = {
   id: 'recipes',
@@ -26,6 +27,7 @@ export const recipesModule: HomeModule = {
   section: 'Food',
   enabled: true,
   defaultEnabled: 'superusers',
+  resources: recipesResources,
   filters: [
     { key: 'title', label: 'Title', type: 'text' },
     { key: 'tags', label: 'Tags', type: 'enum', multi: true },

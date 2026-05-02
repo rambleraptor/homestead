@@ -72,9 +72,10 @@ and don't appear in this list. They cover account management and flag
 management — surfaces the rest of the app depends on.
 
 Removing a module hides it from the sidebar, makes its URLs 404, and
-drops its dashboard widget. The aepbase backend still has the
-collections in its schema until you remove the corresponding terraform
-file (see step 3).
+drops its dashboard widget. The collections it owned are no longer
+applied on the next Next.js boot — old data still lives in aepbase
+(deleting a resource definition is destructive and isn't done
+automatically), but new writes will 404.
 
 ## 3. Bootstrap the backend
 
@@ -85,26 +86,11 @@ cd aepbase
 ```
 
 aepbase prints the superuser email + password to stdout on first start.
-**Save these credentials** — you'll need them to log in and to apply
-terraform.
-
-In a second terminal, apply the schema:
-
-```bash
-TOKEN=$(curl -sS -X POST http://localhost:8090/users/:login \
-    -H 'Content-Type: application/json' \
-    -d '{"email":"<admin-email>","password":"<admin-pw>"}' | jq -r .token)
-
-cd aepbase/terraform
-TF_VAR_aepbase_token=$TOKEN \
-    AEP_OPENAPI=http://localhost:8090/openapi.json \
-    terraform apply
-```
-
-If you removed modules in step 2, you can also remove the matching
-terraform `.tf` file in `aepbase/terraform/` to keep the schema lean.
-(Module-to-file mapping is by name, e.g. `gift_cards.tf` for the
-gift-cards module.)
+**Save these credentials** — set them as `AEPBASE_ADMIN_EMAIL` and
+`AEPBASE_ADMIN_PASSWORD` in the Next.js environment (e.g. in
+`frontend/.env.local`) so the schema sync runs automatically when the
+Next.js server starts. The schema is applied once at boot — no
+separate `apply` step is needed.
 
 ## 4. Run the frontend
 
@@ -162,10 +148,13 @@ const config: HomesteadConfig = {
 };
 ```
 
-If your module needs its own aepbase collection, add a terraform file
-under `aepbase/terraform/` and re-run `terraform apply`. See
-[`docs/MODULE_GUIDE.md`](MODULE_GUIDE.md) for the full module-authoring
-walkthrough (hooks, dashboard widgets, module flags, omnibox).
+If your module needs its own aepbase collection, add a `resources.ts`
+next to `module.config.ts` exporting a `ResourceDefinition[]`, and
+reference it from the module's config (`resources: [...]`). The Next.js
+boot hook applies the schema; restart the dev server to pick up the
+change. See [`docs/MODULE_GUIDE.md`](MODULE_GUIDE.md) for the full
+module-authoring walkthrough (hooks, dashboard widgets, module flags,
+omnibox).
 
 ## 6. Production deployment
 
@@ -189,7 +178,6 @@ homestead/
 │   ├── homestead-modules/          # opt-in feature modules
 │   └── homestead-core/             # shared types and clients
 ├── aepbase/                        # Go backend
-│   ├── main.go                     # thin wrapper over aepbase library
-│   └── terraform/                  # one .tf per module schema
+│   └── main.go                     # thin wrapper over aepbase library
 └── deployment/                     # systemd unit files + scripts
 ```

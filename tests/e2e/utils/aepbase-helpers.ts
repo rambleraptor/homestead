@@ -183,6 +183,12 @@ interface CreatePersonInput {
   address?: string;
   birthday?: string;
   anniversary?: string;
+  /**
+   * Required when `address` is set — the address resource has
+   * `created_by` in its `required` list per the canonical schema.
+   * Pass the test user's id from the `userId` fixture.
+   */
+  createdByUserId?: string;
 }
 
 export interface PersonRecord {
@@ -203,8 +209,14 @@ export async function createPerson(
   if (data.address || data.anniversary) {
     let addressId: string | null = null;
     if (data.address) {
+      if (!data.createdByUserId) {
+        throw new Error(
+          'createPerson: createdByUserId is required when `address` is set',
+        );
+      }
       const address = await aepCreate<{ id: string }>(token, 'addresses', {
         line1: data.address,
+        created_by: `users/${data.createdByUserId}`,
       });
       addressId = address.id;
     }

@@ -21,6 +21,7 @@ import type {
   ModuleFlagDef,
   ModuleRegistry,
 } from './types';
+import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
 import {
   DEFAULT_MODULE_VISIBILITY,
   MODULE_VISIBILITY_OPTIONS,
@@ -268,6 +269,29 @@ export function getAllModuleFlagDefs(): Record<
       ...declared,
       [BUILTIN_ENABLED_FLAG_KEY]: builtin,
     };
+    for (const child of mod.children ?? []) {
+      visit(child);
+    }
+  };
+  for (const mod of moduleRegistry.modules) {
+    visit(mod);
+  }
+  return out;
+}
+
+/**
+ * Collect every aepbase resource definition declared by registered
+ * modules — top-level and nested. Consumed by the instrumentation
+ * hook to push schemas to aepbase on server boot, and by the e2e
+ * bootstrap. Order matches module registration; the runner topo-sorts
+ * by `parents` before applying.
+ */
+export function getAllResourceDefs(): ResourceDefinition[] {
+  const out: ResourceDefinition[] = [];
+  const visit = (mod: HomeModule): void => {
+    for (const def of mod.resources ?? []) {
+      out.push(def);
+    }
     for (const child of mod.children ?? []) {
       visit(child);
     }

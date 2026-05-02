@@ -1,9 +1,11 @@
 /**
  * Playwright Configuration for Homestead E2E Tests.
  *
- * The dev server is started with AEPBASE_URL pointing at the test
- * aepbase instance spun up in global-setup (on port 8092 so it doesn't
- * clash with the developer's :8090).
+ * Both aepbase and the Next.js dev server are managed in
+ * `globalSetup` so we can guarantee aepbase is up before the dev
+ * server's instrumentation hook tries to push the schema. The dev
+ * server is launched on :3000 and aepbase on :8092 (kept off the
+ * developer's :8090).
  */
 
 import { defineConfig, devices } from '@playwright/test';
@@ -34,23 +36,6 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-    },
-  ],
-
-  webServer: [
-    {
-      command: 'npm run dev',
-      cwd: '../../frontend',
-      url: 'http://localhost:3000',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120000,
-      stdout: 'pipe',
-      stderr: 'pipe',
-      env: {
-        // Point the /api/aep proxy at the test aepbase instance.
-        AEPBASE_URL: 'http://127.0.0.1:8092',
-        __NEXT_DISABLE_OVERLAY: '1',
-      },
     },
   ],
 

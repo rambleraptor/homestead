@@ -21,7 +21,7 @@ still apply.
 ## Architecture
 
 There are two aepbase collections, both parented under `user`
-(see [`aepbase/terraform/notifications.tf`](../aepbase/terraform/notifications.tf)):
+(see [`packages/homestead-modules/notifications/resources.ts`](../packages/homestead-modules/notifications/resources.ts)):
 
 | Collection                  | URL pattern                                | Purpose                                                                 |
 |-----------------------------|--------------------------------------------|-------------------------------------------------------------------------|

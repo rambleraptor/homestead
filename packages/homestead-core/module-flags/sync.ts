@@ -1,16 +1,18 @@
 /**
  * Push the aggregated module-flags schema to aepbase.
  *
- * Called from `src/instrumentation.ts` when the Next.js server boots.
+ * Called from `src/instrumentation.ts` when the Next.js server boots,
+ * alongside the static resource sync (`syncResourceDefinitions`).
  * Idempotent: on repeat runs it PATCHes the existing resource
  * definition when the schema has drifted.
  *
- * aepbase's `/aep-resource-definitions` endpoint mirrors the shape used
- * by the terraform provider (singular/plural/schema/parents). See
- * `aepbase/terraform/*.tf` for equivalent HCL examples.
+ * Static resource definitions live in each module's `resources.ts`;
+ * this syncer is module-flag-specific because its schema is *derived*
+ * from declared flags rather than written out by hand.
  */
 
 import { buildResourceSchema, type ModuleFlagDefs } from '@/modules/settings/flags';
+import { jsonEqual } from '../resources/equal';
 
 const RESOURCE_SINGULAR = 'module-flag';
 const RESOURCE_PLURAL = 'module-flags';
@@ -51,7 +53,7 @@ export async function syncModuleFlagsSchema(
     plural: RESOURCE_PLURAL,
     description:
       'Household-wide module flags. Managed by the Next.js server via ' +
-      'getAllModuleFlagDefs() — do not edit through terraform.',
+      'getAllModuleFlagDefs() — schema is generated from declared flags.',
     user_settable_create: true,
     schema,
   };
@@ -66,7 +68,7 @@ export async function syncModuleFlagsSchema(
     return { action: 'created' };
   }
 
-  if (schemasEqual(existing.schema, schema)) {
+  if (jsonEqual(existing.schema, schema)) {
     return { action: 'noop' };
   }
 
@@ -143,21 +145,3 @@ async function patchDefinition(
   }
 }
 
-function schemasEqual(a: unknown, b: unknown): boolean {
-  // Structural comparison via canonical JSON — our schemas are tiny and
-  // field order is already stable (alphabetical) from buildResourceSchema.
-  return canonicalStringify(a) === canonicalStringify(b);
-}
-
-function canonicalStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalStringify).join(',')}]`;
-  }
-  const entries = Object.entries(value as Record<string, unknown>).sort(
-    ([a], [b]) => a.localeCompare(b),
-  );
-  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalStringify(v)}`).join(',')}}`;
-}

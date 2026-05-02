@@ -11,6 +11,7 @@ import { peopleOmnibox } from './omnibox';
 import { UpcomingEventsWidget } from './components/UpcomingEventsWidget';
 import { PeopleHome } from './components/PeopleHome';
 import { PeopleBulkImport } from './bulk-import';
+import { peopleResources } from './resources';
 
 export const peopleModule: HomeModule = {
   id: 'people',
@@ -26,6 +27,7 @@ export const peopleModule: HomeModule = {
   showInNav: true,
   navOrder: 3,
   enabled: true,
+  resources: peopleResources,
   omnibox: peopleOmnibox,
   filters: [
     {

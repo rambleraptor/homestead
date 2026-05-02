@@ -432,9 +432,8 @@ export const AepCollections = {
   PICTIONARY_TEAMS: 'pictionary-teams', // child of pictionary-games
   TODOS: 'todos',
   // Household-wide module flags singleton. Resource definition is
-  // pushed by the Next.js server at startup (see
-  // `src/instrumentation.ts`) rather than via terraform, because the
-  // schema is derived from each module's `module.config.ts`.
+  // built dynamically from declared module flags and pushed by the
+  // Next.js server at startup (see `src/instrumentation.ts`).
   MODULE_FLAGS: 'module-flags',
 } as const;
 

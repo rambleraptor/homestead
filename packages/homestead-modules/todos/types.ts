@@ -19,7 +19,7 @@ export const TODO_STATUSES: readonly TodoStatus[] = [
 
 /**
  * Todo record from aepbase. Matches the shape declared in
- * `aepbase/terraform/todos.tf`.
+ * `packages/homestead-modules/todos/resources.ts`.
  */
 export interface Todo {
   id: string;

@@ -11,31 +11,26 @@ Simple deployment for HomeOS on Linux with systemd.
 # 2. Start aepbase once to bootstrap the superuser
 cd aepbase && ./run.sh
 # Copy the printed admin email + password. Ctrl-C when you're done.
+# (The schema is applied automatically by the Next.js server on boot —
+# set AEPBASE_ADMIN_EMAIL / AEPBASE_ADMIN_PASSWORD in step 3.)
 
-# 3. Apply the schema
-cd aepbase/terraform
-TF_VAR_aepbase_token=$(curl -sS -X POST http://localhost:8090/users/:login \
-    -H 'Content-Type: application/json' \
-    -d '{"email":"admin@example.com","password":"<superuser password>"}' \
-    | jq -r .token) \
-    AEP_OPENAPI=http://localhost:8090/openapi.json \
-    terraform apply
-
-# 4. Build frontend
+# 3. Build frontend
 ./deployment/build.sh
 
-# 5. Configure environment
+# 4. Configure environment
 cp deployment/.env.production frontend/.env
+# Set AEPBASE_ADMIN_EMAIL / AEPBASE_ADMIN_PASSWORD to the superuser
+# creds from step 2 so the schema sync runs at boot.
 # Generate VAPID keys: cd frontend && npx web-push generate-vapid-keys
 # Edit frontend/.env and add your VAPID public key.
 
-# 6. Set up systemd services
+# 5. Set up systemd services
 sudo make setup-services
 
-# 7. Start services
+# 6. Start services
 sudo make start
 
-# 8. Access HomeOS at http://localhost:3000
+# 7. Access HomeOS at http://localhost:3000
 ```
 
 ## Prerequisites
@@ -43,14 +38,12 @@ sudo make start
 - Linux with systemd (Ubuntu, Debian, Fedora, etc.)
 - Node.js 20+
 - Go 1.25+ (for building aepbase)
-- Terraform 1.5+ (for schema)
 - Git
 
 Install on Ubuntu/Debian:
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs git golang-go
-# Terraform: https://developer.hashicorp.com/terraform/install
 ```
 
 ## Common Commands
@@ -90,23 +83,24 @@ The deploy script:
 - Rolls back (git reset --hard) on failure
 - Verifies both services came back up
 
-### Schema changes (aepbase/terraform/)
+### Schema changes (per-module `resources.ts`)
 
-**Not auto-applied.** Terraform apply is a manual step — re-run it after
-editing `aepbase/terraform/*.tf`:
+**Auto-applied on Next.js boot.** Resource definitions live alongside
+each module (`packages/homestead-modules/<module>/resources.ts`); the
+Next.js instrumentation hook diffs them against aepbase and POST/PATCHes
+on startup. After deploying a schema change, restart the frontend
+service so the new definitions take effect:
 
 ```bash
-cd aepbase/terraform
-TF_VAR_aepbase_token=<admin token> \
-    AEP_OPENAPI=http://localhost:8090/openapi.json \
-    terraform apply
+sudo systemctl restart homeos-frontend
 ```
 
-If the schema change requires dropping an existing resource definition,
-`terraform destroy` the affected resource first. aepbase preserves data
-across schema updates but does not support mutating a field's `type` or
-changing `parents` on an existing definition — delete + recreate in those
-cases. See `CLAUDE.md` for the full set of schema-evolution gotchas.
+If the change drops or renames a resource, delete the affected
+definition manually first (`DELETE /aep-resource-definitions/...`).
+aepbase preserves data across schema updates but does not support
+mutating a field's `type` or changing `parents` on an existing
+definition — delete + recreate in those cases. See `CLAUDE.md` for the
+full set of schema-evolution gotchas.
 
 ### Automatic Updates
 
@@ -234,11 +228,14 @@ npm install
 npm run build
 ```
 
-### Terraform apply fails
-- "cannot change type" / "changing parents is not supported": delete the
-  resource definition (DELETE /aep-resource-definitions/...) and re-apply.
-  Data is wiped — only do this in dev.
-- "401" / "forbidden": your `TF_VAR_aepbase_token` is expired. Re-log in.
+### Schema sync fails
+- Look for `[resources] schema sync failed` in the frontend logs.
+- "cannot change type" / "changing parents is not supported": delete
+  the resource definition (DELETE /aep-resource-definitions/...) and
+  restart the frontend so the runner re-creates it. Data is wiped —
+  only do this in dev.
+- "401" / "forbidden": `AEPBASE_ADMIN_EMAIL` / `AEPBASE_ADMIN_PASSWORD`
+  in `frontend/.env` are wrong or the password rotated.
 
 ### Can't access via Tailscale
 ```bash
@@ -282,15 +279,16 @@ sudo systemctl start homeos-aepbase
 1. **Use strong passwords** for the aepbase superuser.
 2. **Regular backups** of `aepbase/data/` (SQLite DB + uploaded files).
 3. **Keep updated**: `git pull && sudo make deploy`.
-4. **Review `aepbase/terraform/` diffs** before running `terraform apply`.
+4. **Review `packages/homestead-modules/*/resources.ts` diffs** before
+   restarting the frontend after a schema change.
 5. **Use deploy keys** for auto-updates (read-only GitHub access).
 
 ## Production Checklist
 
 - [ ] aepbase built and running
-- [ ] Terraform schema applied
 - [ ] Frontend built successfully
 - [ ] Environment variables configured (VAPID keys, admin creds)
+- [ ] Schema synced (look for `[resources]` log line on frontend boot)
 - [ ] Services enabled for auto-start
 - [ ] Can access at http://localhost:3000
 - [ ] (Optional) Tailscale configured

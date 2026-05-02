@@ -6,10 +6,12 @@ power feature gating, role-scoped UI visibility, per-module behavior
 toggles, and other small bits of household-wide state that don't deserve
 their own resource.
 
-Unlike most aepbase resources in Homestead, the `module-flags` schema is
-**not** managed by terraform — it's pushed to aepbase by the Next.js
-server at boot, derived from the flag declarations on each module's
-`module.config.ts`.
+The `module-flags` schema is generated dynamically from declared module
+flags rather than written out as a static `ResourceDefinition` — the
+Next.js server pushes it to aepbase on boot using the same machinery
+that applies module-owned resource definitions, just with the schema
+derived from each module's `module.config.ts` instead of a
+`resources.ts`.
 
 ## Table of Contents
 
@@ -326,7 +328,7 @@ A live record looks like:
 
 aepbase's resource-definition endpoint strips JSON-schema `enum`,
 `default`, `minimum`, and `maximum` on round-trip (see
-[CLAUDE.md § aepbase schema](../CLAUDE.md#aepbase-schema-terraform)).
+[CLAUDE.md § aepbase schema](../CLAUDE.md#aepbase-schema-typescript)).
 The syncer works around this by encoding both `default` and `enum` into
 the `description` string with markers:
 
@@ -443,7 +445,8 @@ the flag affects user-visible behavior.
    your module; set `defaultEnabled` on the `HomeModule` config instead
    if you want a non-`'all'` default.
 
-7. **The `module-flags` resource is the one terraform exception.** All
-   other Homestead resources are managed via
-   `aepbase/terraform/*.tf`. This one is owned by the Next.js server
-   because the schema must derive from in-process module declarations.
+7. **The `module-flags` resource is generated dynamically.** Other
+   resources are static — declared in each module's `resources.ts`
+   and applied through `syncResourceDefinitions`. The `module-flags`
+   schema is special because its fields derive from in-process flag
+   declarations, but it shares the same boot-time apply pipeline.

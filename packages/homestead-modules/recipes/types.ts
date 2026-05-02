@@ -12,8 +12,8 @@ export interface RecipeIngredient {
 /**
  * Recipe record from aepbase.
  *
- * Matches the schema in aepbase/terraform/recipes.tf. `created_by` holds
- * the aepbase resource path of the author (`users/{id}`).
+ * Matches the schema in packages/homestead-modules/recipes/resources.ts.
+ * `created_by` holds the aepbase resource path of the author (`users/{id}`).
  */
 export interface Recipe {
   id: string;

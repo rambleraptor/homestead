@@ -5,6 +5,7 @@
 import { ListTodo } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
 import { TodosHome } from './components/TodosHome';
+import { todosResources } from './resources';
 
 export const todosModule: HomeModule = {
   id: 'todos',
@@ -18,4 +19,5 @@ export const todosModule: HomeModule = {
   section: 'Tasks',
   enabled: true,
   defaultEnabled: 'all',
+  resources: todosResources,
 };
