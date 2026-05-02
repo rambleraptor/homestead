@@ -42,15 +42,13 @@ import {
   groceriesModule, hsaModule, notificationsModule, peopleModule,
   recipesModule, todosModule,
 } from '@rambleraptor/homestead-modules';
-import { settingsModule } from '@/modules/settings/module.config';
-import { superuserModule } from '@/modules/superuser/module.config';
 import type { HomesteadConfig } from '@/modules/config';
 
 const config: HomesteadConfig = {
   modules: [
     dashboardModule, todosModule, giftCardsModule, groceriesModule,
     recipesModule, peopleModule, hsaModule, creditCardsModule,
-    gamesModule, notificationsModule, superuserModule, settingsModule,
+    gamesModule, notificationsModule,
   ],
 };
 
@@ -65,15 +63,13 @@ const config: HomesteadConfig = {
     dashboardModule,
     todosModule,
     groceriesModule,
-    superuserModule,
-    settingsModule,
   ],
 };
 ```
 
-`settingsModule` and `superuserModule` are part of the core experience
-(account management, flag management). Leave them in unless you really
-mean to remove them.
+The settings and superuser modules are always installed by the registry
+and don't appear in this list. They cover account management and flag
+management — surfaces the rest of the app depends on.
 
 Removing a module hides it from the sidebar, makes its URLs 404, and
 drops its dashboard widget. The aepbase backend still has the

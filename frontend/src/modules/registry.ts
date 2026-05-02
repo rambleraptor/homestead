@@ -28,11 +28,29 @@ import {
 } from './settings/visibility';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import config from '../../homestead.config';
+import { settingsModule } from './settings/module.config';
+import { superuserModule } from './superuser/module.config';
 
 // =============================================================================
 // MODULE REGISTRY IMPLEMENTATION
 // (You don't need to modify anything below this line)
 // =============================================================================
+
+/**
+ * Modules the registry always installs, regardless of what the operator
+ * lists in `homestead.config.ts`. These cover account management and
+ * flag management — surfaces the rest of the app depends on.
+ */
+const ALWAYS_INSTALLED: HomeModule[] = [superuserModule, settingsModule];
+
+function withCoreModules(userModules: HomeModule[]): HomeModule[] {
+  const seen = new Set(userModules.map((m) => m.id));
+  const merged = [...userModules];
+  for (const core of ALWAYS_INSTALLED) {
+    if (!seen.has(core.id)) merged.push(core);
+  }
+  return merged;
+}
 
 class ModuleRegistryImpl implements ModuleRegistry {
   modules: HomeModule[];
@@ -143,9 +161,12 @@ class ModuleRegistryImpl implements ModuleRegistry {
 
 /**
  * Singleton instance of the module registry, built from the operator's
- * `frontend/homestead.config.ts`.
+ * `frontend/homestead.config.ts` plus the always-installed core
+ * modules (superuser, settings).
  */
-export const moduleRegistry = new ModuleRegistryImpl(config.modules);
+export const moduleRegistry = new ModuleRegistryImpl(
+  withCoreModules(config.modules),
+);
 
 /**
  * Helper function to get all modules
