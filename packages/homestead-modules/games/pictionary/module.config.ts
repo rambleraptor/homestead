@@ -8,6 +8,8 @@
 
 import { Pencil } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
+import { PictionaryHome } from './components/PictionaryHome';
+import { PictionaryBulkImport } from './bulk-import';
 
 export const pictionaryModule: HomeModule = {
   id: 'pictionary',
@@ -15,6 +17,9 @@ export const pictionaryModule: HomeModule = {
   description: 'Track Pictionary games, teams, and winning words',
   icon: Pencil,
   basePath: '/games/pictionary',
-  routes: [{ path: '', index: true }, { path: 'import' }],
+  routes: [
+    { path: '', index: true, component: PictionaryHome, gates: ['enabled'] },
+    { path: 'import', component: PictionaryBulkImport, gates: ['enabled'] },
+  ],
   enabled: true,
 };

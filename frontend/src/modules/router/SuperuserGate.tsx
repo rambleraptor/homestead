@@ -1,21 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
-import { NestedModuleLanding } from '@/shared/components/NestedModuleLanding';
-import { superuserModule } from '@/modules/superuser/module.config';
 import { Spinner } from '@/shared/components/Spinner';
 
-export default function SuperuserPage() {
+interface Props {
+  children: ReactNode;
+  fallbackPath?: string;
+}
+
+export function SuperuserGate({ children, fallbackPath = '/dashboard' }: Props) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && user && user.type !== 'superuser') {
-      router.replace('/dashboard');
+      router.replace(fallbackPath);
     }
-  }, [isLoading, user, router]);
+  }, [isLoading, user, router, fallbackPath]);
 
   if (isLoading || !user || user.type !== 'superuser') {
     return (
@@ -25,5 +28,5 @@ export default function SuperuserPage() {
     );
   }
 
-  return <NestedModuleLanding module={superuserModule} />;
+  return <>{children}</>;
 }

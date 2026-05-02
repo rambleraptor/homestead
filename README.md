@@ -10,6 +10,9 @@ It's built on top of [aepbase](https://www.github.com/rambleraptor/aepbase).
 - Credit card perk tracker
 - Gift card tracker
 
+> Want to run your own instance with a different mix of modules? See
+> **[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)**.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -88,16 +91,19 @@ The frontend is completely optional. You can access your data through the AEP ec
 
 Every feature is a **module** with its own:
 - Components (`components/`)
-- Routes (`routes.tsx`)
-- Types (`types.ts`)
 - Hooks (`hooks/`)
-- Configuration (`module.config.ts`)
+- Types (`types.ts`)
+- Configuration (`module.config.ts`) — declares the module's
+  routes (with their React components), nav placement, dashboard
+  widgets, and module flags
 
-**Adding a new module is as simple as:**
-1. Create your module folder in `src/modules/`
-2. Define `module.config.ts` with module metadata
-3. Register in `src/modules/registry.ts`
-4. Done! Your module appears in the navigation automatically 🎉
+**Adding a new module:**
+1. Create `packages/homestead-modules/<your-module>/` with a
+   `module.config.ts` that declares `routes` (each with a `component`)
+2. Add the import + array entry to `frontend/homestead.config.ts`
+3. Done! No per-route page files, no registry edits — your module
+   appears in the navigation automatically and the catch-all router
+   serves its routes.
 
 ## 🚀 Production Deployment
 

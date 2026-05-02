@@ -7,6 +7,8 @@
 import type { HomeModule } from '@/modules/types';
 import { Gift } from 'lucide-react';
 import { GiftCardsList } from './components/GiftCardsList';
+import { GiftCardHome } from './components/GiftCardHome';
+import { GiftCardsBulkImport } from './bulk-import';
 
 export const giftCardsModule: HomeModule = {
   id: 'gift-cards',
@@ -15,8 +17,8 @@ export const giftCardsModule: HomeModule = {
   icon: Gift,
   basePath: '/gift-cards',
   routes: [
-    { path: '', index: true },
-    { path: 'import' },
+    { path: '', index: true, component: GiftCardHome },
+    { path: 'import', component: GiftCardsBulkImport },
   ],
   showInNav: true,
   navOrder: 4,

@@ -26,13 +26,24 @@ export interface DashboardWidget {
 }
 
 /**
- * Route definition for Next.js App Router
- * Each route maps to a page under app/(app)/[basePath]/...
+ * Props passed to a route's component when the catch-all router renders it.
+ * `params` carries values captured from `:name` segments in `ModuleRoute.path`.
+ * Optional so components that don't take params (the common case) can be
+ * assigned directly without a wrapping adapter.
+ */
+export interface ModuleRouteProps {
+  params?: Record<string, string>;
+}
+
+/**
+ * Route definition consumed by the single catch-all renderer at
+ * `app/(app)/[[...slug]]/page.tsx`. The component is declared inline so a
+ * module is fully self-describing — no per-route page file is needed.
  */
 export interface ModuleRoute {
   /**
-   * Path relative to the module's basePath
-   * Empty string for the index route
+   * Path relative to the module's basePath. Empty string for the index
+   * route. Use `:name` segments for dynamic params (e.g. `:id`).
    */
   path: string;
 
@@ -40,6 +51,23 @@ export interface ModuleRoute {
    * Whether this is the index route
    */
   index?: boolean;
+
+  /**
+   * Component rendered at this route. Receives resolved `:name` params.
+   */
+  component: ComponentType<ModuleRouteProps>;
+
+  /**
+   * Optional gates wrapping the component. Names resolve to wrapper
+   * components in `@/modules/router/gates`.
+   */
+  gates?: Array<'enabled' | 'superuser'>;
+
+  /**
+   * True when the path uses dynamic params (`:id`) and should not be
+   * statically prerendered by `generateStaticParams`.
+   */
+  dynamic?: boolean;
 }
 
 /**

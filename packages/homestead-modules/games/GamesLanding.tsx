@@ -1,8 +1,8 @@
 'use client';
 
 import { NestedModuleLanding } from '@/shared/components/NestedModuleLanding';
-import { gamesModule } from '@rambleraptor/homestead-modules/games/module.config';
+import { gamesModule } from './module.config';
 
-export default function GamesPage() {
+export function GamesLanding() {
   return <NestedModuleLanding module={gamesModule} />;
 }

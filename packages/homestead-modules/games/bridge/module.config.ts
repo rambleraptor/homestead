@@ -8,6 +8,7 @@
 
 import { Club } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
+import { BridgeHome } from './components/BridgeHome';
 
 export const bridgeModule: HomeModule = {
   id: 'bridge',
@@ -15,6 +16,8 @@ export const bridgeModule: HomeModule = {
   description: 'Record bids for each hand of Bridge',
   icon: Club,
   basePath: '/games/bridge',
-  routes: [{ path: '', index: true }],
+  routes: [
+    { path: '', index: true, component: BridgeHome, gates: ['enabled'] },
+  ],
   enabled: true,
 };

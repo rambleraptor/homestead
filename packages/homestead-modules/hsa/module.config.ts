@@ -14,9 +14,7 @@ export const hsaModule: HomeModule = {
   description: 'Track unreimbursed medical expenses for tax-free HSA withdrawals',
   icon: Receipt,
   basePath: '/hsa',
-  routes: [
-    { path: '', index: true },
-  ],
+  routes: [{ path: '', index: true, component: HSAHome }],
   showInNav: true,
   navOrder: 4,
   section: 'Money',

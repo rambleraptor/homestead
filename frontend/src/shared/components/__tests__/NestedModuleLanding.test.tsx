@@ -23,7 +23,7 @@ const minigolf: HomeModule = {
   description: 'Play and track mini golf games',
   icon: Flag,
   basePath: '/games/minigolf',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true, component: () => null }],
 };
 
 const pictionary: HomeModule = {
@@ -32,7 +32,7 @@ const pictionary: HomeModule = {
   description: 'Track Pictionary games, teams, and winning words',
   icon: Pencil,
   basePath: '/games/pictionary',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true, component: () => null }],
 };
 
 const bridge: HomeModule = {
@@ -41,7 +41,7 @@ const bridge: HomeModule = {
   description: 'Record bids for each hand of Bridge',
   icon: Club,
   basePath: '/games/bridge',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true, component: () => null }],
 };
 
 const games: HomeModule = {
@@ -50,7 +50,7 @@ const games: HomeModule = {
   description: 'Track games you play with the people in your life',
   icon: Gamepad2,
   basePath: '/games',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true, component: () => null }],
   children: [minigolf, pictionary, bridge],
 };
 

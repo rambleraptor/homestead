@@ -1,39 +1,18 @@
 /**
  * Module Registry
  *
- * CENTRAL MODULE REGISTRATION
- * ===========================
- * This is the ONLY file you need to modify to add a new module to Homestead.
+ * The list of modules served by this instance lives in
+ * `frontend/homestead.config.ts`. Edit that file to choose which modules
+ * to include — this file just consumes whatever the config exports and
+ * exposes navigation/flag/widget helpers over it.
  *
- * Feature modules ship in the `@rambleraptor/homestead-modules` workspace
- * package (under `packages/homestead-modules/`). Settings and superuser are
- * part of the core experience and stay in this directory.
- *
- * To add a new feature module:
- * 1. Create `packages/homestead-modules/<your-module>/` with `module.config.ts`
- *    and `index.ts` (re-exporting the module).
- * 2. Add the module to the barrel at `packages/homestead-modules/index.ts`.
- * 3. Import and register it in the MODULES array below.
- *
- * Example:
- * ```
- * import { choresModule } from '@rambleraptor/homestead-modules';
- *
- * const MODULES: HomeModule[] = [
- *   dashboardModule,
- *   choresModule,
- * ];
- * ```
- *
- * Nested modules: a parent can declare `children: HomeModule[]` to
- * group related sub-features (e.g. `gamesModule` owns `minigolf`,
- * `pictionary`, `bridge`). Only the parent goes in `MODULES`; the
+ * Nested modules: a parent module can declare `children: HomeModule[]`
+ * to group related sub-features (e.g. `gamesModule` owns `minigolf`,
+ * `pictionary`, `bridge`). Only the parent goes in the config list; the
  * registry walks `children` for route/widget aggregation, validation,
  * `module-flags` schema generation, and `getModule(id)` lookups, so a
  * nested module gets its own `enabled` flag (and any other declared
- * flags) and can be gated independently of its parent. Children still
- * stay out of top-level navigation — the parent owns the sidebar
- * placement and the omnibox surface.
+ * flags) and can be gated independently of its parent.
  */
 
 import type {
@@ -48,52 +27,7 @@ import {
   type ModuleVisibility,
 } from './settings/visibility';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
-
-// =============================================================================
-// IMPORT YOUR MODULES HERE
-// =============================================================================
-
-// Import modules as they are created. Feature modules ship in the
-// `@rambleraptor/homestead-modules` workspace package; settings and superuser
-// stay in-tree because they're part of the core experience.
-import {
-  creditCardsModule,
-  dashboardModule,
-  gamesModule,
-  giftCardsModule,
-  groceriesModule,
-  hsaModule,
-  notificationsModule,
-  peopleModule,
-  recipesModule,
-  todosModule,
-} from '@rambleraptor/homestead-modules';
-import { settingsModule } from './settings/module.config';
-import { superuserModule } from './superuser/module.config';
-
-// =============================================================================
-// REGISTER MODULES HERE
-// =============================================================================
-
-/**
- * Array of all registered modules in the system.
- * Add your module to this array to make it available in the app.
- */
-const MODULES: HomeModule[] = [
-  dashboardModule,
-  todosModule,
-  giftCardsModule,
-  groceriesModule,
-  recipesModule,
-  peopleModule,
-  hsaModule,
-  creditCardsModule,
-  gamesModule,
-  notificationsModule,
-  superuserModule,
-  settingsModule,
-  // Add your modules here...
-];
+import config from '../../homestead.config';
 
 // =============================================================================
 // MODULE REGISTRY IMPLEMENTATION
@@ -208,9 +142,10 @@ class ModuleRegistryImpl implements ModuleRegistry {
 }
 
 /**
- * Singleton instance of the module registry
+ * Singleton instance of the module registry, built from the operator's
+ * `frontend/homestead.config.ts`.
  */
-export const moduleRegistry = new ModuleRegistryImpl(MODULES);
+export const moduleRegistry = new ModuleRegistryImpl(config.modules);
 
 /**
  * Helper function to get all modules

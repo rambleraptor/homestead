@@ -14,6 +14,7 @@ import type { HomeModule } from '../types';
 import { makeNestedModuleLanding } from '@/shared/components/makeNestedModuleLanding';
 import { usersModule } from './users/module.config';
 import { flagManagementModule } from './flag-management/module.config';
+import { SuperuserLanding } from './SuperuserLanding';
 
 export const superuserModule: HomeModule = {
   id: 'superuser',
@@ -21,7 +22,9 @@ export const superuserModule: HomeModule = {
   description: 'User accounts and module flags (superuser only)',
   icon: ShieldCheck,
   basePath: '/superuser',
-  routes: [{ path: '', index: true }],
+  routes: [
+    { path: '', index: true, component: SuperuserLanding, gates: ['superuser'] },
+  ],
   section: 'Settings',
   showInNav: true,
   navOrder: 90,

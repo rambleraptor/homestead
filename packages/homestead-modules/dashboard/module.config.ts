@@ -15,7 +15,7 @@ export const dashboardModule: HomeModule = {
   description: 'Overview of your Homestead system',
   icon: LayoutDashboard,
   basePath: '/dashboard',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true, component: DashboardHome }],
   showInNav: false,
   navOrder: 1,
   enabled: true,

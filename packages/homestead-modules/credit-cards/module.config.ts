@@ -7,6 +7,7 @@
 import type { HomeModule } from '@/modules/types';
 import { CreditCard } from 'lucide-react';
 import { CreditCardsList } from './components/CreditCardsList';
+import { CreditCardsHome } from './components/CreditCardsHome';
 
 export const creditCardsModule: HomeModule = {
   id: 'credit-cards',
@@ -14,9 +15,7 @@ export const creditCardsModule: HomeModule = {
   description: 'Track credit card perks and maximize rewards',
   icon: CreditCard,
   basePath: '/credit-cards',
-  routes: [
-    { path: '', index: true },
-  ],
+  routes: [{ path: '', index: true, component: CreditCardsHome }],
   showInNav: true,
   navOrder: 5,
   section: 'Money',

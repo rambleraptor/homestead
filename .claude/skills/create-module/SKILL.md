@@ -1,14 +1,15 @@
 ---
 name: create-module
-description: Scaffold a new Homestead feature module end-to-end — terraform resource definition(s), aepbase collection constants, the `src/modules/<feature>/` directory (types, hooks, components, config, tests), registry wiring, Next.js App Router pages, and e2e Page Object + CRUD spec. Use when the user asks to "create a module", "add a new module", "scaffold a feature", or to "wire up <feature> end-to-end".
+description: Scaffold a new Homestead feature module end-to-end — terraform resource definition(s), aepbase collection constants, the module package directory (types, hooks, components, config, tests), `homestead.config.ts` wiring, and e2e Page Object + CRUD spec. Use when the user asks to "create a module", "add a new module", "scaffold a feature", or to "wire up <feature> end-to-end".
 ---
 
 # Create a Homestead Module
 
 Homestead features are self-contained modules. Adding one touches (at minimum) the
-terraform schema, the frontend module directory, the registry, the Next.js
-route, and the e2e tests. This skill walks through every step so nothing gets
-skipped.
+terraform schema, the module package directory, `frontend/homestead.config.ts`,
+and the e2e tests. Routes are wired by declaring `component` inside
+`module.config.ts` — there are no per-route Next.js page files. This skill
+walks through every step so nothing gets skipped.
 
 Read `CLAUDE.md` in the repo root before making any changes — it's the source
 of truth for conventions and contains terraform gotchas that will bite you.
@@ -140,32 +141,35 @@ export { featureModule } from './module.config';
 export type { Thing, ThingFormData } from './types';
 ```
 
-### 4. Wire it into the registry
+### 4. Declare routes inside `module.config.ts`
 
-Edit `frontend/src/modules/registry.ts`:
+Each `ModuleRoute` carries the React component it renders. There are no
+per-route Next.js page files — a single catch-all under
+`frontend/src/app/(app)/[...slug]/page.tsx` resolves URLs against the
+registry and renders `route.component` directly.
 
-1. Add the import near the other module imports.
-2. Add the config object to the `MODULES` array (position matters for nav
-   order only if modules share a `navOrder`).
+```ts
+import { FeatureHome } from './components/FeatureHome';
+import { FeatureImport } from './components/FeatureImport';
 
-That's the only registration step — routes, nav, and omnibox are picked up
-automatically.
-
-### 5. Create the Next.js App Router page(s)
-
-Create `frontend/src/app/(app)/<basePath>/page.tsx` that renders the home
-component:
-
-```tsx
-import { FeatureHome } from '@/modules/feature/components/FeatureHome';
-
-export default function FeaturePage() {
-  return <FeatureHome />;
-}
+routes: [
+  { path: '', index: true, component: FeatureHome },
+  { path: 'import', component: FeatureImport },
+  // dynamic params: declare with `:name` and set `dynamic: true`
+  // { path: ':id', component: FeatureDetail, dynamic: true },
+],
 ```
 
-Add one file per additional route declared in `module.config.ts`
-(e.g. `routes: [{ path: 'import' }]` → `.../feature/import/page.tsx`).
+If a route should be wrapped in a gate, add `gates: ['enabled']` (or
+`'superuser'`). Components used as routes should accept
+`{ params }: ModuleRouteProps` if they need URL params, or no props
+otherwise.
+
+### 5. Add the module to `homestead.config.ts`
+
+Open `frontend/homestead.config.ts` and add the import + array entry.
+That is the only registration step — nav, routes, dashboard widgets,
+omnibox, and module flags are all picked up automatically.
 
 ### 6. Write unit/integration tests (Vitest)
 
@@ -224,10 +228,11 @@ Before marking the task complete, verify:
 - [ ] New `.tf` file added under `aepbase/terraform/` (and reviewed against
       the CLAUDE.md rules list).
 - [ ] `AepCollections` entry added in `src/core/api/aepbase.ts`.
-- [ ] `src/modules/<module-id>/` directory created with `module.config.ts`,
+- [ ] Module package directory created with `module.config.ts`,
       `types.ts`, `index.ts`, and at least one component + list hook.
-- [ ] Module imported and added to `MODULES` in `src/modules/registry.ts`.
-- [ ] Next.js page file(s) created under `src/app/(app)/<basePath>/`.
+- [ ] Every `ModuleRoute` declares a `component` (and `dynamic: true`
+      where the path uses `:param`).
+- [ ] Module imported and added to `frontend/homestead.config.ts`.
 - [ ] Vitest tests added under `__tests__/`.
 - [ ] Playwright POM + CRUD spec added under `tests/e2e/`.
 - [ ] `make ci && make test` passes locally.

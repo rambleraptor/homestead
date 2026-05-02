@@ -8,6 +8,7 @@ import type { HomeModule } from '@/modules/types';
 import { ShoppingCart } from 'lucide-react';
 import { groceriesOmnibox } from './omnibox';
 import { GroceriesWidget } from './components/GroceriesWidget';
+import { GroceriesHome } from './components/GroceriesHome';
 
 export const groceriesModule: HomeModule = {
   id: 'groceries',
@@ -15,7 +16,7 @@ export const groceriesModule: HomeModule = {
   description: 'Manage your grocery list with smart categorization',
   icon: ShoppingCart,
   basePath: '/groceries',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true, component: GroceriesHome }],
   section: 'Food',
   showInNav: true,
   navOrder: 2,

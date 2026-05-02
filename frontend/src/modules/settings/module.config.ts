@@ -18,7 +18,7 @@ export const settingsModule: HomeModule = {
   description: 'Manage your preferences and notifications',
   icon: Settings,
   basePath: '/settings',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true, component: SettingsHome }],
   section: 'Settings',
   showInNav: true,
   navOrder: 100,

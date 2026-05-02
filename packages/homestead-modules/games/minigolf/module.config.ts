@@ -8,6 +8,7 @@
 
 import { Flag } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
+import { MinigolfHome } from './components/MinigolfHome';
 
 export const minigolfModule: HomeModule = {
   id: 'minigolf',
@@ -15,6 +16,8 @@ export const minigolfModule: HomeModule = {
   description: 'Play and track mini golf games',
   icon: Flag,
   basePath: '/games/minigolf',
-  routes: [{ path: '', index: true }],
+  routes: [
+    { path: '', index: true, component: MinigolfHome, gates: ['enabled'] },
+  ],
   enabled: true,
 };

@@ -8,6 +8,8 @@
 
 import { ChefHat } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
+import { RecipesHome } from './components/RecipesHome';
+import { RecipeViewRoute } from './components/RecipeViewRoute';
 
 export const recipesModule: HomeModule = {
   id: 'recipes',
@@ -16,8 +18,8 @@ export const recipesModule: HomeModule = {
   icon: ChefHat,
   basePath: '/recipes',
   routes: [
-    { path: '', index: true },
-    { path: ':id' },
+    { path: '', index: true, component: RecipesHome },
+    { path: ':id', component: RecipeViewRoute, dynamic: true },
   ],
   showInNav: true,
   navOrder: 5,

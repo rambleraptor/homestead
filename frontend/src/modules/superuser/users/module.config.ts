@@ -9,6 +9,7 @@
 
 import { UserCog } from 'lucide-react';
 import type { HomeModule } from '../../types';
+import { UsersHome } from './components/UsersHome';
 
 export const usersModule: HomeModule = {
   id: 'users',
@@ -16,7 +17,9 @@ export const usersModule: HomeModule = {
   description: 'Create and manage user accounts.',
   icon: UserCog,
   basePath: '/superuser/users',
-  routes: [{ path: '', index: true }],
+  routes: [
+    { path: '', index: true, component: UsersHome, gates: ['enabled'] },
+  ],
   enabled: true,
   defaultEnabled: 'superusers',
 };

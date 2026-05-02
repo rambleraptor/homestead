@@ -9,6 +9,8 @@ import { Users } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
 import { peopleOmnibox } from './omnibox';
 import { UpcomingEventsWidget } from './components/UpcomingEventsWidget';
+import { PeopleHome } from './components/PeopleHome';
+import { PeopleBulkImport } from './bulk-import';
 
 export const peopleModule: HomeModule = {
   id: 'people',
@@ -17,8 +19,8 @@ export const peopleModule: HomeModule = {
   icon: Users,
   basePath: '/people',
   routes: [
-    { path: '', index: true },
-    { path: 'import' },
+    { path: '', index: true, component: PeopleHome },
+    { path: 'import', component: PeopleBulkImport },
   ],
   section: 'Relationships',
   showInNav: true,

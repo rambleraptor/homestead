@@ -9,6 +9,7 @@
 
 import { Flag } from 'lucide-react';
 import type { HomeModule } from '../../types';
+import { FlagManagementHome } from './components/FlagManagementHome';
 
 export const flagManagementModule: HomeModule = {
   id: 'flag-management',
@@ -16,7 +17,9 @@ export const flagManagementModule: HomeModule = {
   description: 'View and edit every module flag registered in aepbase.',
   icon: Flag,
   basePath: '/superuser/flag-management',
-  routes: [{ path: '', index: true }],
+  routes: [
+    { path: '', index: true, component: FlagManagementHome, gates: ['enabled'] },
+  ],
   enabled: true,
   defaultEnabled: 'superusers',
 };

@@ -16,6 +16,7 @@ import { makeNestedModuleLanding } from '@/shared/components/makeNestedModuleLan
 import { minigolfModule } from './minigolf/module.config';
 import { pictionaryModule } from './pictionary/module.config';
 import { bridgeModule } from './bridge/module.config';
+import { GamesLanding } from './GamesLanding';
 
 export const gamesModule: HomeModule = {
   id: 'games',
@@ -23,7 +24,7 @@ export const gamesModule: HomeModule = {
   description: 'Track games you play with the people in your life',
   icon: Gamepad2,
   basePath: '/games',
-  routes: [{ path: '', index: true }],
+  routes: [{ path: '', index: true, component: GamesLanding }],
   section: 'Relationships',
   showInNav: true,
   navOrder: 22,
