@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { AuthGuard } from '../auth/AuthGuard';
-import { useCanUseOmnibox } from '@/shared/omnibox/useCanUseOmnibox';
+import { useCanUseOmnibox } from '@rambleraptor/homestead-core/shared/omnibox/useCanUseOmnibox';
 
 interface AppShellProps {
   children: React.ReactNode;

@@ -12,14 +12,14 @@
 
 import React, { useState } from 'react';
 import { z } from 'zod';
-import { Button } from '@/shared/components/Button';
-import { Input } from '@/shared/components/Input';
-import type { OmniboxAdapter } from '@/shared/omnibox/types';
+import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
+import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
+import type { OmniboxAdapter } from '@rambleraptor/homestead-core/shared/omnibox/types';
 import type { GroceryItemFormData } from './types';
 import { GroceriesList } from './components/GroceriesList';
 import { useCreateGroceryItem } from './hooks/useCreateGroceryItem';
 import { useStores } from './hooks/useStores';
-import { useModuleFlag } from '@/modules/settings';
+import { useModuleFlag } from '@rambleraptor/homestead-core/settings';
 
 const createGroceryItemParamSchema = z.object({
   name: z.string().optional(),

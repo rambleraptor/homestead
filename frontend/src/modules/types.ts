@@ -7,10 +7,10 @@
 
 import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import type { OmniboxAdapter } from '@/shared/omnibox/types';
-import type { ModuleFilterDecl } from '@/shared/filters/types';
+import type { OmniboxAdapter } from '@rambleraptor/homestead-core/shared/omnibox/types';
+import type { ModuleFilterDecl } from '@rambleraptor/homestead-core/shared/filters/types';
 import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
-import type { ModuleVisibility } from './settings/visibility';
+import type { ModuleVisibility } from '@rambleraptor/homestead-core/settings/visibility';
 
 /**
  * A widget a module contributes to the dashboard. The component is
@@ -151,7 +151,7 @@ export interface HomeModule {
   /**
    * Optional declarative integration with the natural-language omnibox
    * (`/search`). When present, the module is discoverable + addressable
-   * via the omnibox. See `@/shared/omnibox/types` for the shape.
+   * via the omnibox. See `@rambleraptor/homestead-core/shared/omnibox/types` for the shape.
    */
   omnibox?: OmniboxAdapter;
 

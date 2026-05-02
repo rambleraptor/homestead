@@ -3,10 +3,10 @@
  */
 
 import { User, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
-import { Card } from '@/shared/components/Card';
-import { Checkbox } from '@/shared/components/Checkbox';
+import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
-import type { ParsedItem } from '@/shared/bulk-import';
+import type { ParsedItem } from '@rambleraptor/homestead-core/shared/bulk-import';
 import type { PersonCSVData } from '../types';
 
 interface PersonPreviewProps {

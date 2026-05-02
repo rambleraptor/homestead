@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { Plus } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 
 interface AddTodoInputProps {
   onSubmit: (title: string) => Promise<void> | void;

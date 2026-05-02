@@ -16,13 +16,13 @@ import { useDeleteRecipe } from '../hooks/useDeleteRecipe';
 import { RecipesList } from './RecipesList';
 import { RecipeForm } from './RecipeForm';
 import { RecipeImportModal } from './RecipeImportModal';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import {
   FilterBar,
   ModuleFiltersProvider,
   useFilteredItems,
-} from '@/shared/filters';
+} from '@rambleraptor/homestead-core/shared/filters';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { recipesModule } from '../module.config';
 import type { Recipe, RecipeFormData } from '../types';

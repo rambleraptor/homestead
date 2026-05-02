@@ -23,9 +23,9 @@ import {
 import { useRecipe } from '../hooks/useRecipe';
 import { useUpdateRecipe } from '../hooks/useUpdateRecipe';
 import { RecipeForm } from './RecipeForm';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
-import { decimalToFraction } from '@/shared/utils/fractionUtils';
+import { decimalToFraction } from '@rambleraptor/homestead-core/shared/utils/fractionUtils';
 import type { RecipeFormData, RecipeIngredient } from '../types';
 
 interface RecipeViewProps {

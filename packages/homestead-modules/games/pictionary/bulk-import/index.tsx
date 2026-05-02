@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BulkImportContainer } from '@/shared/bulk-import';
+import { BulkImportContainer } from '@rambleraptor/homestead-core/shared/bulk-import';
 import { usePeopleNameMap } from './peopleMap';
 import { makePictionaryImportSchema } from './schema';
 import { useBulkImportPictionary } from './useBulkImportPictionary';

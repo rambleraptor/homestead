@@ -10,7 +10,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Trophy, Flag, Sparkles, Trash2 } from 'lucide-react';
 import { computeTotals, computeWinners, computeTotalPar } from '../utils/scoring';
 import { computeHighlights } from '../utils/highlights';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import type { Game, Hole } from '../types';
 
 interface Person {

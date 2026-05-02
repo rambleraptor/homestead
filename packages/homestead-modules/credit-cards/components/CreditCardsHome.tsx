@@ -28,8 +28,8 @@ import { CreditCardForm } from './CreditCardForm';
 import { CardList } from './CardList';
 import { CardDetail } from './CardDetail';
 import { UpcomingPerks } from './UpcomingPerks';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { CreditCardFormData, PerkFormData, RedemptionFormData, CreditCard as CreditCardType } from '../types';
 

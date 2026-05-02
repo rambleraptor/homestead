@@ -19,8 +19,8 @@ import { useUpdateCreditCard } from '../hooks/useUpdateCreditCard';
 import { useDeleteCreditCard } from '../hooks/useDeleteCreditCard';
 import { CardList } from './CardList';
 import { CreditCardForm } from './CreditCardForm';
-import { Modal } from '@/shared/components/Modal';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { CreditCard as CreditCardType, CreditCardFormData } from '../types';
 

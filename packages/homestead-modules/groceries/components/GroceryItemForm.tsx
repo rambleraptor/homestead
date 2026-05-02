@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useStores } from '../hooks/useStores';
-import { useModuleFlag } from '@/modules/settings';
+import { useModuleFlag } from '@rambleraptor/homestead-core/settings';
 import type { GroceryItemFormData } from '../types';
 
 interface GroceryItemFormProps {

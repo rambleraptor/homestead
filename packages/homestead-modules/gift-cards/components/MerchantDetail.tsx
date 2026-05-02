@@ -11,7 +11,7 @@ import { ArrowLeft, CreditCard, Edit2, Trash2, Eye, EyeOff, ChevronDown, Chevron
 import { useCreateTransaction } from '../hooks/useCreateTransaction';
 import { GiftCardImage } from './GiftCardImage';
 import type { GiftCard } from '../types';
-import { formatCurrency } from '@/shared/utils/currencyUtils';
+import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
 
 interface MerchantDetailProps {
   merchant: string;

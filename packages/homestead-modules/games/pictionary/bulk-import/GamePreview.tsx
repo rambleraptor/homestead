@@ -13,9 +13,9 @@ import {
   AlertCircle,
   Trophy,
 } from 'lucide-react';
-import { Card } from '@/shared/components/Card';
-import { Checkbox } from '@/shared/components/Checkbox';
-import type { ParsedItem } from '@/shared/bulk-import';
+import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
+import type { ParsedItem } from '@rambleraptor/homestead-core/shared/bulk-import';
 import type { PictionaryGameCSVData } from './types';
 
 interface GamePreviewProps {

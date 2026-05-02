@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Cake, Heart, Edit, Trash2, MapPin, Users } from 'lucide-react';
-import { Card } from '@/shared/components/Card';
-import { Button } from '@/shared/components/Button';
+import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { getMapUrl } from '../utils/mapUtils';
 import type { Person } from '../types';

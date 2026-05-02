@@ -2,7 +2,7 @@
  * Gift Cards Bulk Import - Field Validators
  */
 
-import type { FieldValidator } from '@/shared/bulk-import';
+import type { FieldValidator } from '@rambleraptor/homestead-core/shared/bulk-import';
 
 /**
  * Validates merchant field

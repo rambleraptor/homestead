@@ -4,7 +4,7 @@
  * Gift Cards Bulk Import Component
  */
 
-import { BulkImportContainer, useBulkImport } from '@/shared/bulk-import';
+import { BulkImportContainer, useBulkImport } from '@rambleraptor/homestead-core/shared/bulk-import';
 import { AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { giftCardsImportSchema } from './schema';

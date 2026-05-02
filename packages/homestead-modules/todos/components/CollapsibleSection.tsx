@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 
 interface CollapsibleSectionProps {
   title: string;

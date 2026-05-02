@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { z } from 'zod';
-import type { OmniboxAdapter } from '@/shared/omnibox/types';
+import type { OmniboxAdapter } from '@rambleraptor/homestead-core/shared/omnibox/types';
 import type { PersonFormData } from './types';
 import { PeopleList } from './components/PeopleList';
 import { PersonForm } from './components/PersonForm';

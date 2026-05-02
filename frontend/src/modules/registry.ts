@@ -26,11 +26,11 @@ import {
   DEFAULT_MODULE_VISIBILITY,
   MODULE_VISIBILITY_OPTIONS,
   type ModuleVisibility,
-} from './settings/visibility';
+} from '@rambleraptor/homestead-core/settings/visibility';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import config from '../../homestead.config';
-import { settingsModule } from './settings/module.config';
-import { superuserModule } from './superuser/module.config';
+import { settingsModule } from '@rambleraptor/homestead-core/settings/module.config';
+import { superuserModule } from '@rambleraptor/homestead-core/superuser/module.config';
 
 // =============================================================================
 // MODULE REGISTRY IMPLEMENTATION

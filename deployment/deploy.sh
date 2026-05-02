@@ -84,7 +84,6 @@ fi
 AEPBASE_CHANGED=false
 FRONTEND_CHANGED=false
 DEPS_CHANGED=false
-SCRIPTS_DEPS_CHANGED=false
 
 if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ] || [ "$FORCE_BUILD" = true ]; then
   CHANGED=$(git diff --name-only $PREVIOUS_COMMIT..$NEW_COMMIT)
@@ -93,43 +92,31 @@ if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ] || [ "$FORCE_BUILD" = true ]; then
     AEPBASE_CHANGED=true
     log "${YELLOW}🔄 aepbase changes detected${NC}"
   fi
-  if echo "$CHANGED" | grep -q "^frontend/"; then
+  # Anything under frontend/ or packages/ flows into the Next.js build,
+  # since the app transpiles @rambleraptor/homestead-core and
+  # @rambleraptor/homestead-modules from the workspace.
+  if echo "$CHANGED" | grep -qE "^(frontend|packages)/"; then
     FRONTEND_CHANGED=true
     log "${YELLOW}🔄 Frontend changes detected${NC}"
   fi
-  if echo "$CHANGED" | grep -q "^frontend/package.json"; then
+  # Workspaces install from the repo root. The root package-lock.json
+  # reflects every dep change across frontend/ and packages/*, so it's
+  # the single source of truth for "do we need to reinstall?".
+  if echo "$CHANGED" | grep -qE "^(package\.json|package-lock\.json)$"; then
     DEPS_CHANGED=true
-    log "${YELLOW}📦 Frontend dependencies changed${NC}"
-  fi
-  if echo "$CHANGED" | grep -q "^scripts/package.json"; then
-    SCRIPTS_DEPS_CHANGED=true
-    log "${YELLOW}📦 Scripts dependencies changed${NC}"
+    FRONTEND_CHANGED=true
+    log "${YELLOW}📦 Workspace dependencies changed${NC}"
   fi
 fi
 
 # Install dependencies if needed
 if [ "$DEPS_CHANGED" = true ]; then
-  log "${BLUE}📦 Installing frontend dependencies...${NC}"
-  cd frontend
+  log "${BLUE}📦 Installing workspace dependencies...${NC}"
   if ! npm ci 2>&1 | tee -a "$LOG_FILE"; then
-    log "${RED}❌ Failed to install frontend dependencies${NC}"
-    cd "$PROJECT_ROOT"
+    log "${RED}❌ Failed to install workspace dependencies${NC}"
     git reset --hard "$PREVIOUS_COMMIT" 2>&1 | tee -a "$LOG_FILE"
     exit 1
   fi
-  cd "$PROJECT_ROOT"
-fi
-
-if [ "$SCRIPTS_DEPS_CHANGED" = true ]; then
-  log "${BLUE}📦 Installing scripts dependencies...${NC}"
-  cd scripts
-  if ! npm ci 2>&1 | tee -a "$LOG_FILE"; then
-    log "${RED}❌ Failed to install scripts dependencies${NC}"
-    cd "$PROJECT_ROOT"
-    git reset --hard "$PREVIOUS_COMMIT" 2>&1 | tee -a "$LOG_FILE"
-    exit 1
-  fi
-  cd "$PROJECT_ROOT"
 fi
 
 if [ ! -d "$PROJECT_ROOT/frontend/.next" ]; then

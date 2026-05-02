@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { usePeople } from '../../../people/hooks/usePeople';
-import { PersonSelector } from '@/shared/components/PersonSelector';
+import { PersonSelector } from '@rambleraptor/homestead-core/shared/components/PersonSelector';
 import { ScoreStepper } from './ScoreStepper';
 import type { GameFormData } from '../types';
 

@@ -11,7 +11,7 @@ import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { PersonCSVData } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
-import type { ParsedItem, BulkImportResult } from '@/shared/bulk-import/types';
+import type { ParsedItem, BulkImportResult } from '@rambleraptor/homestead-core/shared/bulk-import/types';
 
 interface PersonRecord {
   id: string;

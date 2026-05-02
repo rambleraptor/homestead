@@ -8,8 +8,8 @@
 import { useRouter } from 'next/navigation';
 import { Cake, Loader2, Users } from 'lucide-react';
 import { format } from 'date-fns';
-import { Badge } from '@/shared/components/Badge';
-import { WidgetCard } from '@/shared/components/WidgetCard';
+import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
+import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
 import { useUpcomingPeople } from '../hooks/useUpcomingPeople';
 
 export function UpcomingEventsWidget() {

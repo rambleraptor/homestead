@@ -11,7 +11,7 @@ import {
   moduleRegistry,
   BUILTIN_ENABLED_FLAG_KEY,
 } from '../registry';
-import { MODULE_VISIBILITY_OPTIONS } from '../settings/visibility';
+import { MODULE_VISIBILITY_OPTIONS } from '@rambleraptor/homestead-core/settings/visibility';
 import type { HomeModule } from '../types';
 
 function collectAllIds(mods: HomeModule[]): string[] {

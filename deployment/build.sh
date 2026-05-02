@@ -11,14 +11,14 @@ echo "🏗️  Building HomeOS for production..."
 cd "$(dirname "$0")/.."
 
 echo "📦 Checking dependencies..."
-cd frontend
+# Workspaces install from the repo root; node_modules lives there too.
 if [ ! -d "node_modules" ]; then
-    echo "Installing frontend dependencies..."
+    echo "Installing workspace dependencies..."
     npm install
 fi
 
 echo "🔨 Building frontend..."
-npm run build
+npm run build --workspace=frontend
 
 echo "✅ Build complete! Frontend built to: frontend/.next/"
 echo ""

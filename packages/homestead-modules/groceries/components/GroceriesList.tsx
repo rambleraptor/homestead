@@ -18,8 +18,8 @@ import { useUpdateGroceryItem } from '../hooks/useUpdateGroceryItem';
 import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
 import { useMarkStoreCompleted } from '../hooks/useMarkStoreCompleted';
 import { GroceryList } from './GroceryList';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 export function GroceriesList() {

@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react';
 import { ArrowLeft, Edit, Trash2, Trophy } from 'lucide-react';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import type { PictionaryGame, PictionaryTeam } from '../types';
 
 interface PersonLite {

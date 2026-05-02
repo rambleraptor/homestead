@@ -9,8 +9,8 @@
  */
 
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
-import { getTodaysHoliday } from '@/shared/utils/dateUtils';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { getTodaysHoliday } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { getAllDashboardWidgets } from '@/modules/registry';
 
 export function DashboardHome() {

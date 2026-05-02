@@ -7,7 +7,7 @@
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { syncModuleFlagsSchema } from '../sync';
-import type { ModuleFlagDefs } from '@/modules/settings/flags';
+import type { ModuleFlagDefs } from '@rambleraptor/homestead-core/settings/flags';
 
 const defs: ModuleFlagDefs = {
   settings: {

@@ -6,7 +6,7 @@
  */
 
 import { Loader2, ShoppingCart } from 'lucide-react';
-import { WidgetCard } from '@/shared/components/WidgetCard';
+import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
 import { useGroceries } from '../hooks/useGroceries';
 
 export function GroceriesWidget() {

@@ -13,13 +13,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { aepList, authenticate } from '../../_lib/aepbase-server';
-import { buildManifest } from '@/shared/omnibox/manifest';
-import { parseFallback } from '@/shared/omnibox/parseFallback';
-import { fieldName } from '@/modules/settings/flags';
+import { buildManifest } from '@rambleraptor/homestead-core/shared/omnibox/manifest';
+import { parseFallback } from '@rambleraptor/homestead-core/shared/omnibox/parseFallback';
+import { fieldName } from '@rambleraptor/homestead-core/settings/flags';
 import type {
   OmniboxIntent,
   OmniboxParseResponse,
-} from '@/shared/omnibox/types';
+} from '@rambleraptor/homestead-core/shared/omnibox/types';
 
 const MIN_CONFIDENCE = 0.5;
 

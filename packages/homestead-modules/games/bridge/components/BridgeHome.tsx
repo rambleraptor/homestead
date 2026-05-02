@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { useHands } from '../hooks/useHands';
 import { useCreateHand } from '../hooks/useCreateHand';

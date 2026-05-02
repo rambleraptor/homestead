@@ -11,17 +11,17 @@
  */
 
 import { useState } from 'react';
-import { Card } from '@/shared/components/Card';
-import { Modal } from '@/shared/components/Modal';
-import { Spinner } from '@/shared/components/Spinner';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { useToast } from '@/shared/components/ToastProvider';
+import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
+import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import {
   FilterBar,
   ModuleFiltersProvider,
   useFilteredItems,
   useOmniboxFilterSeed,
-} from '@/shared/filters';
+} from '@rambleraptor/homestead-core/shared/filters';
 import { usePeople } from '../hooks/usePeople';
 import { useUpdatePerson } from '../hooks/useUpdatePerson';
 import { useDeletePerson } from '../hooks/useDeletePerson';

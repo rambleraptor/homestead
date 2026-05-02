@@ -9,7 +9,7 @@
 import { useRouter } from 'next/navigation';
 import { Menu, Bell, Search } from 'lucide-react';
 import { useNotificationStats } from '@rambleraptor/homestead-modules/notifications/hooks/useNotificationStats';
-import { useCanUseOmnibox } from '@/shared/omnibox/useCanUseOmnibox';
+import { useCanUseOmnibox } from '@rambleraptor/homestead-core/shared/omnibox/useCanUseOmnibox';
 
 interface HeaderProps {
   onMenuClick: () => void;

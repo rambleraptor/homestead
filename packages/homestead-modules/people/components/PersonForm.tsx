@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/shared/components/Button';
-import { Input } from '@/shared/components/Input';
+import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
+import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import type { Person, PersonFormData, AddressFormData } from '../types';
 import { usePeople } from '../hooks/usePeople';
 import { AddressesInput } from './AddressesInput';

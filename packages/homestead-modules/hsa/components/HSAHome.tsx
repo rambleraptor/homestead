@@ -15,8 +15,8 @@ import { useDeleteHSAReceipt } from '../hooks/useDeleteHSAReceipt';
 import { HSAKPICard } from './HSAKPICard';
 import { HSAQuickCaptureForm } from './HSAQuickCaptureForm';
 import { HSAAuditVault } from './HSAAuditVault';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { HSAReceiptFormData, ReceiptStatus } from '../types';
 

@@ -6,8 +6,8 @@
 
 import { useMemo } from 'react';
 import { CheckCircle, ExternalLink, Trash2 } from 'lucide-react';
-import { formatCurrency } from '@/shared/utils/currencyUtils';
-import { formatDate } from '@/shared/utils/dateUtils';
+import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
+import { formatDate } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
 import type { HSAStats, HSAReceipt, ReceiptStatus } from '../types';
 import { useHSAReceipts } from '../hooks/useHSAReceipts';
 import { useHSAReceiptUrl } from '../hooks/useHSAReceiptUrl';

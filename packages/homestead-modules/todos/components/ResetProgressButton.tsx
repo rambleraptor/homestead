@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useResetTodos } from '../hooks/useResetTodos';
 
 interface ResetProgressButtonProps {

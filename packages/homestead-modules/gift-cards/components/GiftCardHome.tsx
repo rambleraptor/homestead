@@ -16,10 +16,10 @@ import { useDeleteGiftCard } from '../hooks/useDeleteGiftCard';
 import { MerchantList } from './MerchantList';
 import { MerchantDetail } from './MerchantDetail';
 import { GiftCardForm } from './GiftCardForm';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
-import { formatCurrency } from '@/shared/utils/currencyUtils';
+import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
 import type { GiftCard, GiftCardFormData } from '../types';
 
 type View = 'list' | 'detail' | 'form';

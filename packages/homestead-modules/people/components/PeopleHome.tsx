@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Upload } from 'lucide-react';
-import { Button } from '@/shared/components/Button';
-import { Modal } from '@/shared/components/Modal';
-import { useToast } from '@/shared/components/ToastProvider';
+import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
+import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { useCreatePerson } from '../hooks/useCreatePerson';
 import { PersonForm } from './PersonForm';
 import { PeopleList } from './PeopleList';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import type { PersonFormData } from '../types';
 
 export function PeopleHome() {

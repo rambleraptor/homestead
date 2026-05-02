@@ -13,7 +13,7 @@ import { ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react';
 import {
   PersonSelector,
   type PersonOption,
-} from '@/shared/components/PersonSelector';
+} from '@rambleraptor/homestead-core/shared/components/PersonSelector';
 import type {
   PictionaryGame,
   PictionaryGameFormData,

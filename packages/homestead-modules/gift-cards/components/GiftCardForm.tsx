@@ -10,8 +10,8 @@ import React, { useEffect, useState } from 'react';
 import { Save, X, Upload, Trash2 } from 'lucide-react';
 import type { GiftCard, GiftCardFormData } from '../types';
 import { useGiftCardImageUrl } from '../hooks/useGiftCardImageUrl';
-import { useToast } from '@/shared/components/ToastProvider';
-import { validateImageFile } from '@/shared/utils/fileValidation';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
+import { validateImageFile } from '@rambleraptor/homestead-core/shared/utils/fileValidation';
 
 interface GiftCardFormProps {
   onSubmit: (data: GiftCardFormData) => void;

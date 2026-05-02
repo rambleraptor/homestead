@@ -6,7 +6,7 @@
  * team by its 1-based position (e.g. "1" picks the team in `team_1`).
  */
 
-import type { FieldValidator } from '@/shared/bulk-import';
+import type { FieldValidator } from '@rambleraptor/homestead-core/shared/bulk-import';
 import { TEAM_COLUMNS } from './types';
 
 export const validatePlayedAt: FieldValidator<string> = (value) => {

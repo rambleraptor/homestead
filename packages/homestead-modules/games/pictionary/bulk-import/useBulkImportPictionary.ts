@@ -12,7 +12,7 @@
 
 import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { useBulkImport } from '@/shared/bulk-import';
+import { useBulkImport } from '@rambleraptor/homestead-core/shared/bulk-import';
 import type { PictionaryGame, PictionaryTeam } from '../types';
 import { loadPeopleMap, type PeopleByName } from './peopleMap';
 import type { PictionaryGameCSVData, PictionaryTeamCSV } from './types';

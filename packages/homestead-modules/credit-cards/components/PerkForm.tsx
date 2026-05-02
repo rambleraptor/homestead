@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Modal } from '@/shared/components/Modal';
+import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import type { PerkFormData, PerkFrequency, PerkCategory, CreditCardPerk } from '../types';
 
 interface PerkFormProps {

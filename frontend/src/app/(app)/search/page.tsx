@@ -13,13 +13,13 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
-import { useCanUseOmnibox } from '@/shared/omnibox/useCanUseOmnibox';
-import { useModuleFlags } from '@/modules/settings/hooks/useModuleFlags';
-import { Spinner } from '@/shared/components/Spinner';
-import { OmniboxInput } from '@/shared/omnibox/OmniboxInput';
-import { OmniboxDispatcher } from '@/shared/omnibox/OmniboxDispatcher';
-import { useOmniboxParse } from '@/shared/omnibox/useOmniboxParse';
-import type { OmniboxParseResponse } from '@/shared/omnibox/types';
+import { useCanUseOmnibox } from '@rambleraptor/homestead-core/shared/omnibox/useCanUseOmnibox';
+import { useModuleFlags } from '@rambleraptor/homestead-core/settings/hooks/useModuleFlags';
+import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
+import { OmniboxInput } from '@rambleraptor/homestead-core/shared/omnibox/OmniboxInput';
+import { OmniboxDispatcher } from '@rambleraptor/homestead-core/shared/omnibox/OmniboxDispatcher';
+import { useOmniboxParse } from '@rambleraptor/homestead-core/shared/omnibox/useOmniboxParse';
+import type { OmniboxParseResponse } from '@rambleraptor/homestead-core/shared/omnibox/types';
 
 export default function SearchPage() {
   const { user, isLoading } = useAuth();

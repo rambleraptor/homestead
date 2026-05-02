@@ -2,7 +2,7 @@
 
 import { Check, Moon, Pause, Undo2, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import type { Todo, TodoStatus } from '../types';
 
 export type TodoRowVariant = 'active' | 'doLater' | 'completed';

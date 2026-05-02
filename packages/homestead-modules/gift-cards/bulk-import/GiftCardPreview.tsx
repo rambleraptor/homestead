@@ -3,10 +3,10 @@
  */
 
 import { CreditCard, CheckCircle2, XCircle, AlertCircle, Archive } from 'lucide-react';
-import { Card } from '@/shared/components/Card';
-import { Checkbox } from '@/shared/components/Checkbox';
-import { formatCurrency } from '@/shared/utils/currencyUtils';
-import type { ParsedItem } from '@/shared/bulk-import';
+import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
+import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
+import type { ParsedItem } from '@rambleraptor/homestead-core/shared/bulk-import';
 import type { GiftCardImportData } from './schema';
 
 interface GiftCardPreviewProps {

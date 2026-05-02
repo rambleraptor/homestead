@@ -15,12 +15,12 @@ import { useDeleteAllGroceries } from '../hooks/useDeleteAllGroceries';
 import { GroceriesList } from './GroceriesList';
 import { ImageUploadDialog } from './ImageUploadDialog';
 import { StoreManagement } from './StoreManagement';
-import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { PageHeader } from '@/shared/components/PageHeader';
-import { Badge } from '@/shared/components/Badge';
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
-import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
-import { useModuleFlag } from '@/modules/settings';
+import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
+import { useModuleFlag } from '@rambleraptor/homestead-core/settings';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 export function GroceriesHome() {

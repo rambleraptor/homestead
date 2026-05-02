@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import { ChevronRight, Store, ChevronDown, ChevronUp } from 'lucide-react';
 import type { MerchantSummary } from '../types';
-import { formatCurrency } from '@/shared/utils/currencyUtils';
+import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
 
 interface MerchantListProps {
   merchants: MerchantSummary[];

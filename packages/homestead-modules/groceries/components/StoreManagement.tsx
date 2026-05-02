@@ -11,7 +11,7 @@ import { Plus, Trash2, Loader2, Star, Store as StoreIcon, X } from 'lucide-react
 import { useStores } from '../hooks/useStores';
 import { useCreateStore } from '../hooks/useCreateStore';
 import { useDeleteStore } from '../hooks/useDeleteStore';
-import { useModuleFlag } from '@/modules/settings';
+import { useModuleFlag } from '@rambleraptor/homestead-core/settings';
 
 interface StoreManagementProps {
   onClose?: () => void;

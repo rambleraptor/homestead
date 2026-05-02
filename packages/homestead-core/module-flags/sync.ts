@@ -11,7 +11,7 @@
  * from declared flags rather than written out by hand.
  */
 
-import { buildResourceSchema, type ModuleFlagDefs } from '@/modules/settings/flags';
+import { buildResourceSchema, type ModuleFlagDefs } from '@rambleraptor/homestead-core/settings/flags';
 import { jsonEqual } from '../resources/equal';
 
 const RESOURCE_SINGULAR = 'module-flag';

@@ -2,7 +2,7 @@
  * Gift Cards Bulk Import - Schema Definition
  */
 
-import type { BulkImportSchema } from '@/shared/bulk-import';
+import type { BulkImportSchema } from '@rambleraptor/homestead-core/shared/bulk-import';
 import {
   validateMerchant,
   validateCardNumber,

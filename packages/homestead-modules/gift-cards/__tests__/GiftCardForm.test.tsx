@@ -7,7 +7,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GiftCardForm } from '../components/GiftCardForm';
-import { ToastProvider } from '@/shared/components/ToastProvider';
+import { ToastProvider } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import type { GiftCard } from '../types';
 
 // Mock the backend-aware image URL hook so tests don't need a fetch or pb stub.

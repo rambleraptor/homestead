@@ -5,7 +5,7 @@
  */
 
 import { DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/shared/utils/currencyUtils';
+import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
 
 interface HSAKPICardProps {
   totalStored: number;

@@ -6,7 +6,7 @@ import { AuthProvider } from '@rambleraptor/homestead-core/auth/AuthContext';
 import { queryClient } from '@rambleraptor/homestead-core/api/queryClient';
 import { persistOptions } from '@rambleraptor/homestead-core/api/persistQueryClient';
 import { registerGroceryMutationDefaults } from '@rambleraptor/homestead-modules/groceries/registerMutationDefaults';
-import { ToastProvider } from '@/shared/components/ToastProvider';
+import { ToastProvider } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import dynamic from 'next/dynamic';
 
 // Mutation defaults must be installed on the QueryClient *before* any

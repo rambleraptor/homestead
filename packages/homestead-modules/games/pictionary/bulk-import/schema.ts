@@ -7,7 +7,7 @@
  * the 1-based position of the winning team.
  */
 
-import type { BulkImportSchema, FieldConfig } from '@/shared/bulk-import';
+import type { BulkImportSchema, FieldConfig } from '@rambleraptor/homestead-core/shared/bulk-import';
 import { GamePreview } from './GamePreview';
 import {
   validatePlayedAt,

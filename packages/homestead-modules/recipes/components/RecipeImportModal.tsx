@@ -23,8 +23,8 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { Modal } from '@/shared/components/Modal';
-import { decimalToFraction } from '@/shared/utils/fractionUtils';
+import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
+import { decimalToFraction } from '@rambleraptor/homestead-core/shared/utils/fractionUtils';
 import {
   DEFAULT_IMPORTER_ID,
   getImporter,

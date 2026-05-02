@@ -4,7 +4,7 @@
  * People Bulk Import Component
  */
 
-import { BulkImportContainer } from '@/shared/bulk-import';
+import { BulkImportContainer } from '@rambleraptor/homestead-core/shared/bulk-import';
 import { peopleImportSchema } from './schema';
 import { useBulkImportPeople } from '../hooks/useBulkImportPeople';
 

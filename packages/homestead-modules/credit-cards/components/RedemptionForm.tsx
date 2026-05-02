@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Modal } from '@/shared/components/Modal';
+import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import {
   getCurrentPeriod,
   getPeriodsInRange,

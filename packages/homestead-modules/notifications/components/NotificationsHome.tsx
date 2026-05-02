@@ -1,10 +1,10 @@
 'use client';
 
 import { Bell, Check, Calendar } from 'lucide-react';
-import { Card } from '@/shared/components/Card';
-import { Button } from '@/shared/components/Button';
-import { Spinner } from '@/shared/components/Spinner';
-import { PageHeader } from '@/shared/components/PageHeader';
+import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
+import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
+import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useNotifications } from '../hooks/useNotifications';
 import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';

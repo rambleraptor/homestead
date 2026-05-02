@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import { ModuleEnabledGate } from '@/shared/components/ModuleEnabledGate';
+import { ModuleEnabledGate } from '@rambleraptor/homestead-core/shared/components/ModuleEnabledGate';
 import { SuperuserGate } from './SuperuserGate';
 
 export type GateName = 'enabled' | 'superuser';
