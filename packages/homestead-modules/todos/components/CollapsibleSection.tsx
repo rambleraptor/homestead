@@ -39,7 +39,14 @@ export function CollapsibleSection({
           </span>
         )}
       </button>
-      <div className={cn('mt-3 space-y-2', !open && 'hidden')}>{children}</div>
+      <div
+        className={cn(
+          'mt-3 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100',
+          !open && 'hidden',
+        )}
+      >
+        {children}
+      </div>
     </section>
   );
 }

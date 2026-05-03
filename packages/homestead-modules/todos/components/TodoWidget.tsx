@@ -16,6 +16,7 @@ export function TodoWidget() {
   const { buckets, isLoading } = useTodoBuckets();
   const synthetic = useSyntheticTodos();
   const active = [...synthetic, ...buckets.active];
+  const hasItems = !isLoading && active.length > 0;
 
   return (
     <WidgetCard
@@ -23,17 +24,18 @@ export function TodoWidget() {
       title="Todos"
       href="/todos"
       data-testid="todos-widget"
+      bodyClassName={hasItems ? 'px-4 py-0' : undefined}
     >
       {isLoading ? (
         <div className="flex items-center justify-center py-6">
           <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
         </div>
-      ) : active.length === 0 ? (
+      ) : !hasItems ? (
         <p className="font-body text-text-muted py-2">
           Nothing active — you're all caught up.
         </p>
       ) : (
-        <ul className="space-y-2" data-testid="todos-widget-list">
+        <ul className="divide-y divide-gray-50" data-testid="todos-widget-list">
           {active.map((todo) => {
             const isInProgress = todo.status === 'in_progress';
             return (
@@ -41,7 +43,7 @@ export function TodoWidget() {
                 key={todo.id}
                 data-testid={`todos-widget-item-${todo.id}`}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl border border-gray-100 bg-surface-white px-3 py-2 shadow-sm',
+                  'flex items-center gap-3 py-3',
                   isInProgress && 'border-l-4 border-l-yellow-400 pl-2',
                 )}
               >

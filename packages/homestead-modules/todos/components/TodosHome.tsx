@@ -58,30 +58,35 @@ export function TodosHome() {
 
       {!isLoading && !isError && (
         <>
-          <div className="space-y-2" data-testid="todos-section-active">
-            {buckets.active.length === 0 && synthetic.length === 0 && (
-              <p className="text-sm text-text-muted font-body italic">
-                Nothing pending — add an item above to get started.
-              </p>
+          <div data-testid="todos-section-active">
+            {buckets.active.length === 0 && synthetic.length === 0 ? (
+              <div className="bg-white rounded-lg border border-gray-200 px-4 py-6 text-center">
+                <p className="text-sm text-text-muted font-body italic">
+                  Nothing pending — add an item above to get started.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
+                {synthetic.map((todo) => (
+                  <TodoRow
+                    key={todo.id}
+                    todo={todo}
+                    variant="active"
+                    onSetStatus={() => undefined}
+                    readOnly
+                  />
+                ))}
+                {buckets.active.map((todo) => (
+                  <TodoRow
+                    key={todo.id}
+                    todo={todo}
+                    variant="active"
+                    onSetStatus={(status) => handleSetStatus(todo.id, status)}
+                    disabled={update.isPending}
+                  />
+                ))}
+              </div>
             )}
-            {synthetic.map((todo) => (
-              <TodoRow
-                key={todo.id}
-                todo={todo}
-                variant="active"
-                onSetStatus={() => undefined}
-                readOnly
-              />
-            ))}
-            {buckets.active.map((todo) => (
-              <TodoRow
-                key={todo.id}
-                todo={todo}
-                variant="active"
-                onSetStatus={(status) => handleSetStatus(todo.id, status)}
-                disabled={update.isPending}
-              />
-            ))}
           </div>
 
           {buckets.doLater.length > 0 && (
