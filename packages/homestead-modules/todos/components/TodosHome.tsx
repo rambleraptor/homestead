@@ -4,6 +4,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { useTodoBuckets } from '../hooks/useTodos';
 import { useCreateTodo } from '../hooks/useCreateTodo';
 import { useUpdateTodoStatus } from '../hooks/useUpdateTodoStatus';
+import { useSyntheticTodos } from '../hooks/useSyntheticTodos';
 import type { TodoStatus } from '../types';
 import { TodoHeader } from './TodoHeader';
 import { TodoProgressBar } from './TodoProgressBar';
@@ -20,6 +21,7 @@ export function TodosHome() {
     isError,
     error,
   } = useTodoBuckets();
+  const synthetic = useSyntheticTodos();
   const create = useCreateTodo();
   const update = useUpdateTodoStatus();
 
@@ -57,11 +59,20 @@ export function TodosHome() {
       {!isLoading && !isError && (
         <>
           <div className="space-y-2" data-testid="todos-section-active">
-            {buckets.active.length === 0 && (
+            {buckets.active.length === 0 && synthetic.length === 0 && (
               <p className="text-sm text-text-muted font-body italic">
                 Nothing pending — add an item above to get started.
               </p>
             )}
+            {synthetic.map((todo) => (
+              <TodoRow
+                key={todo.id}
+                todo={todo}
+                variant="active"
+                onSetStatus={() => undefined}
+                readOnly
+              />
+            ))}
             {buckets.active.map((todo) => (
               <TodoRow
                 key={todo.id}

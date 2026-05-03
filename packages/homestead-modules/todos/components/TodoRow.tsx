@@ -12,6 +12,12 @@ interface TodoRowProps {
   variant: TodoRowVariant;
   onSetStatus: (status: TodoStatus) => void;
   disabled?: boolean;
+  /**
+   * Read-only rows render no action buttons. Used for synthetic todos that
+   * are derived from other modules' state (e.g. "Buy N groceries") and
+   * complete implicitly when the source state is empty.
+   */
+  readOnly?: boolean;
 }
 
 interface ActionConfig {
@@ -97,8 +103,8 @@ function actionsForVariant(variant: TodoRowVariant, todo: Todo): ActionConfig[] 
   ];
 }
 
-export function TodoRow({ todo, variant, onSetStatus, disabled }: TodoRowProps) {
-  const actions = actionsForVariant(variant, todo);
+export function TodoRow({ todo, variant, onSetStatus, disabled, readOnly }: TodoRowProps) {
+  const actions = readOnly ? [] : actionsForVariant(variant, todo);
   const isInProgress = variant === 'active' && todo.status === 'in_progress';
   const isCancelled = todo.status === 'cancelled';
 

@@ -10,10 +10,12 @@ import { ListTodo, Loader2 } from 'lucide-react';
 import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { useTodoBuckets } from '../hooks/useTodos';
+import { useSyntheticTodos } from '../hooks/useSyntheticTodos';
 
 export function TodoWidget() {
   const { buckets, isLoading } = useTodoBuckets();
-  const active = buckets.active;
+  const synthetic = useSyntheticTodos();
+  const active = [...synthetic, ...buckets.active];
 
   return (
     <WidgetCard
