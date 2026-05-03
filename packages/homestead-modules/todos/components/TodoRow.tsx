@@ -112,10 +112,8 @@ export function TodoRow({ todo, variant, onSetStatus, disabled, readOnly }: Todo
     <div
       data-testid={`todo-row-${todo.id}`}
       className={cn(
-        'group flex items-center gap-3 rounded-2xl border bg-surface-white px-4 py-3 shadow-sm transition-colors',
-        'border-gray-100 hover:border-gray-200',
+        'group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-pearl',
         isInProgress && 'border-l-4 border-l-yellow-400 pl-3',
-        variant === 'completed' && 'bg-bg-pearl',
       )}
     >
       <span
@@ -139,12 +137,12 @@ export function TodoRow({ todo, variant, onSetStatus, disabled, readOnly }: Todo
               aria-label={`${action.label}: ${todo.title}`}
               data-testid={`todo-row-${todo.id}-${action.testId}`}
               className={cn(
-                'flex h-9 w-9 items-center justify-center rounded-full transition-colors',
+                'p-1.5 rounded-lg transition-colors',
                 action.color,
                 'disabled:opacity-40 disabled:cursor-not-allowed',
               )}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-4 h-4" />
             </button>
           );
         })}
