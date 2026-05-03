@@ -5,6 +5,7 @@
 import { ListTodo } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
 import { TodosHome } from './components/TodosHome';
+import { TodoWidget } from './components/TodoWidget';
 import { todosResources } from './resources';
 
 export const todosModule: HomeModule = {
@@ -20,4 +21,11 @@ export const todosModule: HomeModule = {
   enabled: true,
   defaultEnabled: 'all',
   resources: todosResources,
+  widgets: [
+    {
+      id: 'todos-active',
+      component: TodoWidget,
+      order: 5,
+    },
+  ],
 };
