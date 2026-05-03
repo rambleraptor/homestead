@@ -47,7 +47,7 @@ export function TodoWidget() {
                   isInProgress && 'border-l-4 border-l-yellow-400 pl-2',
                 )}
               >
-                <span className="flex-1 font-body text-sm text-text-main truncate">
+                <span className="flex-1 font-display text-lg text-text-main truncate">
                   {todo.title}
                 </span>
               </li>
