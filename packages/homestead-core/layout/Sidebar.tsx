@@ -92,9 +92,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return acc;
   }, {} as Record<string, typeof modules>);
 
-  // Get sections in a defined order, with any unlisted sections at the end
-  const sectionOrder = ['Money', 'Food', 'Relationships', 'Games', 'Settings'];
+  // Settings always renders last; other sections follow the defined order,
+  // with any unlisted sections slotting in before Settings.
+  const sectionOrder = ['Money', 'Food', 'Relationships', 'Games'];
   const sections = Object.keys(modulesBySection).sort((a, b) => {
+    if (a === 'Settings') return 1;
+    if (b === 'Settings') return -1;
     const aIndex = sectionOrder.indexOf(a);
     const bIndex = sectionOrder.indexOf(b);
     const aOrder = aIndex === -1 ? sectionOrder.length : aIndex;
