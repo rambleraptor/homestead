@@ -5,7 +5,11 @@
  */
 
 import { useMemo } from 'react';
-import { getCurrentPeriod, dateKey } from '../utils/periodUtils';
+import {
+  getCurrentPeriod,
+  getRedemptionStatus,
+  sumRedeemedForPeriod,
+} from '../utils/periodUtils';
 import type { CreditCard, CreditCardPerk, PerkRedemption, UpcomingPerk } from '../types';
 
 export function useUpcomingPerks(
@@ -22,20 +26,17 @@ export function useUpcomingPerks(
 
       for (const perk of cardPerks) {
         const period = getCurrentPeriod(perk.frequency, card.reset_mode, card.anniversary_date);
-        const periodStartKey = dateKey(period.start);
-        const periodEndKey = dateKey(period.end);
-
-        const isRedeemed = redemptions.some((r) => {
-          if (r.perk !== perk.id) return false;
-          return dateKey(r.period_start) === periodStartKey
-            && dateKey(r.period_end) === periodEndKey;
-        });
+        const redeemedAmount = sumRedeemedForPeriod(redemptions, perk.id, period);
+        const redemptionStatus = getRedemptionStatus(redeemedAmount, perk.value);
+        const isRedeemed = redemptionStatus !== 'none';
 
         result.push({
           perk,
           card,
           currentPeriod: period,
           isRedeemed,
+          redeemedAmount,
+          redemptionStatus,
         });
       }
     }

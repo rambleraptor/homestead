@@ -1,4 +1,10 @@
-import type { PerkFrequency, ResetMode, PerkPeriod } from '../types';
+import type {
+  PerkFrequency,
+  ResetMode,
+  PerkPeriod,
+  PerkRedemption,
+  PerkRedemptionStatus,
+} from '../types';
 
 const MONTHS_PER_PERIOD: Record<PerkFrequency, number> = {
   monthly: 1,
@@ -145,4 +151,37 @@ export function toLocalISODate(d: Date): string {
 export function dateKey(value: Date | string): string {
   if (typeof value === 'string') return value.slice(0, 10);
   return toLocalISODate(value);
+}
+
+/**
+ * Sum redemption amounts that match a given perk and period.
+ */
+export function sumRedeemedForPeriod(
+  redemptions: PerkRedemption[],
+  perkId: string,
+  period: PerkPeriod,
+): number {
+  const startKey = dateKey(period.start);
+  const endKey = dateKey(period.end);
+  let total = 0;
+  for (const r of redemptions) {
+    if (r.perk !== perkId) continue;
+    if (dateKey(r.period_start) !== startKey) continue;
+    if (dateKey(r.period_end) !== endKey) continue;
+    total += r.amount;
+  }
+  return total;
+}
+
+/**
+ * Classify a perk's redemption state for the given period based on the
+ * redeemed total relative to the perk's value.
+ */
+export function getRedemptionStatus(
+  redeemedAmount: number,
+  perkValue: number,
+): PerkRedemptionStatus {
+  if (redeemedAmount <= 0) return 'none';
+  if (redeemedAmount >= perkValue) return 'full';
+  return 'partial';
 }

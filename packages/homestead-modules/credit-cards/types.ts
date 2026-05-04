@@ -147,6 +147,14 @@ export interface DashboardStats {
 }
 
 /**
+ * Status of a perk's redemption for its current period.
+ * - `none`: no redemptions recorded
+ * - `partial`: redemption(s) exist but the redeemed total is less than the perk value
+ * - `full`: redeemed total meets or exceeds the perk value
+ */
+export type PerkRedemptionStatus = 'none' | 'partial' | 'full';
+
+/**
  * Upcoming perk (not yet redeemed for current period)
  */
 export interface UpcomingPerk {
@@ -154,4 +162,6 @@ export interface UpcomingPerk {
   card: CreditCard;
   currentPeriod: PerkPeriod;
   isRedeemed: boolean;
+  redeemedAmount: number;
+  redemptionStatus: PerkRedemptionStatus;
 }

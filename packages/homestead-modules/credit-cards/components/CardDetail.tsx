@@ -11,7 +11,14 @@ import { PerkForm } from './PerkForm';
 import { PerkRow } from './PerkRow';
 import { RedemptionForm } from './RedemptionForm';
 import { RedemptionHistory } from './RedemptionHistory';
-import { getAnnualizedValue, getCurrentPeriod, formatPeriod, dateKey } from '../utils/periodUtils';
+import {
+  getAnnualizedValue,
+  getCurrentPeriod,
+  formatPeriod,
+  dateKey,
+  getRedemptionStatus,
+  sumRedeemedForPeriod,
+} from '../utils/periodUtils';
 import type { CreditCard, CreditCardPerk, PerkRedemption, PerkFormData, RedemptionFormData } from '../types';
 
 interface CardDetailProps {
@@ -179,20 +186,16 @@ export function CardDetail({
           <div className="space-y-2">
             {perks.map((perk) => {
               const period = getCurrentPeriod(perk.frequency, card.reset_mode, card.anniversary_date);
-              const periodStartKey = dateKey(period.start);
-              const periodEndKey = dateKey(period.end);
-              const isRedeemed = cardRedemptions.some((r) => {
-                if (r.perk !== perk.id) return false;
-                return dateKey(r.period_start) === periodStartKey
-                  && dateKey(r.period_end) === periodEndKey;
-              });
+              const redeemedAmount = sumRedeemedForPeriod(cardRedemptions, perk.id, period);
+              const redemptionStatus = getRedemptionStatus(redeemedAmount, perk.value);
 
               return (
                 <PerkRow
                   key={perk.id}
                   perk={perk}
                   periodLabel={formatPeriod(period, perk.frequency)}
-                  isRedeemed={isRedeemed}
+                  redemptionStatus={redemptionStatus}
+                  redeemedAmount={redeemedAmount}
                   onRedeem={() => onRedeemPerk(perk.id, perk.value)}
                   onEdit={() => { setEditingPerk(perk); setShowPerkForm(true); }}
                   onDelete={() => onDeletePerk(perk.id)}
