@@ -1,32 +1,33 @@
 /**
- * Resets every non-pending todo in the active scope back to `pending`. The
- * action is scope-aware so the per-project view's reset button only touches
- * that project's bucket.
+ * Deletes a project. Member todos fall back to the main project: PATCH each
+ * todo to clear `project` and `in_main` first, then DELETE the project
+ * record. Ordering matters — if a todo PATCH fails we leave the project
+ * intact rather than orphaning todos with a dangling `project` reference.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
-import { MAIN_PROJECT_ID, type ProjectScope, type Todo } from '../types';
-import { filterTodosForScope } from './useTodos';
+import type { Todo } from '../types';
 
-export function useResetTodos(scope: ProjectScope = MAIN_PROJECT_ID) {
+export function useDeleteProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (): Promise<number> => {
+    mutationFn: async (projectId: string): Promise<void> => {
+      const projectRef = `projects/${projectId}`;
       const todos = await aepbase.list<Todo>(AepCollections.TODOS);
-      const inScope = filterTodosForScope(todos, scope);
-      const stale = inScope.filter((t) => t.status !== 'pending');
+      const members = todos.filter((t) => t.project === projectRef);
       await Promise.all(
-        stale.map((t) =>
+        members.map((t) =>
           aepbase.update<Todo>(AepCollections.TODOS, t.id, {
-            status: 'pending',
+            project: '',
+            in_main: false,
           }),
         ),
       );
-      return stale.length;
+      await aepbase.remove(AepCollections.PROJECTS, projectId);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -36,6 +37,6 @@ export function useResetTodos(scope: ProjectScope = MAIN_PROJECT_ID) {
         queryKey: queryKeys.module('todos').all(),
       });
     },
-    onError: (error) => logger.error('Todo reset error', error),
+    onError: (error) => logger.error('Project delete mutation error', error),
   });
 }

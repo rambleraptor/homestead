@@ -3,14 +3,19 @@
 import { useState } from 'react';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useResetTodos } from '../hooks/useResetTodos';
+import { MAIN_PROJECT_ID, type ProjectScope } from '../types';
 
 interface ResetProgressButtonProps {
   disabled?: boolean;
+  scope?: ProjectScope;
 }
 
-export function ResetProgressButton({ disabled }: ResetProgressButtonProps) {
+export function ResetProgressButton({
+  disabled,
+  scope = MAIN_PROJECT_ID,
+}: ResetProgressButtonProps) {
   const [open, setOpen] = useState(false);
-  const reset = useResetTodos();
+  const reset = useResetTodos(scope);
 
   const handleConfirm = async () => {
     await reset.mutateAsync();

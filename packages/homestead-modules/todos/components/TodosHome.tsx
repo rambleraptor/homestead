@@ -1,41 +1,88 @@
 'use client';
 
+import { useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useTodoBuckets } from '../hooks/useTodos';
+import { useProjects } from '../hooks/useProjects';
 import { useCreateTodo } from '../hooks/useCreateTodo';
 import { useUpdateTodoStatus } from '../hooks/useUpdateTodoStatus';
+import { useToggleTodoInMain } from '../hooks/useToggleTodoInMain';
 import { useSyntheticTodos } from '../hooks/useSyntheticTodos';
-import type { TodoStatus } from '../types';
+import {
+  MAIN_PROJECT_ID,
+  type ProjectScope,
+  type Todo,
+  type TodoStatus,
+} from '../types';
 import { TodoHeader } from './TodoHeader';
 import { TodoProgressBar } from './TodoProgressBar';
 import { AddTodoInput } from './AddTodoInput';
 import { TodoRow } from './TodoRow';
 import { CollapsibleSection } from './CollapsibleSection';
 import { ResetProgressButton } from './ResetProgressButton';
+import { ProjectSwitcher } from './ProjectSwitcher';
 
 export function TodosHome() {
+  const [scope, setScope] = useState<ProjectScope>(MAIN_PROJECT_ID);
   const {
     buckets,
     progress,
     isLoading,
     isError,
     error,
-  } = useTodoBuckets();
+  } = useTodoBuckets(scope);
+  const projectsQuery = useProjects();
   const synthetic = useSyntheticTodos();
   const create = useCreateTodo();
   const update = useUpdateTodoStatus();
+  const togglePin = useToggleTodoInMain();
+
+  const isMain = scope === MAIN_PROJECT_ID;
+  const projectsById = new Map(
+    (projectsQuery.data ?? []).map((p) => [p.id, p]),
+  );
 
   const handleAdd = async (title: string) => {
-    await create.mutateAsync({ title });
+    await create.mutateAsync({
+      title,
+      projectId: isMain ? undefined : scope,
+    });
   };
 
   const handleSetStatus = (id: string, status: TodoStatus) => {
     update.mutate({ id, status });
   };
 
+  const handleTogglePin = (id: string, inMain: boolean) => {
+    togglePin.mutate({ id, inMain });
+  };
+
+  const originLabelFor = (todo: Todo): string | undefined => {
+    if (!isMain) return undefined;
+    if (!todo.project) return undefined;
+    const id = todo.project.replace(/^projects\//, '');
+    return projectsById.get(id)?.name;
+  };
+
+  const togglePinHandlerFor = (todo: Todo) => {
+    if (isMain) {
+      // On main: only show the pin control for todos that originate in a
+      // project (so users can unpin them). Native main-only todos shouldn't
+      // expose the action.
+      if (!todo.project) return undefined;
+      return (inMain: boolean) => handleTogglePin(todo.id, inMain);
+    }
+    return (inMain: boolean) => handleTogglePin(todo.id, inMain);
+  };
+
+  // Synthetic todos only belong on the main view.
+  const showSynthetic = isMain;
+
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
       <TodoHeader />
+
+      <ProjectSwitcher scope={scope} onChange={setScope} />
 
       <TodoProgressBar progress={progress} />
 
@@ -59,7 +106,8 @@ export function TodosHome() {
       {!isLoading && !isError && (
         <>
           <div data-testid="todos-section-active">
-            {buckets.active.length === 0 && synthetic.length === 0 ? (
+            {buckets.active.length === 0 &&
+            (!showSynthetic || synthetic.length === 0) ? (
               <div className="bg-white rounded-lg border border-gray-200 px-4 py-6 text-center">
                 <p className="text-sm text-text-muted font-body italic">
                   Nothing pending — add an item above to get started.
@@ -67,15 +115,16 @@ export function TodosHome() {
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
-                {synthetic.map((todo) => (
-                  <TodoRow
-                    key={todo.id}
-                    todo={todo}
-                    variant="active"
-                    onSetStatus={() => undefined}
-                    readOnly
-                  />
-                ))}
+                {showSynthetic &&
+                  synthetic.map((todo) => (
+                    <TodoRow
+                      key={todo.id}
+                      todo={todo}
+                      variant="active"
+                      onSetStatus={() => undefined}
+                      readOnly
+                    />
+                  ))}
                 {buckets.active.map((todo) => (
                   <TodoRow
                     key={todo.id}
@@ -83,6 +132,8 @@ export function TodosHome() {
                     variant="active"
                     onSetStatus={(status) => handleSetStatus(todo.id, status)}
                     disabled={update.isPending}
+                    onTogglePin={togglePinHandlerFor(todo)}
+                    pinnedFromLabel={originLabelFor(todo)}
                   />
                 ))}
               </div>
@@ -102,6 +153,8 @@ export function TodosHome() {
                   variant="doLater"
                   onSetStatus={(status) => handleSetStatus(todo.id, status)}
                   disabled={update.isPending}
+                  onTogglePin={togglePinHandlerFor(todo)}
+                  pinnedFromLabel={originLabelFor(todo)}
                 />
               ))}
             </CollapsibleSection>
@@ -121,6 +174,8 @@ export function TodosHome() {
                   variant="completed"
                   onSetStatus={(status) => handleSetStatus(todo.id, status)}
                   disabled={update.isPending}
+                  onTogglePin={togglePinHandlerFor(todo)}
+                  pinnedFromLabel={originLabelFor(todo)}
                 />
               ))}
             </CollapsibleSection>
@@ -129,7 +184,7 @@ export function TodosHome() {
       )}
 
       <div className="flex justify-center pt-2">
-        <ResetProgressButton disabled={isLoading} />
+        <ResetProgressButton disabled={isLoading} scope={scope} />
       </div>
     </div>
   );

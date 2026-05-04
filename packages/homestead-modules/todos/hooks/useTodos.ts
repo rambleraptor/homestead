@@ -10,7 +10,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
-import type { Todo, TodoBuckets, TodoProgress } from '../types';
+import {
+  MAIN_PROJECT_ID,
+  type ProjectScope,
+  type Todo,
+  type TodoBuckets,
+  type TodoProgress,
+} from '../types';
 
 export function useTodos() {
   return useQuery({
@@ -22,6 +28,24 @@ export function useTodos() {
       );
     },
   });
+}
+
+/**
+ * Filter the full todo list down to those visible in a given project scope.
+ *
+ * - Main scope: todos with no `project` field, plus todos pinned via
+ *   `in_main=true`.
+ * - Project scope: todos whose `project` matches `projects/{scope}`.
+ */
+export function filterTodosForScope(
+  todos: Todo[],
+  scope: ProjectScope,
+): Todo[] {
+  if (scope === MAIN_PROJECT_ID) {
+    return todos.filter((t) => !t.project || t.in_main === true);
+  }
+  const ref = `projects/${scope}`;
+  return todos.filter((t) => t.project === ref);
 }
 
 export function bucketTodos(todos: Todo[]): TodoBuckets {
@@ -55,15 +79,16 @@ export function computeProgress(todos: Todo[]): TodoProgress {
   return { green, yellow };
 }
 
-export function useTodoBuckets() {
+export function useTodoBuckets(scope: ProjectScope = MAIN_PROJECT_ID) {
   const query = useTodos();
-  const buckets = useMemo<TodoBuckets>(
-    () => bucketTodos(query.data ?? []),
-    [query.data],
+  const scoped = useMemo<Todo[]>(
+    () => filterTodosForScope(query.data ?? [], scope),
+    [query.data, scope],
   );
+  const buckets = useMemo<TodoBuckets>(() => bucketTodos(scoped), [scoped]);
   const progress = useMemo<TodoProgress>(
-    () => computeProgress(query.data ?? []),
-    [query.data],
+    () => computeProgress(scoped),
+    [scoped],
   );
-  return { ...query, buckets, progress };
+  return { ...query, buckets, progress, scoped };
 }

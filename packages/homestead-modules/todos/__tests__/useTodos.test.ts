@@ -1,8 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { bucketTodos, computeProgress } from '../hooks/useTodos';
-import type { Todo, TodoStatus } from '../types';
+import {
+  bucketTodos,
+  computeProgress,
+  filterTodosForScope,
+} from '../hooks/useTodos';
+import { MAIN_PROJECT_ID, type Todo, type TodoStatus } from '../types';
 
-function makeTodo(id: string, status: TodoStatus, createTime = '2025-01-01T00:00:00Z'): Todo {
+function makeTodo(
+  id: string,
+  status: TodoStatus,
+  createTime = '2025-01-01T00:00:00Z',
+  extra: Partial<Todo> = {},
+): Todo {
   return {
     id,
     path: `todos/${id}`,
@@ -10,6 +19,7 @@ function makeTodo(id: string, status: TodoStatus, createTime = '2025-01-01T00:00
     status,
     create_time: createTime,
     update_time: createTime,
+    ...extra,
   };
 }
 
@@ -72,5 +82,46 @@ describe('computeProgress', () => {
     ]);
     expect(result.green).toBe(50);
     expect(result.yellow).toBe(0);
+  });
+});
+
+describe('filterTodosForScope', () => {
+  const todos: Todo[] = [
+    makeTodo('a', 'pending'),
+    makeTodo('b', 'pending', '2025-01-01T00:00:00Z', {
+      project: 'projects/p1',
+    }),
+    makeTodo('c', 'pending', '2025-01-01T00:00:00Z', {
+      project: 'projects/p1',
+      in_main: true,
+    }),
+    makeTodo('d', 'pending', '2025-01-01T00:00:00Z', {
+      project: 'projects/p2',
+    }),
+  ];
+
+  it('main scope: includes todos without a project plus pinned ones', () => {
+    expect(filterTodosForScope(todos, MAIN_PROJECT_ID).map((t) => t.id)).toEqual(
+      ['a', 'c'],
+    );
+  });
+
+  it('project scope: includes only todos belonging to that project', () => {
+    expect(filterTodosForScope(todos, 'p1').map((t) => t.id)).toEqual(['b', 'c']);
+    expect(filterTodosForScope(todos, 'p2').map((t) => t.id)).toEqual(['d']);
+  });
+
+  it('returns an empty array when no todos match the scope', () => {
+    expect(filterTodosForScope(todos, 'nope')).toEqual([]);
+  });
+
+  it('main scope includes pinned todos even when their project is unknown', () => {
+    const pinned = makeTodo('e', 'pending', '2025-01-01T00:00:00Z', {
+      project: 'projects/deleted',
+      in_main: true,
+    });
+    expect(
+      filterTodosForScope([...todos, pinned], MAIN_PROJECT_ID).map((t) => t.id),
+    ).toEqual(['a', 'c', 'e']);
   });
 });

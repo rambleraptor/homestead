@@ -431,6 +431,7 @@ export const AepCollections = {
   PICTIONARY_GAMES: 'pictionary-games',
   PICTIONARY_TEAMS: 'pictionary-teams', // child of pictionary-games
   TODOS: 'todos',
+  PROJECTS: 'projects',
   // Household-wide module flags singleton. Resource definition is
   // built dynamically from declared module flags and pushed by the
   // Next.js server at startup (see `src/instrumentation.ts`).

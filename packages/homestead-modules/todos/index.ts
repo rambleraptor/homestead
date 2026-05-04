@@ -9,4 +9,7 @@ export type {
   TodoFormData,
   TodoBuckets,
   TodoProgress,
+  Project,
+  ProjectScope,
 } from './types';
+export { MAIN_PROJECT_ID } from './types';

@@ -91,6 +91,8 @@ vi.mock('@rambleraptor/homestead-core/api/aepbase', () => ({
     GAME_HOLES: 'holes',
     PICTIONARY_GAMES: 'pictionary-games',
     PICTIONARY_TEAMS: 'pictionary-teams',
+    TODOS: 'todos',
+    PROJECTS: 'projects',
     MODULE_FLAGS: 'module-flags',
   },
 }));

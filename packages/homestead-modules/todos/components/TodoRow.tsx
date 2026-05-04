@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Moon, Pause, Undo2, X } from 'lucide-react';
+import { Check, Moon, Pause, Pin, PinOff, Undo2, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import type { Todo, TodoStatus } from '../types';
@@ -18,6 +18,14 @@ interface TodoRowProps {
    * complete implicitly when the source state is empty.
    */
   readOnly?: boolean;
+  /**
+   * When set, render a pin/unpin button that toggles whether the todo also
+   * appears on the main project view. Only meaningful for todos that belong
+   * to a real project (not main).
+   */
+  onTogglePin?: (inMain: boolean) => void;
+  /** Origin label shown on main view rows pinned from a project. */
+  pinnedFromLabel?: string;
 }
 
 interface ActionConfig {
@@ -103,10 +111,21 @@ function actionsForVariant(variant: TodoRowVariant, todo: Todo): ActionConfig[] 
   ];
 }
 
-export function TodoRow({ todo, variant, onSetStatus, disabled, readOnly }: TodoRowProps) {
+export function TodoRow({
+  todo,
+  variant,
+  onSetStatus,
+  disabled,
+  readOnly,
+  onTogglePin,
+  pinnedFromLabel,
+}: TodoRowProps) {
   const actions = readOnly ? [] : actionsForVariant(variant, todo);
   const isInProgress = variant === 'active' && todo.status === 'in_progress';
   const isCancelled = todo.status === 'cancelled';
+  const isPinned = todo.in_main === true;
+  const PinIcon = isPinned ? PinOff : Pin;
+  const pinLabel = isPinned ? 'Unpin from main' : 'Pin to main';
 
   return (
     <div
@@ -124,8 +143,33 @@ export function TodoRow({ todo, variant, onSetStatus, disabled, readOnly }: Todo
         )}
       >
         {todo.title}
+        {pinnedFromLabel && (
+          <span
+            data-testid={`todo-row-${todo.id}-origin`}
+            className="ml-2 text-xs font-body italic text-text-muted"
+          >
+            from {pinnedFromLabel}
+          </span>
+        )}
       </span>
       <div className="flex items-center gap-1">
+        {onTogglePin && !readOnly && (
+          <button
+            type="button"
+            onClick={() => onTogglePin(!isPinned)}
+            disabled={disabled}
+            aria-label={`${pinLabel}: ${todo.title}`}
+            data-testid={`todo-row-${todo.id}-pin`}
+            className={cn(
+              'p-1.5 rounded-lg transition-colors',
+              'text-brand-navy hover:bg-brand-navy/10',
+              isPinned && 'bg-brand-navy/15',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+            )}
+          >
+            <PinIcon className="w-4 h-4" />
+          </button>
+        )}
         {actions.map((action) => {
           const Icon = action.icon;
           return (

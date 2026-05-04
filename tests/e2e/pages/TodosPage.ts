@@ -59,6 +59,60 @@ export class TodosPage {
     await this.page.getByRole('button', { name: 'Reset' }).click();
   }
 
+  async selectMainProject() {
+    await this.page.getByTestId('todos-project-pill-main').click();
+  }
+
+  async selectProject(name: string) {
+    await this.page
+      .getByTestId(/^todos-project-pill-/)
+      .filter({ hasText: name })
+      .first()
+      .click();
+  }
+
+  async createProject(name: string) {
+    await this.page.getByTestId('todos-project-add').click();
+    await this.page.getByTestId('todos-project-name-input').fill(name);
+    await this.page.getByTestId('todos-project-create-submit').click();
+    // After create, the new project becomes active; wait for its pill.
+    await this.page
+      .getByTestId(/^todos-project-pill-/)
+      .filter({ hasText: name })
+      .first()
+      .waitFor({ state: 'visible' });
+  }
+
+  async deleteCurrentProject() {
+    await this.page
+      .locator('[data-testid^="todos-project-delete-"]')
+      .first()
+      .click();
+    await this.page.getByRole('button', { name: 'Delete' }).click();
+  }
+
+  async pinToMain(title: string) {
+    await this.clickRowAction(title, 'pin');
+  }
+
+  async unpinFromMain(title: string) {
+    await this.clickRowAction(title, 'pin');
+  }
+
+  async expectRowVisible(title: string) {
+    await expect(this.rowFor(title)).toBeVisible();
+  }
+
+  async expectRowAbsent(title: string) {
+    await expect(this.rowFor(title)).toHaveCount(0);
+  }
+
+  async expectProjectPillAbsent(projectId: string) {
+    await expect(
+      this.page.getByTestId(`todos-project-pill-${projectId}`),
+    ).toHaveCount(0);
+  }
+
   async expectInActive(title: string) {
     const section = this.page.getByTestId('todos-section-active');
     await expect(section.getByText(title).first()).toBeVisible();
