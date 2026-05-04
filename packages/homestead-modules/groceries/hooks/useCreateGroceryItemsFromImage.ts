@@ -5,11 +5,14 @@
  * creates them in aepbase.
  */
 
+import { useMemo, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase, AepCollections } from '@rambleraptor/homestead-core/api/aepbase';
 import { extractGroceryItemsFromImage } from '@rambleraptor/homestead-core/services/gemini';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import { useModuleFlag } from '@rambleraptor/homestead-core/settings';
+import { useStores } from './useStores';
 import type { GroceryItem } from '../types';
 
 export interface CreateFromImageResult {
@@ -20,6 +23,28 @@ export interface CreateFromImageResult {
 
 export function useCreateGroceryItemsFromImage() {
   const queryClient = useQueryClient();
+  const { data: stores = [] } = useStores();
+  const { value: defaultStore = '' } = useModuleFlag<string>(
+    'groceries',
+    'default_store',
+  );
+
+  // Drop the configured default if it points at a deleted store, matching
+  // the manual quick-add resolution in `GroceriesHome.tsx`.
+  const effectiveDefault = useMemo(
+    () =>
+      defaultStore && stores.some((s) => s.id === defaultStore)
+        ? defaultStore
+        : '',
+    [defaultStore, stores],
+  );
+
+  // The mutation may run after stores or the flag refetch — read through a
+  // ref so each create call uses the latest resolved default.
+  const defaultStoreRef = useRef(effectiveDefault);
+  useEffect(() => {
+    defaultStoreRef.current = effectiveDefault;
+  }, [effectiveDefault]);
 
   return useMutation({
     // Image extraction is server-side (Gemini); persisting a multipart
@@ -40,6 +65,7 @@ export function useCreateGroceryItemsFromImage() {
 
       const createdItems: GroceryItem[] = [];
       const failedItems: string[] = [];
+      const storeId = defaultStoreRef.current;
 
       for (const extractedItem of extractedItems) {
         try {
@@ -49,6 +75,7 @@ export function useCreateGroceryItemsFromImage() {
               name: extractedItem.name,
               notes: '',
               checked: false,
+              store: storeId,
             },
           );
           createdItems.push(item);
