@@ -1,7 +1,6 @@
 'use client';
 
 import { CalendarHeart, Edit, Trash2, Users } from 'lucide-react';
-import { KNOWN_EVENT_TAGS } from '../types';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import {
@@ -42,12 +41,6 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
     .map((ref) => peopleById.get(personIdFromRef(ref)))
     .filter((n): n is string => !!n);
 
-  const isPersonCentric =
-    !!event.tag &&
-    (KNOWN_EVENT_TAGS as readonly string[]).includes(event.tag) &&
-    tagged.length > 0;
-  const heading = isPersonCentric ? tagged.join(', ') : event.name;
-
   return (
     <Card>
       <div
@@ -61,7 +54,7 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-semibold text-gray-900 truncate">
-                {heading}
+                {event.name}
               </h3>
               {event.tag && (
                 <Badge variant={badgeVariantForTag(event.tag)}>
@@ -72,7 +65,7 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
             <p className="text-sm text-gray-600 mt-1">
               {formatNextOccurrence(event.date)}
             </p>
-            {!isPersonCentric && tagged.length > 0 && (
+            {tagged.length > 0 && (
               <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
                 <Users className="w-4 h-4" aria-hidden="true" />
                 {tagged.join(', ')}
