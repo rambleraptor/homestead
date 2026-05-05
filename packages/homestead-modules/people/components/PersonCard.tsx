@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Cake, Heart, Edit, Trash2, MapPin, Users } from 'lucide-react';
+import { Edit, Trash2, MapPin, Users } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
@@ -21,19 +21,6 @@ export function PersonCard({
 }: PersonCardProps) {
   const { user } = useAuth();
   const partner = person.partner;
-
-  const formatDate = (dateString: string) => {
-    // Extract just the date portion (YYYY-MM-DD) from PocketBase format (YYYY-MM-DD HH:MM:SS.sssZ)
-    const datePortion = dateString.substring(0, 10);
-    // Parse the date string to avoid timezone issues
-    const [year, month, day] = datePortion.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    // Don't show year for annual events (birthdays and anniversaries)
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-    });
-  };
 
   const formatAddress = (address: Person['addresses'][0]): string => {
     const parts = [
@@ -63,22 +50,6 @@ export function PersonCard({
                 </div>
               )}
             </div>
-            {person.birthday && (
-              <div className="flex items-center gap-2 mt-1">
-                <Cake className="w-5 h-5 text-pink-500" aria-label="Cake icon" />
-                <p className="text-sm text-gray-500">
-                  {formatDate(person.birthday)}
-                </p>
-              </div>
-            )}
-            {person.anniversary && (
-              <div className="flex items-center gap-2 mt-1">
-                <Heart className="w-5 h-5 text-red-500" aria-label="Heart icon" />
-                <p className="text-sm text-gray-500">
-                  {formatDate(person.anniversary)}
-                </p>
-              </div>
-            )}
             {person.addresses && person.addresses.length > 0 && (
               <div className="mt-1 space-y-2">
                 {person.addresses.map((address, index) => {

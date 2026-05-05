@@ -19,8 +19,6 @@ import { useCreatePerson } from './hooks/useCreatePerson';
 // collects the rest and lets the user edit what was parsed.
 const createPersonParamSchema = z.object({
   name: z.string().optional(),
-  birthday: z.string().optional(),
-  anniversary: z.string().optional(),
 });
 
 export const peopleOmnibox: OmniboxAdapter = {
@@ -31,10 +29,7 @@ export const peopleOmnibox: OmniboxAdapter = {
     'contact',
     'family',
     'friends',
-    'birthday',
-    'birthdays',
-    'anniversary',
-    'anniversaries',
+    'partner',
   ],
   listComponent: PeopleList,
   forms: [
@@ -61,8 +56,6 @@ export const peopleOmnibox: OmniboxAdapter = {
               id: '',
               name: prefill.name,
               addresses: [],
-              birthday: prefill.birthday,
-              anniversary: prefill.anniversary,
               created_by: '',
               created: '',
               updated: '',

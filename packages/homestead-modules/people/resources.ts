@@ -15,7 +15,6 @@ export const peopleResources: ResourceDefinition[] = [
       type: 'object',
       properties: {
         name: { type: 'string' },
-        birthday: { type: 'string', format: 'date-time' },
         created_by: { type: 'string' },
       },
       required: ['name'],
@@ -25,7 +24,7 @@ export const peopleResources: ResourceDefinition[] = [
     singular: 'person-shared-data',
     plural: PERSON_SHARED_DATA,
     description:
-      "Data shared between two people (e.g. a couple's shared address or anniversary).",
+      "Data shared between two people (e.g. a couple's shared address).",
     user_settable_create: true,
     schema: {
       type: 'object',
@@ -33,7 +32,6 @@ export const peopleResources: ResourceDefinition[] = [
         person_a: { type: 'string', description: 'people/{person_id}' },
         person_b: { type: 'string', description: 'people/{person_id}' },
         address_id: { type: 'string' },
-        anniversary: { type: 'string', format: 'date-time' },
         created_by: { type: 'string' },
       },
       required: ['person_a'],

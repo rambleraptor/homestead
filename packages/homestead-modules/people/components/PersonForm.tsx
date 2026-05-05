@@ -14,17 +14,6 @@ interface PersonFormProps {
   isSubmitting?: boolean;
 }
 
-/**
- * Convert PocketBase date format to HTML5 date input format
- * PocketBase returns: "2026-01-06 00:00:00.000Z"
- * HTML5 date input requires: "2026-01-06"
- */
-function formatDateForInput(date: string | undefined): string {
-  if (!date) return '';
-  // Extract just the date portion (first 10 characters: YYYY-MM-DD)
-  return date.substring(0, 10);
-}
-
 export function PersonForm({
   initialData,
   onSubmit,
@@ -49,8 +38,6 @@ export function PersonForm({
   const [formData, setFormData] = useState<PersonFormData>({
     name: initialData?.name || '',
     addresses: initialAddresses,
-    birthday: formatDateForInput(initialData?.birthday),
-    anniversary: formatDateForInput(initialData?.anniversary),
     partner_id: initialData?.partner?.id || '',
   });
 
@@ -82,23 +69,6 @@ export function PersonForm({
         />
       </div>
 
-      <div>
-        <label
-          htmlFor="birthday"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Birthday
-        </label>
-        <Input
-          id="birthday"
-          type="date"
-          value={formData.birthday || ''}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setFormData({ ...formData, birthday: e.target.value })
-          }
-        />
-      </div>
-
       {/* Partner selection */}
       <div>
         <label
@@ -123,7 +93,8 @@ export function PersonForm({
           ))}
         </select>
         <p className="text-sm text-gray-500 mt-1">
-          Partners share an address and anniversary
+          Partners share an address. Track birthdays and anniversaries in
+          the Events module.
         </p>
       </div>
 
@@ -142,24 +113,6 @@ export function PersonForm({
         <AddressesInput
           addresses={formData.addresses}
           onChange={(addresses) => setFormData({ ...formData, addresses })}
-        />
-      </div>
-
-      {/* Shared Anniversary */}
-      <div>
-        <label
-          htmlFor="anniversary"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Anniversary {formData.partner_id && '(Shared)'}
-        </label>
-        <Input
-          id="anniversary"
-          type="date"
-          value={formData.anniversary || ''}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setFormData({ ...formData, anniversary: e.target.value })
-          }
         />
       </div>
 

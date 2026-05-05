@@ -15,10 +15,6 @@ import {
   setPartner,
   removePartner,
 } from '../utils/sharedDataSync';
-import {
-  upsertBirthdayEvent,
-  upsertAnniversaryEvent,
-} from '../../events/utils/personEventSync';
 
 interface UpdatePersonData {
   id: string;
@@ -28,7 +24,6 @@ interface UpdatePersonData {
 interface PersonRecord {
   id: string;
   name: string;
-  birthday?: string;
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -48,7 +43,6 @@ export function useUpdatePerson() {
 
       const personRecord = await aepbase.update<PersonRecord>(PEOPLE, id, {
         name: data.name,
-        birthday: data.birthday,
       });
 
       const newPartnerId = data.partner_id || undefined;
@@ -60,36 +54,23 @@ export function useUpdatePerson() {
         } else if (!oldPartnerId && newPartnerId) {
           await setPartner(id, newPartnerId, {
             addresses: data.addresses,
-            anniversary: data.anniversary,
           });
         } else if (oldPartnerId && newPartnerId && oldPartnerId !== newPartnerId) {
           await removePartner(id, oldPartnerId);
           await setPartner(id, newPartnerId, {
             addresses: data.addresses,
-            anniversary: data.anniversary,
           });
         }
       } else if (oldSharedData) {
         await updateSharedData(oldSharedData.id, {
           addresses: data.addresses,
-          anniversary: data.anniversary,
         });
-      } else if (data.addresses.length > 0 || data.anniversary) {
+      } else if (data.addresses.length > 0) {
         await createSharedData({
           personId: id,
           addresses: data.addresses,
-          anniversary: data.anniversary,
         });
       }
-
-      // Dual-write to events. The helpers are idempotent and tolerate
-      // failures so a transient events write doesn't break person edit.
-      await upsertBirthdayEvent(id, data.name, data.birthday);
-      const anniversaryPeople =
-        newPartnerId != null
-          ? [id, newPartnerId]
-          : [id];
-      await upsertAnniversaryEvent(anniversaryPeople, data.name, data.anniversary);
 
       return { personRecord, oldPartnerId, newPartnerId };
     },

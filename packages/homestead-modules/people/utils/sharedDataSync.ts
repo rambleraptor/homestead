@@ -32,7 +32,6 @@ interface AepSharedDataRecord {
   person_a: string;
   person_b?: string;
   address_id?: string;
-  anniversary?: string;
   created_by?: string;
   create_time: string;
   update_time: string;
@@ -62,7 +61,6 @@ function mapSharedData(rec: AepSharedDataRecord): PersonSharedData {
     person_a: rec.person_a,
     person_b: rec.person_b,
     address_id: rec.address_id,
-    anniversary: rec.anniversary,
     created_by: rec.created_by || '',
     created: rec.create_time,
     updated: rec.update_time,
@@ -141,7 +139,6 @@ export async function findSharedDataForPerson(
 export async function createSharedData(data: {
   personId: string;
   addresses?: AddressFormData[];
-  anniversary?: string;
 }): Promise<PersonSharedData> {
   const validAddresses =
     data.addresses?.filter((a) => a.line1 && a.line1.trim() !== '') || [];
@@ -155,7 +152,6 @@ export async function createSharedData(data: {
       person_a: data.personId,
       person_b: undefined,
       address_id: primaryAddressId,
-      anniversary: data.anniversary,
       created_by: createdByPath(),
     },
   );
@@ -167,7 +163,7 @@ export async function createSharedData(data: {
 
 export async function updateSharedData(
   sharedDataId: string,
-  data: { addresses?: AddressFormData[]; anniversary?: string },
+  data: { addresses?: AddressFormData[] },
 ): Promise<PersonSharedData> {
   const primaryAddressId = data.addresses
     ? await syncAddresses(data.addresses, sharedDataId)
@@ -175,7 +171,7 @@ export async function updateSharedData(
   const updated = await aepbase.update<AepSharedDataRecord>(
     PERSON_SHARED_DATA,
     sharedDataId,
-    { address_id: primaryAddressId, anniversary: data.anniversary },
+    { address_id: primaryAddressId },
   );
   return mapSharedData(updated);
 }
@@ -183,7 +179,7 @@ export async function updateSharedData(
 export async function setPartner(
   personId: string,
   partnerId: string,
-  sharedData?: { addresses?: AddressFormData[]; anniversary?: string },
+  sharedData?: { addresses?: AddressFormData[] },
 ): Promise<PersonSharedData> {
   const existingSharedData = await findSharedDataForPerson(personId);
   const partnerSharedData = await findSharedDataForPerson(partnerId);
@@ -198,7 +194,6 @@ export async function setPartner(
       {
         person_b: partnerId,
         address_id: primaryAddressId,
-        anniversary: sharedData?.anniversary || existingSharedData.anniversary,
       },
     );
     return mapSharedData(updated);
@@ -214,7 +209,6 @@ export async function setPartner(
       {
         person_b: personId,
         address_id: primaryAddressId,
-        anniversary: sharedData?.anniversary || partnerSharedData.anniversary,
       },
     );
     return mapSharedData(updated);
@@ -233,10 +227,6 @@ export async function setPartner(
       {
         person_b: partnerId,
         address_id: primaryAddressId,
-        anniversary:
-          sharedData?.anniversary ||
-          existingSharedData.anniversary ||
-          partnerSharedData.anniversary,
       },
     );
     await aepbase.remove(PERSON_SHARED_DATA, partnerSharedData.id);
@@ -256,7 +246,6 @@ export async function setPartner(
       person_a: personId,
       person_b: partnerId,
       address_id: primaryAddressId,
-      anniversary: sharedData?.anniversary,
       created_by: createdByPath(),
     },
   );
@@ -286,7 +275,6 @@ export async function removePartner(
     person_a: otherPersonId || '',
     person_b: undefined,
     address_id: sharedData.address_id,
-    anniversary: sharedData.anniversary,
     created_by: createdByPath(),
   });
 }

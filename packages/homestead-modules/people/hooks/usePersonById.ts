@@ -8,7 +8,6 @@ import { findSharedDataForPerson } from '../utils/sharedDataSync';
 interface PersonRecord {
   id: string;
   name: string;
-  birthday?: string;
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -17,7 +16,6 @@ interface PersonRecord {
 function toPerson(
   record: PersonRecord,
   addresses: Address[],
-  anniversary?: string,
   partner?: Person,
 ): Person {
   return {
@@ -26,7 +24,6 @@ function toPerson(
     updated: record.update_time || '',
     created_by: record.created_by || '',
     addresses,
-    anniversary,
     partner,
   };
 }
@@ -58,10 +55,10 @@ export function usePersonById(id: string) {
         : undefined;
       if (partnerId) {
         const partnerRecord = await aepbase.get<PersonRecord>(PEOPLE, partnerId);
-        partner = toPerson(partnerRecord, addresses, sharedData?.anniversary);
+        partner = toPerson(partnerRecord, addresses);
       }
 
-      return toPerson(record, addresses, sharedData?.anniversary, partner);
+      return toPerson(record, addresses, partner);
     },
     enabled: !!id,
   });

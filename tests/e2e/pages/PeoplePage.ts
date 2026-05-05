@@ -24,8 +24,6 @@ export class PeoplePage {
   async fillPersonForm(data: {
     name: string;
     address?: string;
-    birthday?: string;
-    anniversary?: string;
   }) {
     await this.page.locator('#name').fill(data.name);
 
@@ -45,12 +43,6 @@ export class PeoplePage {
       // Fill in the first address line1 field
       await this.page.locator('#address-0-line1').fill(data.address);
     }
-    if (data.birthday) {
-      await this.page.locator('#birthday').fill(data.birthday);
-    }
-    if (data.anniversary) {
-      await this.page.locator('#anniversary').fill(data.anniversary);
-    }
   }
 
   async submitPersonForm() {
@@ -63,8 +55,6 @@ export class PeoplePage {
   async createPerson(data: {
     name: string;
     address?: string;
-    birthday?: string;
-    anniversary?: string;
   }) {
     await this.clickAddPerson();
     await this.fillPersonForm(data);
@@ -92,8 +82,6 @@ export class PeoplePage {
   async editPerson(personName: string, newData: Partial<{
     name: string;
     address: string;
-    birthday: string;
-    anniversary: string;
   }>) {
     await this.expectPersonInList(personName);
 
@@ -122,12 +110,6 @@ export class PeoplePage {
       // Clear and fill the first address line1 field
       await this.page.locator('#address-0-line1').clear();
       await this.page.locator('#address-0-line1').fill(newData.address);
-    }
-    if (newData.birthday) {
-      await this.page.locator('#birthday').fill(newData.birthday);
-    }
-    if (newData.anniversary) {
-      await this.page.locator('#anniversary').fill(newData.anniversary);
     }
 
     await this.submitPersonForm();

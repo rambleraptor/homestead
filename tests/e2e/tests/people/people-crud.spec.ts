@@ -28,7 +28,6 @@ test.describe('People CRUD', () => {
     const personData = {
       name: 'John Doe',
       address: '123 Main St, Anytown, USA',
-      birthday: '1990-01-15',
     };
 
     await peoplePage.createPerson(personData);

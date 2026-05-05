@@ -22,8 +22,6 @@ describe('PersonCard', () => {
       created: '2024-01-01T00:00:00Z',
       updated: '2024-01-01T00:00:00Z',
     }],
-    birthday: '1990-06-20',
-    anniversary: '2015-10-25',
     created_by: 'user-1',
     created: '2024-01-01T00:00:00Z',
     updated: '2024-01-01T00:00:00Z',
@@ -36,25 +34,7 @@ describe('PersonCard', () => {
     render(<PersonCard person={mockPerson} onEdit={onEdit} onDelete={onDelete} />);
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByText(/June 20/)).toBeInTheDocument(); // Birthday (no year for annual events)
-    expect(screen.getByText(/October 25/)).toBeInTheDocument(); // Anniversary (no year for annual events)
-    expect(screen.getByText('123 Main St, Anytown, USA')).toBeInTheDocument(); // Address
-  });
-
-  it('should display birthday icon when birthday is present', () => {
-    const onEdit = vi.fn();
-    const onDelete = vi.fn();
-
-    render(<PersonCard person={mockPerson} onEdit={onEdit} onDelete={onDelete} />);
-    expect(screen.getByLabelText('Cake icon')).toBeInTheDocument(); // Assuming cake icon has a default accessible name
-  });
-
-  it('should display anniversary icon when anniversary is present', () => {
-    const onEdit = vi.fn();
-    const onDelete = vi.fn();
-
-    render(<PersonCard person={mockPerson} onEdit={onEdit} onDelete={onDelete} />);
-    expect(screen.getByLabelText('Heart icon')).toBeInTheDocument(); // Assuming heart icon has a default accessible name
+    expect(screen.getByText('123 Main St, Anytown, USA')).toBeInTheDocument();
   });
 
   it('should display map icon and link for address when address is present', () => {
@@ -70,7 +50,7 @@ describe('PersonCard', () => {
         '123 Main St, Anytown, USA'
       )}`
     );
-    expect(screen.getByLabelText('Map pin icon')).toBeInTheDocument(); // Assuming map pin icon has a default accessible name
+    expect(screen.getByLabelText('Map pin icon')).toBeInTheDocument();
   });
 
   it('should call onEdit when edit button is clicked', async () => {

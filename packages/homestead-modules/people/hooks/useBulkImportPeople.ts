@@ -1,8 +1,8 @@
 /**
  * Bulk import people from a parsed CSV.
  *
- * Creates each person, attaches address/anniversary via shared_data, and
- * in a second pass resolves partner-by-name references.
+ * Creates each person, attaches address via shared_data, and in a second
+ * pass resolves partner-by-name references.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,17 +11,12 @@ import { PEOPLE } from '../resources';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { PersonCSVData } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
-import {
-  upsertBirthdayEvent,
-  upsertAnniversaryEvent,
-} from '../../events/utils/personEventSync';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { ParsedItem, BulkImportResult } from '@rambleraptor/homestead-core/shared/bulk-import/types';
 
 interface PersonRecord {
   id: string;
   name: string;
-  birthday?: string;
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -57,7 +52,6 @@ export function useBulkImportPeople() {
             PEOPLE,
             {
               name: personData.name,
-              birthday: personData.birthday,
               created_by: createdBy,
             },
           );
@@ -73,25 +67,11 @@ export function useBulkImportPeople() {
               ]
             : [];
 
-          if (addresses.length > 0 || personData.anniversary) {
+          if (addresses.length > 0) {
             await createSharedData({
               personId: personRecord.id,
               addresses: addresses,
-              anniversary: personData.anniversary,
             });
-          }
-
-          await upsertBirthdayEvent(
-            personRecord.id,
-            personRecord.name,
-            personData.birthday,
-          );
-          if (personData.anniversary) {
-            await upsertAnniversaryEvent(
-              [personRecord.id],
-              personRecord.name,
-              personData.anniversary,
-            );
           }
 
           createdPeople.push({

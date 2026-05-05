@@ -7,8 +7,6 @@ import type { PersonCSVData } from '../types';
 import {
   validateName,
   validateAddress,
-  validateBirthday,
-  validateAnniversary,
   validatePartnerName,
   validateWifiNetwork,
   validateWifiPassword,
@@ -24,8 +22,6 @@ const OPTIONAL_HEADERS = [
   'address',
   'wifi_network',
   'wifi_password',
-  'birthday',
-  'anniversary',
   'partner_name',
 ] as const;
 
@@ -36,15 +32,15 @@ const ALL_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS] as const;
  */
 function generateTemplate(): string {
   const headers = ALL_HEADERS.join(',');
-  // Example 1: John with address, WiFi, dates, and partner
+  // Example 1: John with address, WiFi, and partner
   const example1 =
-    'John Doe,"123 Main St, Anytown, CA 12345",HomeWiFi,password123,06/15/1990,08/20/2015,Jane Doe';
+    'John Doe,"123 Main St, Anytown, CA 12345",HomeWiFi,password123,Jane Doe';
   // Example 2: Jane with address and partner
   const example2 =
-    'Jane Doe,"456 Oak Ave, Springfield, IL",,,,08/20/2015,John Doe';
+    'Jane Doe,"456 Oak Ave, Springfield, IL",,,John Doe';
   // Example 3: Solo person, minimal data
   const example3 =
-    'Peter Jones,"789 Pine Ln, Boston, MA",,,1985-12-01,,';
+    'Peter Jones,"789 Pine Ln, Boston, MA",,,';
 
   return `${headers}\n${example1}\n${example2}\n${example3}`;
 }
@@ -81,18 +77,6 @@ export const peopleImportSchema: BulkImportSchema<PersonCSVData> = {
       description: 'WiFi password (max 100 characters)',
     },
     {
-      name: 'birthday',
-      required: false,
-      validator: validateBirthday,
-      description: 'Birthday (YYYY-MM-DD or MM/DD/YYYY format)',
-    },
-    {
-      name: 'anniversary',
-      required: false,
-      validator: validateAnniversary,
-      description: 'Anniversary (YYYY-MM-DD or MM/DD/YYYY format)',
-    },
-    {
       name: 'partner_name',
       required: false,
       validator: validatePartnerName,
@@ -102,4 +86,3 @@ export const peopleImportSchema: BulkImportSchema<PersonCSVData> = {
   generateTemplate,
   PreviewComponent: PersonPreview,
 };
-
