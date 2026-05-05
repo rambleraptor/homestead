@@ -1,7 +1,7 @@
 // Parse a "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SS..." string into a local-time
 // Date. Using `new Date(s)` would interpret a date-only string as UTC, which
 // can shift the day for users in negative offsets.
-function parseDateString(dateString: string): Date {
+export function parseDateString(dateString: string): Date {
   const [year, month, day] = dateString.substring(0, 10).split('-').map(Number);
   return new Date(year, month - 1, day);
 }

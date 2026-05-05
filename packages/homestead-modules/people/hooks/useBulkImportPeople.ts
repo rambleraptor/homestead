@@ -11,6 +11,10 @@ import { PEOPLE } from '../resources';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { PersonCSVData } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
+import {
+  upsertBirthdayEvent,
+  upsertAnniversaryEvent,
+} from '../../events/utils/personEventSync';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { ParsedItem, BulkImportResult } from '@rambleraptor/homestead-core/shared/bulk-import/types';
 
@@ -75,6 +79,19 @@ export function useBulkImportPeople() {
               addresses: addresses,
               anniversary: personData.anniversary,
             });
+          }
+
+          await upsertBirthdayEvent(
+            personRecord.id,
+            personRecord.name,
+            personData.birthday,
+          );
+          if (personData.anniversary) {
+            await upsertAnniversaryEvent(
+              [personRecord.id],
+              personRecord.name,
+              personData.anniversary,
+            );
           }
 
           createdPeople.push({

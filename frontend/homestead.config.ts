@@ -12,6 +12,7 @@
 import {
   creditCardsModule,
   dashboardModule,
+  eventsModule,
   gamesModule,
   giftCardsModule,
   groceriesModule,
@@ -31,6 +32,7 @@ const config: HomesteadConfig = {
     groceriesModule,
     recipesModule,
     peopleModule,
+    eventsModule,
     hsaModule,
     creditCardsModule,
     gamesModule,

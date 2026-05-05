@@ -9,6 +9,7 @@
 
 export { creditCardsModule } from './credit-cards';
 export { dashboardModule } from './dashboard';
+export { eventsModule } from './events';
 export { gamesModule } from './games';
 export { giftCardsModule } from './gift-cards';
 export { groceriesModule } from './groceries';

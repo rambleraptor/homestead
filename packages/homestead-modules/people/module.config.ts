@@ -8,7 +8,6 @@
 import { Users } from 'lucide-react';
 import type { HomeModule } from '@/modules/types';
 import { peopleOmnibox } from './omnibox';
-import { UpcomingEventsWidget } from './components/UpcomingEventsWidget';
 import { PeopleHome } from './components/PeopleHome';
 import { PeopleBulkImport } from './bulk-import';
 import { peopleResources } from './resources';
@@ -36,14 +35,6 @@ export const peopleModule: HomeModule = {
       type: 'text',
       description:
         "A substring of the person's name. Used by the People list's name filter.",
-    },
-  ],
-  widgets: [
-    {
-      id: 'people-upcoming-events',
-      label: 'Upcoming events',
-      component: UpcomingEventsWidget,
-      order: 20,
     },
   ],
 };

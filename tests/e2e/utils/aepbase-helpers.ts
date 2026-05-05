@@ -582,6 +582,55 @@ export async function deleteAllProjects(token: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Events (yearly-recurring household events)
+// ---------------------------------------------------------------------------
+
+export interface EventRecord {
+  id: string;
+  name: string;
+  date: string;
+  tag?: string;
+  people?: string[];
+  created_by?: string;
+  create_time?: string;
+  update_time?: string;
+}
+
+interface CreateEventInput {
+  name: string;
+  date: string;
+  tag?: string;
+  /** Pass bare ids; the `people/` prefix is added here. */
+  personIds?: string[];
+}
+
+export async function createEvent(
+  token: string,
+  data: CreateEventInput,
+): Promise<EventRecord> {
+  const payload: Record<string, unknown> = {
+    name: data.name,
+    date: data.date,
+  };
+  if (data.tag) payload.tag = data.tag;
+  if (data.personIds && data.personIds.length > 0) {
+    payload.people = data.personIds.map((id) => `people/${id}`);
+  }
+  return aepCreate<EventRecord>(token, 'events', payload);
+}
+
+export async function listEvents(token: string): Promise<EventRecord[]> {
+  return aepList<EventRecord>(token, 'events');
+}
+
+export async function deleteAllEvents(token: string) {
+  const items = await aepList<{ id: string }>(token, 'events');
+  for (const item of items) {
+    await aepRemove(token, 'events', item.id);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Module flags (household-wide singleton)
 // ---------------------------------------------------------------------------
 
@@ -632,6 +681,7 @@ export async function cleanupUserData(token: string, _userId: string) {
     deleteAllPictionaryGames(token),
     deleteAllTodos(token),
     deleteAllProjects(token),
+    deleteAllEvents(token),
   ]);
 }
 

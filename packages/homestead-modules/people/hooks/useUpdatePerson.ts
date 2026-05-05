@@ -15,6 +15,10 @@ import {
   setPartner,
   removePartner,
 } from '../utils/sharedDataSync';
+import {
+  upsertBirthdayEvent,
+  upsertAnniversaryEvent,
+} from '../../events/utils/personEventSync';
 
 interface UpdatePersonData {
   id: string;
@@ -77,6 +81,15 @@ export function useUpdatePerson() {
           anniversary: data.anniversary,
         });
       }
+
+      // Dual-write to events. The helpers are idempotent and tolerate
+      // failures so a transient events write doesn't break person edit.
+      await upsertBirthdayEvent(id, data.name, data.birthday);
+      const anniversaryPeople =
+        newPartnerId != null
+          ? [id, newPartnerId]
+          : [id];
+      await upsertAnniversaryEvent(anniversaryPeople, data.name, data.anniversary);
 
       return { personRecord, oldPartnerId, newPartnerId };
     },
