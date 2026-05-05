@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getTodaysHoliday } from '../dateUtils';
+import {
+  getNextEventOccurrence,
+  getTodaysHoliday,
+  nthWeekdayOfMonth,
+  parseDateString,
+  parseNthWeekdayRule,
+} from '../dateUtils';
 
 /** Create a local-time date to avoid UTC timezone offset issues */
 function localDate(year: number, month: number, day: number): Date {
@@ -203,6 +209,143 @@ describe('getTodaysHoliday', () => {
         name: 'Thanksgiving',
         message: 'Happy Thanksgiving!',
       });
+    });
+  });
+});
+
+describe('nthWeekdayOfMonth', () => {
+  it('returns the 2nd Sunday of May 2026 (May 10)', () => {
+    const d = nthWeekdayOfMonth(2026, 4, 0, 2);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(4);
+    expect(d.getDate()).toBe(10);
+  });
+
+  it('returns the last Friday of July 2026 (July 31, 5 Fridays)', () => {
+    const d = nthWeekdayOfMonth(2026, 6, 5, -1);
+    expect(d.getDate()).toBe(31);
+  });
+
+  it('returns the last Saturday of July 2024 (July 27, 4 Saturdays)', () => {
+    const d = nthWeekdayOfMonth(2024, 6, 6, -1);
+    expect(d.getDate()).toBe(27);
+  });
+});
+
+describe('parseNthWeekdayRule', () => {
+  it('parses a valid 2:0 rule', () => {
+    expect(parseNthWeekdayRule('2:0')).toEqual({ n: 2, weekday: 0 });
+  });
+
+  it('parses -1 (last) for n', () => {
+    expect(parseNthWeekdayRule('-1:5')).toEqual({ n: -1, weekday: 5 });
+  });
+
+  it('rejects malformed input', () => {
+    expect(parseNthWeekdayRule(undefined)).toBeNull();
+    expect(parseNthWeekdayRule('')).toBeNull();
+    expect(parseNthWeekdayRule('foo')).toBeNull();
+    expect(parseNthWeekdayRule('5:0')).toBeNull(); // n=5 not allowed
+    expect(parseNthWeekdayRule('1:7')).toBeNull(); // weekday out of range
+  });
+});
+
+describe('getNextEventOccurrence', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('yearly fixed-date (default)', () => {
+    it('returns this year if not yet passed', () => {
+      vi.setSystemTime(localDate(2026, 5, 5));
+      const next = getNextEventOccurrence(parseDateString('2000-08-15'));
+      expect(next.getFullYear()).toBe(2026);
+      expect(next.getMonth()).toBe(7);
+      expect(next.getDate()).toBe(15);
+    });
+
+    it('rolls to next year if already passed', () => {
+      vi.setSystemTime(localDate(2026, 5, 5));
+      const next = getNextEventOccurrence(parseDateString('2000-03-10'));
+      expect(next.getFullYear()).toBe(2027);
+      expect(next.getMonth()).toBe(2);
+      expect(next.getDate()).toBe(10);
+    });
+
+    it('treats explicit recurrence=yearly the same as default', () => {
+      vi.setSystemTime(localDate(2026, 5, 5));
+      const next = getNextEventOccurrence(
+        parseDateString('2000-08-15'),
+        'yearly',
+      );
+      expect(next.getMonth()).toBe(7);
+      expect(next.getDate()).toBe(15);
+    });
+  });
+
+  describe('yearly-nth-weekday', () => {
+    it('uses month from anchor and ignores day-of-month', () => {
+      // 2026-05-05 is a Tuesday — May 5. 2nd Sunday of May 2026 is May 10.
+      vi.setSystemTime(localDate(2026, 5, 5));
+      const next = getNextEventOccurrence(
+        parseDateString('1999-05-01'),
+        'yearly-nth-weekday',
+        '2:0',
+      );
+      expect(next.getFullYear()).toBe(2026);
+      expect(next.getMonth()).toBe(4);
+      expect(next.getDate()).toBe(10);
+    });
+
+    it('rolls to next year when this year\'s occurrence has passed', () => {
+      // 2026-06-01: 2nd Sunday of May 2026 (May 10) has passed.
+      vi.setSystemTime(localDate(2026, 6, 1));
+      const next = getNextEventOccurrence(
+        parseDateString('1999-05-01'),
+        'yearly-nth-weekday',
+        '2:0',
+      );
+      expect(next.getFullYear()).toBe(2027);
+      expect(next.getMonth()).toBe(4);
+      // 2nd Sunday of May 2027 is May 9.
+      expect(next.getDate()).toBe(9);
+    });
+
+    it('handles "last" weekday in 4-occurrence and 5-occurrence months', () => {
+      // July 2024 has 4 Saturdays (last is the 27th); July 2026 has 5 (the
+      // 25th).
+      vi.setSystemTime(localDate(2024, 7, 1));
+      let next = getNextEventOccurrence(
+        parseDateString('2000-07-01'),
+        'yearly-nth-weekday',
+        '-1:6',
+      );
+      expect(next.getFullYear()).toBe(2024);
+      expect(next.getDate()).toBe(27);
+
+      vi.setSystemTime(localDate(2026, 7, 1));
+      next = getNextEventOccurrence(
+        parseDateString('2000-07-01'),
+        'yearly-nth-weekday',
+        '-1:6',
+      );
+      expect(next.getFullYear()).toBe(2026);
+      expect(next.getDate()).toBe(25);
+    });
+
+    it('falls back to fixed-date behavior on a malformed rule', () => {
+      vi.setSystemTime(localDate(2026, 5, 5));
+      const next = getNextEventOccurrence(
+        parseDateString('2000-08-15'),
+        'yearly-nth-weekday',
+        'garbage',
+      );
+      expect(next.getMonth()).toBe(7);
+      expect(next.getDate()).toBe(15);
     });
   });
 });

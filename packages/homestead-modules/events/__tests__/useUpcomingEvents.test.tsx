@@ -119,6 +119,35 @@ describe('useUpcomingEvents', () => {
     expect(result.current.data).toEqual([]);
   });
 
+  it('includes a yearly-nth-weekday event whose computed date falls in the window', async () => {
+    // System time is 2024-06-15. 3rd Sunday of June 2024 = June 16, which is
+    // 1 day out — well within the 7-day lookahead.
+    vi.mocked(aepbase.list).mockImplementation(async (plural: string) => {
+      if (plural === 'events') {
+        return [
+          {
+            id: 'e-fathers',
+            name: "Father's Day",
+            date: '2024-06-01',
+            recurrence: 'yearly-nth-weekday',
+            recurrence_rule: '3:0',
+            people: [],
+          },
+        ];
+      }
+      if (plural === 'people') return [];
+      return [];
+    });
+
+    const { result } = renderHook(() => useUpcomingEvents(7), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data![0].id).toBe('e-fathers');
+    expect(result.current.data![0].date.getDate()).toBe(16);
+  });
+
   it('sorts upcoming events by next occurrence ascending', async () => {
     vi.mocked(aepbase.list).mockImplementation(async (plural: string) => {
       if (plural === 'events') {
