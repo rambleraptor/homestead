@@ -1,16 +1,8 @@
-import { useMutation } from '@tanstack/react-query';
-import {
-  GroceryMutationKeys,
-  type UpdateItemVars,
-} from '../registerMutationDefaults';
+import { useResourceUpdate } from '@rambleraptor/homestead-core/api/resourceHooks';
 import type { GroceryItem } from '../types';
 
-/**
- * Thin shell — see `registerMutationDefaults.ts` for the optimistic /
- * offline-resumable implementation.
- */
+type GroceryItemUpdate = Partial<Pick<GroceryItem, 'name' | 'notes' | 'checked' | 'store'>>;
+
 export function useUpdateGroceryItem() {
-  return useMutation<GroceryItem | undefined, Error, UpdateItemVars>({
-    mutationKey: GroceryMutationKeys.updateItem,
-  });
+  return useResourceUpdate<GroceryItem, GroceryItemUpdate>('groceries', 'grocery');
 }

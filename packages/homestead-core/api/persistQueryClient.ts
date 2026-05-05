@@ -1,21 +1,28 @@
 /**
  * Persistence options for the React Query cache.
  *
- * Scoped to the groceries module: only `['module','groceries',...]` queries
- * and mutations get dehydrated to localStorage. The rest of the app continues
- * working as today.
+ * Persists every `['module', ...]`-prefixed query and mutation to
+ * localStorage so reads survive cold offline loads and queued writes
+ * survive a page reload. Auth/users/roles/permissions intentionally
+ * stay out of the persisted cache (token-bound, may rotate).
  *
- * The sync persister mirrors the SSR-safe pattern from
- * `src/modules/games/bridge/storage.ts` — `createGroceriesPersister()` returns
- * `null` on the server so `PersistQueryClientProvider` falls back to plain
- * cache-only behavior during render.
+ * The sync persister returns `null` on the server so
+ * `PersistQueryClientProvider` falls back to plain cache-only behavior
+ * during SSR.
  */
 
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import type { PersistQueryClientOptions } from '@tanstack/react-query-persist-client';
 import { logger } from '../utils/logger';
 
-const STORAGE_KEY = 'homeos:rq:groceries:v1';
+const STORAGE_KEY = 'homeos:rq:v2';
+
+const NEVER_PERSIST: ReadonlySet<string> = new Set([
+  'auth',
+  'users',
+  'roles',
+  'module_permissions',
+]);
 
 function hasStorage(): boolean {
   return typeof window !== 'undefined' && !!window.localStorage;
@@ -44,17 +51,30 @@ function quotaSafeStorage(): Storage {
   };
 }
 
-export function createGroceriesPersister() {
+export function createOfflinePersister() {
   if (!hasStorage()) return null;
   return createSyncStoragePersister({
     storage: quotaSafeStorage(),
     key: STORAGE_KEY,
-    throttleTime: 1000,
+    // Bumped from 1s to 2s — persisting every module multiplies write
+    // pressure roughly 10× compared to the groceries-only baseline.
+    throttleTime: 2000,
   });
 }
 
-function isGroceryKey(key: readonly unknown[]): boolean {
-  return Array.isArray(key) && key[0] === 'module' && key[1] === 'groceries';
+/**
+ * Decide whether a given query/mutation key should be dehydrated.
+ *
+ * Rules:
+ *  - Module-prefixed keys (`['module', ...]`) are persisted.
+ *  - `auth`, `users`, `roles`, `module_permissions` are never persisted.
+ *  - Anything else (ad-hoc keys, dev-only queries) is skipped by default.
+ */
+export function isPersistableKey(key: readonly unknown[]): boolean {
+  if (!Array.isArray(key) || typeof key[0] !== 'string') return false;
+  const head = key[0] as string;
+  if (NEVER_PERSIST.has(head)) return false;
+  return head === 'module';
 }
 
 /**
@@ -63,8 +83,8 @@ function isGroceryKey(key: readonly unknown[]): boolean {
  * QueryClientProvider during SSR.
  */
 export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
-  persister: createGroceriesPersister() as NonNullable<
-    ReturnType<typeof createGroceriesPersister>
+  persister: createOfflinePersister() as NonNullable<
+    ReturnType<typeof createOfflinePersister>
   >,
   // 7 days — long enough to survive a holiday weekend without connectivity.
   maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -72,10 +92,18 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   // by Next.js when set; falls back to a stable string in dev.
   buster: process.env.NEXT_PUBLIC_BUILD_ID ?? 'dev',
   dehydrateOptions: {
-    shouldDehydrateQuery: (query) => isGroceryKey(query.queryKey),
+    shouldDehydrateQuery: (query) => isPersistableKey(query.queryKey),
     shouldDehydrateMutation: (mutation) => {
       const key = mutation.options.mutationKey;
-      return Array.isArray(key) && isGroceryKey(key);
+      if (!Array.isArray(key) || !isPersistableKey(key)) return false;
+      // FormData / multipart writes are non-serializable. Resource
+      // factories tag those with `meta.offlineQueueable: false`; the
+      // UI is expected to disable the trigger when offline.
+      const meta = mutation.options.meta as
+        | { offlineQueueable?: boolean }
+        | undefined;
+      if (meta?.offlineQueueable === false) return false;
+      return true;
     },
   },
 };

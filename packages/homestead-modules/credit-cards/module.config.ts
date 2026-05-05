@@ -23,6 +23,14 @@ export const creditCardsModule: HomeModule = {
   section: 'Money',
   enabled: true,
   resources: creditCardsResources,
+  // Only the top-level `credit-card` resource gets generic offline
+  // CRUD defaults. Perks + redemptions are nested under credit-cards
+  // and need parent-id wiring; they retain their hand-written hooks
+  // until the factory's nested-resource path lands.
+  offlineOverrides: {
+    perk: false,
+    redemption: false,
+  },
   omnibox: {
     synonyms: [
       'credit',

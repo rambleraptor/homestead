@@ -304,6 +304,31 @@ export function getAllResourceDefs(): ResourceDefinition[] {
 }
 
 /**
+ * Same traversal as {@link getAllResourceDefs}, but pairs each
+ * definition with the owning module so callers can read
+ * `module.offlineOverrides` and `module.id` while iterating. Used by
+ * the offline mutation factory's auto-registration loop.
+ */
+export function getAllResourceDefsWithModule(): {
+  module: HomeModule;
+  def: ResourceDefinition;
+}[] {
+  const out: { module: HomeModule; def: ResourceDefinition }[] = [];
+  const visit = (mod: HomeModule): void => {
+    for (const def of mod.resources ?? []) {
+      out.push({ module: mod, def });
+    }
+    for (const child of mod.children ?? []) {
+      visit(child);
+    }
+  };
+  for (const mod of moduleRegistry.modules) {
+    visit(mod);
+  }
+  return out;
+}
+
+/**
  * Resolve a single module worker by `(moduleId, workerName)`. Walks
  * children so nested modules can declare workers under their own id.
  * Used by the catch-all dispatcher at

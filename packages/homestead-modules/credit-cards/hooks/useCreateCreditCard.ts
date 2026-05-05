@@ -1,31 +1,19 @@
 /**
  * Create Credit Card Mutation Hook.
+ *
+ * Thin shell over the generic offline mutation factory. The mutationFn,
+ * optimistic update, and rollback all live on the QueryClient via
+ * `registerResourceMutationDefaults` (auto-registered for every module
+ * resource at app boot). Offline writes pause and replay across reloads
+ * without per-hook scaffolding.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { CREDIT_CARDS } from '../resources';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import { useResourceCreate } from '@rambleraptor/homestead-core/api/resourceHooks';
 import type { CreditCard, CreditCardFormData } from '../types';
 
 export function useCreateCreditCard() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: CreditCardFormData): Promise<CreditCard> => {
-      const userId = aepbase.getCurrentUser()?.id;
-      return await aepbase.create<CreditCard>(CREDIT_CARDS, {
-        ...data,
-        archived: data.archived ?? false,
-        created_by: userId ? `users/${userId}` : undefined,
-      });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      await queryClient.refetchQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      logger.info('Credit card created successfully');
-    },
-    onError: (error) => logger.error('Failed to create credit card', error),
-  });
+  return useResourceCreate<CreditCard, CreditCardFormData>(
+    'credit-cards',
+    'credit-card',
+  );
 }

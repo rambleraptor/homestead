@@ -1,14 +1,5 @@
-import { useMutation } from '@tanstack/react-query';
-import {
-  GroceryMutationKeys,
-  type DeleteStoreVars,
-} from '../registerMutationDefaults';
+import { useResourceDelete } from '@rambleraptor/homestead-core/api/resourceHooks';
 
-/**
- * Thin shell — see `registerMutationDefaults.ts`.
- */
 export function useDeleteStore() {
-  return useMutation<string, Error, DeleteStoreVars>({
-    mutationKey: GroceryMutationKeys.deleteStore,
-  });
+  return useResourceDelete('groceries', 'store');
 }

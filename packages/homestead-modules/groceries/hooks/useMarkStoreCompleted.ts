@@ -29,7 +29,7 @@ export function useMarkStoreCompleted() {
     },
     onSuccess: (result) => {
       logger.info(`Successfully deleted ${result.deleted} items from completed store`);
-      queryClient.invalidateQueries({ queryKey: queryKeys.module('groceries').list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.module('groceries').resource('grocery').list() });
     },
     onError: (error) => logger.error('Failed to mark store as completed', error),
   });

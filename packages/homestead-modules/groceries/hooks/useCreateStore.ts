@@ -1,9 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
-import {
-  GroceryMutationKeys,
-  newTempId,
-  type CreateStoreVars,
-} from '../registerMutationDefaults';
+import { useResourceCreate } from '@rambleraptor/homestead-core/api/resourceHooks';
 import type { Store } from '../types';
 
 interface CreateStoreInput {
@@ -11,20 +6,6 @@ interface CreateStoreInput {
   sort_order?: number;
 }
 
-/**
- * Thin shell — see `registerMutationDefaults.ts`. Injects a stable tempId
- * so optimistic + persisted state share one handle.
- */
 export function useCreateStore() {
-  const mutation = useMutation<Store, Error, CreateStoreVars>({
-    mutationKey: GroceryMutationKeys.createStore,
-  });
-
-  return {
-    ...mutation,
-    mutate: (vars: CreateStoreInput) =>
-      mutation.mutate({ ...vars, tempId: newTempId() }),
-    mutateAsync: (vars: CreateStoreInput) =>
-      mutation.mutateAsync({ ...vars, tempId: newTempId() }),
-  };
+  return useResourceCreate<Store, CreateStoreInput>('groceries', 'store');
 }

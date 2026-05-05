@@ -1,4 +1,10 @@
-import { MutationObserver, type QueryClient } from '@tanstack/react-query';
+import { MutationObserver, QueryClient } from '@tanstack/react-query';
+import {
+  registerResourceMutationDefaults,
+  resourceMutationKeys,
+} from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import { storeCascadeDelete } from '../../offline';
+import { GROCERIES, STORES } from '../../resources';
 
 /**
  * Fire a mutation against the QueryClient using only its registered
@@ -19,3 +25,32 @@ export async function runMutation<TData = unknown, TVars = unknown>(
     observer.reset();
   }
 }
+
+/**
+ * Build a QueryClient with grocery + store resource defaults registered.
+ * Mirrors what the auto-registration loop in `providers.tsx` does for the
+ * groceries module at app boot.
+ */
+export function makeGroceriesClient(): QueryClient {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { retry: false },
+    },
+  });
+  registerResourceMutationDefaults(client, {
+    moduleId: 'groceries',
+    singular: 'grocery',
+    plural: GROCERIES,
+  });
+  registerResourceMutationDefaults(client, {
+    moduleId: 'groceries',
+    singular: 'store',
+    plural: STORES,
+    cascadeDelete: storeCascadeDelete,
+  });
+  return client;
+}
+
+export const groceryKeys = resourceMutationKeys('groceries', 'grocery');
+export const storeKeys = resourceMutationKeys('groceries', 'store');

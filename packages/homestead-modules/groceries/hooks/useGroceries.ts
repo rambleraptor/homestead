@@ -16,7 +16,7 @@ interface AepGroceryItem extends GroceryItem {
 
 export function useGroceries() {
   return useQuery({
-    queryKey: queryKeys.module('groceries').list(),
+    queryKey: queryKeys.module('groceries').resource('grocery').list(),
     queryFn: async () => {
       const items = await aepbase.list<AepGroceryItem>(GROCERIES);
       return items

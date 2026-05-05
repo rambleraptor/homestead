@@ -10,7 +10,7 @@ import type { CreditCard } from '../types';
 
 export function useCreditCards() {
   return useQuery({
-    queryKey: queryKeys.module('credit-cards').list(),
+    queryKey: queryKeys.module('credit-cards').resource('credit-card').list(),
     queryFn: async (): Promise<CreditCard[]> => {
       const cards = await aepbase.list<CreditCard>(CREDIT_CARDS);
       return cards.sort((a, b) =>

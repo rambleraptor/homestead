@@ -1,25 +1,13 @@
 /**
- * Delete Credit Card Mutation Hook. Cascade-deletes child perks + redemptions.
+ * Delete Credit Card Mutation Hook. See `useCreateCreditCard.ts`.
+ *
+ * Cascade-deletion of child perks + redemptions on the server is handled
+ * by aepbase. This mutation only removes the parent card from the local
+ * cache and the network — the next reconcile picks up server-side cleanup.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { CREDIT_CARDS } from '../resources';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import { useResourceDelete } from '@rambleraptor/homestead-core/api/resourceHooks';
 
 export function useDeleteCreditCard() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      await aepbase.remove(CREDIT_CARDS, id);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      await queryClient.refetchQueries({ queryKey: queryKeys.module('credit-cards').all() });
-      logger.info('Credit card deleted successfully');
-    },
-    onError: (error) => logger.error('Failed to delete credit card', error),
-  });
+  return useResourceDelete('credit-cards', 'credit-card');
 }

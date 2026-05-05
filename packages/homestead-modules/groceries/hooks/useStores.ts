@@ -16,7 +16,7 @@ interface AepStore extends Store {
 
 export function useStores() {
   return useQuery({
-    queryKey: queryKeys.module('groceries').detail('stores'),
+    queryKey: queryKeys.module('groceries').resource('store').list(),
     queryFn: async () => {
       const stores = await aepbase.list<AepStore>(STORES);
       return stores

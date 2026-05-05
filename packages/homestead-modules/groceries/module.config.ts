@@ -10,6 +10,7 @@ import { groceriesOmnibox } from './omnibox';
 import { GroceriesWidget } from './components/GroceriesWidget';
 import { GroceriesHome } from './components/GroceriesHome';
 import { groceriesResources } from './resources';
+import { storeCascadeDelete } from './offline';
 
 export const groceriesModule: HomeModule = {
   id: 'groceries',
@@ -23,6 +24,12 @@ export const groceriesModule: HomeModule = {
   navOrder: 2,
   enabled: true,
   resources: groceriesResources,
+  // Deleting a store re-homes its items under "No Store". Everything
+  // else (optimistic shape, body projection, list cache key) is derived
+  // from the resource singular by the offline mutation factory.
+  offlineOverrides: {
+    store: { cascadeDelete: storeCascadeDelete },
+  },
   omnibox: groceriesOmnibox,
   flags: {
     default_store: {

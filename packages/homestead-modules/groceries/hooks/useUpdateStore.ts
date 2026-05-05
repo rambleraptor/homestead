@@ -1,15 +1,9 @@
-import { useMutation } from '@tanstack/react-query';
-import {
-  GroceryMutationKeys,
-  type UpdateStoreVars,
-} from '../registerMutationDefaults';
+import { useResourceUpdate } from '@rambleraptor/homestead-core/api/resourceHooks';
 import type { Store } from '../types';
 
-/**
- * Thin shell — see `registerMutationDefaults.ts`.
- */
 export function useUpdateStore() {
-  return useMutation<Store | undefined, Error, UpdateStoreVars>({
-    mutationKey: GroceryMutationKeys.updateStore,
-  });
+  return useResourceUpdate<Store, Partial<Pick<Store, 'name' | 'sort_order'>>>(
+    'groceries',
+    'store',
+  );
 }

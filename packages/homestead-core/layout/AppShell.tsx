@@ -13,6 +13,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { AuthGuard } from '../auth/AuthGuard';
 import { useCanUseOmnibox } from '@rambleraptor/homestead-core/shared/omnibox/useCanUseOmnibox';
+import { OfflineBanner } from '../shared/components/OfflineBanner';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -59,6 +60,8 @@ export function AppShell({ children }: AppShellProps) {
             </div>
           </main>
         </div>
+
+        <OfflineBanner />
       </div>
     </AuthGuard>
   );
