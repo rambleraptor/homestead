@@ -1,12 +1,18 @@
 /**
  * Generic offline-capable mutation defaults for any aepbase resource.
  *
- * Mirrors what groceries did inline but per-resource: register `create`,
- * `update`, `delete` defaults on the QueryClient under stable mutation keys,
- * with optimistic cache writes, error rollback, temp-id reconciliation,
- * and online-gated invalidation. The defaults must live on the QueryClient
- * (not in a `useMutation` closure) so paused mutations can replay across a
- * page reload after `PersistQueryClientProvider` rehydrates them.
+ * The factory binds three mutation keys per resource — `create-${singular}`,
+ * `update-${singular}`, `delete-${singular}` — to a six-phase lifecycle on
+ * the QueryClient: cancel → snapshot → optimistic write → mutationFn (with
+ * temp-id resolution) → success/replace → error/rollback → settle/invalidate
+ * (online only). Defaults must live on the QueryClient (not in a
+ * `useMutation` closure) so paused mutations replay across a page reload
+ * after `PersistQueryClientProvider` rehydrates them.
+ *
+ * Convention: each resource's list lives at
+ * `queryKeys.module(moduleId).resource(singular).list()`. Read hooks query
+ * that key; the factory writes optimistic state there. No per-module
+ * `listQueryKey` override is necessary.
  */
 
 import type { QueryClient, MutationOptions } from '@tanstack/react-query';
@@ -32,7 +38,7 @@ export function newTempId(): string {
   return `${TEMP_ID_PREFIX}${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
-// One reconciliation map per (moduleId, singular). The maps survive across
+// One reconciliation map per (moduleId, singular). Maps survive across
 // QueryClients in the same JS realm so a page reload that recreates the
 // client still finds prior temp→real mappings during queue replay.
 const tempIdMaps = new Map<string, Map<string, string>>();
@@ -71,44 +77,26 @@ export interface ResourceMutationKeys {
   delete: readonly unknown[];
 }
 
-export interface ResourceMutationOpts<
-  T extends { id: string },
-  C extends CreateVarsBase,
-  U,
-> {
+export interface ResourceMutationOpts {
   moduleId: string;
   /** Resource singular, used in mutation keys (`create-${singular}`). */
   singular: string;
   /** aepbase collection plural (the URL segment). */
   plural: string;
-  /** Override the cache key the factory mutates. Defaults to `queryKeys.module(moduleId).list()`. */
-  listQueryKey?: readonly unknown[];
   /** Build the URL parent chain for nested resources. */
-  parentPath?: (vars: C | UpdateVars<U> | string) => ParentPath | undefined;
-  /** Project create vars to the aepbase POST body. Default: spread minus tempId, inject created_by. */
-  toCreateBody?: (vars: C) => Record<string, unknown> | FormData;
-  /** Project update data to the aepbase PATCH body. Default: pass-through. */
-  toUpdateBody?: (data: U) => Record<string, unknown> | FormData;
-  /** Construct the optimistic record. Default: spread vars, set id=tempId, fill timestamps. */
-  buildOptimistic?: (vars: C) => T;
-  /** Sort the cache after each mutation. Default: insertion order. */
-  sort?: (records: T[]) => T[];
-  /** Apply the create response to the cache (replace optimistic record). Default: replace by id. */
-  onCreateSuccess?: (created: T, vars: C, qc: QueryClient) => void;
+  parentPath?: (vars: unknown) => ParentPath | undefined;
   /**
    * Optimistic cascade applied inside the delete `onMutate` (before any
-   * network call) and reversed in `onError`. Both callbacks must be pure
-   * functions of (qc, snapshot) so the snapshot can survive serialization
-   * into the persisted mutation queue. Use for things like "unset
-   * foreign-key references on related records when their parent is
-   * deleted".
+   * network call) and reversed in `onError`. Use for cross-resource
+   * effects, e.g. "unset a foreign key on related records when their
+   * parent is deleted". Both callbacks must be pure functions of
+   * (qc, snapshot) so the snapshot survives serialization into the
+   * persisted mutation queue.
    */
   cascadeDelete?: {
     apply: (deletedId: string, qc: QueryClient) => unknown;
     rollback: (snapshot: unknown, qc: QueryClient) => void;
   };
-  /** Aliases for legacy mutation keys. Bind the same defaults under these keys too. */
-  legacyKeys?: Partial<ResourceMutationKeys>;
 }
 
 // ---------------------------------------------------------------------------
@@ -130,63 +118,47 @@ export function resourceMutationKeys(
 // Registration
 // ---------------------------------------------------------------------------
 
-const NON_QUEUEABLE_META = { offlineQueueable: false } as const;
-
 function nowIso(): string {
   return new Date().toISOString();
 }
 
+function stripTempId<V extends CreateVarsBase>(vars: V): Record<string, unknown> {
+  const { tempId: _temp, ...rest } = vars as unknown as Record<string, unknown> & {
+    tempId: string;
+  };
+  void _temp;
+  return rest;
+}
+
 export function registerResourceMutationDefaults<
-  T extends { id: string },
+  T extends { id: string } = { id: string } & Record<string, unknown>,
   C extends CreateVarsBase = CreateVarsBase & Record<string, unknown>,
   U = Record<string, unknown>,
->(qc: QueryClient, opts: ResourceMutationOpts<T, C, U>): ResourceMutationKeys {
-  const {
-    moduleId,
-    singular,
-    plural,
-    listQueryKey: listQueryKeyOpt,
-    parentPath,
-    toCreateBody,
-    toUpdateBody,
-    buildOptimistic,
-    sort,
-    onCreateSuccess,
-    cascadeDelete,
-    legacyKeys,
-  } = opts;
-
-  const listKey = listQueryKeyOpt ?? queryKeys.module(moduleId).list();
+>(qc: QueryClient, opts: ResourceMutationOpts): ResourceMutationKeys {
+  const { moduleId, singular, plural, parentPath, cascadeDelete } = opts;
+  const listKey = queryKeys.module(moduleId).resource(singular).list();
   const idMap = tempIdMap(moduleId, singular);
   const keys = resourceMutationKeys(moduleId, singular);
 
-  function resolveId(id: string): string {
-    return idMap.get(id) ?? id;
-  }
+  const resolveId = (id: string): string => idMap.get(id) ?? id;
 
-  function defaultCreateBody(vars: C): Record<string, unknown> {
-    const { tempId: _temp, ...rest } = vars as unknown as Record<string, unknown> & {
-      tempId: string;
-    };
-    void _temp;
+  function buildBody(vars: C): Record<string, unknown> {
+    const body = stripTempId(vars);
     const userId = aepbase.getCurrentUser?.()?.id;
-    if (userId && !('created_by' in rest)) {
-      rest.created_by = `users/${userId}`;
+    if (userId && !('created_by' in body)) {
+      body.created_by = `users/${userId}`;
     }
-    return rest;
+    return body;
   }
 
-  function defaultOptimistic(vars: C): T {
+  function buildOptimistic(vars: C): T {
     const ts = nowIso();
-    const { tempId, ...rest } = vars as unknown as Record<string, unknown> & {
-      tempId: string;
-    };
-    // Both timestamp shapes are filled — aepbase records use `create_time/update_time`,
-    // PB-era types still expose `created/updated`. Modules can override `buildOptimistic`
-    // when their type is stricter.
     return {
-      id: tempId,
-      ...rest,
+      id: vars.tempId,
+      ...stripTempId(vars),
+      // aepbase records use create_time/update_time; PB-era types still
+      // expose created/updated. Set both — extra fields are harmless on
+      // shapes that don't declare them.
       create_time: ts,
       update_time: ts,
       created: ts,
@@ -194,21 +166,14 @@ export function registerResourceMutationDefaults<
     } as unknown as T;
   }
 
-  function defaultCreateSuccess(created: T, vars: C, qcInner: QueryClient): void {
-    idMap.set(vars.tempId, created.id);
-    const list = qcInner.getQueryData<T[]>(listKey) ?? [];
-    qcInner.setQueryData<T[]>(
-      listKey,
-      applySort(list.map((r) => (r.id === vars.tempId ? created : r))),
-    );
+  function findPendingCreate(tempId: string) {
+    return qc
+      .getMutationCache()
+      .getAll()
+      .find(
+        (m) => (m.state.variables as CreateVarsBase | undefined)?.tempId === tempId,
+      );
   }
-
-  const buildBody = toCreateBody ?? defaultCreateBody;
-  const projectUpdate =
-    toUpdateBody ?? ((d: U) => d as unknown as Record<string, unknown>);
-  const optimistic = buildOptimistic ?? defaultOptimistic;
-  const applySort = sort ?? ((rs: T[]) => rs);
-  const handleCreateSuccess = onCreateSuccess ?? defaultCreateSuccess;
 
   // ---- create -----------------------------------------------------------
   const createDef: MutationOptions<T, Error, C, { previous: T[] }> = {
@@ -223,12 +188,16 @@ export function registerResourceMutationDefaults<
     onMutate: async (vars: C) => {
       await qc.cancelQueries({ queryKey: listKey });
       const previous = qc.getQueryData<T[]>(listKey) ?? [];
-      const record = optimistic(vars);
-      qc.setQueryData<T[]>(listKey, applySort([...previous, record]));
+      qc.setQueryData<T[]>(listKey, [...previous, buildOptimistic(vars)]);
       return { previous };
     },
     onSuccess: (created, vars) => {
-      handleCreateSuccess(created, vars, qc);
+      idMap.set(vars.tempId, created.id);
+      const list = qc.getQueryData<T[]>(listKey) ?? [];
+      qc.setQueryData<T[]>(
+        listKey,
+        list.map((r) => (r.id === vars.tempId ? created : r)),
+      );
     },
     onError: (error, _vars, context) => {
       logger.error(`Failed to create ${singular}`, error);
@@ -242,9 +211,7 @@ export function registerResourceMutationDefaults<
       }
     },
   };
-
   qc.setMutationDefaults(keys.create, createDef);
-  if (legacyKeys?.create) qc.setMutationDefaults(legacyKeys.create, createDef);
 
   // ---- update -----------------------------------------------------------
   const updateDef: MutationOptions<
@@ -258,23 +225,17 @@ export function registerResourceMutationDefaults<
       const realId = resolveId(vars.id);
       if (isTempId(realId)) {
         // Backing create still pending. Continue it before issuing the
-        // update. tempIds are crypto-random so a global search by tempId
-        // is unambiguous (and works across legacy-key aliases).
-        const matching = qc
-          .getMutationCache()
-          .getAll()
-          .find(
-            (m) =>
-              (m.state.variables as CreateVarsBase | undefined)?.tempId === realId,
-          );
+        // update. tempIds are crypto-random so a global lookup is unambiguous.
+        const matching = findPendingCreate(realId);
         if (matching) {
           await matching.continue().catch(() => undefined);
           const resolved = resolveId(vars.id);
           if (!isTempId(resolved)) {
             const parent = parentPath?.(vars);
+            const body = vars.data as unknown as Record<string, unknown>;
             return parent
-              ? aepbase.update<T>(plural, resolved, projectUpdate(vars.data), { parent })
-              : aepbase.update<T>(plural, resolved, projectUpdate(vars.data));
+              ? aepbase.update<T>(plural, resolved, body, { parent })
+              : aepbase.update<T>(plural, resolved, body);
           }
         }
         throw new Error(
@@ -282,9 +243,10 @@ export function registerResourceMutationDefaults<
         );
       }
       const parent = parentPath?.(vars);
+      const body = vars.data as unknown as Record<string, unknown>;
       return parent
-        ? aepbase.update<T>(plural, realId, projectUpdate(vars.data), { parent })
-        : aepbase.update<T>(plural, realId, projectUpdate(vars.data));
+        ? aepbase.update<T>(plural, realId, body, { parent })
+        : aepbase.update<T>(plural, realId, body);
     },
     onMutate: async (vars: UpdateVars<U>) => {
       await qc.cancelQueries({ queryKey: listKey });
@@ -292,17 +254,15 @@ export function registerResourceMutationDefaults<
       const ts = nowIso();
       qc.setQueryData<T[]>(
         listKey,
-        applySort(
-          previous.map((r) =>
-            r.id === vars.id
-              ? ({
-                  ...r,
-                  ...(vars.data as object),
-                  update_time: ts,
-                  updated: ts,
-                } as T)
-              : r,
-          ),
+        previous.map((r) =>
+          r.id === vars.id
+            ? ({
+                ...r,
+                ...(vars.data as object),
+                update_time: ts,
+                updated: ts,
+              } as T)
+            : r,
         ),
       );
       return { previous };
@@ -319,9 +279,7 @@ export function registerResourceMutationDefaults<
       }
     },
   };
-
   qc.setMutationDefaults(keys.update, updateDef);
-  if (legacyKeys?.update) qc.setMutationDefaults(legacyKeys.update, updateDef);
 
   // ---- delete -----------------------------------------------------------
   type DeleteContext = { previous: T[]; cascade?: unknown };
@@ -351,10 +309,7 @@ export function registerResourceMutationDefaults<
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: listKey });
       const previous = qc.getQueryData<T[]>(listKey) ?? [];
-      qc.setQueryData<T[]>(
-        listKey,
-        previous.filter((r) => r.id !== id),
-      );
+      qc.setQueryData<T[]>(listKey, previous.filter((r) => r.id !== id));
       const cascade = cascadeDelete ? cascadeDelete.apply(id, qc) : undefined;
       return { previous, cascade };
     },
@@ -373,11 +328,7 @@ export function registerResourceMutationDefaults<
       }
     },
   };
-
   qc.setMutationDefaults(keys.delete, deleteDef);
-  if (legacyKeys?.delete) qc.setMutationDefaults(legacyKeys.delete, deleteDef);
 
   return keys;
 }
-
-export { NON_QUEUEABLE_META };

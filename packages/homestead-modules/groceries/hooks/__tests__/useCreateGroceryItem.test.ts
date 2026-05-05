@@ -1,45 +1,30 @@
 /**
- * Optimistic create flow + tempId reconciliation.
- *
- * The mutation defaults live on the QueryClient, so we register them once
- * per test against a fresh client. The aepbase client is the global mock
- * from `src/test/setup.ts` — we override `create` per test as needed.
+ * Optimistic create flow + tempId reconciliation, exercised against the
+ * generic factory (registered for the groceries module via the same code
+ * the runtime uses). The aepbase client is the global mock from
+ * `src/test/setup.ts`.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import {
-  registerGroceryMutationDefaults,
-  GroceryMutationKeys,
   clearTempIdMaps,
   newTempId,
-} from '../../registerMutationDefaults';
+} from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 import type { GroceryItem } from '../../types';
-import { runMutation } from './testUtils';
+import { groceryKeys, makeGroceriesClient, runMutation } from './testUtils';
 
-const ITEMS_KEY = queryKeys.module('groceries').list();
-
-function makeClient(): QueryClient {
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: Infinity },
-      mutations: { retry: false },
-    },
-  });
-  registerGroceryMutationDefaults(client);
-  return client;
-}
+const ITEMS_KEY = queryKeys.module('groceries').resource('grocery').list();
 
 beforeEach(() => {
   vi.clearAllMocks();
   clearTempIdMaps();
 });
 
-describe('create-item mutation', () => {
+describe('create-grocery mutation', () => {
   it('inserts an optimistic record before the server responds', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     client.setQueryData<GroceryItem[]>(ITEMS_KEY, []);
 
     let resolveCreate!: (item: GroceryItem) => void;
@@ -48,11 +33,10 @@ describe('create-item mutation', () => {
     );
 
     const tempId = newTempId();
-    const promise = runMutation<GroceryItem>(
-      client,
-      GroceryMutationKeys.createItem,
-      { name: 'Milk', tempId },
-    );
+    const promise = runMutation<GroceryItem>(client, groceryKeys.create, {
+      name: 'Milk',
+      tempId,
+    });
 
     // Optimistic record visible immediately.
     await vi.waitFor(() => {
@@ -60,7 +44,6 @@ describe('create-item mutation', () => {
       expect(list).toHaveLength(1);
       expect(list[0].id).toBe(tempId);
       expect(list[0].name).toBe('Milk');
-      expect(list[0].checked).toBe(false);
     });
 
     // Server resolves with the real id.
@@ -79,7 +62,7 @@ describe('create-item mutation', () => {
   });
 
   it('rolls back the cache on server error', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     const seed: GroceryItem[] = [
       {
         id: 'existing',
@@ -94,7 +77,7 @@ describe('create-item mutation', () => {
     vi.mocked(aepbase.create).mockRejectedValueOnce(new Error('network down'));
 
     await expect(
-      runMutation(client, GroceryMutationKeys.createItem, {
+      runMutation(client, groceryKeys.create, {
         name: 'Eggs',
         tempId: newTempId(),
       }),
@@ -106,7 +89,7 @@ describe('create-item mutation', () => {
 
 describe('temp-id reconciliation', () => {
   it('rewrites a follow-up update from tempId to the real server id', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     client.setQueryData<GroceryItem[]>(ITEMS_KEY, []);
 
     vi.mocked(aepbase.create).mockResolvedValueOnce({
@@ -125,23 +108,21 @@ describe('temp-id reconciliation', () => {
     });
 
     const tempId = newTempId();
-    await runMutation(client, GroceryMutationKeys.createItem, {
+    await runMutation(client, groceryKeys.create, {
       name: 'Cheese',
       tempId,
     });
 
-    await runMutation(client, GroceryMutationKeys.updateItem, {
+    await runMutation(client, groceryKeys.update, {
       id: tempId,
       data: { checked: true },
     });
 
-    expect(aepbase.update).toHaveBeenCalledWith('groceries', 'srv-2', {
-      checked: true,
-    });
+    expect(aepbase.update).toHaveBeenCalledWith('groceries', 'srv-2', { checked: true });
   });
 
   it('skips the network call when deleting an item whose create is still pending', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     client.setQueryData<GroceryItem[]>(ITEMS_KEY, []);
 
     let resolveCreate!: () => void;
@@ -160,8 +141,7 @@ describe('temp-id reconciliation', () => {
     );
 
     const tempId = newTempId();
-    // Fire create but don't await it.
-    const createPromise = runMutation(client, GroceryMutationKeys.createItem, {
+    const createPromise = runMutation(client, groceryKeys.create, {
       name: 'Salt',
       tempId,
     });
@@ -170,12 +150,11 @@ describe('temp-id reconciliation', () => {
       expect(client.getQueryData<GroceryItem[]>(ITEMS_KEY) ?? []).toHaveLength(1);
     });
 
-    await runMutation(client, GroceryMutationKeys.deleteItem, tempId);
+    await runMutation(client, groceryKeys.delete, tempId);
 
     expect(aepbase.remove).not.toHaveBeenCalled();
     expect(client.getQueryData<GroceryItem[]>(ITEMS_KEY) ?? []).toHaveLength(0);
 
-    // Resolving the original create promise should not crash even after destroy.
     resolveCreate();
     await createPromise.catch(() => undefined);
   });

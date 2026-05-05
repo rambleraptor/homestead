@@ -3,31 +3,17 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import {
-  registerGroceryMutationDefaults,
-  GroceryMutationKeys,
   clearTempIdMaps,
   newTempId,
-} from '../../registerMutationDefaults';
+} from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 import type { GroceryItem, Store } from '../../types';
-import { runMutation } from './testUtils';
+import { makeGroceriesClient, runMutation, storeKeys } from './testUtils';
 
-const STORES_KEY = queryKeys.module('groceries').detail('stores');
-const ITEMS_KEY = queryKeys.module('groceries').list();
-
-function makeClient(): QueryClient {
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: Infinity },
-      mutations: { retry: false },
-    },
-  });
-  registerGroceryMutationDefaults(client);
-  return client;
-}
+const STORES_KEY = queryKeys.module('groceries').resource('store').list();
+const ITEMS_KEY = queryKeys.module('groceries').resource('grocery').list();
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -36,7 +22,7 @@ beforeEach(() => {
 
 describe('create-store', () => {
   it('inserts an optimistic store and reconciles with the server id', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     client.setQueryData<Store[]>(STORES_KEY, []);
     vi.mocked(aepbase.create).mockResolvedValueOnce({
       id: 'store-srv-1',
@@ -47,7 +33,7 @@ describe('create-store', () => {
     });
 
     const tempId = newTempId();
-    await runMutation(client, GroceryMutationKeys.createStore, {
+    await runMutation(client, storeKeys.create, {
       name: 'Costco',
       sort_order: 0,
       tempId,
@@ -61,7 +47,7 @@ describe('create-store', () => {
 
 describe('update-store', () => {
   it('renames optimistically and rolls back on error', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     const seed: Store[] = [
       {
         id: 'store-1',
@@ -75,7 +61,7 @@ describe('update-store', () => {
     vi.mocked(aepbase.update).mockRejectedValueOnce(new Error('boom'));
 
     await expect(
-      runMutation(client, GroceryMutationKeys.updateStore, {
+      runMutation(client, storeKeys.update, {
         id: 'store-1',
         data: { name: 'Trader Joes' },
       }),
@@ -87,7 +73,7 @@ describe('update-store', () => {
 
 describe('delete-store', () => {
   it('removes the store optimistically and re-homes its items to "no store"', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     const stores: Store[] = [
       {
         id: 'store-1',
@@ -119,7 +105,7 @@ describe('delete-store', () => {
     client.setQueryData<GroceryItem[]>(ITEMS_KEY, items);
     vi.mocked(aepbase.remove).mockResolvedValueOnce(undefined);
 
-    await runMutation(client, GroceryMutationKeys.deleteStore, 'store-1');
+    await runMutation(client, storeKeys.delete, 'store-1');
 
     expect(aepbase.remove).toHaveBeenCalledWith('stores', 'store-1');
     const remainingStores = client.getQueryData<Store[]>(STORES_KEY) ?? [];

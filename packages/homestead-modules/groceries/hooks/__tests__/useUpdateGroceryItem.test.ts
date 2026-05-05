@@ -1,36 +1,20 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import {
-  registerGroceryMutationDefaults,
-  GroceryMutationKeys,
-  clearTempIdMaps,
-} from '../../registerMutationDefaults';
+import { clearTempIdMaps } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 import type { GroceryItem } from '../../types';
-import { runMutation } from './testUtils';
+import { groceryKeys, makeGroceriesClient, runMutation } from './testUtils';
 
-const ITEMS_KEY = queryKeys.module('groceries').list();
-
-function makeClient(): QueryClient {
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: Infinity },
-      mutations: { retry: false },
-    },
-  });
-  registerGroceryMutationDefaults(client);
-  return client;
-}
+const ITEMS_KEY = queryKeys.module('groceries').resource('grocery').list();
 
 beforeEach(() => {
   vi.clearAllMocks();
   clearTempIdMaps();
 });
 
-describe('update-item mutation', () => {
+describe('update-grocery mutation', () => {
   it('toggles checked optimistically, persists on success', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     const seed: GroceryItem[] = [
       {
         id: 'srv-1',
@@ -47,7 +31,7 @@ describe('update-item mutation', () => {
       updated: '2026-04-27T00:00:00Z',
     });
 
-    await runMutation(client, GroceryMutationKeys.updateItem, {
+    await runMutation(client, groceryKeys.update, {
       id: 'srv-1',
       data: { checked: true },
     });
@@ -58,7 +42,7 @@ describe('update-item mutation', () => {
   });
 
   it('rolls back to the prior list on error', async () => {
-    const client = makeClient();
+    const client = makeGroceriesClient();
     const seed: GroceryItem[] = [
       {
         id: 'srv-1',
@@ -73,7 +57,7 @@ describe('update-item mutation', () => {
     vi.mocked(aepbase.update).mockRejectedValueOnce(new Error('boom'));
 
     await expect(
-      runMutation(client, GroceryMutationKeys.updateItem, {
+      runMutation(client, groceryKeys.update, {
         id: 'srv-1',
         data: { checked: true },
       }),

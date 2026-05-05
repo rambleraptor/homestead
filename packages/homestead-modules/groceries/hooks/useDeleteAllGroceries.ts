@@ -18,7 +18,7 @@ export function useDeleteAllGroceries() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.module('groceries').list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.module('groceries').resource('grocery').list() });
     },
     onError: (error) => logger.error('Failed to delete all grocery items', error),
   });

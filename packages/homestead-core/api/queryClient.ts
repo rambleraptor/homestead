@@ -89,6 +89,20 @@ export const queryKeys = {
     all: () => ['module', moduleId] as const,
     list: (filters?: Record<string, unknown>) => ['module', moduleId, 'list', filters] as const,
     detail: (id: string) => ['module', moduleId, 'detail', id] as const,
+    /**
+     * Per-resource list/detail under a module — one cache slot per
+     * `(moduleId, singular)`. The offline mutation factory uses this
+     * shape by default so a module can declare multiple resources
+     * (e.g. groceries owns both `grocery` and `store`) without them
+     * sharing a cache slot. Read hooks (`useGroceries`, `useStores`,
+     * `useCreditCards`) use these keys too so they read from the
+     * same place the factory writes.
+     */
+    resource: (singular: string) => ({
+      all: () => ['module', moduleId, singular] as const,
+      list: () => ['module', moduleId, singular, 'list'] as const,
+      detail: (id: string) => ['module', moduleId, singular, 'detail', id] as const,
+    }),
   }),
 } as const;
 

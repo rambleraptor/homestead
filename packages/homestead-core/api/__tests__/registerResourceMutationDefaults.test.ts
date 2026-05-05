@@ -25,7 +25,7 @@ interface Thingy {
 }
 
 const KEYS = resourceMutationKeys('test-mod', 'thingy');
-const LIST_KEY = queryKeys.module('test-mod').list();
+const LIST_KEY = queryKeys.module('test-mod').resource('thingy').list();
 
 function makeClient(): QueryClient {
   const client = new QueryClient({
@@ -169,26 +169,5 @@ describe('cascadeDelete', () => {
 
     expect(client.getQueryData<Thingy[]>(LIST_KEY)).toEqual([{ id: 's-1', name: 'Foo' }]);
     expect(client.getQueryData<string[]>(otherKey)).toEqual(['x', 'y']);
-  });
-});
-
-describe('legacy key alias', () => {
-  it('binds the same defaults under a legacy create key', async () => {
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-    const legacyCreate = ['module', 'test-mod', 'create-thingy-legacy'] as const;
-    registerResourceMutationDefaults<Thingy, { name: string; tempId: string }>(client, {
-      moduleId: 'test-mod',
-      singular: 'thingy',
-      plural: 'thingies',
-      legacyKeys: { create: legacyCreate },
-    });
-    client.setQueryData<Thingy[]>(LIST_KEY, []);
-    vi.mocked(aepbase.create).mockResolvedValueOnce({ id: 'srv-l', name: 'Legacy' });
-
-    await run(client, legacyCreate, { name: 'Legacy', tempId: newTempId() });
-
-    expect(client.getQueryData<Thingy[]>(LIST_KEY)?.[0].id).toBe('srv-l');
   });
 });

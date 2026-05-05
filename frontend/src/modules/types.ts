@@ -12,10 +12,7 @@ import type { OmniboxAdapter } from '@rambleraptor/homestead-core/shared/omnibox
 import type { ModuleFilterDecl } from '@rambleraptor/homestead-core/shared/filters/types';
 import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
 import type { ModuleVisibility } from '@rambleraptor/homestead-core/settings/visibility';
-import type {
-  CreateVarsBase,
-  ResourceMutationOpts,
-} from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import type { ResourceMutationOpts } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 
 /**
  * A widget a module contributes to the dashboard. The component is
@@ -237,25 +234,16 @@ export interface HomeModule {
 }
 
 /**
- * Per-resource overrides for the offline mutation factory. Loosely
- * typed because the override is declared in module config (where T is
- * unknown) and applied by the auto-registration loop at runtime. The
- * factory accepts a `ResourceMutationOpts<T, C, U>` — these fields
- * subset that interface.
+ * Per-resource overrides for the offline mutation factory.
+ *
+ * The factory derives almost everything from convention — list cache key,
+ * mutation keys, optimistic shape, request body. Modules only need an
+ * override when they have something the convention can't express:
+ * `parentPath` for nested resources, `cascadeDelete` for cross-resource
+ * effects on delete.
  */
 export type ResourceOverride = Partial<
-  Pick<
-    ResourceMutationOpts<{ id: string }, CreateVarsBase & Record<string, unknown>, Record<string, unknown>>,
-    | 'listQueryKey'
-    | 'parentPath'
-    | 'toCreateBody'
-    | 'toUpdateBody'
-    | 'buildOptimistic'
-    | 'sort'
-    | 'onCreateSuccess'
-    | 'cascadeDelete'
-    | 'legacyKeys'
-  >
+  Pick<ResourceMutationOpts, 'parentPath' | 'cascadeDelete'>
 >;
 
 /**
