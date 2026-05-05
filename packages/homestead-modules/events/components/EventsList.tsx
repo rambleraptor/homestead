@@ -7,7 +7,7 @@ import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner'
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import {
-  getNextOccurrence,
+  getNextEventOccurrence,
   parseDateString,
 } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
 import { useEvents } from '../hooks/useEvents';
@@ -19,7 +19,11 @@ import type { Event, EventFormData } from '../types';
 
 function eventNextOccurrenceMs(e: Event): number {
   if (!e.date?.trim()) return Number.POSITIVE_INFINITY;
-  return getNextOccurrence(parseDateString(e.date)).getTime();
+  return getNextEventOccurrence(
+    parseDateString(e.date),
+    e.recurrence,
+    e.recurrence_rule,
+  ).getTime();
 }
 
 export function EventsList() {

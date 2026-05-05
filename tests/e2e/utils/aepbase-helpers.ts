@@ -581,6 +581,8 @@ export interface EventRecord {
   date: string;
   tag?: string;
   people?: string[];
+  recurrence?: 'yearly' | 'yearly-nth-weekday';
+  recurrence_rule?: string;
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -592,6 +594,8 @@ interface CreateEventInput {
   tag?: string;
   /** Pass bare ids; the `people/` prefix is added here. */
   personIds?: string[];
+  recurrence?: 'yearly' | 'yearly-nth-weekday';
+  recurrence_rule?: string;
 }
 
 export async function createEvent(
@@ -606,6 +610,8 @@ export async function createEvent(
   if (data.personIds && data.personIds.length > 0) {
     payload.people = data.personIds.map((id) => `people/${id}`);
   }
+  if (data.recurrence) payload.recurrence = data.recurrence;
+  if (data.recurrence_rule) payload.recurrence_rule = data.recurrence_rule;
   return aepCreate<EventRecord>(token, 'events', payload);
 }
 

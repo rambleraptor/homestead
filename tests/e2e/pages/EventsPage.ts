@@ -26,6 +26,10 @@ export class EventsPage {
     date: string;
     tag?: 'birthday' | 'anniversary' | string;
     personNames?: string[];
+    recurrence?: {
+      week: '1' | '2' | '3' | '4' | '-1';
+      weekday: '0' | '1' | '2' | '3' | '4' | '5' | '6';
+    };
   }) {
     await this.page.getByTestId('event-form-name').fill(data.name);
     await this.page.getByTestId('event-form-date').fill(data.date);
@@ -43,6 +47,17 @@ export class EventsPage {
           .getByTestId('event-form-tag-custom')
           .fill(data.tag);
       }
+    }
+    if (data.recurrence) {
+      await this.page
+        .getByTestId('event-form-recurrence')
+        .selectOption('yearly-nth-weekday');
+      await this.page
+        .getByTestId('event-form-recurrence-week')
+        .selectOption(data.recurrence.week);
+      await this.page
+        .getByTestId('event-form-recurrence-weekday')
+        .selectOption(data.recurrence.weekday);
     }
     if (data.personNames && data.personNames.length > 0) {
       for (const name of data.personNames) {
@@ -65,6 +80,10 @@ export class EventsPage {
     date: string;
     tag?: string;
     personNames?: string[];
+    recurrence?: {
+      week: '1' | '2' | '3' | '4' | '-1';
+      weekday: '0' | '1' | '2' | '3' | '4' | '5' | '6';
+    };
   }) {
     await this.clickAddEvent();
     await this.fillEventForm(data);

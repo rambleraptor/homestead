@@ -85,6 +85,26 @@ test.describe('Events CRUD', () => {
     expect(remaining.find((e) => e.name === 'Doomed Event')).toBeUndefined();
   });
 
+  test('creates a yearly Nth-weekday event (2nd Sunday of May)', async ({
+    userToken,
+  }) => {
+    // 2026-05-10 is the 2nd Sunday of May 2026 — pre-fills the rule.
+    await eventsPage.goto();
+    await eventsPage.createEvent({
+      name: "Mother's Day",
+      date: '2026-05-10',
+      recurrence: { week: '2', weekday: '0' },
+    });
+
+    await eventsPage.expectEventInList("Mother's Day");
+
+    const events = await listEvents(userToken);
+    const created = events.find((e) => e.name === "Mother's Day");
+    expect(created).toBeDefined();
+    expect(created!.recurrence).toBe('yearly-nth-weekday');
+    expect(created!.recurrence_rule).toBe('2:0');
+  });
+
   test('tags multiple people on an anniversary event', async ({
     userToken,
   }) => {

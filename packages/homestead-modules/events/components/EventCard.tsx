@@ -4,11 +4,41 @@ import { CalendarHeart, Edit, Trash2, Users } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import {
-  getNextOccurrence,
+  getNextEventOccurrence,
   parseDateString,
+  parseNthWeekdayRule,
 } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
 import { usePeople } from '../../people/hooks/usePeople';
 import type { Event } from '../types';
+
+const ORDINAL_BY_N: Record<number, string> = {
+  1: '1st',
+  2: '2nd',
+  3: '3rd',
+  4: '4th',
+  [-1]: 'Last',
+};
+
+const WEEKDAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
+function formatRecurrenceRule(event: Event): string | null {
+  if (event.recurrence !== 'yearly-nth-weekday') return null;
+  const parsed = parseNthWeekdayRule(event.recurrence_rule);
+  if (!parsed) return null;
+  const month = parseDateString(event.date).toLocaleDateString('en-US', {
+    month: 'long',
+  });
+  const ord = ORDINAL_BY_N[parsed.n] ?? `${parsed.n}th`;
+  return `${ord} ${WEEKDAY_NAMES[parsed.weekday]} of ${month}`;
+}
 
 interface EventCardProps {
   event: Event;
@@ -28,9 +58,13 @@ function badgeVariantForTag(
   return 'neutral';
 }
 
-function formatNextOccurrence(date: string): string {
-  if (!date.trim()) return '';
-  const next = getNextOccurrence(parseDateString(date));
+function formatNextOccurrence(event: Event): string {
+  if (!event.date.trim()) return '';
+  const next = getNextEventOccurrence(
+    parseDateString(event.date),
+    event.recurrence,
+    event.recurrence_rule,
+  );
   return next.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
@@ -63,8 +97,13 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
               )}
             </div>
             <p className="text-sm text-gray-600 mt-1">
-              {formatNextOccurrence(event.date)}
+              {formatNextOccurrence(event)}
             </p>
+            {formatRecurrenceRule(event) && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                {formatRecurrenceRule(event)}
+              </p>
+            )}
             {tagged.length > 0 && (
               <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
                 <Users className="w-4 h-4" aria-hidden="true" />
