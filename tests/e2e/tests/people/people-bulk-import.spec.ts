@@ -200,6 +200,5 @@ test.describe('People Bulk Import', () => {
 
         // Verify error messages are shown somewhere on the page
         await expect(authenticatedPage.getByText(/name.*required/i)).toBeVisible();
-        await expect(authenticatedPage.getByText(/birthday.*format/i)).toBeVisible();
     });
 });

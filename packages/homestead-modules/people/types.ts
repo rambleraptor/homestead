@@ -1,5 +1,3 @@
-export type PersonEventType = 'birthday' | 'anniversary';
-
 // Address type. PB-shape stays here so existing helpers compile; the
 // aepbase code path hydrates the same field names.
 export interface Address {
@@ -24,19 +22,16 @@ export interface PersonSharedData {
   person_a: string;
   person_b?: string;
   address_id?: string; // Primary address ID (single)
-  anniversary?: string;
   created_by: string;
   created: string;
   updated: string;
 }
 
-// Person - addresses and anniversary come from shared_data table (abstracted)
+// Person — addresses come from shared_data; partner is hydrated client-side.
 export interface Person {
   id: string;
   name: string;
   addresses: Address[]; // Array of addresses (can be empty)
-  birthday?: string;
-  anniversary?: string;
   partner?: Person; // Partner info if exists
   created_by: string;
   created: string;
@@ -59,8 +54,6 @@ export interface AddressFormData {
 export interface PersonFormData {
   name: string;
   addresses: AddressFormData[]; // Array of addresses
-  birthday?: string;
-  anniversary?: string;
   partner_id?: string; // Used in form to select partner
 }
 
@@ -72,13 +65,9 @@ export interface PersonCSVData {
   address?: string;
   wifi_network?: string;
   wifi_password?: string;
-  birthday?: string;
-  anniversary?: string;
   partner_name?: string; // Partner name for matching
 }
 
 export interface PeopleStats {
   totalPeople: number;
-  upcomingBirthdays: number;
-  upcomingAnniversaries: number;
 }

@@ -181,8 +181,6 @@ export async function createMultipleGiftCards(
 interface CreatePersonInput {
   name: string;
   address?: string;
-  birthday?: string;
-  anniversary?: string;
   /**
    * Required when `address` is set — the address resource has
    * `created_by` in its `required` list per the canonical schema.
@@ -194,7 +192,6 @@ interface CreatePersonInput {
 export interface PersonRecord {
   id: string;
   name: string;
-  birthday?: string;
 }
 
 export async function createPerson(
@@ -203,28 +200,22 @@ export async function createPerson(
 ): Promise<PersonRecord> {
   const person = await aepCreate<PersonRecord>(token, 'people', {
     name: data.name,
-    birthday: data.birthday,
   });
 
-  if (data.address || data.anniversary) {
-    let addressId: string | null = null;
-    if (data.address) {
-      if (!data.createdByUserId) {
-        throw new Error(
-          'createPerson: createdByUserId is required when `address` is set',
-        );
-      }
-      const address = await aepCreate<{ id: string }>(token, 'addresses', {
-        line1: data.address,
-        created_by: `users/${data.createdByUserId}`,
-      });
-      addressId = address.id;
+  if (data.address) {
+    if (!data.createdByUserId) {
+      throw new Error(
+        'createPerson: createdByUserId is required when `address` is set',
+      );
     }
+    const address = await aepCreate<{ id: string }>(token, 'addresses', {
+      line1: data.address,
+      created_by: `users/${data.createdByUserId}`,
+    });
     await aepCreate(token, 'person-shared-data', {
       person_a: person.id,
       person_b: undefined,
-      address_id: addressId ?? undefined,
-      anniversary: data.anniversary,
+      address_id: address.id,
     });
   }
 
@@ -255,7 +246,6 @@ export async function getPersonSharedData(token: string, personId: string) {
     person_a: string;
     person_b?: string;
     address_id?: string;
-    anniversary?: string;
   }>(token, 'person-shared-data');
   return all.find((s) => s.person_a === personId || s.person_b === personId) || null;
 }

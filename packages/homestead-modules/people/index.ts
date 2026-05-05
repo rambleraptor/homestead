@@ -5,4 +5,4 @@
  */
 
 export { peopleModule } from './module.config';
-export type { Person, PersonEventType, PersonFormData, PeopleStats } from './types';
+export type { Person, PersonFormData, PeopleStats } from './types';

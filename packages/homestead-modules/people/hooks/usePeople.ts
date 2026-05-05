@@ -7,7 +7,6 @@ import type { Person, PersonSharedData, Address } from '../types';
 interface PersonRecord {
   id: string;
   name: string;
-  birthday?: string;
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -16,7 +15,6 @@ interface PersonRecord {
 function toPerson(
   record: PersonRecord,
   addresses: Address[],
-  anniversary?: string,
   partner?: Person,
 ): Person {
   return {
@@ -25,7 +23,6 @@ function toPerson(
     updated: record.update_time || '',
     created_by: record.created_by || '',
     addresses,
-    anniversary,
     partner,
   };
 }
@@ -71,10 +68,10 @@ export function usePeople() {
           : undefined;
         const partnerRecord = partnerId ? recordById.get(partnerId) : undefined;
         const partner = partnerRecord
-          ? toPerson(partnerRecord, addresses, sharedData?.anniversary)
+          ? toPerson(partnerRecord, addresses)
           : undefined;
 
-        return toPerson(record, addresses, sharedData?.anniversary, partner);
+        return toPerson(record, addresses, partner);
       });
     },
   });

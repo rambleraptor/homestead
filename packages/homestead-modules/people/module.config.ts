@@ -1,8 +1,9 @@
 /**
  * People Module Configuration
  *
- * Module for managing contact information and important dates.
- * Supports tracking birthdays, anniversaries, and addresses.
+ * Module for managing contact information, partners, and addresses.
+ * Yearly-recurring events (birthdays, anniversaries, …) live in the
+ * Events module.
  */
 
 import { Users } from 'lucide-react';

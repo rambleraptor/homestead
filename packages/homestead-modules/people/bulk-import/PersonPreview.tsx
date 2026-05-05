@@ -5,7 +5,6 @@
 import { User, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { ParsedItem } from '@rambleraptor/homestead-core/shared/bulk-import';
 import type { PersonCSVData } from '../types';
 
@@ -25,24 +24,6 @@ export function PersonPreview({ item, isSelected, onToggle }: PersonPreviewProps
   ) : (
     <XCircle className="h-5 w-5 text-destructive" />
   );
-
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch (error) {
-      logger.warn('Failed to format date', {
-        error,
-        date: dateString,
-      });
-      return dateString;
-    }
-  };
 
   return (
     <Card
@@ -82,16 +63,6 @@ export function PersonPreview({ item, isSelected, onToggle }: PersonPreviewProps
               {person.address && (
                 <p className="text-sm text-muted-foreground mb-1">
                   {person.address}
-                </p>
-              )}
-              {person.birthday && (
-                <p className="text-sm text-muted-foreground">
-                  Birthday: {formatDate(person.birthday)}
-                </p>
-              )}
-              {person.anniversary && (
-                <p className="text-sm text-muted-foreground">
-                  Anniversary: {formatDate(person.anniversary)}
                 </p>
               )}
             </div>

@@ -2,9 +2,8 @@
 
 /**
  * Dashboard widget showing yearly-recurring events that fall within the
- * next 7 days. Reads from the `events` collection (the source of truth);
- * the people module's birthday/anniversary fields are dual-written into
- * events on person create/update.
+ * next 7 days. Reads from the `events` collection — the sole source of
+ * truth for household events.
  */
 
 import { useRouter } from 'next/navigation';
