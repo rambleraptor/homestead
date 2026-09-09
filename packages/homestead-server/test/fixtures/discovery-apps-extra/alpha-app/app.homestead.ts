@@ -10,7 +10,6 @@ const alphaApp: AppConfig = {
   description: 'Duplicate-id discovery fixture app.',
   web: {
     icon: () => import('lucide-react').then((m) => m.Package),
-    basePath: '/alpha-extra',
     routes: [],
   },
 };

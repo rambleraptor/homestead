@@ -109,3 +109,36 @@ describe('matchRoute', () => {
     expect(matchRoute(['games', 'minigolf'], e)?.app.id).toBe('minigolf');
   });
 });
+
+describe('derived base paths', () => {
+  function bare(id: string, routes: AppRoute[], children?: AppConfig[]): AppConfig {
+    return { id, name: id, description: id, children, web: { icon: Box, routes } };
+  }
+
+  it('routes an app with no basePath at /<id>, and its children under it', () => {
+    const child = bare('minigolf', [
+      { path: '', index: true, component: Noop },
+      { path: 'import', component: Noop },
+    ]);
+    const parent = bare('games', [{ path: '', index: true, component: Noop }], [child]);
+    const entries = buildRouteEntries([parent]);
+
+    expect(entries.map((e) => e.segments)).toEqual([
+      ['games'],
+      ['games', 'minigolf'],
+      ['games', 'minigolf', 'import'],
+    ]);
+    expect(matchRoute(['games', 'minigolf', 'import'], entries)?.app.id).toBe('minigolf');
+  });
+
+  it('lets an explicit basePath override the derived one, for the app and its children', () => {
+    const child = bare('records', [{ path: '', index: true, component: Noop }]);
+    const parent = mod('health', '/health-records', [{ path: '', index: true, component: Noop }], [child]);
+    const entries = buildRouteEntries([parent]);
+
+    expect(entries.map((e) => e.segments)).toEqual([
+      ['health-records'],
+      ['health-records', 'records'],
+    ]);
+  });
+});

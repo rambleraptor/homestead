@@ -40,7 +40,7 @@ core package for core apps). Pattern after an existing one, e.g.
   dashboard, including users with no data yet.
 - Put `data-testid` on the root and any interactive elements.
 - Keep it read-mostly: link into the app (`react-router` `Link` to the
-  app's `basePath`) for anything heavier than a quick action.
+  app's base path, `/<app-id>`) for anything heavier than a quick action.
 
 ### 2. Wire it into the app config
 
@@ -48,7 +48,7 @@ In the app's `app.config.ts`, under the config's `web` object:
 
 ```ts
 web: {
-  // ...icon, basePath, routes...
+  // ...icon, routes...
   widgets: [
     {
       id: '<app>-<widget>',

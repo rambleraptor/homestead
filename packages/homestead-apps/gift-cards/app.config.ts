@@ -14,7 +14,6 @@ export const giftCardsApp: AppConfig = {
   resources: giftCardsResources,
   web: {
     icon: () => import('lucide-react').then((m) => m.Gift),
-    basePath: '/gift-cards',
     routes: [
       {
         path: '',

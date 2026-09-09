@@ -28,7 +28,6 @@ export const dashboardApp: AppConfig = {
   },
   web: {
     icon: () => import('lucide-react').then((m) => m.LayoutDashboard),
-    basePath: '/dashboard',
     routes: [
       {
         path: '',

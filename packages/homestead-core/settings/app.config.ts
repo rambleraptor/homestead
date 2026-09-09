@@ -34,7 +34,6 @@ export const settingsApp: AppConfig = {
   },
   web: {
     icon: () => import('lucide-react').then((m) => m.Settings),
-    basePath: '/settings',
     routes: [
       {
         path: '',

@@ -232,7 +232,11 @@ and the server at boot
 the env parsing and the fs scan both sides use); the shared
 validation/merge helpers live in
 `@rambleraptor/homestead-core/apps/discovery`. Routes are declared inline on each
-`AppRoute` (the `component` field). The SPA's react-router setup
+`AppRoute` (the `component` field). An app's URL prefix is derived from its
+`id` — `/<id>`, and `<parent path>/<id>` for a child — so configs never
+declare one; `web.basePath` exists only as an override for an id that can't be
+a URL (`apps/paths.ts` lists the reserved segments, and the registry warns on
+any collision). The SPA's react-router setup
 (`packages/homestead-app/src/App.tsx`) sends every unmatched path to the catch-all
 renderer in `packages/homestead-app/src/apps/AppRoute.tsx`, which resolves the
 route's lazy component — there are no per-route page files. See

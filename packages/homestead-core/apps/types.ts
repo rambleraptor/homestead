@@ -119,14 +119,23 @@ export interface AppWebConfig {
   icon: LazyIcon;
 
   /**
-   * Base path for app routes (must start with /)
-   * Example: '/dashboard', '/chores'
+   * URL prefix for the app's routes. **Derived — leave it out.** A top-level
+   * app lives at `/<id>` and a child app at `<parent path>/<id>`, so `id:
+   * 'gift-cards'` serves `/gift-cards` and the `minigolf` child of `games`
+   * serves `/games/minigolf`. Ids are unique across the registry, so derived
+   * paths can't collide and always nest correctly.
+   *
+   * Declare it only when the id genuinely can't be the URL — e.g. the Health
+   * app can't use `/health`, which the server answers as its readiness probe
+   * (see `RESERVED_ROUTE_SEGMENTS` in `apps/paths.ts`). An override must
+   * start with `/`, and a child's override must sit under its parent's path.
+   * Read the resolved value with `appBasePath(app)` from `apps/paths.ts`.
    */
-  basePath: string;
+  basePath?: string;
 
   /**
-   * Route definitions for this app
-   * Routes are now defined by the Next.js App Router file structure
+   * Route definitions for this app. Each `path` is relative to the app's
+   * (derived) base path.
    */
   routes: AppRoute[];
 
@@ -210,8 +219,10 @@ export interface AppWebConfig {
  */
 export interface AppConfig {
   /**
-   * Unique identifier for the app (lowercase, no spaces)
-   * Example: 'dashboard', 'chores', 'meal_planner'
+   * Unique identifier for the app. Lowercase letters, digits, and `-`/`_`
+   * only — it doubles as the app's URL segment (`/<id>`), keys its flags and
+   * permissions, and must be unique across the whole app tree.
+   * Example: 'dashboard', 'chores', 'meal-planner'
    */
   id: string;
 
@@ -280,8 +291,9 @@ export interface AppConfig {
 
   /**
    * Optional sub-apps. When set, this app is a container —
-   * the registry validates each child's `web.basePath` is a prefix-match
-   * of the parent's, aggregates child routes and dashboard widgets,
+   * each child's routes are served under the parent's path
+   * (`<parent path>/<child id>`), the registry aggregates child routes and
+   * dashboard widgets,
    * and a generic `<NestedAppLanding>` renders cards for each
    * child on the parent's index page. Children get their own `enabled`
    * flag (and any other declared flags) and can be reached via

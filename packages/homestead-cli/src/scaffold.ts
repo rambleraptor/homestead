@@ -372,7 +372,7 @@ Run \`homestead init-app <name>\` to scaffold a new app skeleton here.
 
 /** Names derived from a raw app name, used across the scaffolded files. */
 export interface AppNames {
-  /** kebab-case identifier: directory name, AppConfig.id, and basePath. */
+  /** kebab-case identifier: directory name and AppConfig.id (which also becomes the `/<id>` route). */
   slug: string;
   /** Title Case display name (AppConfig.name). */
   display: string;
@@ -478,7 +478,7 @@ export const ${n.camel}App: AppConfig = {
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.Package),
-    basePath: '/${n.slug}',
+    // Routes are served under /${n.slug}: the path is derived from the id.
     routes: [
       {
         path: '',

@@ -235,7 +235,8 @@ test('scaffoldApp writes a skeleton app that auto-discovery picks up', () => {
     const config = readFileSync(join(dir, 'app.homestead.ts'), 'utf8');
     expect(config).toContain("export const bookShelfApp: AppConfig");
     expect(config).toContain("id: 'book-shelf'");
-    expect(config).toContain("basePath: '/book-shelf'");
+    // The route prefix is derived from the id; the scaffold never declares one.
+    expect(config).not.toContain('basePath:');
     expect(config).toContain('BookShelfHome');
     // The starter resource is defined inline on the AppConfig.
     expect(config).toContain("singular: 'book-shelf'");

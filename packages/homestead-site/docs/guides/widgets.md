@@ -104,7 +104,7 @@ Append an entry to the app's `widgets` array. Set:
 export const recipesApp: AppConfig = {
   // ...existing fields...
   web: {
-    // ...icon, basePath, routes...
+    // ...icon, routes...
     widgets: [
       {
         id: 'recipes-cooked-this-week',
@@ -125,7 +125,7 @@ The groceries app's declaration (under `web`):
 ```ts
 // packages/homestead-apps/groceries/app.config.ts
 web: {
-  // ...icon, basePath, routes...
+  // ...icon, routes...
   widgets: [
     {
       id: 'groceries-remaining',

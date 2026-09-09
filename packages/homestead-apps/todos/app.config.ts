@@ -19,7 +19,6 @@ export const todosApp: AppConfig = {
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.ListTodo),
-    basePath: '/todos',
     routes: [
       {
         path: '',

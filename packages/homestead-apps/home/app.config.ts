@@ -67,7 +67,6 @@ export const homeApp: AppConfig = {
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.House),
-    basePath: '/home',
     routes: [
       {
         path: '',

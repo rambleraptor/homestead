@@ -53,7 +53,6 @@ export const permissionsApp: AppConfig = {
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.KeyRound),
-    basePath: '/superuser/permissions',
     routes: [
       {
         path: '',

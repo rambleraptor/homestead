@@ -68,6 +68,29 @@ describe('top-bar placement', () => {
   });
 });
 
+describe('derived base paths', () => {
+  it('serves every app at /<id>, nesting children under their parent', () => {
+    expect(getAppById('gift-cards')?.web?.basePath).toBe('/gift-cards');
+    expect(getAppById('games')?.web?.basePath).toBe('/games');
+    expect(getAppById('minigolf')?.web?.basePath).toBe('/games/minigolf');
+    expect(getAppById('users')?.web?.basePath).toBe('/superuser/users');
+  });
+
+  it('keeps the health app on its explicit override, off the server-owned /health', () => {
+    expect(getAppById('health')?.web?.basePath).toBe('/health-records');
+  });
+
+  it('gives no two apps the same base path', () => {
+    const paths: string[] = [];
+    const visit = (m: AppConfig) => {
+      if (m.web?.basePath) paths.push(m.web.basePath);
+      for (const c of m.children ?? []) visit(c);
+    };
+    for (const m of appRegistry.apps) visit(m);
+    expect(new Set(paths).size).toBe(paths.length);
+  });
+});
+
 describe('getAppById', () => {
   it('resolves top-level apps', () => {
     expect(getAppById('games')?.name).toBe('Games');

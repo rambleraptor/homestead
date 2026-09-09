@@ -6,7 +6,6 @@ const alphaApp: AppConfig = {
   description: 'Discovery fixture app.',
   web: {
     icon: () => import('lucide-react').then((m) => m.Package),
-    basePath: '/alpha',
     routes: [],
   },
 };

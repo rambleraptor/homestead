@@ -15,9 +15,9 @@ export const healthApp: AppConfig = {
   resources: healthResources,
   web: {
     icon: () => import('lucide-react').then((m) => m.HeartPulse),
-    // Not `/health` — that path is server-owned (the readiness probe; see
-    // SERVER_PREFIXES in homestead-server/src/options.ts) and never reaches
-    // the SPA.
+    // The one app that overrides its derived path: `/health` (from the id) is
+    // server-owned — the readiness probe, see SERVER_OWNED_SEGMENTS in
+    // homestead-core/apps/paths.ts — and never reaches the SPA.
     basePath: '/health-records',
     routes: [
       {

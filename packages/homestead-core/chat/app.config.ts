@@ -15,7 +15,6 @@ export const chatApp: AppConfig = {
   description: 'Ask the household assistant to look up or change your data',
   web: {
     icon: () => import('lucide-react').then((m) => m.MessageCircle),
-    basePath: '/chat',
     routes: [
       {
         path: '',

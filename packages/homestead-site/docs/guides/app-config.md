@@ -64,8 +64,10 @@ naming the app file.
 
 ## Writing a minimal config
 
-Required are `id`, `name`, `description`, and a `web` object holding `icon`,
-`basePath`, and `routes`. Everything else is optional. The `web` object groups
+Required are `id`, `name`, `description`, and a `web` object holding `icon`
+and `routes`. Everything else is optional. The app's URL prefix is derived from
+its `id` — this one serves `/grocery` — so there is no path to declare and no
+path for two apps to collide on. The `web` object groups
 everything about how the app surfaces in the browser — routing, navigation
 placement, dashboard widgets, list filters, and offline overrides; the
 top-level fields are the app's identity and its data (`flags`, `userSettings`,
@@ -80,7 +82,6 @@ const groceryApp: AppConfig = {
   description: 'A shared grocery list.',
   web: {
     icon: () => import('lucide-react').then((m) => m.ShoppingCart),
-    basePath: '/grocery',
     routes: [
       {
         path: '',
@@ -105,7 +106,7 @@ The app's identity, its data, and the `web` object.
 
 | Field            | Type                             | Default | Purpose                                                                 |
 | ---------------- | -------------------------------- | ------- | ----------------------------------------------------------------------- |
-| `id` *           | `string`                         | —       | Unique identifier (lowercase, no spaces). Keys the registry and flags.  |
+| `id` *           | `string`                         | —       | Unique identifier (lowercase letters, digits, `-`/`_`). Keys the registry and flags, and becomes the app's URL prefix (`/<id>`). |
 | `name` *         | `string`                         | —       | Display name in nav and UI.                                             |
 | `description` *  | `string`                         | —       | Short summary of the app.                                              |
 | `web` *          | `AppWebConfig`                   | —       | How the app surfaces in the browser ([below](#web-fields)).            |
@@ -125,7 +126,7 @@ Everything about how the app surfaces in the browser. Lives under the required
 | Field              | Type                                        | Default     | Purpose                                                                 |
 | ------------------ | ------------------------------------------- | ----------- | ----------------------------------------------------------------------- |
 | `icon` *           | `LazyIcon`                                  | —           | Lazy Lucide icon thunk.                                                |
-| `basePath` *       | `string`                                    | —           | Route prefix; must start with `/`.                                    |
+| `basePath`         | `string`                                    | `/<id>`     | Derived from `id` (children: `<parent path>/<id>`). Override only when the id can't be the URL — e.g. `/health` is the server's readiness probe, so the Health app declares `/health-records`. Must start with `/`. |
 | `routes` *         | `AppRoute[]`                                | —           | The app's pages ([below](#adding-routes)).                            |
 | `homeScreenIcon`   | `string`                                    | shared icon | PWA "Add to Home Screen" image path (square PNG, ~512×512).            |
 | `showInNav`        | `boolean`                                   | `true`      | `false` hides the app from nav but keeps routes reachable.            |
@@ -145,13 +146,14 @@ Everything about how the app surfaces in the browser. Lives under the required
 
 ## Adding routes
 
-Routes live under `web`. Each route's `path` is relative to `web.basePath`. Use
+Routes live under `web`. Each route's `path` is relative to the app's base
+path — `/<id>`, derived for you. Use
 `''` for the index and `:name` for params, which arrive on the component's
 `params` prop.
 
 ```ts
 web: {
-  // ...icon, basePath...
+  // ...icon...
   routes: [
     { path: '', index: true,
       component: () => import('./GroceriesHome').then((m) => m.GroceriesHome) },
@@ -194,7 +196,7 @@ by `order` (lower first; default `100`). See the
 
 ```ts
 web: {
-  // ...icon, basePath, routes...
+  // ...icon, routes...
   widgets: [
     {
       id: 'groceries-remaining',   // globally unique; prefix with app id
@@ -272,12 +274,13 @@ the process down. A hook with a duplicate `id` or a non-positive
 
 ## Nesting apps
 
-Setting `children` makes an app a container. Each child is a full `AppConfig`
-whose `web.basePath` must start with the parent's. The parent's index renders a
+Setting `children` makes an app a container. Each child is a full `AppConfig`;
+its routes are served under the parent's path (`/finance/credit-cards` for a
+`credit-cards` child of `finance`). The parent's index renders a
 landing of child cards. Children get their own `enabled` flag, so they gate
 independently, but they stay out of top-level nav — the parent owns the
 placement.
 
 ```ts
-{ id: 'finance', web: { basePath: '/finance', /* ... */ }, children: [creditCardsApp, receiptsApp] }
+{ id: 'finance', web: { /* icon, routes */ }, children: [creditCardsApp, receiptsApp] }
 ```

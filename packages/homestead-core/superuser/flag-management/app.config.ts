@@ -15,7 +15,6 @@ export const flagManagementApp: AppConfig = {
   description: 'View and edit every app flag registered in aepbase.',
   web: {
     icon: () => import('lucide-react').then((m) => m.Flag),
-    basePath: '/superuser/flag-management',
     routes: [
       {
         path: '',

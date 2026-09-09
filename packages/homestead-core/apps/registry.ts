@@ -40,13 +40,21 @@ import type {
 import type { BulkImportDef } from '../resources/bulk-import/types';
 import type { BulkExportDef } from '../resources/bulk-export/types';
 import { logger } from '../utils/logger';
+import {
+  appBasePath,
+  firstSegment,
+  isUrlSafeAppId,
+  RESERVED_ROUTE_SEGMENTS,
+  resolveAppPaths,
+} from './paths';
 
 class AppRegistryImpl implements AppRegistry {
   apps: AppConfig[];
 
   constructor(apps: AppConfig[]) {
-    // Sort by navOrder
-    this.apps = [...apps].sort(
+    // Fill in every app's derived `web.basePath` (see `apps/paths.ts`) so
+    // consumers never have to derive one themselves, then sort by navOrder.
+    this.apps = resolveAppPaths(apps).sort(
       (a, b) => (a.web?.navOrder || 100) - (b.web?.navOrder || 100),
     );
 
@@ -57,37 +65,70 @@ class AppRegistryImpl implements AppRegistry {
    * Validate IDs, base paths, and parent/child relationships across
    * the whole tree. Walks `children` recursively so nested apps
    * share the same id/path namespace as top-level apps.
+   *
+   * Paths are derived from ids, so most of the path checks can only trip
+   * on an explicit `web.basePath` override; the id checks are what keep the
+   * derived paths well-formed.
    */
   private validateApps(): void {
     const ids = new Set<string>();
     const paths = new Set<string>();
 
     const visit = (mod: AppConfig, parent: AppConfig | null): void => {
-      if (ids.has(mod.id)) {
+      const duplicateId = ids.has(mod.id);
+      if (duplicateId) {
         logger.warn(`Duplicate app ID detected: ${mod.id}`, { appId: mod.id });
       }
       ids.add(mod.id);
 
-      // Headless apps (no `web`) declare no base path, so skip all
+      if (!isUrlSafeAppId(mod.id)) {
+        logger.warn(
+          `App id "${mod.id}" is not URL-safe (use lowercase letters, digits, "-" or "_"); it is also the app's route segment`,
+          { appId: mod.id },
+        );
+      }
+
+      // Headless apps (no `web`) have no base path, so skip all
       // path-shape and nesting checks for them.
       if (mod.web) {
-        if (paths.has(mod.web.basePath)) {
-          logger.warn(`Duplicate base path detected: ${mod.web.basePath}`, { basePath: mod.web.basePath });
-        }
-        paths.add(mod.web.basePath);
+        const basePath = appBasePath(mod);
+        const explicit = mod.web.basePath !== undefined && mod.web.basePath !== basePath;
 
-        if (!mod.web.basePath.startsWith('/')) {
+        // A duplicate id already implies a duplicate derived path; don't
+        // report the same collision twice.
+        if (paths.has(basePath) && !duplicateId) {
+          logger.warn(
+            `Duplicate base path detected: ${basePath} (declared by app "${mod.id}")`,
+            { appId: mod.id, basePath },
+          );
+        }
+        paths.add(basePath);
+
+        if (!basePath.startsWith('/')) {
           logger.warn(`App "${mod.id}" base path should start with /`, {
             appId: mod.id,
-            basePath: mod.web.basePath,
+            basePath,
           });
         }
 
-        if (parent?.web && !mod.web.basePath.startsWith(parent.web.basePath + '/')) {
+        if (!parent && RESERVED_ROUTE_SEGMENTS.includes(firstSegment(basePath))) {
           logger.warn(
-            `Child app "${mod.id}" base path "${mod.web.basePath}" must be nested under parent "${parent.id}" (${parent.web.basePath})`,
-            { appId: mod.id, parentId: parent.id },
+            `App "${mod.id}" base path "${basePath}" is reserved for the server or the SPA shell and will never render; ` +
+              (explicit
+                ? 'choose a different web.basePath'
+                : 'declare an explicit web.basePath for this app'),
+            { appId: mod.id, basePath },
           );
+        }
+
+        if (parent?.web) {
+          const parentPath = appBasePath(parent);
+          if (!basePath.startsWith(parentPath + '/')) {
+            logger.warn(
+              `Child app "${mod.id}" base path "${basePath}" must be nested under parent "${parent.id}" (${parentPath})`,
+              { appId: mod.id, parentId: parent.id },
+            );
+          }
         }
       }
 

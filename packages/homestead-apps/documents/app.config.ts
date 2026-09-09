@@ -38,7 +38,6 @@ export const documentsApp: AppConfig = {
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.FileText),
-    basePath: '/documents',
     routes: [
       {
         path: '',

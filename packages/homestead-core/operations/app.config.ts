@@ -37,7 +37,6 @@ export const operationsApp: AppConfig = {
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.Activity),
-    basePath: '/superuser/operations',
     routes: [
       {
         path: '',

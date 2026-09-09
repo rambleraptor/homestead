@@ -4,6 +4,7 @@ import { Card } from './Card';
 import { PageHeader } from './PageHeader';
 import { AppIcon } from '@rambleraptor/homestead-core/apps/lazy';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
+import { appBasePath } from '@rambleraptor/homestead-core/apps/paths';
 import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
 
 interface Props {
@@ -33,7 +34,7 @@ export function NestedAppLanding({ app }: Props) {
           return (
             <Link
               key={child.id}
-              to={web.basePath}
+              to={appBasePath(child)}
               data-testid={`${app.id}-link-${child.id}`}
               className="block"
             >

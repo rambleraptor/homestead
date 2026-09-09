@@ -158,7 +158,7 @@ export const featureApp: AppConfig = {
   // `web` groups everything about how the app surfaces in the browser.
   web: {
     icon: Flag,
-    basePath: '/feature',
+    // Served at /feature — the path is derived from `id`; never declare basePath.
     routes: [{ path: '', index: true, component: FeatureHome }],
     showInNav: true,
     navOrder: 20,
@@ -202,7 +202,7 @@ import { FeatureHome } from './components/FeatureHome';
 import { FeatureImport } from './components/FeatureImport';
 
 web: {
-  // ...icon, basePath...
+  // ...icon...
   routes: [
     { path: '', index: true, component: FeatureHome },
     { path: 'import', component: FeatureImport },

@@ -6,7 +6,6 @@ export const homesteadInformationApp: AppConfig = {
   description: 'General instance information: build details and security status.',
   web: {
     icon: () => import('lucide-react').then((m) => m.Info),
-    basePath: '/superuser/homestead-information',
     routes: [
       {
         path: '',

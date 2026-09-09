@@ -16,7 +16,6 @@ export const recipesApp: AppConfig = {
   resources: recipesResources,
   web: {
     icon: () => import('lucide-react').then((m) => m.ChefHat),
-    basePath: '/recipes',
     routes: [
       {
         path: '',

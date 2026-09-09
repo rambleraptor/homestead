@@ -29,18 +29,26 @@ describe('assertDiscoveredApp', () => {
   });
 
   test('rejects a default export that is not an AppConfig', () => {
-    // Bad shapes: not an object, missing a string `id`, or `web` present
-    // but without a string `basePath`.
+    // Bad shapes: not an object, missing a string `id`, `web` present but
+    // not an object, or a `basePath` override that isn't a string.
     for (const bad of [
       null,
       'alpha',
       { basePath: '/alpha' },
-      { id: 'alpha', web: { icon: () => null } },
+      { id: 'alpha', web: 'alpha' },
+      { id: 'alpha', web: { basePath: 42 } },
     ]) {
       expect(() =>
         assertDiscoveredApp({ default: bad }, 'apps/alpha/app.homestead.ts'),
       ).toThrow(/not an AppConfig/);
     }
+  });
+
+  test('accepts a web app that leaves `basePath` to be derived from its id', () => {
+    const derived = { id: 'alpha', name: 'Alpha', description: 'x', web: { routes: [] } };
+    expect(
+      assertDiscoveredApp({ default: derived }, 'apps/alpha/app.homestead.ts'),
+    ).toBe(derived);
   });
 
   test('accepts a headless app that omits the optional `web` section', () => {

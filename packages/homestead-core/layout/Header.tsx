@@ -9,6 +9,7 @@ import { Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { getTopBarApps } from '@rambleraptor/homestead-core/apps/registry';
+import { appBasePath } from '@rambleraptor/homestead-core/apps/paths';
 import { AppIcon, getLazyComponent } from '@rambleraptor/homestead-core/apps/lazy';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
 
@@ -75,7 +76,7 @@ export function Header({
             return (
               <button
                 key={app.id}
-                onClick={() => navigate(web.basePath)}
+                onClick={() => navigate(appBasePath(app))}
                 className="p-2 rounded-lg hover:bg-bg-pearl transition-colors relative"
                 aria-label={app.name}
                 data-testid={`topbar-app-${app.id}`}

@@ -36,7 +36,6 @@ const groceryApp: AppConfig = {
   description: 'A shared grocery list.',
   web: {
     icon: () => import('lucide-react').then((m) => m.ShoppingCart),
-    basePath: '/grocery',
     section: 'Home',
     routes: [
       { path: '', index: true, component: () => import('./GroceryHome').then((m) => m.GroceryHome) },

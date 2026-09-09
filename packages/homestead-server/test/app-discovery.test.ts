@@ -17,7 +17,7 @@ describe('discoverApps', () => {
   test('imports <dir>/*/app.homestead.ts sorted by directory name', async () => {
     const apps = await discoverApps([APPS]);
     expect(apps.map((m) => m.id)).toEqual(['alpha', 'beta']);
-    expect(apps.map((m) => m.web?.basePath)).toEqual(['/alpha', '/beta']);
+    expect(apps.map((m) => m.name)).toEqual(['Alpha', 'Beta']);
     // The not-an-app/ subdir (no app.homestead.ts) was skipped silently.
   });
 
@@ -28,11 +28,11 @@ describe('discoverApps', () => {
       'alpha',
       'gamma',
     ]);
-    expect((await discoverApps([EXTRA, APPS])).map((m) => m.web?.basePath)).toEqual([
-      '/alpha-extra',
-      '/gamma',
-      '/alpha',
-      '/beta',
+    expect((await discoverApps([EXTRA, APPS])).map((m) => m.name)).toEqual([
+      'Alpha (extra)',
+      'Gamma',
+      'Alpha',
+      'Beta',
     ]);
   });
 
@@ -40,7 +40,7 @@ describe('discoverApps', () => {
     const merged = mergeDiscoveredApps([], await discoverApps([APPS, EXTRA]));
     expect(merged.map((m) => m.id)).toEqual(['alpha', 'beta', 'gamma']);
     // First directory wins.
-    expect(merged[0]!.web?.basePath).toBe('/alpha');
+    expect(merged[0]!.name).toBe('Alpha');
   });
 
   test('returns [] for missing app directories', async () => {

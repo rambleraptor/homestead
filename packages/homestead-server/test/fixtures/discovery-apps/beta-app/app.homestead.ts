@@ -6,7 +6,6 @@ const betaApp: AppConfig = {
   description: 'Discovery fixture app (sorts after alpha).',
   web: {
     icon: () => import('lucide-react').then((m) => m.Package),
-    basePath: '/beta',
     routes: [],
   },
 };

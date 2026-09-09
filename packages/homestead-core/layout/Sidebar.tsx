@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Home, LogOut, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { getNavigationApps } from '@rambleraptor/homestead-core/apps/registry';
+import { appBasePath } from '@rambleraptor/homestead-core/apps/paths';
 import { AppIcon } from '@rambleraptor/homestead-core/apps/lazy';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
 
@@ -194,11 +195,12 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
                         {appsBySection[section].map((app) => {
                           const web = app.web;
                           if (!web) return null;
-                          const active = isActive(web.basePath);
+                          const basePath = appBasePath(app);
+                          const active = isActive(basePath);
                           return (
                             <Link
                               key={app.id}
-                              to={web.basePath}
+                              to={basePath}
                               onClick={onClose}
                               className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                                 active

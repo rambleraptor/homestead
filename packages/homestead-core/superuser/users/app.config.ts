@@ -21,7 +21,6 @@ export const usersApp: AppConfig = {
   description: 'Create and manage user accounts.',
   web: {
     icon: () => import('lucide-react').then((m) => m.UserCog),
-    basePath: '/superuser/users',
     routes: [
       {
         path: '',

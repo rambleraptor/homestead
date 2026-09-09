@@ -12,6 +12,7 @@
 import { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllApps } from '../../apps/registry';
+import { appBasePath } from '../../apps/paths';
 import { buildRouteEntries, matchRoute } from '../../apps/router/match';
 import {
   applyHomeScreenIcon,
@@ -35,7 +36,7 @@ export function useHomeScreenIcon(): void {
         {
           name: mod.name,
           description: mod.description,
-          basePath: mod.web.basePath,
+          basePath: appBasePath(mod),
           iconHref: mod.web.homeScreenIcon,
         },
         window.location.origin,

@@ -21,7 +21,6 @@ export const receiptsApp: AppConfig = {
   resources: [...hsaResources, ...charitableResources],
   web: {
     icon: () => import('lucide-react').then((m) => m.Receipt),
-    basePath: '/receipts',
     routes: [
       {
         path: '',

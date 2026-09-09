@@ -16,7 +16,6 @@ export const minigolfApp: AppConfig = {
   resources: minigolfResources,
   web: {
     icon: () => import('lucide-react').then((m) => m.Flag),
-    basePath: '/games/minigolf',
     routes: [
       {
         path: '',

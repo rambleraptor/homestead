@@ -27,7 +27,6 @@ export const superuserApp: AppConfig = {
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.ShieldCheck),
-    basePath: '/superuser',
     routes: [
       {
         path: '',

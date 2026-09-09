@@ -50,7 +50,6 @@ export const notificationsApp: AppConfig = {
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.Bell),
-    basePath: '/notifications',
     routes: [
       {
         path: '',

@@ -14,7 +14,6 @@ export const bridgeApp: AppConfig = {
   description: 'Record bids for each hand of Bridge',
   web: {
     icon: () => import('lucide-react').then((m) => m.Club),
-    basePath: '/games/bridge',
     routes: [
       {
         path: '',

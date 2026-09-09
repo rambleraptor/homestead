@@ -21,7 +21,6 @@ export const gamesApp: AppConfig = {
   children: [minigolfApp, pictionaryApp, bridgeApp],
   web: {
     icon: () => import('lucide-react').then((m) => m.Gamepad2),
-    basePath: '/games',
     routes: [
       {
         path: '',

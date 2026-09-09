@@ -6,6 +6,7 @@
  * homestead.config.ts via src/app-registry.js.
  */
 
+import { SERVER_OWNED_SEGMENTS } from '@rambleraptor/homestead-core/apps/paths';
 import type { SpaAssets } from './static';
 
 export interface ServerOptions {
@@ -23,11 +24,13 @@ export interface ServerOptions {
 
 export const DEFAULT_PUBLIC_PORT = 3000;
 
-/** Path prefixes owned by the server, never by the SPA/Vite. The trailing
- *  slash matters: `isServerPath` matches the bare prefix exactly and anything
- *  under it, so `/health/` claims `/health` and `/health/x` but leaves an SPA
- *  route like `/health-records` alone. */
-const SERVER_PREFIXES = ['/api/', '/oauth/', '/oauth2/', '/.well-known/', '/health/'];
+/** Path prefixes owned by the server, never by the SPA/Vite. Built from the
+ *  segment list the app registry also checks derived app paths against, so an
+ *  app can't be routed to a path the server swallows. The trailing slash
+ *  matters: `isServerPath` matches the bare prefix exactly and anything under
+ *  it, so `/health/` claims `/health` and `/health/x` but leaves an SPA route
+ *  like `/health-records` alone. */
+const SERVER_PREFIXES = SERVER_OWNED_SEGMENTS.map((segment) => `/${segment}/`);
 
 export function isServerPath(path: string): boolean {
   return SERVER_PREFIXES.some((p) => path === p || path === p.replace(/\/$/, '') || path.startsWith(p));

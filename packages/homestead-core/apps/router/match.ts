@@ -1,4 +1,5 @@
 import type { AppConfig, AppRoute } from '../types';
+import { deriveBasePath } from '../paths';
 
 export interface RouteEntry {
   app: AppConfig;
@@ -13,19 +14,25 @@ export interface RouteMatch {
   params: Record<string, string>;
 }
 
+/**
+ * Flatten every app's routes into matchable entries. Base paths are derived
+ * from ids (children under their parent's path) exactly as the registry
+ * resolves them, so this works on raw configs as well as registered ones.
+ */
 export function buildRouteEntries(apps: AppConfig[]): RouteEntry[] {
   const out: RouteEntry[] = [];
-  const visit = (mod: AppConfig): void => {
-    if (mod.web) {
+  const visit = (mod: AppConfig, parentBasePath?: string): void => {
+    const basePath = mod.web ? deriveBasePath(mod, parentBasePath) : parentBasePath;
+    if (mod.web && basePath) {
       for (const route of mod.web.routes) {
         out.push({
           app: mod,
           route,
-          segments: pathToSegments(joinPath(mod.web.basePath, route.path)),
+          segments: pathToSegments(joinPath(basePath, route.path)),
         });
       }
     }
-    for (const child of mod.children ?? []) visit(child);
+    for (const child of mod.children ?? []) visit(child, basePath);
   };
   for (const mod of apps) visit(mod);
   return out;
