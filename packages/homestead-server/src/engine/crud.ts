@@ -39,6 +39,8 @@ import {
   checkReferenceRestrict,
   collectReferrers,
   findReferrers,
+  isReferenceTo,
+  type ReferenceTarget,
 } from './references';
 import {
   deleteResource,
@@ -719,22 +721,22 @@ function deleteSubtree(
 function applyReferenceCleanup(
   reg: Registry,
   singular: string,
-  id: string,
+  target: ReferenceTarget,
   filePaths: string[],
 ): void {
   const now = nowRFC3339();
   for (const ref of findReferrers(reg, singular)) {
     if (ref.onDelete === 'restrict') continue;
-    for (const row of collectReferrers(reg, ref, id)) {
+    for (const row of collectReferrers(reg, ref, target)) {
       if (ref.onDelete === 'set-null') {
         row.fields[ref.field] = ref.isArray
-          ? (row.fields[ref.field] as unknown[]).filter((v) => v !== id)
+          ? (row.fields[ref.field] as unknown[]).filter((v) => !isReferenceTo(v, target))
           : null;
         updateResource(reg.db, ref.resource.plural, row.path, row.fields, now, ref.resource.schema);
       } else if (ref.onDelete === 'cascade') {
         // Resolve references pointing at the row we're about to delete, then
         // remove it and its child subtree.
-        applyReferenceCleanup(reg, ref.resource.singular, row.id, filePaths);
+        applyReferenceCleanup(reg, ref.resource.singular, { id: row.id, path: row.path }, filePaths);
         deleteSubtree(reg, ref.resource, row.path, row.id, filePaths);
       }
     }
@@ -766,7 +768,8 @@ export function handleDelete(reg: Registry, match: RouteMatch, req: Request): Re
     );
   }
 
-  const restrictErr = checkReferenceRestrict(reg, r.singular, match.id);
+  const target = { id: match.id, path };
+  const restrictErr = checkReferenceRestrict(reg, r.singular, target);
   if (restrictErr) return errorResponse(409, `resource "${path}": ${restrictErr}`);
 
   // Snapshot the record before it (and its subtree) is removed, for the sync's
@@ -775,7 +778,7 @@ export function handleDelete(reg: Registry, match: RouteMatch, req: Request): Re
 
   const filePaths: string[] = [];
   reg.db.transaction(() => {
-    applyReferenceCleanup(reg, r.singular, match.id, filePaths);
+    applyReferenceCleanup(reg, r.singular, target, filePaths);
     deleteSubtree(reg, r, path, match.id, filePaths);
   })();
 

@@ -71,20 +71,39 @@ export function findReferrers(reg: Registry, targetSingular: string): Referrer[]
   return out;
 }
 
-/** Does a stored field value reference `id`? */
-function valueReferences(value: unknown, id: string, isArray: boolean): boolean {
+/**
+ * The record a reference can name. A stored reference value is either the bare
+ * id or the full resource path (`projects/abc`) — the SPA writes paths for some
+ * fields, the chat/MCP tools write bare ids — so both forms must match.
+ */
+export interface ReferenceTarget {
+  id: string;
+  path: string;
+}
+
+/** Does a single stored reference value name `target`? */
+export function isReferenceTo(value: unknown, target: ReferenceTarget): boolean {
+  return value === target.id || value === target.path;
+}
+
+/** Does a stored field value reference `target`? */
+function valueReferences(value: unknown, target: ReferenceTarget, isArray: boolean): boolean {
   return isArray
-    ? Array.isArray(value) && value.includes(id)
-    : value === id;
+    ? Array.isArray(value) && value.some((v) => isReferenceTo(v, target))
+    : isReferenceTo(value, target);
 }
 
 /**
- * All rows of `ref.resource` whose reference field points at `id`. Scans the
+ * All rows of `ref.resource` whose reference field points at `target`. Scans the
  * whole collection (household-scale data, and reference columns aren't
  * indexed for array membership) — cheap in practice and only runs when a
  * referrer actually exists.
  */
-export function collectReferrers(reg: Registry, ref: Referrer, id: string): StoredResource[] {
+export function collectReferrers(
+  reg: Registry,
+  ref: Referrer,
+  target: ReferenceTarget,
+): StoredResource[] {
   const matches: StoredResource[] = [];
   let token = '';
   for (;;) {
@@ -99,7 +118,7 @@ export function collectReferrers(reg: Registry, ref: Referrer, id: string): Stor
       '',
     );
     for (const row of results) {
-      if (valueReferences(row.fields[ref.field], id, ref.isArray)) matches.push(row);
+      if (valueReferences(row.fields[ref.field], target, ref.isArray)) matches.push(row);
     }
     if (nextPageToken === '') break;
     token = nextPageToken;
@@ -108,18 +127,18 @@ export function collectReferrers(reg: Registry, ref: Referrer, id: string): Stor
 }
 
 /**
- * If deleting `(singular, id)` would strand a `restrict` reference, return a
+ * If deleting `target` (a `singular` record) would strand a `restrict` reference, return a
  * human-readable reason (→ 409); otherwise null. Read-only: run before opening
  * the delete transaction, mirroring the existing child-row restrict check.
  */
 export function checkReferenceRestrict(
   reg: Registry,
   singular: string,
-  id: string,
+  target: ReferenceTarget,
 ): string | null {
   for (const ref of findReferrers(reg, singular)) {
     if (ref.onDelete !== 'restrict') continue;
-    const matches = collectReferrers(reg, ref, id);
+    const matches = collectReferrers(reg, ref, target);
     if (matches.length > 0) {
       return (
         `cannot delete: ${matches.length} ${ref.resource.plural} ` +

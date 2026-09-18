@@ -59,8 +59,12 @@ export function usePersonalTodos() {
   });
 }
 
-/** The bare project id a todo is filed under, or '' when it's on main. */
-function projectIdOf(todo: { project?: string }): string {
+/**
+ * The bare project id a todo is filed under, or '' when it's on main. The SPA
+ * stores `project` as `projects/{id}`, but the chat/MCP tools write the bare
+ * id, so compare placements through this rather than on the raw string.
+ */
+export function projectIdOf(todo: { project?: string }): string {
   return todo.project ? todo.project.replace(/^projects\//, '') : '';
 }
 
@@ -70,7 +74,8 @@ function projectIdOf(todo: { project?: string }): string {
  *
  * - Main scope: todos with no `project` field, plus todos pinned via
  *   `in_main=true`.
- * - Project scope: todos whose `project` matches `projects/{scope}`.
+ * - Project scope: todos whose `project` names `scope` (as `projects/{scope}`
+ *   or the bare id).
  *
  * `knownProjectIds`, when supplied, also pulls *orphans* onto main: a todo
  * filed under a list that no longer exists. Family todos are reassigned by the
@@ -95,8 +100,7 @@ export function filterTodosForScope<
         (knownProjectIds !== undefined && !knownProjectIds.has(projectIdOf(t))),
     );
   }
-  const ref = `projects/${scope}`;
-  return todos.filter((t) => t.project === ref);
+  return todos.filter((t) => projectIdOf(t) === scope);
 }
 
 /**

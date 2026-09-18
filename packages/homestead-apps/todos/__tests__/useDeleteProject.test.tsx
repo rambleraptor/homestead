@@ -112,6 +112,25 @@ describe('useDeleteProject', () => {
     });
   });
 
+  it('also clears member todos whose project is stored as the bare id', async () => {
+    // The chat/MCP tools write the bare id rather than `projects/{id}`.
+    mockLists([makeTodo('a', 'gone'), makeTodo('b', 'keep')], []);
+    vi.mocked(aepbase.update).mockResolvedValue({} as Todo);
+    vi.mocked(aepbase.remove).mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useDeleteProject(), {
+      wrapper: createWrapper(),
+    });
+    await result.current.mutateAsync({ projectId: 'gone' });
+
+    expect(aepbase.update).toHaveBeenCalledTimes(1);
+    expect(aepbase.update).toHaveBeenCalledWith('todos', 'a', {
+      project: '',
+      in_main: false,
+      category: '',
+    });
+  });
+
   it('still removes the project when no todos belong to it', async () => {
     mockLists([makeTodo('x')], [makePersonal('p2')]);
     vi.mocked(aepbase.remove).mockResolvedValue(undefined);

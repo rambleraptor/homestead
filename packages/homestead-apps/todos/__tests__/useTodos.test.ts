@@ -136,6 +136,24 @@ describe('filterTodosForScope', () => {
     expect(filterTodosForScope(todos, 'nope')).toEqual([]);
   });
 
+  it('matches a todo whose project is stored as the bare id', () => {
+    // The chat/MCP tools write reference fields as bare ids, not the
+    // `projects/{id}` path the SPA writes — the todo must still be on its list,
+    // and must not also leak onto main.
+    const bare = makeTodo('e', 'pending', '2025-01-01T00:00:00Z', {
+      project: 'p1',
+    });
+    const known = new Set(['p1', 'p2']);
+    expect(filterTodosForScope([...todos, bare], 'p1').map((t) => t.id)).toEqual(
+      ['b', 'c', 'e'],
+    );
+    expect(
+      filterTodosForScope([...todos, bare], MAIN_PROJECT_ID, known).map(
+        (t) => t.id,
+      ),
+    ).toEqual(['a', 'c']);
+  });
+
   it('main scope includes pinned todos even when their project is unknown', () => {
     const pinned = makeTodo('e', 'pending', '2025-01-01T00:00:00Z', {
       project: 'projects/deleted',

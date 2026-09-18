@@ -9,6 +9,7 @@
 import type { HomesteadClient } from '@rambleraptor/homestead-client';
 import { collectionAt, serverClient } from '../client';
 import type { ChatToolCall } from '../../chat/types';
+import { referenceId } from '../../resources/references';
 import { parentIdParam, type ToolBinding } from './tools';
 
 /** Alternating `[plural, id, plural, id, ...]` segments naming a parent chain. */
@@ -61,7 +62,7 @@ async function validateReferences(
     for (const id of ids) {
       if (typeof id !== 'string' || id.length === 0) continue;
       try {
-        await hs.collection(ref.plural).get(id);
+        await hs.collection(ref.plural).get(referenceId(id, ref.plural));
       } catch {
         return `no ${ref.plural} record with id "${id}" (referenced by "${ref.field}")`;
       }

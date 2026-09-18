@@ -18,7 +18,7 @@ import { serverClient } from '../client';
 import { getEmbeddingModelId, isEmbeddingConfigured } from '../ai/config';
 import { aiEmbed, tool } from '../ai/generate';
 import { fileEmbeds } from '../../resources/ai-fields';
-import { referenceFields } from '../../resources/references';
+import { referenceFields, referenceId } from '../../resources/references';
 import type { ResourceDefinition } from '../../resources/types';
 import { getVectorStore } from '../vectors/store';
 import type { ChatToolCall } from '../../chat/types';
@@ -172,7 +172,7 @@ export function makeSearchTool(opts: {
         if (labelCache.has(ck)) return labelCache.get(ck);
         let label: string | undefined;
         try {
-          label = pickTitle(await hs.collection(plural).get(id));
+          label = pickTitle(await hs.collection(plural).get(referenceId(id, plural)));
         } catch {
           label = undefined; // inaccessible target — leave the id unlabeled
         }

@@ -32,3 +32,15 @@ export function referenceFields(def: ResourceDefinition): FieldReference[] {
   }
   return out;
 }
+
+/**
+ * The bare record id a stored reference value names. Reference values are
+ * stored in two shapes — the bare id (`abc`) or the target's resource path
+ * (`projects/abc`); the SPA writes paths for some fields while the chat/MCP
+ * tools write bare ids — so anything that fetches a reference's target goes
+ * through here rather than assuming one shape.
+ */
+export function referenceId(value: string, plural: string): string {
+  const prefix = `${plural}/`;
+  return value.startsWith(prefix) ? value.slice(prefix.length) : value;
+}

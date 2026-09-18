@@ -25,6 +25,7 @@ import { USERS } from '@rambleraptor/homestead-core/resources/builtins';
 import { PERSONAL_TODOS, PROJECTS, TODOS } from '../resources';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { PersonalTodo, Todo } from '../types';
+import { projectIdOf } from './useTodos';
 
 interface DeleteProjectVars {
   projectId: string;
@@ -40,17 +41,17 @@ export function useDeleteProject() {
       projectId,
       deleteTodos = false,
     }: DeleteProjectVars): Promise<void> => {
-      const projectRef = `projects/${projectId}`;
+      const inProject = (t: { project?: string }) => projectIdOf(t) === projectId;
       const userId = aepbase.getCurrentUser()?.id;
 
       const todos = await aepbase.list<Todo>(TODOS);
-      const members = todos.filter((t) => t.project === projectRef);
+      const members = todos.filter(inProject);
       const personal = userId
         ? (
             await aepbase.list<PersonalTodo>(PERSONAL_TODOS, {
               parent: [USERS, userId],
             })
-          ).filter((t) => t.project === projectRef)
+          ).filter(inProject)
         : [];
       const personalParent = { parent: [USERS, userId ?? ''] };
 

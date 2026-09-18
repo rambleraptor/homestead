@@ -192,6 +192,18 @@ describe('executeToolCall — reference validation', () => {
     expect(createFn).toHaveBeenCalledWith('/games', { owner: 'p-1' });
   });
 
+  it('accepts a reference given as the target resource path', async () => {
+    // The SPA stores some references as `people/p-1`; the check must resolve
+    // that to the record rather than fetching `/people/people%2Fp-1`.
+    const out = await executeToolCall(
+      { name: 'create_game', args: { owner: 'people/p-1' } },
+      refBindings,
+      TOKEN,
+    );
+    expect(getFn).toHaveBeenCalledWith('/people/p-1');
+    expect(out.ok).toBe(true);
+  });
+
   it('rejects a create whose reference id does not resolve, without writing', async () => {
     getFn.mockRejectedValueOnce(new Error('people/missing → 404'));
     const out = await executeToolCall(
