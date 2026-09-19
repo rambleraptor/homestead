@@ -5,7 +5,6 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { loadHands, newHandId, saveHands } from '../storage';
 import type { Hand, HandFormData } from '../types';
 
@@ -40,9 +39,6 @@ export function useCreateHand() {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.app('bridge').all(),
       });
-    },
-    onError: (error) => {
-      logger.error('Failed to save bridge hand', error);
     },
   });
 }

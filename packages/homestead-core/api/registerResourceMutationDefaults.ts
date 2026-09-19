@@ -22,7 +22,6 @@ import type { QueryClient, MutationOptions } from '@tanstack/react-query';
 import { onlineManager } from '@tanstack/react-query';
 import { aepbase, type ParentPath } from './aepbase';
 import { queryKeys } from './queryClient';
-import { logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // Temp-id helpers
@@ -432,8 +431,7 @@ export function registerResourceMutationDefaults<
       // renders from cache instead of round-tripping for what we just got.
       writeDetail(created.id, created);
     },
-    onError: (error, _vars, context) => {
-      logger.error(`Failed to create ${singular}`, error);
+    onError: (_error, _vars, context) => {
       if (context?.previous !== undefined) {
         qc.setQueryData<T[]>(listKey, context.previous);
       }
@@ -517,8 +515,7 @@ export function registerResourceMutationDefaults<
       // so the detail slot a caller opened may still be keyed by it.
       if (vars.id !== updated.id) writeDetail(vars.id, updated);
     },
-    onError: (error, vars, context) => {
-      logger.error(`Failed to update ${singular}`, error);
+    onError: (_error, vars, context) => {
       if (context?.previous !== undefined) {
         qc.setQueryData<T[]>(listKey, context.previous);
       }
@@ -588,8 +585,7 @@ export function registerResourceMutationDefaults<
       qc.removeQueries({ queryKey: detailKey(id), exact: true });
       return { previous, previousDetail };
     },
-    onError: (error, vars, context) => {
-      logger.error(`Failed to delete ${singular}`, error);
+    onError: (_error, vars, context) => {
       if (context?.previous !== undefined) {
         qc.setQueryData<T[]>(listKey, context.previous);
       }

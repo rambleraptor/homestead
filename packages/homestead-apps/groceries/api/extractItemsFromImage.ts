@@ -9,7 +9,6 @@
  * ever this app, so it belongs here.
  */
 
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { GROCERIES } from '../resources';
 
@@ -29,24 +28,22 @@ export interface ExtractedGroceryItem {
   name: string;
 }
 
+/**
+ * Errors propagate as thrown: the mutation this runs under toasts them with
+ * the server's own message (e.g. "AI is not configured"), which beats the
+ * generic wording this used to substitute.
+ */
 export async function extractGroceryItemsFromImage(
   imageFile: File,
 ): Promise<ExtractedGroceryItem[]> {
-  try {
-    logger.info('Sending image to backend for processing');
-    const base64Image = await fileToBase64(imageFile);
+  const base64Image = await fileToBase64(imageFile);
 
-    const response = await aepbase.customMethod<{
-      items: ExtractedGroceryItem[];
-      message: string;
-    }>(GROCERIES, 'process-image', {
-      image: base64Image,
-      mimeType: imageFile.type,
-    });
-    logger.info(response.message);
-    return response.items;
-  } catch (error) {
-    logger.error('Failed to extract grocery items from image', error);
-    throw new Error('Failed to extract grocery items from image. Please try again.');
-  }
+  const response = await aepbase.customMethod<{
+    items: ExtractedGroceryItem[];
+    message: string;
+  }>(GROCERIES, 'process-image', {
+    image: base64Image,
+    mimeType: imageFile.type,
+  });
+  return response.items;
 }

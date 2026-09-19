@@ -26,7 +26,6 @@ import { RecipeForm } from './RecipeForm';
 import { RecipeImage } from './RecipeImage';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { decimalToFraction } from '@rambleraptor/homestead-core/shared/utils/fractionUtils';
 import type { RecipeFormData, RecipeIngredient } from '../types';
 
@@ -47,7 +46,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
       await updateMutation.mutateAsync({ id: recipeId, data });
       setIsEditing(false);
     } catch (err) {
-      logger.error('Failed to save recipe', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

@@ -8,7 +8,6 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { DOCUMENTS } from '../resources';
 import { invalidateDocuments } from './useDocuments';
 import type { Document } from '../types';
@@ -26,7 +25,6 @@ export function useUpdateDocument() {
       await invalidateDocuments();
       return doc;
     },
-    onError: (error) => logger.error('Failed to update document', error),
   });
 }
 
@@ -36,6 +34,5 @@ export function useDeleteDocument() {
       await aepbase.remove(DOCUMENTS, id);
       await invalidateDocuments();
     },
-    onError: (error) => logger.error('Failed to delete document', error),
   });
 }

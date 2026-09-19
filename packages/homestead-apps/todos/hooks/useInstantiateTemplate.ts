@@ -8,7 +8,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import {
   CATEGORIES,
   LIST_TEMPLATES,
@@ -85,6 +84,5 @@ export function useInstantiateTemplate() {
         queryKey: queryKeys.app('todos').all(),
       });
     },
-    onError: (error) => logger.error('Template instantiate error', error),
   });
 }

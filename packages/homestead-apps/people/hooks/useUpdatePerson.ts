@@ -6,7 +6,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { PEOPLE } from '../resources';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { PersonFormData } from '../types';
 import {
   findSharedDataForPerson,
@@ -91,6 +90,5 @@ export function useUpdatePerson() {
         });
       }
     },
-    onError: (error) => logger.error('Person update mutation error', error),
   });
 }

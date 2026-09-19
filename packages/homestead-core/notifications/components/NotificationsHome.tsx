@@ -8,7 +8,6 @@ import { useNotifications } from '../hooks/useNotifications';
 import { useScheduledNotifications } from '../hooks/useScheduledNotifications';
 import { ScheduledSection } from './ScheduledSection';
 import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { Notification } from '../types';
 
 /**
@@ -34,7 +33,7 @@ function NotificationsPanel() {
     try {
       await markAsRead.mutateAsync(id);
     } catch (error) {
-      logger.error('Failed to mark notification as read', error);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

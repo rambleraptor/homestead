@@ -5,7 +5,6 @@ import {
   PERSONAL_ACCESS_TOKENS,
 } from '@rambleraptor/homestead-core/resources/builtins';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 /** One scope granted to a token — a capability over a target (a grant). */
 export interface TokenScope {
@@ -41,17 +40,14 @@ export const personalAccessTokensKey = queryKeys
 export function usePersonalAccessTokens() {
   return useQuery({
     queryKey: personalAccessTokensKey,
+    // Rejects on failure so the settings card can say the list didn't load,
+    // rather than showing "no tokens" for an account that has some.
     queryFn: async (): Promise<AepPersonalAccessToken[]> => {
-      try {
-        const userId = aepbase.getCurrentUser()?.id;
-        if (!userId) return [];
-        return await aepbase.list<AepPersonalAccessToken>(PERSONAL_ACCESS_TOKENS, {
-          parent: [USERS, userId],
-        });
-      } catch (error) {
-        logger.error('Failed to fetch personal access tokens', error);
-        return [];
-      }
+      const userId = aepbase.getCurrentUser()?.id;
+      if (!userId) return [];
+      return aepbase.list<AepPersonalAccessToken>(PERSONAL_ACCESS_TOKENS, {
+        parent: [USERS, userId],
+      });
     },
   });
 }

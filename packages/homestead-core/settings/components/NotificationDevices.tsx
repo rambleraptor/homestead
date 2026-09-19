@@ -5,7 +5,7 @@ import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
 import {
   describeCurrentDevice,
   getCurrentPushSubscription,
@@ -24,7 +24,12 @@ import { useSendTestNotification } from '../hooks/useSendTestNotification';
 
 export function NotificationDevices() {
   const toast = useToast();
-  const { data: subscriptions = [], isLoading } = useNotificationSubscriptions();
+  const {
+    data: subscriptions = [],
+    isLoading,
+    isError,
+    error: loadError,
+  } = useNotificationSubscriptions();
   const updateSubscription = useUpdateNotificationSubscription();
   const deleteSubscription = useDeleteNotificationSubscription();
   const sendTestNotification = useSendTestNotification();
@@ -73,8 +78,11 @@ export function NotificationDevices() {
       setCurrentEndpoint(pushSubscription.endpoint);
       toast.success('Notifications enabled on this device.');
     } catch (error) {
-      logger.error('Failed to enable notifications', error);
-      toast.error('Failed to enable notifications. Please try again.');
+      // The subscription hooks opt out of the global mutation toast, so this
+      // is the one place the failure is shown. The browser's own message
+      // ("not supported", a denied permission) is more useful than a generic
+      // one here, so pass the error through rather than restating it.
+      toast.error(error);
     }
   };
 
@@ -84,8 +92,7 @@ export function NotificationDevices() {
       const result = await sendTestNotification.mutateAsync(sub.id);
       toast.success(result.message || 'Test notification sent.');
     } catch (error) {
-      logger.error('Failed to send test notification', error);
-      toast.error('Failed to send test notification. Please try again.');
+      toast.error(error);
     } finally {
       setTestingId(null);
     }
@@ -102,8 +109,7 @@ export function NotificationDevices() {
       await deleteSubscription.mutateAsync(sub.id);
       toast.success('Device removed.');
     } catch (error) {
-      logger.error('Failed to deregister device', error);
-      toast.error('Failed to remove device. Please try again.');
+      toast.error(error);
     } finally {
       setConfirmTarget(null);
     }
@@ -165,7 +171,11 @@ export function NotificationDevices() {
           )}
         </div>
 
-        {subscriptions.length === 0 ? (
+        {isError ? (
+          <p className="text-sm text-red-600" role="alert" data-testid="devices-error">
+            Couldn&apos;t load your devices: {getAepErrorMessage(loadError)}
+          </p>
+        ) : subscriptions.length === 0 ? (
           <p className="text-sm text-gray-500" data-testid="no-devices">
             No devices are registered for notifications yet.
           </p>

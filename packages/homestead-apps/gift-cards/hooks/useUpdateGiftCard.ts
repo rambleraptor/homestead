@@ -44,8 +44,5 @@ export function useUpdateGiftCard() {
         queryKey: queryKeys.app('gift-cards').all(),
       });
     },
-    onError: (error) => {
-      logger.error('Gift card update mutation error', error);
-    },
   });
 }

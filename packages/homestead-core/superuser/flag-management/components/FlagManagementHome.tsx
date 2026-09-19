@@ -15,7 +15,7 @@ import {
 import { useAppFlags } from '@rambleraptor/homestead-core/settings/hooks/useAppFlags';
 import { useUpdateAppFlag } from '@rambleraptor/homestead-core/settings/hooks/useUpdateAppFlag';
 import { unflatten } from '@rambleraptor/homestead-core/settings/flags';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import {
   APP_FLAGS_DEFINITION_QUERY_KEY,
   useAppFlagsDefinition,
@@ -28,6 +28,7 @@ export function FlagManagementHome() {
   const values = unflatten(record, defs);
   const update = useUpdateAppFlag();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   // If aepbase has no `app-flag` resource definition yet (e.g. the
   // Next.js instrumentation hook skipped the sync because the admin env
@@ -49,13 +50,15 @@ export function FlagManagementHome() {
           queryKey: APP_FLAGS_DEFINITION_QUERY_KEY,
         });
       } catch (error) {
-        logger.error('Failed to register app-flags schema', error);
+        // Not a mutation, so nothing else reports it: a superuser who lands
+        // here and sees no flags should be told why.
+        if (!cancelled) toast.error(error);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [isMissing, queryClient]);
+  }, [isMissing, queryClient, toast]);
 
   const handleChange = async (
     appId: string,
@@ -64,9 +67,8 @@ export function FlagManagementHome() {
   ) => {
     try {
       await update.mutateAsync({ appId, key, value });
-    } catch (error) {
-      // Toast surfaced by the global mutation error handler (queryClient.ts).
-      logger.error('Failed to update app flag', error);
+    } catch {
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

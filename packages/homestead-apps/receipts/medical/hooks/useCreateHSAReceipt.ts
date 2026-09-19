@@ -37,6 +37,5 @@ export function useCreateHSAReceipt() {
       await queryClient.refetchQueries({ queryKey: queryKeys.app('receipts').all() });
       logger.info('HSA receipt created successfully');
     },
-    onError: (error) => logger.error('Failed to create HSA receipt', error),
   });
 }

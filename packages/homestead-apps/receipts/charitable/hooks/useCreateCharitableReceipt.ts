@@ -50,6 +50,5 @@ export function useCreateCharitableReceipt() {
       await queryClient.refetchQueries({ queryKey: queryKeys.app('receipts').all() });
       logger.info('Charitable receipt created successfully');
     },
-    onError: (error) => logger.error('Failed to create charitable receipt', error),
   });
 }

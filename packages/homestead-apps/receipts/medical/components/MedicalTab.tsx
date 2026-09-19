@@ -13,7 +13,6 @@ import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Ske
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { ReceiptKPICard } from '../../shared/ReceiptKPICard';
 import { useHSAStats } from '../hooks/useHSAStats';
 import { useCreateHSAReceipt } from '../hooks/useCreateHSAReceipt';
@@ -51,7 +50,7 @@ export function MedicalTab({ addOpen, onOpenAdd, onCloseAdd }: MedicalTabProps) 
       await createMutation.mutateAsync(data);
       onCloseAdd();
     } catch (err) {
-      logger.error('Failed to create HSA receipt', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -65,7 +64,7 @@ export function MedicalTab({ addOpen, onOpenAdd, onCloseAdd }: MedicalTabProps) 
     try {
       await updateMutation.mutateAsync({ id, data: { status: 'Reimbursed' } });
     } catch (err) {
-      logger.error('Failed to mark receipt as reimbursed', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

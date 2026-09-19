@@ -19,7 +19,6 @@ import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
 import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import { useAppFlag } from '@rambleraptor/homestead-core/settings';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 export function GroceriesHome() {
   const [itemName, setItemName] = useState('');
@@ -78,7 +77,7 @@ export function GroceriesHome() {
       await deleteAllMutation.mutateAsync();
       setShowClearConfirm(false);
     } catch (err) {
-      logger.error('Failed to delete all grocery items', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -86,7 +85,7 @@ export function GroceriesHome() {
     try {
       await notifyMutation.mutateAsync();
     } catch (err) {
-      logger.error('Failed to send grocery notification', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { GIFT_CARDS } from '../resources';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { GiftCard, GiftCardFormData } from '../types';
 import { buildGiftCardFormData, buildGiftCardData } from '../utils/formData';
 
@@ -30,6 +29,5 @@ export function useCreateGiftCard() {
         queryKey: queryKeys.app('gift-cards').all(),
       });
     },
-    onError: (error) => logger.error('Gift card creation mutation error', error),
   });
 }

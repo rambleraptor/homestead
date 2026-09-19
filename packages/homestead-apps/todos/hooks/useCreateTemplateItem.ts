@@ -7,7 +7,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { LIST_TEMPLATES, TEMPLATE_ITEMS } from '../resources';
 import type { TemplateItem } from '../types';
 
@@ -40,6 +39,5 @@ export function useCreateTemplateItem() {
         queryKey: queryKeys.app('todos').all(),
       });
     },
-    onError: (error) => logger.error('Template item create error', error),
   });
 }

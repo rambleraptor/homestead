@@ -23,7 +23,6 @@ import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { USERS } from '@rambleraptor/homestead-core/resources/builtins';
 import { PERSONAL_TODOS, PROJECTS, TODOS } from '../resources';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { PersonalTodo, Todo } from '../types';
 import { projectIdOf } from './useTodos';
 
@@ -87,6 +86,5 @@ export function useDeleteProject() {
         queryKey: queryKeys.app('todos').all(),
       });
     },
-    onError: (error) => logger.error('Project delete mutation error', error),
   });
 }

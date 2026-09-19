@@ -5,7 +5,7 @@ import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
 import { useConnectedApps, type ConnectedApp } from '../hooks/useConnectedApps';
 import { useRevokeConnectedApp } from '../hooks/useRevokeConnectedApp';
 
@@ -29,7 +29,7 @@ function formatDate(value?: string): string | null {
 
 export function ConnectedApps() {
   const toast = useToast();
-  const { data: apps = [], isLoading } = useConnectedApps();
+  const { data: apps = [], isLoading, isError, error: loadError } = useConnectedApps();
   const revoke = useRevokeConnectedApp();
   const [confirmTarget, setConfirmTarget] = useState<ConnectedApp | null>(null);
 
@@ -37,9 +37,8 @@ export function ConnectedApps() {
     try {
       await revoke.mutateAsync(app.client_id);
       toast.success('App disconnected.');
-    } catch (error) {
-      logger.error('Failed to disconnect app', error);
-      toast.error('Failed to disconnect. Please try again.');
+    } catch {
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     } finally {
       setConfirmTarget(null);
     }
@@ -68,7 +67,11 @@ export function ConnectedApps() {
           </div>
         </div>
 
-        {apps.length === 0 ? (
+        {isError ? (
+          <p className="text-sm text-red-600" role="alert" data-testid="connected-apps-error">
+            Couldn&apos;t load connected apps: {getAepErrorMessage(loadError)}
+          </p>
+        ) : apps.length === 0 ? (
           <p className="text-sm text-gray-500" data-testid="no-connected-apps">
             You haven&apos;t connected any apps yet.
           </p>

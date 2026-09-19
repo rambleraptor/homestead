@@ -56,7 +56,6 @@ export function useUploadBundle() {
       return doc;
     },
     onSuccess: () => logger.info('Bundle uploaded'),
-    onError: (error) => logger.error('Failed to upload bundle', error),
   });
 }
 
@@ -70,6 +69,5 @@ export function useSplitDocument() {
       await invalidateDocuments();
       return aepbase.customMethod<{ id: string }>(DOCUMENTS, 'split', undefined, { id });
     },
-    onError: (error) => logger.error('Failed to split document', error),
   });
 }

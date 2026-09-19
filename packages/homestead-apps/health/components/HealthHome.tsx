@@ -13,7 +13,6 @@ import { AlertCircle, Plus, ShieldCheck } from 'lucide-react';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { useVaccines } from '../hooks/useVaccines';
 import {
   useCreateVaccine,
@@ -99,7 +98,7 @@ export function HealthHome() {
       }
       backToList();
     } catch (err) {
-      logger.error('Failed to save vaccine', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -116,7 +115,7 @@ export function HealthHome() {
       setExpandedIds((prev) => new Set(prev).add(vaccineId));
       backToList();
     } catch (err) {
-      logger.error('Failed to save vaccination', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

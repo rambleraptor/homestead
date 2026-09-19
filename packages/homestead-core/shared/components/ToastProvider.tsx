@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback } from 'react';
+import { createContext, useContext, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { toast as sonnerToast } from 'sonner';
 import { Toaster } from '@rambleraptor/homestead-core/shared/components/ui/sonner';
@@ -136,7 +136,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const value = { showToast, success, error, info, warning, undo, celebrate };
+  // Every member is a stable callback, so the context value can be too — a
+  // consumer may list `toast` in an effect's deps without re-running it on
+  // every render.
+  const value = useMemo(
+    () => ({ showToast, success, error, info, warning, undo, celebrate }),
+    [showToast, success, error, info, warning, undo, celebrate],
+  );
 
   return (
     <ToastContext.Provider value={value}>

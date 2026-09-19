@@ -22,7 +22,6 @@ import {
   AppFiltersProvider,
   useFilteredItems,
 } from '@rambleraptor/homestead-core/shared/filters';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { recipesApp } from '../app.config';
 import type { Recipe, RecipeFormData } from '../types';
 
@@ -72,7 +71,7 @@ export function RecipesHome() {
       setView('list');
       setEditingRecipe(null);
     } catch (err) {
-      logger.error('Failed to save recipe', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

@@ -3,7 +3,6 @@ import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { USERS } from '@rambleraptor/homestead-core/resources/builtins';
 import { NOTIFICATION_SUBSCRIPTIONS } from '@rambleraptor/homestead-core/notifications/constants';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { NotificationSubscription } from '../types';
 
 export interface AepNotificationSubscription extends NotificationSubscription {
@@ -25,18 +24,15 @@ export const notificationSubscriptionsKey = queryKeys
 export function useNotificationSubscriptions() {
   return useQuery({
     queryKey: notificationSubscriptionsKey,
+    // A failed fetch is left to reject so the query reports it and the settings
+    // card can say so — swallowing it into an empty list read as "no devices",
+    // which is a different (and wrong) answer.
     queryFn: async (): Promise<AepNotificationSubscription[]> => {
-      try {
-        const userId = aepbase.getCurrentUser()?.id;
-        if (!userId) return [];
-        return await aepbase.list<AepNotificationSubscription>(
-          NOTIFICATION_SUBSCRIPTIONS,
-          { parent: [USERS, userId] },
-        );
-      } catch (error) {
-        logger.error('Failed to fetch notification subscriptions', error);
-        return [];
-      }
+      const userId = aepbase.getCurrentUser()?.id;
+      if (!userId) return [];
+      return aepbase.list<AepNotificationSubscription>(NOTIFICATION_SUBSCRIPTIONS, {
+        parent: [USERS, userId],
+      });
     },
   });
 }

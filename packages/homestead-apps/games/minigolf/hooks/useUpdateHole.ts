@@ -7,7 +7,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { GAMES, GAME_HOLES } from '../resources';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { Hole, HoleFormData } from '../types';
 
 interface UpdateHoleParams {
@@ -32,9 +31,6 @@ export function useUpdateHole() {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.app('minigolf').all(),
       });
-    },
-    onError: (error) => {
-      logger.error('Failed to update hole', error);
     },
   });
 }

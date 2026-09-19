@@ -17,7 +17,6 @@ import { MerchantDetail } from './MerchantDetail';
 import { GiftCardForm } from './GiftCardForm';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
 import type { GiftCard, GiftCardFormData } from '../types';
 
@@ -79,7 +78,7 @@ export function GiftCardHome() {
       setView('list');
       setEditingCard(null);
     } catch (err) {
-      logger.error('Failed to save gift card', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

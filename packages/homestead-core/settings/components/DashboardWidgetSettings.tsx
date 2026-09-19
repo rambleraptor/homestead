@@ -18,7 +18,6 @@ import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { getAllDashboardWidgets } from '@rambleraptor/homestead-core/apps/registry';
 import type { RegisteredDashboardWidget } from '@rambleraptor/homestead-core/apps/registry';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
@@ -117,7 +116,6 @@ export function DashboardWidgetSettings() {
       toast.success('Dashboard widgets updated');
     } catch (error) {
       // Toast surfaced by the global mutation error handler (queryClient.ts).
-      logger.error('Failed to update dashboard widgets', error);
     }
   };
 

@@ -17,7 +17,6 @@ import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/Co
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { ReminderOptInToggle } from '@rambleraptor/homestead-core/user-settings';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import {
   useCompleteHomeTask,
   useCreateHomeTask,
@@ -72,7 +71,7 @@ export function HomeTasks() {
       }
       closeForm();
     } catch (err) {
-      logger.error('Failed to save home task', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -80,7 +79,7 @@ export function HomeTasks() {
     try {
       await complete(task);
     } catch (err) {
-      logger.error('Failed to complete home task', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -88,7 +87,7 @@ export function HomeTasks() {
     try {
       await updateTask.mutateAsync({ id: task.id, data: { paused: !task.paused } });
     } catch (err) {
-      logger.error('Failed to pause home task', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -97,7 +96,7 @@ export function HomeTasks() {
     try {
       await deleteTask.mutateAsync(deleteTarget.id);
     } catch (err) {
-      logger.error('Failed to delete home task', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
     setDeleteTarget(null);
   };

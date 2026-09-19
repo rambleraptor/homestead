@@ -70,7 +70,11 @@ export function ScheduleForm({
       source_collection: { hidden: true },
       source_id: { hidden: true },
       title: { id: 'schedule-title' },
-      message: { id: 'schedule-message' },
+      // Required on the wire, optional here: `buildPayload` repeats the title
+      // when it's blank. Without this override the schema's `required` would
+      // make the engine reject every submit with an empty Details before a
+      // request is ever sent.
+      message: { id: 'schedule-message', required: false },
     },
     extraFields: {
       sendDate: { type: 'string', required: true },
@@ -170,12 +174,33 @@ export function ScheduleForm({
           rows={3}
           value={(form.values.message as string) ?? ''}
           onChange={(e) => form.setValue('message', e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2"
+          aria-invalid={form.errors.message ? true : undefined}
+          className={`w-full rounded-md border px-3 py-2 ${
+            form.errors.message ? 'border-red-500' : 'border-gray-300'
+          }`}
         />
-        <p className="text-sm text-gray-500 mt-1">
-          Shown under the title in the notification. Leave blank to repeat the title.
-        </p>
+        {form.errors.message ? (
+          <p className="text-sm text-red-600 mt-1" role="alert">
+            {form.errors.message}
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500 mt-1">
+            Shown under the title in the notification. Leave blank to repeat the title.
+          </p>
+        )}
       </div>
+
+      {/* A save that fails for a reason no single field owns (the engine
+          refused it, the network dropped) lands here rather than nowhere. */}
+      {form.formError && (
+        <p
+          className="text-sm text-red-600"
+          role="alert"
+          data-testid="schedule-form-error"
+        >
+          {form.formError}
+        </p>
+      )}
 
       <div className="flex gap-3 pt-4">
         <Button type="submit" disabled={busy} data-testid="schedule-form-submit">

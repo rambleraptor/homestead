@@ -7,7 +7,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { LIST_TEMPLATES } from '../resources';
 
 export function useDeleteListTemplate() {
@@ -22,6 +21,5 @@ export function useDeleteListTemplate() {
         queryKey: queryKeys.app('todos').all(),
       });
     },
-    onError: (error) => logger.error('List template delete error', error),
   });
 }
