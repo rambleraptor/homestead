@@ -87,6 +87,7 @@ export const eventsApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.CalendarHeart),
     basePath: '/events',
+    homeScreenIcon: '/app-icons/events.png',
     routes: [
       {
         path: '',

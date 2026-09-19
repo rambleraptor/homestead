@@ -17,6 +17,7 @@ export const recipesApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.ChefHat),
     basePath: '/recipes',
+    homeScreenIcon: '/app-icons/recipes.png',
     routes: [
       {
         path: '',

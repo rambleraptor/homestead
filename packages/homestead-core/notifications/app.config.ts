@@ -51,6 +51,7 @@ export const notificationsApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.Bell),
     basePath: '/notifications',
+    homeScreenIcon: '/app-icons/notifications.png',
     routes: [
       {
         path: '',

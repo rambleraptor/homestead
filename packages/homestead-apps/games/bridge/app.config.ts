@@ -15,6 +15,7 @@ export const bridgeApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.Club),
     basePath: '/games/bridge',
+    homeScreenIcon: '/app-icons/bridge.png',
     routes: [
       {
         path: '',

@@ -16,6 +16,7 @@ export const chatApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.MessageCircle),
     basePath: '/chat',
+    homeScreenIcon: '/app-icons/chat.png',
     routes: [
       {
         path: '',

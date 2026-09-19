@@ -17,6 +17,7 @@ export const pictionaryApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.Pencil),
     basePath: '/games/pictionary',
+    homeScreenIcon: '/app-icons/pictionary.png',
     routes: [
       {
         path: '',

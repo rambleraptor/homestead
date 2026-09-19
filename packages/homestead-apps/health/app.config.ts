@@ -19,6 +19,7 @@ export const healthApp: AppConfig = {
     // SERVER_PREFIXES in homestead-server/src/options.ts) and never reaches
     // the SPA.
     basePath: '/health-records',
+    homeScreenIcon: '/app-icons/health.png',
     routes: [
       {
         path: '',

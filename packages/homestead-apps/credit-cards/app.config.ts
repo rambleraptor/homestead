@@ -35,6 +35,7 @@ export const creditCardsApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.CreditCard),
     basePath: '/credit-cards',
+    homeScreenIcon: '/app-icons/credit-cards.png',
     routes: [
       {
         path: '',
