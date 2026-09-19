@@ -13,10 +13,8 @@ import { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllApps } from '../../apps/registry';
 import { buildRouteEntries, matchRoute } from '../../apps/router/match';
-import {
-  applyHomeScreenIcon,
-  resetHomeScreenIcon,
-} from './homeScreenIcon';
+import { toHomeScreenApp } from './appManifest';
+import { applyHomeScreenIcon, resetHomeScreenIcon } from './homeScreenIcon';
 
 export function useHomeScreenIcon(): void {
   const { pathname } = useLocation();
@@ -27,19 +25,10 @@ export function useHomeScreenIcon(): void {
 
     const slug = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
     const match = matchRoute(slug, entries);
-    const mod = match?.app;
+    const app = match ? toHomeScreenApp(match.app) : null;
 
-    if (mod?.web?.homeScreenIcon) {
-      applyHomeScreenIcon(
-        document,
-        {
-          name: mod.name,
-          description: mod.description,
-          basePath: mod.web.basePath,
-          iconHref: mod.web.homeScreenIcon,
-        },
-        window.location.origin,
-      );
+    if (app) {
+      applyHomeScreenIcon(document, app);
     } else {
       resetHomeScreenIcon(document);
     }

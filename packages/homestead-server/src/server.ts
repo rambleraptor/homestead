@@ -166,6 +166,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   const spa = opts.dev ? null : (opts.spa ?? diskSpaAssets());
 
   const { makeHealthRoute } = await import('./routes/health');
+  const { makeAppManifestRoute } = await import('./routes/app-manifest');
+  const { findHomeScreenApp, injectHomeScreenHead } = await import(
+    '@rambleraptor/homestead-core/shared/pwa/appManifest'
+  );
+  // Requests for an app's path get that app's manifest, touch icon and title
+  // written into the served index.html, so an "Add to Home Screen" from a
+  // fresh load installs the app (iOS reads the head before the SPA runs).
+  const rewriteIndex = (html: string, path: string): string => {
+    const app = findHomeScreenApp(registry.getAllApps(), path);
+    return app ? injectHomeScreenHead(html, app) : html;
+  };
 
   const publicApp = new Hono();
   // Readiness check (probes the DB) — see routes/health.ts.
@@ -175,6 +186,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   // bumps it with no server restart; dev returns '' to disable the check.
   publicApp.get('/api/app-version', (c) => c.json({ buildId: spa?.version() ?? '' }));
   publicApp.get('/api/custom-methods', () => customMethodsResponse());
+  // Per-app web-app manifests for "Add to Home Screen" (see routes/app-manifest.ts).
+  publicApp.route('/api/app-manifest', makeAppManifestRoute(() => registry.getAllApps()));
   publicApp.route('/api/bulk-import', bulkImportTemplateRoute);
   publicApp.route('/api/setup', makeSetupRoute(engine.db));
   publicApp.route('/api/auth', makeAuthRoutes(engine.db, authService));
@@ -218,7 +231,11 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   let stopPublic: () => Promise<void> | void;
   if (opts.dev) {
     const { startDevServer } = await import('./dev-vite');
-    const dev = await startDevServer({ port: opts.publicPort, fetch: publicApp.fetch });
+    const dev = await startDevServer({
+      port: opts.publicPort,
+      fetch: publicApp.fetch,
+      rewriteIndex,
+    });
     stopPublic = dev.stop;
   } else {
     const server = await listen({
@@ -226,7 +243,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       fetch: (req) => {
         const path = new URL(req.url).pathname;
         if (isServerPath(path)) return publicApp.fetch(req);
-        return serveStatic(spa!, path);
+        return serveStatic(spa!, path, rewriteIndex);
       },
     });
     stopPublic = server.stop;

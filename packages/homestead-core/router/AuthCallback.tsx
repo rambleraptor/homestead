@@ -10,14 +10,16 @@
  * (`token` is also sent as an alias for the access token so older builds keep
  * working.) On success we hand the session to AuthContext (which resolves the
  * user via the whoami endpoint and hydrates preferences, same as password
- * login) and navigate to the dashboard. Provider/registration failures are
- * rendered by the callback as a JSON error before this page loads, so here we
- * only need to handle a missing token.
+ * login) and navigate to wherever the login page parked as the return path
+ * (`oauthReturn.ts`) — the dashboard when nothing was parked. Provider /
+ * registration failures are rendered by the callback as a JSON error before
+ * this page loads, so here we only need to handle a missing token.
  */
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
+import { takeOAuthReturnUrl } from '../auth/oauthReturn';
 import { Home, AlertCircle } from 'lucide-react';
 
 function parseFragment(): URLSearchParams {
@@ -48,7 +50,7 @@ export function AuthCallback() {
     let active = true;
     completeOAuthLogin({ accessToken, refreshToken, expiresIn })
       .then(() => {
-        if (active) navigate('/dashboard', { replace: true });
+        if (active) navigate(takeOAuthReturnUrl() ?? '/dashboard', { replace: true });
       })
       .catch((err) => {
         if (active) {

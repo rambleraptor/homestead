@@ -169,10 +169,14 @@ prerendered.
 
 Every user-facing app should set `web.homeScreenIcon` so an "Add to Home
 Screen" from anywhere inside the app installs *that app* — its own icon, name
-and start path — rather than the shared Homestead icon. While the user is
-inside an app that declares one, the SPA swaps the document's
-`apple-touch-icon`, web-app manifest and iOS title to the app's; leaving the
-app restores the Homestead defaults.
+and launch URL (`web.basePath`) — rather than the shared Homestead icon. The
+server serves each app's web-app manifest at `/api/app-manifest/<id>` and
+writes that manifest link, the touch icon and the iOS title into the
+`index.html` it serves for any path under the app, so the head is right on a
+fresh load (iOS reads it before the SPA runs). Client-side navigation keeps it
+in sync: entering an app that declares an icon swaps the tags to that app's,
+leaving it restores the Homestead defaults. The manifest's scope is the whole
+origin, so signing in inside an installed app stays in the app.
 
 The convention is `/app-icons/<app-id>.png`, a 512×512 full-bleed PNG served
 from the SPA's `public/` directory:

@@ -1,7 +1,11 @@
+export { applyHomeScreenIcon, resetHomeScreenIcon } from './homeScreenIcon';
 export {
-  applyHomeScreenIcon,
-  resetHomeScreenIcon,
-  buildAppManifestUrl,
-} from './homeScreenIcon';
-export type { HomeScreenApp } from './homeScreenIcon';
+  appManifestPath,
+  buildAppManifest,
+  findHomeScreenApp,
+  findHomeScreenAppById,
+  injectHomeScreenHead,
+  toHomeScreenApp,
+} from './appManifest';
+export type { HomeScreenApp } from './appManifest';
 export { useHomeScreenIcon } from './useHomeScreenIcon';

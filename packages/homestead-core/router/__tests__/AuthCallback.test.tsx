@@ -28,6 +28,7 @@ describe('AuthCallback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     completeOAuthLogin.mockResolvedValue(undefined);
+    window.sessionStorage.clear();
     setHash('');
   });
 
@@ -48,6 +49,22 @@ describe('AuthCallback', () => {
       }),
     );
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/dashboard', { replace: true }));
+  });
+
+  it('navigates to the return path the login page parked before the OAuth hop', async () => {
+    // An app installed to the home screen launches at its own path; the login
+    // page parks that path before leaving for the provider.
+    window.sessionStorage.setItem('homestead:oauth-return-url', '/todos');
+    setHash('#access_token=tok-1&refresh_token=ref-1&expires_in=3600');
+
+    render(
+      <MemoryRouter>
+        <AuthCallback />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/todos', { replace: true }));
+    expect(window.sessionStorage.getItem('homestead:oauth-return-url')).toBeNull();
   });
 
   it('still accepts a bare `token` alias from an older server', async () => {
