@@ -8,7 +8,7 @@ import { useMemo, useState, useRef } from 'react';
 import { Plus, Loader2, CheckCircle2, Image as ImageIcon, ListRestart, Store as StoreIcon, Bell } from 'lucide-react';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
 import { useStores } from '../hooks/useStores';
-import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
+import { useQuickAddGrocery } from '../hooks/useQuickAddGrocery';
 import { useDeleteAllGroceries } from '../hooks/useDeleteAllGroceries';
 import { GroceriesList } from './GroceriesList';
 import { ImageUploadDialog } from './ImageUploadDialog';
@@ -19,6 +19,7 @@ import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
 import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import { useAppFlag } from '@rambleraptor/homestead-core/settings';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 
 export function GroceriesHome() {
   const [itemName, setItemName] = useState('');
@@ -31,7 +32,8 @@ export function GroceriesHome() {
 
   const { stats } = useGroupedGroceries();
   const { data: stores = [] } = useStores();
-  const createMutation = useCreateGroceryItem();
+  const { quickAdd, createMutation } = useQuickAddGrocery();
+  const toast = useToast();
   const deleteAllMutation = useDeleteAllGroceries();
   const notifyMutation = useSendGroceryNotification();
   const { isOffline } = useOnlineStatus();
@@ -51,13 +53,19 @@ export function GroceriesHome() {
     const trimmed = itemName.trim();
     if (!trimmed) return;
 
-    // Fire-and-forget: optimistic onMutate puts the row in the cache
-    // immediately, so we don't need to await. Awaiting would deadlock the
-    // input while offline (the mutation stays paused until reconnect).
-    createMutation.mutate({
-      name: trimmed,
-      store: storeValue || undefined,
-    });
+    // Duplicate-aware: an item already on the list is not added twice, and a
+    // crossed-off one is put back instead (see useQuickAddGrocery). The toast
+    // is what tells the shopper why no new row appeared.
+    const outcome = quickAdd(trimmed, storeValue || undefined);
+    if (outcome.kind !== 'created') {
+      const storeName = stores.find((s) => s.id === outcome.item.store)?.name;
+      const where = storeName ? ` at ${storeName}` : '';
+      if (outcome.kind === 'already-listed') {
+        toast.info(`${outcome.item.name} is already on your list${where}`);
+      } else {
+        toast.success(`${outcome.item.name} is back on your list${where}`);
+      }
+    }
     setItemName('');
     inputRef.current?.focus();
   };
