@@ -43,7 +43,7 @@ describe('app manifest route', () => {
       name: 'Todos',
       short_name: 'Todos',
       description: 'Daily todo list',
-      start_url: '/todos',
+      start_url: '/todos?chrome=none',
       scope: '/',
       display: 'standalone',
     });
@@ -56,7 +56,9 @@ describe('app manifest route', () => {
   test('reaches nested child apps', async () => {
     const res = await route.request('/minigolf');
     expect(res.status).toBe(200);
-    expect(((await res.json()) as { start_url: string }).start_url).toBe('/games/minigolf');
+    expect(((await res.json()) as { start_url: string }).start_url).toBe(
+      '/games/minigolf?chrome=none',
+    );
   });
 
   test('404s for an unknown app or one without a home-screen icon', async () => {

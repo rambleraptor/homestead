@@ -30,15 +30,17 @@ export function AuthGuard({
 }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      // Save the location they were trying to access via query param
-      const returnUrl = encodeURIComponent(pathname);
+      // Save the location they were trying to access via query param. The
+      // query string rides along: a home-screen launch URL carries
+      // `?chrome=none`, which must survive the trip through the login page.
+      const returnUrl = encodeURIComponent(`${pathname}${search}`);
       navigate(`${redirectTo}?returnUrl=${returnUrl}`, { replace: true });
     }
-  }, [isLoading, isAuthenticated, navigate, pathname, redirectTo]);
+  }, [isLoading, isAuthenticated, navigate, pathname, search, redirectTo]);
 
   if (isLoading) {
     if (!showLoading) return null;

@@ -13,6 +13,7 @@
  */
 
 import type { AppConfig } from '../../apps/types';
+import { chromelessUrl } from '../../layout/chromeMode';
 
 /** Brand color, kept in sync with `packages/homestead-app/index.html`. */
 export const THEME_COLOR = '#F7F9FC';
@@ -45,11 +46,13 @@ function guessImageType(href: string): string {
 }
 
 /**
- * The web-app manifest for one app. `start_url` is the app's base path; the
- * scope is the whole origin so the login page, the OAuth callback and links
- * into other apps all stay inside the installed app instead of popping out
- * to a browser. Paths are root-relative — a manifest served from a real URL
- * resolves them against the origin.
+ * The web-app manifest for one app. `start_url` is the app's base path with
+ * `?chrome=none`, so the installed app opens without the sidebar and top bar
+ * and reads as its own app (`layout/chromeMode.ts`); the scope is the whole
+ * origin so the login page, the OAuth callback and links into other apps all
+ * stay inside the installed app instead of popping out to a browser. Paths
+ * are root-relative — a manifest served from a real URL resolves them against
+ * the origin.
  */
 export function buildAppManifest(app: HomeScreenApp): Record<string, unknown> {
   const type = guessImageType(app.iconHref);
@@ -58,7 +61,7 @@ export function buildAppManifest(app: HomeScreenApp): Record<string, unknown> {
     name: app.name,
     short_name: app.name,
     ...(app.description ? { description: app.description } : {}),
-    start_url: app.basePath,
+    start_url: chromelessUrl(app.basePath),
     scope: '/',
     display: 'standalone',
     theme_color: THEME_COLOR,
