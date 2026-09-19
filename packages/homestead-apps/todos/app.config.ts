@@ -8,7 +8,7 @@ import { todosResources } from './resources';
 export const todosApp: AppConfig = {
   id: 'todos',
   name: 'Todos',
-  description: 'Daily todo list with progress tracking.',
+  description: 'Daily todo list, with shared and private items.',
   resources: todosResources,
   migrations: [
     {

@@ -5,12 +5,14 @@
  * session survives the whole worker (matches the recipes spec rationale).
  */
 
+import { expect } from '@playwright/test';
 import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
 import { TodosPage } from './TodosPage';
 import {
   createTodo,
   deleteAllPersonalTodos,
   deleteAllTodos,
+  listTodos,
 } from './helpers';
 
 test.describe('Todos CRUD', () => {
@@ -31,7 +33,6 @@ test.describe('Todos CRUD', () => {
   test('adds a new todo via the inline input', async () => {
     await todosPage.addTodo('Buy milk');
     await todosPage.expectInActive('Buy milk');
-    await todosPage.expectGreenSegmentZero();
   });
 
   test('adds a personal todo by default (shows the personal rail)', async () => {
@@ -51,7 +52,14 @@ test.describe('Todos CRUD', () => {
     await todosPage.goto();
 
     await todosPage.markComplete('Pay rent');
-    await todosPage.expectCompletedAndGone('Pay rent');
+    // A finished todo leaves the list — there is no Completed section to find
+    // it in — so the record itself is the only place to confirm the status.
+    await todosPage.expectRowAbsent('Pay rent');
+    await expect
+      .poll(async () =>
+        (await listTodos(adminToken)).find((t) => t.title === 'Pay rent')?.status,
+      )
+      .toBe('completed');
   });
 
   test('the undo toast puts a completed todo back', async ({ adminToken }) => {
@@ -63,7 +71,6 @@ test.describe('Todos CRUD', () => {
 
     await todosPage.undoFromToast();
     await todosPage.expectInActive('Pay rent');
-    await todosPage.expectGreenSegmentZero();
   });
 
   test('moves a todo to Do Later', async ({ adminToken }) => {

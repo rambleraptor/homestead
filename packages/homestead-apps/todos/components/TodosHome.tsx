@@ -3,8 +3,9 @@ import { useLocation } from 'react-router-dom';
 import { AlertCircle, ListChecks } from 'lucide-react';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { useTodoBuckets } from '../hooks/useTodos';
+import { finishesList, useTodoBuckets } from '../hooks/useTodos';
 import { useProjects } from '../hooks/useProjects';
+import { useDeleteProject } from '../hooks/useDeleteProject';
 import { useCategories, groupTodosByCategory } from '../hooks/useCategories';
 import { useCreateTodo } from '../hooks/useCreateTodo';
 import { useCreatePersonalTodo } from '../hooks/useCreatePersonalTodo';
@@ -16,12 +17,12 @@ import {
 } from '../hooks/useSyntheticTodos';
 import {
   MAIN_PROJECT_ID,
+  type Project,
   type ProjectScope,
   type TodoItem,
   type TodoKind,
   type TodoStatus,
 } from '../types';
-import { TodoProgressBar } from './TodoProgressBar';
 import { AddTodoInput } from './AddTodoInput';
 import { TodoRow } from './TodoRow';
 import { CategoryManager } from './CategoryManager';
@@ -47,20 +48,14 @@ export function TodosHome() {
     (location.state as { scope?: ProjectScope } | null)?.scope ??
     MAIN_PROJECT_ID;
   const [scope, setScope] = useState<ProjectScope>(initialScope);
-  const {
-    buckets,
-    progress,
-    scoped,
-    isLoading,
-    isError,
-    error,
-  } = useTodoBuckets(scope);
+  const { buckets, scoped, isLoading, isError, error } = useTodoBuckets(scope);
   const projectsQuery = useProjects();
   const synthetic = useSyntheticTodos();
   const create = useCreateTodo();
   const createPersonal = useCreatePersonalTodo();
   const update = useUpdateTodo();
   const updatePersonal = useUpdatePersonalTodo();
+  const deleteProject = useDeleteProject();
   const toast = useToast();
 
   const isMain = scope === MAIN_PROJECT_ID;
@@ -71,16 +66,13 @@ export function TodosHome() {
   // Target category for newly-added todos in this project view.
   const [addCategoryId, setAddCategoryId] = useState('');
 
-  const isUpdating = update.isPending || updatePersonal.isPending;
+  const isUpdating =
+    update.isPending || updatePersonal.isPending || deleteProject.isPending;
   const isCreating = create.isPending || createPersonal.isPending;
-  // Completion counts share the progress bar's basis: cancelled items are
-  // excluded, so `done / total` matches the green percentage exactly.
-  const nonCancelled = scoped.filter((t) => t.status !== 'cancelled');
-  const doneCount = nonCancelled.filter((t) => t.status === 'completed').length;
-  const totalCount = nonCancelled.length;
   const projectsById = new Map(
     (projectsQuery.data ?? []).map((p) => [p.id, p]),
   );
+  const activeProject = isMain ? null : (projectsById.get(scope) ?? null);
 
   // Where a new todo lands: the list in view, and the category chosen for it.
   // Identical for both kinds — a private todo is filed exactly like a shared
@@ -110,7 +102,43 @@ export function TodosHome() {
     update.mutate({ id: todo.id, data: { status } });
   };
 
+  const setStatusAsync = (todo: TodoItem, status: TodoStatus) =>
+    todo.kind === 'personal'
+      ? updatePersonal.mutateAsync({ id: todo.id, data: { status } })
+      : update.mutateAsync({ id: todo.id, data: { status } });
+
+  /**
+   * Checking off the last open item in a temporary list retires the list: the
+   * item is marked first, then the list goes — todos and all, since every one
+   * of them is done — and the view returns to Main. Nothing is left to undo
+   * into, so this toast celebrates instead of offering a way back.
+   */
+  const finishTemporaryList = async (
+    todo: TodoItem,
+    status: TodoStatus,
+    project: Project,
+  ) => {
+    try {
+      await setStatusAsync(todo, status);
+      await deleteProject.mutateAsync({
+        projectId: project.id,
+        deleteTodos: true,
+      });
+    } catch {
+      // Either mutation already toasted its failure; the list stays put.
+      return;
+    }
+    setScope(MAIN_PROJECT_ID);
+    toast.celebrate(`“${project.name}” finished`, {
+      description: 'Every item is checked off, so the temporary list is gone.',
+    });
+  };
+
   const handleSetStatus = (todo: TodoItem, status: TodoStatus) => {
+    if (activeProject?.temporary && finishesList(scoped, todo.id, status)) {
+      void finishTemporaryList(todo, status, activeProject);
+      return;
+    }
     const previous = todo.status;
     setStatus(todo, status);
     const message = doneMessage[status];
@@ -168,12 +196,6 @@ export function TodosHome() {
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
       <ListSwitcher scope={scope} onChange={setScope} />
-
-      <TodoProgressBar
-        progress={progress}
-        done={doneCount}
-        total={totalCount}
-      />
 
       {!isMain && (
         <CategoryManager projectId={scope} categories={categories} />

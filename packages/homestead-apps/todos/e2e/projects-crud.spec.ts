@@ -112,7 +112,7 @@ test.describe('Todos projects', () => {
     await todosPage.expectRowAbsent('Plant tomatoes');
 
     await todosPage.selectProject('Garden');
-    await todosPage.expectCompletedAndGone('Plant tomatoes');
+    await todosPage.expectRowAbsent('Plant tomatoes');
   });
 
   test('unpinning removes the todo from main but keeps it in the project', async ({

@@ -8,7 +8,6 @@ export type {
   TodoStatus,
   TodoFormData,
   TodoBuckets,
-  TodoProgress,
   Project,
   ProjectScope,
   ListTemplate,

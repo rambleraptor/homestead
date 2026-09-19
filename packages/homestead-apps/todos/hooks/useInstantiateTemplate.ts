@@ -3,6 +3,12 @@
  * recreates the template's categories inside it, then adds a `pending` todo for
  * every item in the template (each mapped to its recreated category). Returns
  * the new project so the caller can switch the active scope to it.
+ *
+ * The project is created `temporary`: a list made from a template is a
+ * one-off run of it (this week's chores, this trip's packing), so once every
+ * item is checked off the list has served its purpose and is deleted rather
+ * than lingering as an empty entry in the switcher. See `finishesList` and
+ * `TodosHome`.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -49,7 +55,10 @@ export function useInstantiateTemplate() {
         }),
       ]);
 
-      const project = await aepbase.create<Project>(PROJECTS, { name });
+      const project = await aepbase.create<Project>(PROJECTS, {
+        name,
+        temporary: true,
+      });
       const projectRef = `projects/${project.id}`;
 
       // Recreate categories in the new project, preserving order, and map each

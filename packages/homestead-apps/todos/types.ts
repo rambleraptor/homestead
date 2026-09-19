@@ -83,6 +83,12 @@ export interface Project {
   path: string;
   name: string;
   created_by?: string;
+  /**
+   * A temporary list is deleted, todos and all, the moment its last open item
+   * is checked off. Lists instantiated from a template are temporary; lists
+   * made by hand are not.
+   */
+  temporary?: boolean;
   create_time: string;
   update_time: string;
 }
@@ -170,14 +176,6 @@ export interface TodoBuckets {
   active: TodoItem[];
   doLater: TodoItem[];
   completed: TodoItem[];
-}
-
-/**
- * Progress percentage for the completion bar (0-100). Cancelled items are
- * excluded from the denominator entirely.
- */
-export interface TodoProgress {
-  green: number;
 }
 
 /** Sentinel id for the implicit "Uncategorized" group. */

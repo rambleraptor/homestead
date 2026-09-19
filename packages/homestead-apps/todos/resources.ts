@@ -22,6 +22,11 @@ export const todosResources: ResourceDefinition[] = [
     fields: {
       name: { type: 'string', description: 'Project name.', required: true },
       created_by: { type: 'string', reference: { resource: 'user' } },
+      temporary: {
+        type: 'boolean',
+        description:
+          'When true, the list is deleted (with its todos) as soon as every item in it is checked off. Set on lists created from a template.',
+      },
     },
   },
   {
