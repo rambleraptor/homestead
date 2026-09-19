@@ -37,6 +37,23 @@ describe('Login OAuth providers', () => {
     expect(aepbase.startOAuth).toHaveBeenCalledWith('google');
   });
 
+  it('parks the returnUrl before leaving for the provider', async () => {
+    vi.mocked(aepbase.listOAuthProviders).mockResolvedValue([
+      { name: 'google', display_name: 'Google' },
+    ]);
+    window.sessionStorage.clear();
+
+    render(
+      <MemoryRouter initialEntries={['/login?returnUrl=%2Ftodos']}>
+        <Login />
+      </MemoryRouter>,
+    );
+
+    await userEvent.click(await screen.findByTestId('oauth-google'));
+    expect(window.sessionStorage.getItem('homestead:oauth-return-url')).toBe('/todos');
+    expect(aepbase.startOAuth).toHaveBeenCalledWith('google');
+  });
+
   it('shows no provider section when none are configured', async () => {
     vi.mocked(aepbase.listOAuthProviders).mockResolvedValue([]);
 

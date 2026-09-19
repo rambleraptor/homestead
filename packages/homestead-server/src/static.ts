@@ -110,14 +110,33 @@ export function diskSpaAssets(dir: string = DEFAULT_DIST): SpaAssets {
   };
 }
 
+/**
+ * Rewrites the served index.html for a request path (e.g. to point an app's
+ * path at that app's home-screen manifest and icon). Returning the input
+ * unchanged serves the file as-is.
+ */
+export type IndexRewrite = (html: string, path: string) => string;
+
 /** Serve a static asset, falling back to index.html (SPA routing). */
-export function serveStatic(spa: SpaAssets, path: string): Response {
+export function serveStatic(
+  spa: SpaAssets,
+  path: string,
+  rewriteIndex?: IndexRewrite,
+): Response {
   const rel = path.replace(/^\/+/, '');
   if (rel && rel !== '.') {
     const file = spa.file(rel);
     if (file) return assetResponse(file);
   }
-  return assetResponse(spa.index());
+  const index = spa.index();
+  if (rewriteIndex) {
+    const html = readFileSync(index.path, 'utf8');
+    const rewritten = rewriteIndex(html, path);
+    if (rewritten !== html) {
+      return new Response(rewritten, { headers: { 'content-type': index.contentType } });
+    }
+  }
+  return assetResponse(index);
 }
 
 function assetResponse(a: SpaAsset): Response {

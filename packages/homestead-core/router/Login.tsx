@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
+import { rememberOAuthReturnUrl } from '../auth/oauthReturn';
 import { aepbase, type OAuthProvider } from '../api/aepbase';
 import { Home, Mail, Lock, AlertCircle, Check, User } from 'lucide-react';
 
@@ -318,7 +319,12 @@ export function Login() {
                     key={provider.name}
                     type="button"
                     data-testid={`oauth-${provider.name}`}
-                    onClick={() => aepbase.startOAuth(provider.name)}
+                    onClick={() => {
+                      // The callback page can't see this page's query string
+                      // after the provider round-trip; park the destination.
+                      rememberOAuthReturnUrl(decodeURIComponent(returnUrl));
+                      aepbase.startOAuth(provider.name);
+                    }}
                     className="w-full flex justify-center py-3 px-4 rounded-lg border border-gray-200 bg-surface-white text-base font-body font-semibold text-brand-navy hover:bg-bg-pearl focus:outline-none focus:ring-2 focus:ring-accent-terracotta/40 focus:ring-offset-1 transition-colors"
                   >
                     Sign in with {provider.display_name}

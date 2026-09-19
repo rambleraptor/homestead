@@ -12,11 +12,13 @@
  * production listeners).
  */
 
+import { readFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { bridge, type FetchHandler } from './node-http';
 import { createLogger } from './log';
 import { isServerPath } from './options';
+import type { IndexRewrite } from './static';
 
 const log = createLogger('dev-front');
 
@@ -29,6 +31,8 @@ export interface DevServer {
 export async function startDevServer(opts: {
   port: number;
   fetch: FetchHandler;
+  /** Same hook prod's `serveStatic` applies to the index.html fallback. */
+  rewriteIndex?: IndexRewrite;
 }): Promise<DevServer> {
   const { createServer: createViteServer } = await import('vite');
 
@@ -44,13 +48,24 @@ export async function startDevServer(opts: {
   const vite = await createViteServer({
     root: APP_ROOT,
     configFile: `${APP_ROOT}/vite.config.ts`,
-    appType: 'spa',
+    // 'custom' rather than 'spa': Vite still serves modules, assets and HMR,
+    // but leaves the index.html fallback to us so the served head can be
+    // rewritten per path exactly as prod's `serveStatic` does.
+    appType: 'custom',
     server: {
       middlewareMode: true,
       // Same-port websocket upgrades for HMR.
       hmr: { server: httpServer },
     },
   });
+
+  // SPA fallback: index.html run through Vite's HTML transforms (script
+  // injection, HMR client) and then the same per-path rewrite as prod.
+  const serveIndex = async (url: string, path: string): Promise<string> => {
+    const raw = await readFile(`${APP_ROOT}/index.html`, 'utf8');
+    const html = await vite.transformIndexHtml(url, raw);
+    return opts.rewriteIndex ? opts.rewriteIndex(html, path) : html;
+  };
 
   if (process.env.HOMESTEAD_DEBUG_HTTP) {
     httpServer.on('clientError', (err, socket) => {
@@ -81,8 +96,17 @@ export async function startDevServer(opts: {
       return;
     }
     vite.middlewares(req, res, () => {
-      res.statusCode = 404;
-      res.end('not found');
+      serveIndex(req.url ?? '/', path)
+        .then((html) => {
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+          res.end(html);
+        })
+        .catch((err: unknown) => {
+          if (err instanceof Error) vite.ssrFixStacktrace(err);
+          log.error('index.html failed', { path, err });
+          if (!res.headersSent) res.writeHead(500);
+          res.end('index.html failed');
+        });
     });
   });
 

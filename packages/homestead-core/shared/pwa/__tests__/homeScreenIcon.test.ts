@@ -9,25 +9,26 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import {
   applyHomeScreenIcon,
   resetHomeScreenIcon,
-  buildAppManifestUrl,
   type HomeScreenApp,
 } from '../homeScreenIcon';
-
-const ORIGIN = 'https://home.example.com';
+import { injectHomeScreenHead } from '../appManifest';
 
 const GROCERIES: HomeScreenApp = {
+  id: 'groceries',
   name: 'Groceries',
   description: 'Shopping lists',
   basePath: '/groceries',
   iconHref: '/app-icons/groceries.png',
 };
 
-function seedHead(): void {
-  document.head.innerHTML = `
+const HEAD = `
     <meta name="apple-mobile-web-app-title" content="Homestead" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   `;
+
+function seedHead(html: string = HEAD): void {
+  document.head.innerHTML = html;
 }
 
 function appleTouchHref(): string | null {
@@ -48,72 +49,21 @@ function appTitle(): string | null {
     ?.getAttribute('content') ?? null;
 }
 
-/** Decode the JSON payload from a `data:application/manifest+json,...` URL. */
-function decodeManifest(url: string): Record<string, unknown> {
-  const prefix = 'data:application/manifest+json,';
-  expect(url.startsWith(prefix)).toBe(true);
-  return JSON.parse(decodeURIComponent(url.slice(prefix.length)));
-}
-
-describe('buildAppManifestUrl', () => {
-  it('embeds the app name, absolute start_url and absolute icon', () => {
-    const manifest = decodeManifest(buildAppManifestUrl(GROCERIES, ORIGIN));
-
-    expect(manifest.name).toBe('Groceries');
-    expect(manifest.short_name).toBe('Groceries');
-    expect(manifest.description).toBe('Shopping lists');
-    expect(manifest.start_url).toBe(`${ORIGIN}/groceries`);
-    expect(manifest.scope).toBe(`${ORIGIN}/groceries`);
-    expect(manifest.icons).toEqual([
-      {
-        src: `${ORIGIN}/app-icons/groceries.png`,
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: `${ORIGIN}/app-icons/groceries.png`,
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any maskable',
-      },
-    ]);
-  });
-
-  it('resolves an absolute icon URL against its own origin', () => {
-    const manifest = decodeManifest(
-      buildAppManifestUrl(
-        { ...GROCERIES, iconHref: 'https://cdn.example.com/g.svg' },
-        ORIGIN,
-      ),
-    );
-    const icons = manifest.icons as Array<{ src: string; type: string }>;
-    expect(icons[0].src).toBe('https://cdn.example.com/g.svg');
-    expect(icons[0].type).toBe('image/svg+xml');
-  });
-
-  it('omits description when the app has none', () => {
-    const manifest = decodeManifest(
-      buildAppManifestUrl({ ...GROCERIES, description: undefined }, ORIGIN),
-    );
-    expect('description' in manifest).toBe(false);
-  });
-});
-
 describe('applyHomeScreenIcon / resetHomeScreenIcon', () => {
-  beforeEach(seedHead);
+  beforeEach(() => seedHead());
 
   it('points apple-touch-icon, manifest and app title at the app', () => {
-    applyHomeScreenIcon(document, GROCERIES, ORIGIN);
+    applyHomeScreenIcon(document, GROCERIES);
 
     expect(appleTouchHref()).toBe('/app-icons/groceries.png');
     expect(appTitle()).toBe('Groceries');
-    const manifest = decodeManifest(manifestHref()!);
-    expect(manifest.name).toBe('Groceries');
+    // The manifest is served by the server, never embedded as a data: URL
+    // (iOS ignores those and falls back to the site-wide manifest).
+    expect(manifestHref()).toBe('/api/app-manifest/groceries');
   });
 
   it('restores the Homestead defaults on reset', () => {
-    applyHomeScreenIcon(document, GROCERIES, ORIGIN);
+    applyHomeScreenIcon(document, GROCERIES);
     resetHomeScreenIcon(document);
 
     expect(appleTouchHref()).toBe('/apple-touch-icon.png');
@@ -123,32 +73,57 @@ describe('applyHomeScreenIcon / resetHomeScreenIcon', () => {
 
   it('restores the original defaults even after switching between apps', () => {
     const recipes: HomeScreenApp = {
+      id: 'recipes',
       name: 'Recipes',
       basePath: '/recipes',
       iconHref: '/app-icons/recipes.png',
     };
-    applyHomeScreenIcon(document, GROCERIES, ORIGIN);
-    applyHomeScreenIcon(document, recipes, ORIGIN);
+    applyHomeScreenIcon(document, GROCERIES);
+    applyHomeScreenIcon(document, recipes);
 
     expect(appleTouchHref()).toBe('/app-icons/recipes.png');
+    expect(manifestHref()).toBe('/api/app-manifest/recipes');
     expect(appTitle()).toBe('Recipes');
 
     resetHomeScreenIcon(document);
     expect(appleTouchHref()).toBe('/apple-touch-icon.png');
+    expect(manifestHref()).toBe('/manifest.webmanifest');
     expect(appTitle()).toBe('Homestead');
   });
 
-  it('creates missing head tags when none are present', () => {
-    document.head.innerHTML = '';
-    applyHomeScreenIcon(document, GROCERIES, ORIGIN);
-
+  it('creates the tags when the head does not ship them', () => {
+    seedHead('');
+    applyHomeScreenIcon(document, GROCERIES);
     expect(appleTouchHref()).toBe('/app-icons/groceries.png');
-    expect(manifestHref()).not.toBeNull();
+    expect(manifestHref()).toBe('/api/app-manifest/groceries');
     expect(appTitle()).toBe('Groceries');
+
+    resetHomeScreenIcon(document);
+    expect(appleTouchHref()).toBe('/apple-touch-icon.png');
+    expect(manifestHref()).toBe('/manifest.webmanifest');
+    expect(appTitle()).toBe('Homestead');
   });
 
-  it('is a no-op on reset when nothing was applied', () => {
-    expect(() => resetHomeScreenIcon(document)).not.toThrow();
+  it('is idempotent', () => {
+    applyHomeScreenIcon(document, GROCERIES);
+    applyHomeScreenIcon(document, GROCERIES);
+    expect(document.head.querySelectorAll('link[rel="manifest"]')).toHaveLength(1);
+    expect(document.head.querySelectorAll('link[rel="apple-touch-icon"]')).toHaveLength(1);
+    resetHomeScreenIcon(document);
+    expect(manifestHref()).toBe('/manifest.webmanifest');
+  });
+
+  it('treats a server-rewritten head as already applied, and still resets to the site defaults', () => {
+    // A direct load of /groceries gets the app's tags from the server, with
+    // the site-wide values parked in data-hs-default.
+    seedHead(injectHomeScreenHead(HEAD, GROCERIES));
+    expect(manifestHref()).toBe('/api/app-manifest/groceries');
+
+    // Client-side navigation to the dashboard must go back to Homestead's own
+    // icon, not to the groceries icon the head happened to load with.
+    resetHomeScreenIcon(document);
     expect(appleTouchHref()).toBe('/apple-touch-icon.png');
+    expect(manifestHref()).toBe('/manifest.webmanifest');
+    expect(appTitle()).toBe('Homestead');
   });
 });
