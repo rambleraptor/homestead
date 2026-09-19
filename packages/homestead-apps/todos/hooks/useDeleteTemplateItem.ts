@@ -6,7 +6,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { LIST_TEMPLATES, TEMPLATE_ITEMS } from '../resources';
 
 interface DeleteTemplateItemParams {
@@ -28,6 +27,5 @@ export function useDeleteTemplateItem() {
         queryKey: queryKeys.app('todos').all(),
       });
     },
-    onError: (error) => logger.error('Template item delete error', error),
   });
 }

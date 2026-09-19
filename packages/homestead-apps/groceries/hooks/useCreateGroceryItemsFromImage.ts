@@ -105,8 +105,5 @@ export function useCreateGroceryItemsFromImage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.app('groceries').resource('grocery').list() });
     },
-    onError: (error) => {
-      logger.error('Failed to create grocery items from image', error);
-    },
   });
 }

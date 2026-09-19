@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { RECIPES } from '../resources';
 import { buildRecipeBody } from '../utils/recipeBody';
 import type { Recipe, RecipeFormData } from '../types';
@@ -32,6 +31,5 @@ export function useUpdateRecipe() {
         queryKey: queryKeys.app('recipes').all(),
       });
     },
-    onError: (error) => logger.error('Recipe update mutation error', error),
   });
 }

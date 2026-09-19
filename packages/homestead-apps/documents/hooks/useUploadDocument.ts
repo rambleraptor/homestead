@@ -52,7 +52,6 @@ export function useUploadDocument() {
       return doc;
     },
     onSuccess: () => logger.info('Document uploaded'),
-    onError: (error) => logger.error('Failed to upload document', error),
   });
 }
 
@@ -72,6 +71,5 @@ export function useClassifyDocument() {
       const body = docType ? { doc_type: docType } : undefined;
       return aepbase.customMethod<{ id: string }>(DOCUMENTS, 'classify', body, { id });
     },
-    onError: (error) => logger.error('Failed to reclassify document', error),
   });
 }

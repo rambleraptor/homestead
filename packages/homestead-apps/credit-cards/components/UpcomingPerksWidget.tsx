@@ -8,7 +8,6 @@ import { useState } from 'react';
 import { Check, Clock } from 'lucide-react';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { useCreditCards } from '../hooks/useCreditCards';
 import { useCreditCardPerks } from '../hooks/useCreditCardPerks';
 import { usePerkRedemptions } from '../hooks/usePerkRedemptions';
@@ -43,7 +42,7 @@ export function UpcomingPerksWidget() {
         amount: item.perk.value,
       });
     } catch (err) {
-      logger.error('Failed to redeem perk', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

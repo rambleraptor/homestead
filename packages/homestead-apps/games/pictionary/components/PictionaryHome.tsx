@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, Loader2, AlertCircle, Trophy } from 'lucide-react';
 import { usePeople } from '../../../people/hooks/usePeople';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { useGames } from '../hooks/useGames';
 import { useGameTeams } from '../hooks/useGameTeams';
 import { useGameWinners } from '../hooks/useGameWinners';
@@ -58,7 +57,7 @@ export function PictionaryHome() {
       await createGame.mutateAsync(data);
       setView('list');
     } catch (err) {
-      logger.error('Failed to create pictionary game', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -72,7 +71,7 @@ export function PictionaryHome() {
       });
       setView('detail');
     } catch (err) {
-      logger.error('Failed to update pictionary game', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -83,7 +82,7 @@ export function PictionaryHome() {
       setActiveGameId(null);
       setView('list');
     } catch (err) {
-      logger.error('Failed to delete pictionary game', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

@@ -7,7 +7,7 @@ import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
 import {
   GrantRowsEditor,
   cleanGrantDrafts,
@@ -42,7 +42,7 @@ function formatDate(value?: string): string | null {
 
 export function PersonalAccessTokens() {
   const toast = useToast();
-  const { data: tokens = [], isLoading } = usePersonalAccessTokens();
+  const { data: tokens = [], isLoading, isError, error: loadError } = usePersonalAccessTokens();
   const mint = useMintPersonalAccessToken();
   const revoke = useRevokePersonalAccessToken();
 
@@ -84,8 +84,8 @@ export function PersonalAccessTokens() {
       setMintedSecret(result.token);
       resetForm();
     } catch (error) {
-      logger.error('Failed to mint token', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create token.');
+      // The mint hook opts out of the global mutation toast; show it here.
+      toast.error(error);
     }
   };
 
@@ -93,9 +93,8 @@ export function PersonalAccessTokens() {
     try {
       await revoke.mutateAsync(token.id);
       toast.success('Token revoked.');
-    } catch (error) {
-      logger.error('Failed to revoke token', error);
-      toast.error('Failed to revoke token. Please try again.');
+    } catch {
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     } finally {
       setConfirmTarget(null);
     }
@@ -135,7 +134,11 @@ export function PersonalAccessTokens() {
         </div>
 
         {/* Existing tokens */}
-        {tokens.length === 0 ? (
+        {isError ? (
+          <p className="text-sm text-red-600" role="alert" data-testid="tokens-error">
+            Couldn&apos;t load your tokens: {getAepErrorMessage(loadError)}
+          </p>
+        ) : tokens.length === 0 ? (
           <p className="text-sm text-gray-500" data-testid="no-tokens">
             You haven&apos;t issued any tokens yet.
           </p>

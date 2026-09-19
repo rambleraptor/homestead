@@ -20,7 +20,6 @@ import { GameList } from './GameList';
 import { GameSetup } from './GameSetup';
 import { HolePlay } from './HolePlay';
 import { GameResults } from './GameResults';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import type { Game, GameFormData, Hole, PlayerScore } from '../types';
 
@@ -65,7 +64,7 @@ export function MinigolfHome() {
       setCurrentHole(1);
       setView('play');
     } catch (err) {
-      logger.error('Failed to start new game', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -115,7 +114,7 @@ export function MinigolfHome() {
       await persistHole(activeGame, currentHole, payload);
       setCurrentHole((h) => Math.min(activeGame.hole_count, h + 1));
     } catch (err) {
-      logger.error('Failed to save hole', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -132,7 +131,7 @@ export function MinigolfHome() {
       });
       setView('results');
     } catch (err) {
-      logger.error('Failed to finish game', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -149,7 +148,7 @@ export function MinigolfHome() {
       });
       setCurrentHole((h) => h + 1);
     } catch (err) {
-      logger.error('Failed to add another hole', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -175,7 +174,7 @@ export function MinigolfHome() {
       setActiveGameId(null);
       setView('list');
     } catch (err) {
-      logger.error('Failed to delete game', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

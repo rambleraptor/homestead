@@ -18,7 +18,6 @@ import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Ske
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { ReceiptKPICard } from '../../shared/ReceiptKPICard';
 import { useCharitableReceipts } from '../hooks/useCharitableReceipts';
 import { useCharitableStats } from '../hooks/useCharitableStats';
@@ -90,7 +89,7 @@ export function CharitableTab({ addOpen, onOpenAdd, onCloseAdd }: CharitableTabP
       await createMutation.mutateAsync(data);
       onCloseAdd();
     } catch (err) {
-      logger.error('Failed to create charitable receipt', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -104,7 +103,7 @@ export function CharitableTab({ addOpen, onOpenAdd, onCloseAdd }: CharitableTabP
     try {
       await updateMutation.mutateAsync({ id, data: { status: 'Claimed' } });
     } catch (err) {
-      logger.error('Failed to mark donation as claimed', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

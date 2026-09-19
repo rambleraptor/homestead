@@ -7,7 +7,6 @@
 import { useState, useRef } from 'react';
 import { X, Upload, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useCreateGroceryItemsFromImage } from '../hooks/useCreateGroceryItemsFromImage';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 interface ImageUploadDialogProps {
   isOpen: boolean;
@@ -82,7 +81,7 @@ export function ImageUploadDialog({ isOpen, onClose }: ImageUploadDialogProps) {
         }, SUCCESS_AUTO_CLOSE_DELAY_MS);
       }
     } catch (error) {
-      logger.error('Failed to process image', error);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

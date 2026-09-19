@@ -23,7 +23,6 @@ import { queryClient, queryKeys } from '@rambleraptor/homestead-core/api/queryCl
 import { ACCESS_GRANTS } from '@rambleraptor/homestead-core/permissions/resources';
 import type { AccessGrantRecord } from '@rambleraptor/homestead-core/permissions/hooks';
 import type { Capability, Effect } from '@rambleraptor/homestead-core/permissions/resolve';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { COLLECTIONS } from '../resources';
 import type { Collection } from '../types';
 import { invalidateDocuments } from './useDocuments';
@@ -70,7 +69,6 @@ export function useCreateCollection() {
       await invalidateCollections();
       return created;
     },
-    onError: (error) => logger.error('Failed to create collection', error),
   });
 }
 
@@ -87,7 +85,6 @@ export function useUpdateCollection() {
       await invalidateCollections();
       return updated;
     },
-    onError: (error) => logger.error('Failed to update collection', error),
   });
 }
 
@@ -101,7 +98,6 @@ export function useDeleteCollection() {
       await invalidateCollections();
       await invalidateDocuments();
     },
-    onError: (error) => logger.error('Failed to delete collection', error),
   });
 }
 
@@ -122,7 +118,6 @@ export function useSetDocumentCollections() {
       await aepbase.update(DOCUMENTS, documentId, { collections });
       await invalidateDocuments();
     },
-    onError: (error) => logger.error('Failed to update document collections', error),
   });
 }
 
@@ -170,7 +165,6 @@ export function useShareCollectionDocuments() {
         filter: collectionDocumentFilter(input.collectionId),
       });
     },
-    onError: (error) => logger.error('Failed to share collection documents', error),
   });
 }
 
@@ -203,6 +197,5 @@ export function useUnshareCollectionDocuments() {
       );
       if (paired) await aepbase.remove(ACCESS_GRANTS, paired.id);
     },
-    onError: (error) => logger.error('Failed to unshare collection documents', error),
   });
 }

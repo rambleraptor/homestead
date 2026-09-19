@@ -8,7 +8,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { VACCINATIONS, VACCINES } from '../resources';
 import { buildVaccinationBody } from '../utils/vaccinationBody';
 import type { Vaccination, VaccinationFormData } from '../types';
@@ -37,7 +36,6 @@ export function useCreateVaccination() {
         queryKey: queryKeys.app('health').all(),
       });
     },
-    onError: (error) => logger.error('Vaccination creation mutation error', error),
   });
 }
 
@@ -66,7 +64,6 @@ export function useUpdateVaccination() {
         queryKey: queryKeys.app('health').all(),
       });
     },
-    onError: (error) => logger.error('Vaccination update mutation error', error),
   });
 }
 
@@ -83,6 +80,5 @@ export function useDeleteVaccination() {
         queryKey: queryKeys.app('health').all(),
       });
     },
-    onError: (error) => logger.error('Vaccination delete mutation error', error),
   });
 }

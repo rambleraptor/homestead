@@ -9,7 +9,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { GAMES } from '../resources';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { Game, GameFormData } from '../types';
 
 function createdByPath(): string | undefined {
@@ -36,9 +35,6 @@ export function useCreateGame() {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.app('minigolf').all(),
       });
-    },
-    onError: (error) => {
-      logger.error('Failed to create game', error);
     },
   });
 }

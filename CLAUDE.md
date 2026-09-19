@@ -245,6 +245,32 @@ for the operator-facing walkthrough.
 - Keep functions small and focused
 - No premature optimization
 
+### Errors in the SPA go to toasts, not the console
+
+A failure the user caused (a save, a delete, a button) must be *shown* to
+them. Nobody reads the browser console, least of all on a phone.
+
+- Every `useMutation` failure already raises a toast through the global
+  `MutationCache` handler in `packages/homestead-core/api/queryClient.ts`.
+  A component that awaits `mutateAsync` catches only to keep control flow
+  (stay on the form, keep the dialog open) and leaves the body as a comment
+  — don't add `logger.error`, and don't add a second toast.
+- A mutation that wants to phrase its own message opts out with
+  `meta: { skipErrorToast: true }` and the caller shows it with
+  `useToast().error(err)` — pass the raw error, it is reduced to the
+  server's message via `getAepErrorMessage`.
+- Work that isn't a mutation (a direct `fetch`, a browser API) reports the
+  same way: `toast.error(err)` in the catch.
+- Reads (`useQuery`) render an inline error near the data they failed to
+  load; never swallow a failed fetch into an empty list, which reads as
+  "nothing here".
+- Client-side validation must show its message next to the control. A
+  custom form built on `useSchemaForm` has to render `form.errors.<field>`
+  for every field it manages and `form.formError` for the rest; a required
+  field the form deliberately leaves blank needs `required: false` in its
+  `fields` config, or the submit is silently blocked.
+- `logger` is for server-side code (routes, crons, methods, migrations).
+
 ## Project Structure
 
 The repo is an npm workspace. The root `package.json` declares

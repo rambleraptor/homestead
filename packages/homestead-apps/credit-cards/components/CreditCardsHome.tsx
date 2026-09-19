@@ -29,7 +29,6 @@ import { CardDetail } from './CardDetail';
 import { UpcomingPerks } from './UpcomingPerks';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { CreditCardFormData, PerkFormData, RedemptionFormData, CreditCard as CreditCardType } from '../types';
 
 type ViewState =
@@ -68,7 +67,7 @@ export function CreditCardsHome() {
       await createCardMutation.mutateAsync(data);
       setView({ type: 'list' });
     } catch (err) {
-      logger.error('Failed to create credit card', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -77,7 +76,7 @@ export function CreditCardsHome() {
       await updateCardMutation.mutateAsync({ id, data });
       setView({ type: 'list' });
     } catch (err) {
-      logger.error('Failed to update credit card', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -99,7 +98,7 @@ export function CreditCardsHome() {
         await deleteRedemptionMutation.mutateAsync(itemToDelete.id);
       }
     } catch (err) {
-      logger.error(`Failed to delete ${itemToDelete.type}`, err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     } finally {
       setDeleteConfirmOpen(false);
       setItemToDelete(null);
@@ -110,7 +109,7 @@ export function CreditCardsHome() {
     try {
       await createPerkMutation.mutateAsync(data);
     } catch (err) {
-      logger.error('Failed to create perk', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -118,7 +117,7 @@ export function CreditCardsHome() {
     try {
       await updatePerkMutation.mutateAsync({ id, data });
     } catch (err) {
-      logger.error('Failed to update perk', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -134,7 +133,7 @@ export function CreditCardsHome() {
         amount,
       });
     } catch (err) {
-      logger.error('Failed to redeem perk', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -142,7 +141,7 @@ export function CreditCardsHome() {
     try {
       await createRedemptionMutation.mutateAsync(data);
     } catch (err) {
-      logger.error('Failed to create redemption', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -150,7 +149,7 @@ export function CreditCardsHome() {
     try {
       await updateRedemptionMutation.mutateAsync({ id, data });
     } catch (err) {
-      logger.error('Failed to update redemption', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 

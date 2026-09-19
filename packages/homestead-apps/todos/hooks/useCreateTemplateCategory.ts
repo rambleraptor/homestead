@@ -6,7 +6,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { LIST_TEMPLATES, TEMPLATE_CATEGORIES } from '../resources';
 import type { TemplateCategory } from '../types';
 
@@ -35,6 +34,5 @@ export function useCreateTemplateCategory() {
         queryKey: queryKeys.app('todos').all(),
       });
     },
-    onError: (error) => logger.error('Template category create error', error),
   });
 }

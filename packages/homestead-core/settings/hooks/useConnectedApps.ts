@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 
 /**
  * One OAuth app the user has authorized through the `/oauth2` flow (an MCP
@@ -24,26 +23,26 @@ export const connectedAppsKey = queryKeys.app('settings').list({ type: 'connecte
 
 /**
  * The OAuth apps the current user has connected. Returns an empty list when the
- * authorization server isn't enabled (the route 404s) or on any error, so the
- * settings card can render its empty state without special-casing.
+ * authorization server isn't enabled (the route 404s), so the settings card can
+ * render its empty state without special-casing; any other failure rejects so
+ * the card can report it instead of passing it off as "nothing connected".
  */
 export function useConnectedApps() {
   return useQuery({
     queryKey: connectedAppsKey,
     queryFn: async (): Promise<ConnectedApp[]> => {
-      try {
-        const token = aepbase.authStore.token;
-        const userId = aepbase.getCurrentUser()?.id || '';
-        const res = await fetch('/api/connections', {
-          headers: { Authorization: `Bearer ${token}`, 'X-User-Id': userId },
-        });
-        if (!res.ok) return [];
-        const body = (await res.json()) as { apps?: ConnectedApp[] };
-        return body.apps ?? [];
-      } catch (error) {
-        logger.error('Failed to fetch connected apps', error);
-        return [];
+      const token = aepbase.authStore.token;
+      const userId = aepbase.getCurrentUser()?.id || '';
+      const res = await fetch('/api/connections', {
+        headers: { Authorization: `Bearer ${token}`, 'X-User-Id': userId },
+      });
+      if (res.status === 404) return [];
+      if (!res.ok) {
+        const detail = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(detail.error || `HTTP ${res.status}`);
       }
+      const body = (await res.json()) as { apps?: ConnectedApp[] };
+      return body.apps ?? [];
     },
   });
 }

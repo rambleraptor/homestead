@@ -10,7 +10,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { PICTIONARY_GAMES, PICTIONARY_TEAMS } from '../resources';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { buildGameData, buildGameFormData } from '../utils/formData';
 import type {
   PictionaryGame,
@@ -89,9 +88,6 @@ export function useUpdateGame() {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.app('pictionary').all(),
       });
-    },
-    onError: (error) => {
-      logger.error('Failed to update pictionary game', error);
     },
   });
 }

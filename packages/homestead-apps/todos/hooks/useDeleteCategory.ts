@@ -8,7 +8,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { CATEGORIES, PROJECTS } from '../resources';
 
 interface DeleteCategoryParams {
@@ -30,6 +29,5 @@ export function useDeleteCategory() {
         queryKey: queryKeys.app('todos').all(),
       });
     },
-    onError: (error) => logger.error('Category delete error', error),
   });
 }

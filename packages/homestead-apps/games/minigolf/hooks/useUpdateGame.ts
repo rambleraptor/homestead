@@ -6,7 +6,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { GAMES } from '../resources';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import type { Game } from '../types';
 
 interface UpdateGameParams {
@@ -27,9 +26,6 @@ export function useUpdateGame() {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.app('minigolf').all(),
       });
-    },
-    onError: (error) => {
-      logger.error('Failed to update game', error);
     },
   });
 }

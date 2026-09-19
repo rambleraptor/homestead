@@ -10,7 +10,6 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { DOCUMENTS } from '../resources';
 import type { Document } from '../types';
 
@@ -45,6 +44,5 @@ export function useDownloadDocument() {
         URL.revokeObjectURL(url);
       }
     },
-    onError: (error) => logger.error('Failed to download document file', error),
   });
 }

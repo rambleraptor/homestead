@@ -7,7 +7,6 @@
 import { useMemo, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
-import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { useHands } from '../hooks/useHands';
 import { useCreateHand } from '../hooks/useCreateHand';
 import { useDeleteHand } from '../hooks/useDeleteHand';
@@ -51,7 +50,7 @@ export function BridgeHome() {
       // Jump the view to the board the new hand landed on so it's visible.
       setSelectedBoard(data.board);
     } catch (err) {
-      logger.error('Failed to save bridge hand', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
@@ -60,7 +59,7 @@ export function BridgeHome() {
     try {
       await deleteHand.mutateAsync(id);
     } catch (err) {
-      logger.error('Failed to delete bridge hand', err);
+      // Error surfaced by the global mutation error toast (queryClient.ts).
     } finally {
       setDeletingId(null);
     }
