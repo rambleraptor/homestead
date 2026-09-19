@@ -22,6 +22,7 @@ export const gamesApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.Gamepad2),
     basePath: '/games',
+    homeScreenIcon: '/app-icons/games.png',
     routes: [
       {
         path: '',

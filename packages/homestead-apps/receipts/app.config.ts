@@ -22,6 +22,7 @@ export const receiptsApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.Receipt),
     basePath: '/receipts',
+    homeScreenIcon: '/app-icons/receipts.png',
     routes: [
       {
         path: '',

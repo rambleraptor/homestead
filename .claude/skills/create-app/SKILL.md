@@ -159,6 +159,7 @@ export const featureApp: AppConfig = {
   web: {
     icon: Flag,
     basePath: '/feature',
+    homeScreenIcon: '/app-icons/feature.png', // generated: see step 6
     routes: [{ path: '', index: true, component: FeatureHome }],
     showInNav: true,
     navOrder: 20,
@@ -223,6 +224,13 @@ Open `homestead.config.ts` and add the import + array entry.
 That is the only registration step — nav, routes, dashboard widgets,
 app flags, and the resource schema are all picked up
 automatically.
+
+Then generate the app's home-screen (PWA) icon: add a background color for
+the new id to `COLORS` in `packages/homestead-app/scripts/generate-app-icons.ts`
+and run `npm run icons:apps` from `packages/homestead-app`. It renders the
+config's `web.icon` glyph to `public/app-icons/<id>.png`; commit the file. The
+`homeScreenIcons` vitest fails for any user-facing app missing the field or
+the image.
 
 ### 7. Write unit/integration tests (Vitest)
 
@@ -306,6 +314,9 @@ Before marking the task complete, verify:
 - [ ] Every `AppRoute` declares a `component` (and `dynamic: true`
       where the path uses `:param`).
 - [ ] App imported and added to `homestead.config.ts`.
+- [ ] `web.homeScreenIcon` set to `/app-icons/<id>.png`, a color added to
+      `packages/homestead-app/scripts/generate-app-icons.ts`, and the PNG
+      generated with `npm run icons:apps` (in `packages/homestead-app`).
 - [ ] Vitest tests added under `__tests__/`.
 - [ ] Playwright POM + CRUD spec + `helpers.ts` added under the
       app's `e2e/`.

@@ -24,6 +24,7 @@ export const groceriesApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.ShoppingCart),
     basePath: '/groceries',
+    homeScreenIcon: '/app-icons/groceries.png',
     routes: [
       {
         path: '',

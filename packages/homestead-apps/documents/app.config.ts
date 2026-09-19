@@ -39,6 +39,7 @@ export const documentsApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.FileText),
     basePath: '/documents',
+    homeScreenIcon: '/app-icons/documents.png',
     routes: [
       {
         path: '',

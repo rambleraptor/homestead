@@ -127,7 +127,7 @@ Everything about how the app surfaces in the browser. Lives under the required
 | `icon` *           | `LazyIcon`                                  | —           | Lazy Lucide icon thunk.                                                |
 | `basePath` *       | `string`                                    | —           | Route prefix; must start with `/`.                                    |
 | `routes` *         | `AppRoute[]`                                | —           | The app's pages ([below](#adding-routes)).                            |
-| `homeScreenIcon`   | `string`                                    | shared icon | PWA "Add to Home Screen" image path (square PNG, ~512×512).            |
+| `homeScreenIcon`   | `string`                                    | shared icon | PWA "Add to Home Screen" image path ([below](#home-screen-icons)).     |
 | `showInNav`        | `boolean`                                   | `true`      | `false` hides the app from nav but keeps routes reachable.            |
 | `placement`        | `'sidebar' \| 'topbar'`                     | `'sidebar'` | Where the nav entry renders. Topbar apps are icon-only.              |
 | `topBarBadge`      | `LazyComponent`                             | —           | Badge inside a topbar app's button (fetches its own data).          |
@@ -164,6 +164,45 @@ web: {
 `gates` wraps the route in `'enabled'` (app visibility) and/or `'superuser'`
 guards. Set `dynamic: true` on routes with `:name` params so they aren't
 prerendered.
+
+## Home-screen icons
+
+Every user-facing app should set `web.homeScreenIcon` so an "Add to Home
+Screen" from anywhere inside the app installs *that app* — its own icon, name
+and start path — rather than the shared Homestead icon. While the user is
+inside an app that declares one, the SPA swaps the document's
+`apple-touch-icon`, web-app manifest and iOS title to the app's; leaving the
+app restores the Homestead defaults.
+
+The convention is `/app-icons/<app-id>.png`, a 512×512 full-bleed PNG served
+from the SPA's `public/` directory:
+
+```ts
+web: {
+  icon: () => import('lucide-react').then((m) => m.ShoppingCart),
+  basePath: '/groceries',
+  homeScreenIcon: '/app-icons/groceries.png',
+  // ...
+}
+```
+
+Don't draw the PNG by hand. `packages/homestead-app/scripts/generate-app-icons.ts`
+renders one for every app that declares a `/app-icons/*.png` path, using the
+app's `web.icon` glyph in white on a per-app background color (listed in the
+script; add a line for a new app, or it falls back to the brand indigo):
+
+```bash
+cd packages/homestead-app && npm run icons:apps
+```
+
+Commit the generated file. The images are full-bleed on purpose — iOS applies
+its own rounded mask and the manifest marks the image `maskable`, so the glyph
+is kept inside the safe zone and the platform does the rest. Sub-apps
+(`children`) declare their own icon; the parent's is not inherited.
+
+The `homeScreenIcons` test in `packages/homestead-app/src/apps/__tests__`
+fails when a user-facing app (anything outside the dashboard and the superuser
+tree) is missing the field or the file.
 
 ## Adding flags and user settings
 

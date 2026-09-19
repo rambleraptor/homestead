@@ -21,7 +21,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "icons:apps": "tsx scripts/generate-app-icons.ts"
   },
   "//optionalDependencies": "Native deps ship per-platform prebuilt binaries as their own optional deps; the lockfile only captures variants resolved at generation time. We pin both supported targets explicitly — linux-arm64 (deploy) and darwin-arm64 (dev) — so `npm install`/`npm ci` work on both and sharp never builds from source. These live here (not the workspace root) because this package owns the tooling that pulls them in: vite → rollup/esbuild/lightningcss, tailwindcss → oxide/lightningcss, sharp → libvips. Keep each version in sync with its parent package.",
   "optionalDependencies": {
@@ -91,6 +92,7 @@
     "jsdom": "^27.3.0",
     "postcss": "^8.5.6",
     "sharp": "^0.34.5",
+    "tsx": "^4.20.0",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.46.4",
     "vitest": "^4.0.15"

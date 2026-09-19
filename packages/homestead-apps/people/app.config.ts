@@ -27,6 +27,7 @@ export const peopleApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.Users),
     basePath: '/people',
+    homeScreenIcon: '/app-icons/people.png',
     routes: [
       {
         path: '',
