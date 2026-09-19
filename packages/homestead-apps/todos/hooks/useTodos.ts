@@ -25,7 +25,7 @@ import {
   type Todo,
   type TodoBuckets,
   type TodoItem,
-  type TodoProgress,
+  type TodoStatus,
 } from '../types';
 
 /** The household-global (family) todos. */
@@ -130,6 +130,28 @@ export function mergeTodosForScope(
   return [...familyItems, ...personalItems].sort(byCreateTimeAsc);
 }
 
+/** A todo that is off the list for good — checked off or struck out. */
+export function isDone(status: TodoStatus): boolean {
+  return status === 'completed' || status === 'cancelled';
+}
+
+/**
+ * Whether moving `todoId` to `status` leaves nothing open in `todos` — i.e.
+ * it is the last item in the list to be checked off. An empty list, or a
+ * change that keeps the item open, never counts as finishing: a temporary
+ * list with no items yet (a template with nothing in it) mustn't vanish on
+ * arrival, and `do_later` is still on the list.
+ */
+export function finishesList(
+  todos: readonly TodoItem[],
+  todoId: string,
+  status: TodoStatus,
+): boolean {
+  if (!isDone(status)) return false;
+  if (todos.length === 0) return false;
+  return todos.every((t) => t.id === todoId || isDone(t.status));
+}
+
 export function bucketTodos(todos: TodoItem[]): TodoBuckets {
   const active: TodoItem[] = [];
   const doLater: TodoItem[] = [];
@@ -141,21 +163,6 @@ export function bucketTodos(todos: TodoItem[]): TodoBuckets {
     else active.push(t);
   }
   return { active, doLater, completed };
-}
-
-/**
- * Derive the completion-bar value from the full todo list.
- *
- * - Cancelled items are excluded from both numerator and denominator.
- * - Completed items contribute to the green segment.
- * - Pending and do_later items count toward the denominator only.
- */
-export function computeProgress(todos: TodoItem[]): TodoProgress {
-  const denom = todos.filter((t) => t.status !== 'cancelled').length;
-  if (denom === 0) return { green: 0 };
-  const green =
-    (todos.filter((t) => t.status === 'completed').length / denom) * 100;
-  return { green };
 }
 
 export function useTodoBuckets(scope: ProjectScope = MAIN_PROJECT_ID) {
@@ -181,15 +188,9 @@ export function useTodoBuckets(scope: ProjectScope = MAIN_PROJECT_ID) {
     [family.data, personal.data, scope, knownProjectIds],
   );
   const buckets = useMemo<TodoBuckets>(() => bucketTodos(scoped), [scoped]);
-  const progress = useMemo<TodoProgress>(
-    () => computeProgress(scoped),
-    [scoped],
-  );
-
   return {
     scoped,
     buckets,
-    progress,
     isLoading: family.isLoading || personal.isLoading,
     isError: family.isError || personal.isError,
     error: family.error ?? personal.error,

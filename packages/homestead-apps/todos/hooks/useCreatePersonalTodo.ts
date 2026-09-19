@@ -20,7 +20,7 @@ interface CreatePersonalTodoBody {
  * machinery (it doesn't resolve the built-in `user` root), so this writes
  * through the raw client with an explicit parent — the same pattern the
  * notification-subscription hooks use — and invalidates the whole todos app so
- * the merged list, widget, and progress bar refresh together.
+ * the merged list, widget, and list counts refresh together.
  */
 export function useCreatePersonalTodo() {
   const queryClient = useQueryClient();

@@ -160,6 +160,18 @@ export function ListSwitcher({ scope, onChange }: ListSwitcherProps) {
           <span className="font-display text-base font-semibold text-brand-navy">
             {activeName}
           </span>
+          {activeProject?.temporary && (
+            // Says up front that this list is a one-off: it deletes itself
+            // once every item is checked off, so nobody is surprised when it
+            // does.
+            <span
+              title="Deleted once every item is checked off"
+              data-testid="todos-list-temporary"
+              className="rounded-full bg-bg-pearl px-2 py-0.5 font-body text-xs font-medium text-text-muted"
+            >
+              Temporary
+            </span>
+          )}
           <span className="font-body text-sm text-text-muted">
             {activeOpen} open
           </span>

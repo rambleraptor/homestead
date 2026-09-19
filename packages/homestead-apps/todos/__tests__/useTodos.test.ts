@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   bucketTodos,
-  computeProgress,
   filterTodosForScope,
+  finishesList,
   mergeTodosForScope,
 } from '../hooks/useTodos';
 import {
@@ -67,42 +67,43 @@ describe('bucketTodos', () => {
   });
 });
 
-describe('computeProgress', () => {
-  it('returns zero when there are no todos', () => {
-    expect(computeProgress([])).toEqual({ green: 0 });
-  });
-
-  it('returns zero when every todo is cancelled (denominator excludes them)', () => {
-    expect(
-      computeProgress([makeTodo('1', 'cancelled'), makeTodo('2', 'cancelled')]),
-    ).toEqual({ green: 0 });
-  });
-
-  it('returns 100% green when every non-cancelled todo is completed', () => {
-    const result = computeProgress([
+describe('finishesList', () => {
+  it('is true when the change checks off the last open item', () => {
+    const todos = [
       makeTodo('1', 'completed'),
-      makeTodo('2', 'completed'),
-    ]);
-    expect(result.green).toBe(100);
-  });
-
-  it('computes the completed share of non-cancelled todos', () => {
-    const result = computeProgress([
-      makeTodo('1', 'completed'),
-      makeTodo('2', 'pending'),
+      makeTodo('2', 'cancelled'),
       makeTodo('3', 'pending'),
-      makeTodo('4', 'do_later'),
-    ]);
-    expect(result.green).toBe(25);
+    ];
+    expect(finishesList(todos, '3', 'completed')).toBe(true);
+    expect(finishesList(todos, '3', 'cancelled')).toBe(true);
   });
 
-  it('excludes cancelled todos from the denominator', () => {
-    const result = computeProgress([
-      makeTodo('1', 'completed'),
-      makeTodo('2', 'pending'),
-      makeTodo('3', 'cancelled'),
-    ]);
-    expect(result.green).toBe(50);
+  it('is false while another item is still open', () => {
+    const todos = [
+      makeTodo('1', 'pending'),
+      makeTodo('2', 'do_later'),
+      makeTodo('3', 'pending'),
+    ];
+    expect(finishesList(todos, '3', 'completed')).toBe(false);
+    // do_later is still on the list
+    expect(finishesList([makeTodo('1', 'do_later'), makeTodo('2', 'pending')], '2', 'completed')).toBe(false);
+  });
+
+  it('is false when the change keeps the item open', () => {
+    const todos = [makeTodo('1', 'pending')];
+    expect(finishesList(todos, '1', 'do_later')).toBe(false);
+    expect(finishesList(todos, '1', 'pending')).toBe(false);
+  });
+
+  it('is false for an empty list', () => {
+    expect(finishesList([], 'x', 'completed')).toBe(false);
+  });
+
+  it('only cares about the item being changed, not its stale status', () => {
+    // The caller passes the pre-change list; the changed item's own recorded
+    // status is irrelevant.
+    const todos = [makeTodo('1', 'completed'), makeTodo('2', 'pending')];
+    expect(finishesList(todos, '2', 'completed')).toBe(true);
   });
 });
 

@@ -165,6 +165,13 @@ export class TodosPage {
     );
   }
 
+  /** The trigger's "Temporary" badge — shown only on a list that deletes itself. */
+  async expectTemporaryBadge(visible: boolean) {
+    const badge = this.page.getByTestId('todos-list-temporary');
+    if (visible) await expect(badge).toBeVisible();
+    else await expect(badge).toHaveCount(0);
+  }
+
   async selectMainProject() {
     await this.openListMenu();
     await this.page.getByTestId('todos-list-option-main').click();
@@ -254,36 +261,8 @@ export class TodosPage {
     await expect(section.getByText(title).first()).toBeVisible();
   }
 
-  /**
-   * A finished todo leaves the list — there is no Completed section to find it
-   * in. Its only trace on the page is the progress bar.
-   */
-  async expectCompletedAndGone(title: string) {
-    await this.expectRowAbsent(title);
-    await this.expectGreenSegmentNonZero();
-  }
-
   /** Undo the last status change from its toast. */
   async undoFromToast() {
     await this.page.getByRole('button', { name: 'Undo' }).click();
-  }
-
-  async expectGreenSegmentNonZero() {
-    const green = this.page.getByTestId('todos-progress-green');
-    await expect(green).toBeVisible();
-    const width = await green.evaluate(
-      (el) => (el as HTMLElement).style.width || '0%',
-    );
-    if (width === '0%' || width === '') {
-      throw new Error(`Expected green segment width > 0, got "${width}"`);
-    }
-  }
-
-  async expectGreenSegmentZero() {
-    const green = this.page.getByTestId('todos-progress-green');
-    const width = await green.evaluate(
-      (el) => (el as HTMLElement).style.width || '0%',
-    );
-    expect(width).toBe('0%');
   }
 }

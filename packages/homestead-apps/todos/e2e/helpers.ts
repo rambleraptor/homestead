@@ -100,13 +100,21 @@ export async function deleteAllPersonalTodos(token: string, userId: string) {
 export interface ProjectRecord {
   id: string;
   name: string;
+  temporary?: boolean;
 }
 
 export async function createProject(
   token: string,
-  data: { name: string },
+  data: { name: string; temporary?: boolean },
 ): Promise<ProjectRecord> {
-  return e2eClient(token).collection<ProjectRecord>('projects').create({ name: data.name });
+  return e2eClient(token).collection<ProjectRecord>('projects').create({
+    name: data.name,
+    ...(data.temporary !== undefined ? { temporary: data.temporary } : {}),
+  });
+}
+
+export async function listProjects(token: string): Promise<ProjectRecord[]> {
+  return e2eClient(token).collection<ProjectRecord>('projects').listAll();
 }
 
 export async function deleteAllProjects(token: string) {

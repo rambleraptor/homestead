@@ -177,7 +177,7 @@ export const APP_CATALOG: readonly CatalogApp[] = [
     slug: 'todos',
     exportName: 'todosApp',
     display: 'Todos',
-    description: 'Daily todo list with progress tracking',
+    description: 'Daily todo list with shared and private items',
   },
 ];
 
