@@ -42,13 +42,14 @@ const APPS: AppConfig[] = [
 ];
 
 describe('buildAppManifest', () => {
-  it('launches at the app but scopes the whole origin', () => {
+  it('launches at the app, chromeless, but scopes the whole origin', () => {
     const manifest = buildAppManifest(GROCERIES);
     expect(manifest.name).toBe('Groceries');
     expect(manifest.short_name).toBe('Groceries');
     expect(manifest.description).toBe('Shopping lists');
     expect(manifest.id).toBe('/groceries');
-    expect(manifest.start_url).toBe('/groceries');
+    // The installed app opens without the sidebar/top bar (layout/chromeMode.ts).
+    expect(manifest.start_url).toBe('/groceries?chrome=none');
     // Login, the OAuth callback and cross-app links must stay in the
     // installed app rather than opening a browser.
     expect(manifest.scope).toBe('/');

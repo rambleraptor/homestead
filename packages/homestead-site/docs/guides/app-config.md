@@ -178,6 +178,12 @@ in sync: entering an app that declares an icon swaps the tags to that app's,
 leaving it restores the Homestead defaults. The manifest's scope is the whole
 origin, so signing in inside an installed app stays in the app.
 
+The manifest launches the app at `<basePath>?chrome=none`: **chromeless mode**
+hides the sidebar and top bar so the installed app fills the screen like a
+native one. The parameter works on any URL and sticks for the browsing session
+(client-side navigation drops the query string, so it has to); `?chrome=full`
+turns the chrome back on.
+
 The convention is `/app-icons/<app-id>.png`, a 512×512 full-bleed PNG served
 from the SPA's `public/` directory:
 

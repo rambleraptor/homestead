@@ -2,7 +2,9 @@
  * AppShell Component
  *
  * Main application layout wrapper.
- * Combines sidebar, header, and content area.
+ * Combines sidebar, header, and content area. In chromeless mode
+ * (`?chrome=none`, see `chromeMode.ts`) the sidebar and header are left out
+ * so the active app fills the screen — the mode home-screen installs launch in.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -13,6 +15,7 @@ import { AuthGuard } from '../auth/AuthGuard';
 import { OfflineBanner } from '../shared/components/OfflineBanner';
 import { useHomeScreenIcon } from '../shared/pwa';
 import { useBuildReload } from '../shared/useBuildReload';
+import { useChromeless } from './useChromeless';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -39,6 +42,9 @@ export function AppShell({ children }: AppShellProps) {
   // Swap the home-screen (PWA) icon to the active app's, when it has one.
   useHomeScreenIcon();
 
+  // `?chrome=none` hides the sidebar + header for the session.
+  const chromeless = useChromeless();
+
   // Reload the tab when the launcher swaps in a new SPA build (config change).
   useBuildReload();
 
@@ -56,13 +62,19 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden bg-bg-pearl">
+      <div
+        className="flex h-screen overflow-hidden bg-bg-pearl"
+        data-testid="app-shell"
+        data-chromeless={chromeless ? 'true' : undefined}
+      >
         {/* Sidebar */}
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={closeSidebar}
-          desktopHidden={desktopHidden}
-        />
+        {!chromeless && (
+          <Sidebar
+            isOpen={sidebarOpen}
+            onClose={closeSidebar}
+            desktopHidden={desktopHidden}
+          />
+        )}
 
         {/* Main content area */}
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -71,11 +83,13 @@ export function AppShell({ children }: AppShellProps) {
           <ViewAsBanner />
 
           {/* Header */}
-          <Header
-            onMenuClick={toggleSidebar}
-            onDesktopSidebarToggle={toggleDesktopSidebar}
-            desktopSidebarHidden={desktopHidden}
-          />
+          {!chromeless && (
+            <Header
+              onMenuClick={toggleSidebar}
+              onDesktopSidebarToggle={toggleDesktopSidebar}
+              desktopSidebarHidden={desktopHidden}
+            />
+          )}
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto">
