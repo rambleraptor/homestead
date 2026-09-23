@@ -209,6 +209,37 @@ export function parseIngredientLine(line: string): RecipeIngredient {
 }
 
 /**
+ * A sub-heading inside an ingredient list — "For the sauce:", "Dressing:".
+ * It must end in a colon and not open with a quantity, so an ingredient that
+ * happens to end in one ("2 cups stock:") is still read as an ingredient.
+ */
+function ingredientGroupHeading(line: string): string | undefined {
+  const m = line.trim().match(/^([^\d\u00BC-\u00BE\u2150-\u215E].{0,59}?)\s*:$/);
+  return m ? m[1].trim() : undefined;
+}
+
+/**
+ * Parse an ingredient block line by line, turning sub-headings into the
+ * `group` of the ingredients that follow them. Blank lines are skipped; they
+ * don't end a group.
+ */
+export function parseIngredientLines(lines: string[]): RecipeIngredient[] {
+  const out: RecipeIngredient[] = [];
+  let group: string | undefined;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const heading = ingredientGroupHeading(line);
+    if (heading) {
+      group = heading;
+      continue;
+    }
+    const ing = parseIngredientLine(line);
+    out.push(group ? { ...ing, group } : ing);
+  }
+  return out;
+}
+
+/**
  * Split directions text into discrete steps.
  *
  * Prefers paragraph boundaries (blank-line separated) when present, since
@@ -421,10 +452,7 @@ export const textImporter: TextRecipeImporter = {
     const dedicatedSource = sourceLines.find((l) => l.trim().length > 0)?.trim();
     const source_pointer = dedicatedSource || inlineSource || trailingSource;
 
-    const parsed_ingredients = ingredientLines
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0)
-      .map(parseIngredientLine);
+    const parsed_ingredients = parseIngredientLines(ingredientLines);
 
     if (parsed_ingredients.length === 0) {
       warnings.push(

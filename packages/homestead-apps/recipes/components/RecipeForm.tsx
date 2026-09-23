@@ -46,6 +46,7 @@ const normalizeIngredient = (ing: Partial<RecipeIngredient>): RecipeIngredient =
   unit: ing.unit ?? '',
   notes: ing.notes,
   raw: ing.raw ?? '',
+  group: ing.group,
 });
 
 export function RecipeForm({
@@ -102,6 +103,7 @@ export function RecipeForm({
           item: ing.item.trim(),
           unit: ing.unit.trim(),
           notes: ing.notes?.trim() || undefined,
+          group: ing.group?.trim() || undefined,
           raw: ing.raw.trim() || `${ing.qty} ${ing.unit} ${ing.item}`.trim(),
         }))
         .filter((ing) => ing.item.length > 0);
@@ -158,7 +160,16 @@ export function RecipeForm({
     );
   };
 
-  const addIngredient = () => setIngredients([...ingredients, emptyIngredient()]);
+  // A new row continues the section of the row above it, so filling in a
+  // "For the sauce" block doesn't mean retyping the heading on every line.
+  const addIngredient = () => {
+    const group = ingredients[ingredients.length - 1]?.group?.trim();
+    setIngredients([...ingredients, { ...emptyIngredient(), ...(group ? { group } : {}) }]);
+  };
+
+  const groupNames = [
+    ...new Set(ingredients.map((ing) => ing.group?.trim()).filter((g): g is string => !!g)),
+  ];
 
   const removeIngredient = (index: number) => {
     if (ingredients.length === 1) return;
@@ -297,6 +308,15 @@ export function RecipeForm({
             Add ingredient
           </button>
         </div>
+        <p className="text-xs text-text-muted mb-2">
+          Give ingredients a section (e.g. &ldquo;For the sauce&rdquo;) to list them under
+          their own heading.
+        </p>
+        <datalist id="recipe-ingredient-groups">
+          {groupNames.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
         <div className="space-y-2">
           {ingredients.map((ing, index) => (
             <div
@@ -343,12 +363,22 @@ export function RecipeForm({
               </button>
               <input
                 type="text"
+                value={ing.group ?? ''}
+                onChange={(e) => handleIngredientChange(index, 'group', e.target.value)}
+                placeholder="section (optional)"
+                aria-label={`Section for ingredient ${index + 1}`}
+                data-testid={`ingredient-group-${index}`}
+                list="recipe-ingredient-groups"
+                className="col-span-4 px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+              />
+              <input
+                type="text"
                 value={ing.notes ?? ''}
                 onChange={(e) => handleIngredientChange(index, 'notes', e.target.value)}
                 placeholder="notes (substitutions, prep, etc.)"
                 aria-label={`Notes for ingredient ${index + 1}`}
                 data-testid={`ingredient-notes-${index}`}
-                className="col-span-11 px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+                className="col-span-7 px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
               />
             </div>
           ))}

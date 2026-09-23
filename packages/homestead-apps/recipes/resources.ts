@@ -76,6 +76,11 @@ export const recipesResources: ResourceDefinition[] = [
               type: 'string',
               description: 'Original unparsed ingredient string.',
             },
+            group: {
+              type: 'string',
+              description:
+                'Section heading the ingredient is listed under (e.g. "For the sauce"). Omit for recipes without sections.',
+            },
           },
         },
       },

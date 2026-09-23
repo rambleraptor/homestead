@@ -6,6 +6,8 @@
  *    method notes, prep/cook/serving meta)
  *  - navigating from the list card into the view
  *  - returning to the list via the "Back to recipes" link
+ *  - ingredient sections (`group`) rendered under their own headings
+ *  - cook mode: checking off ingredients and marking the current step
  *
  * Mirrors the CRUD spec's worker model: all data ops run with
  * `adminToken`, and UI interactions go through `authenticatedAdminPage`
@@ -99,5 +101,51 @@ test.describe('Recipes view', () => {
 
     await expect(authenticatedAdminPage).toHaveURL(/\/recipes$/);
     await recipesPage.expectRecipeInList(richRecipe.title);
+  });
+
+  test('renders ingredient sections under their own headings', async ({ adminToken }) => {
+    const created = await createRecipe(adminToken, {
+      ...richRecipe,
+      parsed_ingredients: [
+        { item: 'whole chicken', qty: 1, unit: 'whole', raw: '1 whole chicken' },
+        {
+          item: 'chicken stock',
+          qty: 1,
+          unit: 'cup',
+          raw: '1 cup chicken stock',
+          group: 'For the gravy',
+        },
+        { item: 'flour', qty: 2, unit: 'tbsp', raw: '2 tbsp flour', group: 'For the gravy' },
+      ],
+    });
+
+    await recipesPage.gotoRecipe(created.id);
+    await recipesPage.expectOnRecipeViewPage(created.id);
+
+    await recipesPage.expectRecipeViewIngredient('whole chicken');
+    await recipesPage.expectRecipeViewIngredientGroup('For the gravy', ['chicken stock', 'flour']);
+  });
+
+  test('cook mode checks off ingredients and marks the current step', async ({ adminToken }) => {
+    const created = await createRecipe(adminToken, richRecipe);
+
+    await recipesPage.gotoRecipe(created.id);
+    await recipesPage.expectOnRecipeViewPage(created.id);
+
+    await recipesPage.toggleCookMode();
+    await recipesPage.expectCookMode(true);
+
+    await recipesPage.toggleCookModeIngredient(1);
+    await recipesPage.expectCookModeIngredientChecked(1, true);
+    await recipesPage.expectCookModeIngredientChecked(0, false);
+
+    await recipesPage.selectCookModeStep(2);
+    await recipesPage.expectCookModeCurrentStep(2);
+
+    // Leaving cook mode clears your place; coming back starts fresh.
+    await recipesPage.toggleCookMode();
+    await recipesPage.expectCookMode(false);
+    await recipesPage.toggleCookMode();
+    await recipesPage.expectCookModeIngredientChecked(1, false);
   });
 });

@@ -14,6 +14,12 @@ export interface RecipeIngredient {
    */
   notes?: string;
   raw: string;
+  /**
+   * Section heading the ingredient is listed under — e.g. "For the sauce" in
+   * a two-component recipe. The view renders ingredients sharing a group under
+   * one heading; absent for recipes without sections.
+   */
+  group?: string;
 }
 
 /**

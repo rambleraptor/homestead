@@ -16,7 +16,7 @@
  */
 
 import type { RecipeFormData, RecipeIngredient } from '../types';
-import { parseIngredientLine, splitSteps } from './textImporter';
+import { parseIngredientLines, splitSteps } from './textImporter';
 import type { FileRecipeImporter, RecipeImportResult } from './types';
 
 const GZIP_MAGIC = [0x1f, 0x8b];
@@ -210,8 +210,8 @@ export function paprikaJsonToRecipe(json: PaprikaRecipeJson): RecipeFormData {
   const title = json.name?.trim() || 'Untitled Recipe';
   const source_pointer = (json.source_url || json.source || '').trim() || undefined;
 
-  const parsed_ingredients: RecipeIngredient[] = splitLines(json.ingredients).map(
-    parseIngredientLine,
+  const parsed_ingredients: RecipeIngredient[] = parseIngredientLines(
+    splitLines(json.ingredients),
   );
 
   const steps = splitSteps(json.directions);
