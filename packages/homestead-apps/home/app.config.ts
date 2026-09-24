@@ -7,17 +7,24 @@
  * them), and the household's home-related documents (manuals, warranties,
  * insurance, property tax), which are surfaced by reusing the Documents app's
  * data. The asset inventory is a planned follow-up.
+ *
+ * It also owns `device-info`: household devices (the fridge panel, and
+ * whatever comes next) report their own battery, and the `home-low-battery`
+ * sync turns a low one into a shared "Charge the …" todo. That reference to
+ * `todo` means this app needs the todos app installed; the boot-time schema
+ * sync fails fast if it isn't.
  */
 
 import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
 import { homeResources } from './resources';
 import { PICKUP_REMINDER_SETTING } from './pickupReminderSetting';
 import { TASK_REMINDER_SETTING } from './taskReminderSetting';
+import { BATTERY_REMINDER_SETTING } from './batteryReminderSetting';
 
 export const homeApp: AppConfig = {
   id: 'home',
   name: 'Home',
-  description: 'Curb pickups, upkeep reminders, and home documents in one place',
+  description: 'Curb pickups, upkeep reminders, device batteries, and home documents in one place',
   resources: homeResources,
   userSettings: {
     // Opt-in per person: whoever wheels the bins out wants the nudge, and a
@@ -40,7 +47,28 @@ export const homeApp: AppConfig = {
         'Get a reminder the morning each maintenance task comes due — plus whatever you saved in its notes.',
       default: false,
     },
+    // Same opt-in shape: the charge todo is household data, but a push is a
+    // personal interruption.
+    [BATTERY_REMINDER_SETTING]: {
+      type: 'boolean',
+      label: 'Notify me when a device battery runs low',
+      description:
+        'Get a notification when a device reports its battery at or below its threshold.',
+      default: false,
+    },
   },
+  // Raises a "Charge the …" todo (and a notification for whoever opted in) when
+  // a device reports a low battery, and checks it off on recharge. Handler
+  // lives under `syncs/`, so it's stubbed out of the browser bundle.
+  syncs: [
+    {
+      id: 'home-low-battery',
+      resource: 'device-info',
+      title: 'Low-battery reminder',
+      on: ['create', 'update'],
+      load: () => import('./syncs/low-battery'),
+    },
+  ],
   // Turns the pickup calendar into notifications queued for 18:00 the evening
   // before each collection; the notifications app's dispatcher delivers them.
   // Runs before the household is awake, and catches up at boot so a restart

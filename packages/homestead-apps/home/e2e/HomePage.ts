@@ -1,8 +1,8 @@
 /**
- * Home Page Object Model — the Upkeep section of `/home`.
+ * Home Page Object Model — the Upkeep and Devices sections of `/home`.
  *
- * Only the upkeep half is modelled here; the pickup calendar above it is
- * written by a sync and has no interactions to drive.
+ * The pickup calendar above them is written by a sync and has no
+ * interactions to drive.
  */
 
 import { Page, expect, Locator } from '@playwright/test';
@@ -120,5 +120,38 @@ export class HomePage {
 
   async expectUrgency(name: string, text: string | RegExp) {
     await expect(this.taskRow(name).getByTestId('home-task-urgency')).toHaveText(text);
+  }
+
+  // --- Devices -------------------------------------------------------------
+
+  deviceRow(name: string): Locator {
+    return this.page.getByTestId('device-row').filter({ hasText: name }).first();
+  }
+
+  async setThreshold(name: string, percent: number) {
+    await this.deviceRow(name).getByTestId('device-threshold').selectOption(String(percent));
+  }
+
+  async forgetDevice(name: string) {
+    await this.deviceRow(name).getByTestId('device-delete').click();
+    const confirmButton = this.page.getByRole('button', { name: /^forget$/i }).last();
+    await confirmButton.waitFor({ state: 'visible' });
+    await confirmButton.click();
+  }
+
+  async expectNoDevices() {
+    await expect(this.page.getByTestId('devices-empty')).toBeVisible();
+  }
+
+  async expectDeviceInList(name: string) {
+    await expect(this.deviceRow(name)).toBeVisible();
+  }
+
+  async expectDeviceNotInList(name: string) {
+    await expect(this.page.getByTestId('device-row').filter({ hasText: name })).toHaveCount(0);
+  }
+
+  async expectBattery(name: string, text: string | RegExp) {
+    await expect(this.deviceRow(name).getByTestId('device-battery')).toHaveText(text);
   }
 }

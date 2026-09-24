@@ -11,6 +11,7 @@ import {
   validateResourceDefinition,
 } from '@rambleraptor/homestead-core/resources/translate';
 import { BUILTIN_RESOURCE_DEFS } from '@rambleraptor/homestead-core/resources/builtins';
+import { todosResources } from '../../todos/resources';
 import {
   GARBAGE_STREAMS,
   HOME_TASK_INTERVAL_UNITS,
@@ -31,8 +32,9 @@ describe('home resource definitions', () => {
   });
 
   it('references resolve against the full resource set', () => {
+    // `device-info.charge_todo` points into the todos app.
     expect(() =>
-      validateReferenceTargets([...homeResources, ...BUILTIN_RESOURCE_DEFS]),
+      validateReferenceTargets([...homeResources, ...todosResources, ...BUILTIN_RESOURCE_DEFS]),
     ).not.toThrow();
   });
 
@@ -88,6 +90,21 @@ describe('home resource definitions', () => {
       expect(wire.properties.interval_count?.minimum).toBe(1);
       expect(wire.properties.lead_days?.minimum).toBe(0);
       expect(wire.properties.lead_days?.maximum).toBe(90);
+    });
+  });
+
+  describe('device-info', () => {
+    const def = homeResources.find((r) => r.singular === 'device-info')!;
+
+    it('requires only a name, so a device can report whatever it can read', () => {
+      const wire = toWireSchema(def.fields, def.singular);
+      expect(wire.required).toEqual(['name']);
+    });
+
+    it('bounds the battery reading at the engine', () => {
+      const wire = toWireSchema(def.fields, def.singular);
+      expect(wire.properties.battery_percent?.minimum).toBe(0);
+      expect(wire.properties.battery_percent?.maximum).toBe(100);
     });
   });
 });
