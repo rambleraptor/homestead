@@ -19,6 +19,8 @@
  *  - User registration is not supported. `login()` is the only auth call.
  */
 
+import { isNativeHomestead, nativeRequest, revokeNativeDeviceOnLogout } from '../mobile/bridge';
+import { takeOAuthReturnUrl } from '../auth/oauthReturn';
 import type { OAuthSession, User, UserType } from '../auth/types';
 
 const AEP_BASE = '/api/aep';
@@ -640,10 +642,12 @@ export function logout(): void {
   const token = authStore.token;
   authStore.clear();
   if (token && typeof fetch !== 'undefined') {
-    void fetch(`${AUTH_BASE}/logout`, {
+    void revokeNativeDeviceOnLogout(token).catch(() => {
+      // Local native access is still cleared; the token remains visible for manual revocation.
+    }).then(() => fetch(`${AUTH_BASE}/logout`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => {
+    })).catch(() => {
       // Local session is already gone; a failed server revoke is non-fatal.
     });
   }
@@ -747,8 +751,15 @@ export async function listOAuthProviders(): Promise<OAuthProvider[]> {
  * replaces the current document. On success the provider → aepbase callback
  * lands back on the SPA's configured success URL (`/auth/callback`).
  */
-export function startOAuth(providerName: string): void {
-  window.location.href = `${AEP_BASE}/oauth/${encodeURIComponent(providerName)}/start`;
+export async function startOAuth(providerName: string): Promise<void> {
+  const path = `${AEP_BASE}/oauth/${encodeURIComponent(providerName)}/start`;
+  if (isNativeHomestead()) {
+    const session = await nativeRequest<{ access_token: string; refresh_token: string; expires_in: number }>('oauthStart', { path });
+    await completeOAuthLogin({ accessToken: session.access_token, refreshToken: session.refresh_token, expiresIn: session.expires_in });
+    window.location.assign(takeOAuthReturnUrl() ?? '/dashboard');
+    return;
+  }
+  window.location.href = path;
 }
 
 /**
