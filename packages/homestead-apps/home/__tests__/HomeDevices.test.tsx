@@ -1,5 +1,5 @@
 /**
- * The Devices page: the list and its states, the low-battery highlight, and
+ * The Devices section of the Home page: the list and its states, the low-battery highlight, and
  * the threshold picker writing through to the record.
  */
 
@@ -24,7 +24,7 @@ vi.mock('@rambleraptor/homestead-core/user-settings', () => ({
   ),
 }));
 
-import { DevicesHome } from '../components/DevicesHome';
+import { HomeDevices } from '../components/HomeDevices';
 
 const device = (over: Partial<DeviceInfo> = {}): DeviceInfo => ({
   id: 'fridge-panel',
@@ -35,7 +35,7 @@ const device = (over: Partial<DeviceInfo> = {}): DeviceInfo => ({
 
 function setup(data: DeviceInfo[] | undefined, extra: Record<string, unknown> = {}) {
   useDevices.mockReturnValue({ data, isLoading: false, isError: false, error: null, ...extra });
-  render(<DevicesHome />);
+  render(<HomeDevices />);
 }
 
 beforeEach(() => {
@@ -44,7 +44,7 @@ beforeEach(() => {
   deleteAsync.mockReset().mockResolvedValue(undefined);
 });
 
-describe('DevicesHome', () => {
+describe('HomeDevices', () => {
   it('shows the empty state before any device reports', () => {
     setup([]);
     expect(screen.getByTestId('devices-empty')).toBeInTheDocument();

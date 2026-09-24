@@ -1,6 +1,6 @@
 /**
- * Battery rules shared by the Devices page and the low-battery sync, so the
- * row the page paints red is exactly the one the sync raised a todo for.
+ * Battery rules shared by the Devices section and the low-battery sync, so the
+ * row the Home page paints red is exactly the one the sync raised a todo for.
  */
 
 import type { DeviceInfo } from '../types';
@@ -57,5 +57,5 @@ export function reportedAgo(reportedAt: string | null | undefined, now: Date = n
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
-/** Threshold choices offered on the page. */
+/** Threshold choices offered in the Devices section. */
 export const THRESHOLD_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50] as const;

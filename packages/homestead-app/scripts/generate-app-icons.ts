@@ -58,7 +58,6 @@ const COLORS: Record<string, string> = {
   pictionary: '#C026D3',
   bridge: '#1D4ED8',
   health: '#DC2626',
-  devices: '#65A30D',
   chat: '#0D9488',
   notifications: '#D97706',
   settings: '#52525B',

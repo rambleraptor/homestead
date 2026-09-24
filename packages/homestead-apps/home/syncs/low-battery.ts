@@ -1,5 +1,5 @@
 /**
- * `devices-low-battery` sync handler.
+ * `home-low-battery` sync handler.
  *
  * Fires after every write to a `device-info` record — in practice, each time a
  * device reports its battery. When the charge drops to the device's threshold it
@@ -35,8 +35,15 @@ import { DEVICE_INFOS } from '../resources';
 import type { DeviceInfo } from '../types';
 import { batteryOf, isLow, isRecharged } from '../utils/battery';
 
-/** The app id stamped on every notification this handler queues. */
-export const DEVICES_APP_ID = 'devices';
+/** The app that owns `device-info`, and its per-user opt-in. */
+export const HOME_APP_ID = 'home';
+
+/**
+ * Namespaces this producer's `source_key`s. The bin-night and upkeep crons
+ * share `source_app: 'home'` and reconcile by their own prefixes, so these
+ * rows are never swept by them.
+ */
+export const BATTERY_KEY_PREFIX = 'battery:';
 
 /** Shared todos collection (owned by the todos app). */
 const TODOS = 'todos';
@@ -84,12 +91,13 @@ const handler: SyncHandler = async ({ token, recordId, event, log }) => {
     const optedIn = await usersWithFlag(
       token,
       users.map((user) => user.id),
-      DEVICES_APP_ID,
+      HOME_APP_ID,
       BATTERY_REMINDER_SETTING,
     );
     const { title, message } = notificationContent(device);
     const planned = fanOut(
       {
+        sourceKey: `${BATTERY_KEY_PREFIX}${device.id}:${todo.id}`,
         title,
         message,
         url: TODOS_URL,
@@ -100,7 +108,7 @@ const handler: SyncHandler = async ({ token, recordId, event, log }) => {
       optedIn,
     );
     for (const plan of planned) {
-      await scheduleNotification(token, plan, DEVICES_APP_ID);
+      await scheduleNotification(token, plan, HOME_APP_ID);
     }
 
     await log(`low: todo=${todo.id} notified=${planned.length}`);

@@ -1,5 +1,5 @@
 /**
- * Unit tests for the `devices-low-battery` sync handler.
+ * Unit tests for the `home-low-battery` sync handler.
  *
  * The engine client is mocked with in-memory devices, todos, and a per-user
  * notification queue, so what's under test is the handler's own logic: raising
@@ -75,8 +75,8 @@ import handler, { notificationContent, todoTitle } from '../syncs/low-battery';
 
 function ctx(over: Partial<SyncContext> = {}): SyncContext {
   return {
-    id: 'devices-low-battery',
-    appId: 'devices',
+    id: 'home-low-battery',
+    appId: 'home',
     resource: 'device-info',
     event: 'update',
     recordId: 'fridge-panel',
@@ -103,7 +103,7 @@ beforeEach(() => {
   h.state.nextId = 1;
 });
 
-describe('devices-low-battery sync', () => {
+describe('home-low-battery sync', () => {
   test('does nothing while the battery is healthy', async () => {
     expect(await report({ battery_percent: 55 })).toEqual({ action: 'none' });
     expect(Object.keys(h.state.todos)).toHaveLength(0);
@@ -127,6 +127,7 @@ describe('devices-low-battery sync', () => {
         title: 'Fridge panel battery low',
         url: '/todos',
         sourceId: 'fridge-panel',
+        sourceKey: expect.stringMatching(/^battery:fridge-panel:/),
       }),
     ]);
   });

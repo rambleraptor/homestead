@@ -1,12 +1,12 @@
 /**
- * Devices E2E Tests — the device list and the low-battery reminder loop.
+ * Home E2E Tests — the Devices section and the low-battery reminder loop.
  *
  * `device-info` is household-wide, so each test clears the whole collection
  * (and any charge todos) in `beforeEach` rather than relying on per-user scoping.
  */
 
 import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { DevicesPage } from './DevicesPage';
+import { HomePage } from './HomePage';
 import {
   createDevice,
   deleteAllDevices,
@@ -15,33 +15,33 @@ import {
   reportDevice,
 } from './helpers';
 
-test.describe('Devices', () => {
-  let devicesPage: DevicesPage;
+test.describe('Home devices', () => {
+  let homePage: HomePage;
 
   test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    devicesPage = new DevicesPage(authenticatedPage);
+    homePage = new HomePage(authenticatedPage);
     await deleteAllDevices(userToken);
   });
 
   test('shows the empty state before any device reports', async () => {
-    await devicesPage.goto();
-    await devicesPage.expectEmptyState();
+    await homePage.goto();
+    await homePage.expectNoDevices();
   });
 
   test('lists a reporting device with its charge', async ({ userToken }) => {
     await createDevice(userToken, 'fridge-panel', { name: 'Fridge panel', battery_percent: 64 });
 
-    await devicesPage.goto();
+    await homePage.goto();
 
-    await devicesPage.expectDeviceInList('Fridge panel');
-    await devicesPage.expectBattery('Fridge panel', '64%');
+    await homePage.expectDeviceInList('Fridge panel');
+    await homePage.expectBattery('Fridge panel', '64%');
   });
 
   test('changes a device threshold', async ({ userToken }) => {
     await createDevice(userToken, 'fridge-panel', { name: 'Fridge panel', battery_percent: 64 });
 
-    await devicesPage.goto();
-    await devicesPage.setThreshold('Fridge panel', 30);
+    await homePage.goto();
+    await homePage.setThreshold('Fridge panel', 30);
 
     await expect
       .poll(async () => (await getDevice(userToken, 'fridge-panel')).low_threshold)
@@ -51,10 +51,10 @@ test.describe('Devices', () => {
   test('forgets a device', async ({ userToken }) => {
     await createDevice(userToken, 'fridge-panel', { name: 'Fridge panel', battery_percent: 64 });
 
-    await devicesPage.goto();
-    await devicesPage.forgetDevice('Fridge panel');
+    await homePage.goto();
+    await homePage.forgetDevice('Fridge panel');
 
-    await devicesPage.expectDeviceNotInList('Fridge panel');
+    await homePage.expectDeviceNotInList('Fridge panel');
   });
 
   test('a low battery raises one charge todo, closed again on recharge', async ({
