@@ -4,6 +4,7 @@
  * Allows users to add, edit, and delete stores
  */
 
+import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useState } from 'react';
 import { Plus, Trash2, Star, Store as StoreIcon, X } from 'lucide-react';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
@@ -18,6 +19,7 @@ interface StoreManagementProps {
 
 export function StoreManagement({ onClose }: StoreManagementProps) {
   const [storeName, setStoreName] = useState('');
+  const [deletingStore, setDeletingStore] = useState<string | null>(null);
   const { data: stores = [], isLoading } = useStores();
   const createMutation = useCreateStore();
   const deleteMutation = useDeleteStore();
@@ -46,13 +48,6 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
     setStoreName('');
   };
 
-  const handleDeleteStore = (id: string) => {
-    if (!confirm('Are you sure you want to delete this store? Items assigned to this store will also be deleted.')) {
-      return;
-    }
-    deleteMutation.mutate(id);
-  };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleAddStore();
@@ -61,6 +56,15 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 space-y-4">
+      <ConfirmDialog
+        isOpen={deletingStore !== null}
+        onClose={() => setDeletingStore(null)}
+        onConfirm={() => { if (deletingStore) deleteMutation.mutate(deletingStore); }}
+        title="Delete store?"
+        message="Items assigned to this store will also be deleted."
+        confirmLabel="Delete store"
+        variant="danger"
+      />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent-terracotta/10">
@@ -159,7 +163,7 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
                     />
                   </button>
                   <button
-                    onClick={() => handleDeleteStore(store.id)}
+                    onClick={() => setDeletingStore(store.id)}
                     disabled={isDeleting}
                     className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 transition-all"
                     aria-label={`Delete ${store.name}`}

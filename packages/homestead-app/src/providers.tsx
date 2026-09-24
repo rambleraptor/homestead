@@ -1,3 +1,4 @@
+import { NativeIntegration } from '@rambleraptor/homestead-core/mobile/NativeIntegration';
 import React, { Suspense, lazy } from 'react';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { AuthProvider } from '@rambleraptor/homestead-core/auth/AuthContext';
@@ -52,6 +53,7 @@ export function Providers({ children }: ProvidersProps) {
       }}
     >
       <AuthProvider>
+        <NativeIntegration />
         <ToastProvider>{children}</ToastProvider>
       </AuthProvider>
       {import.meta.env.DEV && (

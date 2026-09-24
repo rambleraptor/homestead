@@ -10,6 +10,7 @@
  * fragment (so it never lands in access logs).
  */
 
+import { createHash } from 'node:crypto';
 import type { Database } from './sqlite';
 import { errorResponse, jsonResponse } from './errors';
 import { generateId, generateToken, nowRFC3339 } from './ids';
@@ -187,7 +188,7 @@ interface UserInfo {
   emailVerified: boolean;
 }
 
-async function exchangeCode(p: Provider, code: string): Promise<string> {
+async function exchangeCode(p: Provider, code: string, request: typeof fetch = fetch): Promise<string> {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
@@ -195,7 +196,7 @@ async function exchangeCode(p: Provider, code: string): Promise<string> {
     client_id: p.clientId,
     client_secret: p.clientSecret,
   });
-  const resp = await fetch(p.tokenUrl, {
+  const resp = await request(p.tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -217,8 +218,8 @@ async function exchangeCode(p: Provider, code: string): Promise<string> {
   return parsed.access_token;
 }
 
-async function fetchUserInfo(p: Provider, accessToken: string): Promise<UserInfo> {
-  const resp = await fetch(p.userInfoUrl, {
+async function fetchUserInfo(p: Provider, accessToken: string, request: typeof fetch = fetch): Promise<UserInfo> {
+  const resp = await request(p.userInfoUrl, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
   });
   const text = await resp.text();
@@ -307,13 +308,24 @@ export class OAuthRoutes {
   constructor(
     private db: Database,
     private providers: Map<string, Provider>,
-  ) {}
+    private providerFetch?: typeof fetch,
+  ) {
+    // Native OAuth returns a short-lived, one-use code, never session tokens in a URL.
+    db.run(`CREATE TABLE IF NOT EXISTS _oauth_native_flows (
+      state TEXT PRIMARY KEY, provider TEXT NOT NULL, challenge TEXT NOT NULL,
+      app_state TEXT NOT NULL, expires_at INTEGER NOT NULL
+    )`);
+    db.run(`CREATE TABLE IF NOT EXISTS _oauth_native_codes (
+      code_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, challenge TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    )`);
+  }
 
-  static fromConfig(db: Database, cfg: OAuthConfig | null | undefined): OAuthRoutes | null {
+  static fromConfig(db: Database, cfg: OAuthConfig | null | undefined, providerFetch?: typeof fetch): OAuthRoutes | null {
     const providers = buildProviders(cfg);
     if (providers.length === 0) return null;
     createOAuthIdentitiesTable(db);
-    return new OAuthRoutes(db, new Map(providers.map((p) => [p.name, p])));
+    return new OAuthRoutes(db, new Map(providers.map((p) => [p.name, p])), providerFetch);
   }
 
   /** Dispatch /oauth/* paths; returns null for unmatched shapes. */
@@ -322,6 +334,9 @@ export class OAuthRoutes {
     segments: string[],
     issuer?: SessionIssuer | null,
   ): Promise<Response | null> {
+    if (req.method === 'POST' && segments.length === 3 && segments[1] === 'native' && segments[2] === 'exchange') {
+      return this.exchangeNative(req, issuer);
+    }
     if (req.method !== 'GET') return null;
     if (segments.length === 2 && segments[1] === 'providers') return this.listProviders();
     if (segments.length === 3) {
@@ -347,6 +362,20 @@ export class OAuthRoutes {
     if (!provider) return errorResponse(404, `unknown provider "${name}"`);
 
     const state = generateToken();
+    const startURL = new URL(req.url);
+    const challenge = startURL.searchParams.get('native_challenge');
+    const appState = startURL.searchParams.get('native_state');
+    if (challenge !== null || appState !== null) {
+      if (!challenge || !/^[A-Za-z0-9_-]{43}$/.test(challenge)
+          || !appState || !/^[A-Za-z0-9_-]{43,128}$/.test(appState)) {
+        return errorResponse(400, 'invalid native OAuth challenge or state');
+      }
+      const now = Date.now();
+      this.db.query('DELETE FROM _oauth_native_flows WHERE expires_at < ?').run(now);
+      this.db.query('DELETE FROM _oauth_native_codes WHERE expires_at < ?').run(now);
+      this.db.query('INSERT INTO _oauth_native_flows (state, provider, challenge, app_state, expires_at) VALUES (?, ?, ?, ?, ?)')
+        .run(state, name, challenge, appState, now + 600_000);
+    }
     const params = new URLSearchParams({
       client_id: provider.clientId,
       redirect_uri: provider.redirectUrl,
@@ -397,14 +426,14 @@ export class OAuthRoutes {
 
     let accessToken: string;
     try {
-      accessToken = await exchangeCode(provider, code);
+      accessToken = await exchangeCode(provider, code, this.providerFetch);
     } catch (err) {
       return errorResponse(502, `code exchange failed: ${err instanceof Error ? err.message : err}`);
     }
 
     let info: UserInfo;
     try {
-      info = await fetchUserInfo(provider, accessToken);
+      info = await fetchUserInfo(provider, accessToken, this.providerFetch);
     } catch (err) {
       return errorResponse(502, `userinfo fetch failed: ${err instanceof Error ? err.message : err}`);
     }
@@ -429,6 +458,24 @@ export class OAuthRoutes {
         );
       }
       return errorResponse(500, `user lookup failed: ${err instanceof Error ? err.message : err}`);
+    }
+
+    const native = this.db.query(
+      'DELETE FROM _oauth_native_flows WHERE state = ? AND provider = ? RETURNING challenge, app_state, expires_at',
+    ).get(cookieState, name) as { challenge: string; app_state: string; expires_at: number } | null;
+    if (native) {
+      if (native.expires_at <= Date.now()) return errorResponse(400, 'native OAuth flow expired');
+      if (!issuer) return errorResponse(503, 'native OAuth requires session authentication');
+      const handoff = generateToken();
+      this.db.query('INSERT INTO _oauth_native_codes (code_hash, user_id, challenge, expires_at) VALUES (?, ?, ?, ?)')
+        .run(createHash('sha256').update(handoff).digest('hex'), user.id, native.challenge, Date.now() + 60_000);
+      const query = new URLSearchParams({ code: handoff, state: native.app_state });
+      return new Response(null, { status: 302, headers: {
+        Location: `homestead://oauth?${query}`,
+        'Set-Cookie': `${STATE_COOKIE}=; Path=${stateCookiePath(provider)}; Max-Age=0; HttpOnly; SameSite=Lax; Secure`,
+        'Cache-Control': 'no-store',
+        'Referrer-Policy': 'no-referrer',
+      } });
     }
 
     // Prefer a full session (access + refresh) via the injected issuer so
@@ -457,4 +504,23 @@ export class OAuthRoutes {
       },
     });
   }
+  private async exchangeNative(req: Request, issuer?: SessionIssuer | null): Promise<Response> {
+    if (!issuer) return errorResponse(503, 'native OAuth requires session authentication');
+    const body = await req.json().catch(() => null) as { code?: unknown; verifier?: unknown } | null;
+    if (typeof body?.code !== 'string' || body.code.length > 256 || !body.code
+        || typeof body.verifier !== 'string' || !/^[A-Za-z0-9_-]{43,128}$/.test(body.verifier)) {
+      return errorResponse(400, 'invalid native OAuth exchange');
+    }
+    const challenge = createHash('sha256').update(body.verifier).digest('base64url');
+    // Atomic consume only after proof verification; invalid proofs do not burn the code.
+    const grant = this.db.query(
+      'DELETE FROM _oauth_native_codes WHERE code_hash = ? AND challenge = ? AND expires_at > ? RETURNING user_id',
+    ).get(createHash('sha256').update(body.code).digest('hex'), challenge, Date.now()) as { user_id: string } | null;
+    if (!grant) return errorResponse(400, 'native OAuth code expired, used, or invalid');
+    if (!getUserById(this.db, grant.user_id)) return errorResponse(401, 'account no longer exists');
+    return new Response(JSON.stringify(issuer(grant.user_id)), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  }
+
 }

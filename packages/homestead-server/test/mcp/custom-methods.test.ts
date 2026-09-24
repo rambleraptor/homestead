@@ -97,6 +97,8 @@ async function invoke(
   bindings: Map<string, CustomMethodBinding>,
   response?: Response,
 ) {
+  // A test can invoke multiple methods; restore the previous stub before replacing it.
+  restoreFetch?.();
   const stub = captureFetch(response);
   restoreFetch = stub.restore;
   const out = await executeCustomMethod(name, args, bindings, 'tok');

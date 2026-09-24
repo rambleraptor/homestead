@@ -1,3 +1,4 @@
+import { NativeDeviceSettings } from '../../mobile/NativeDeviceSettings';
 import { useState } from 'react';
 import { DashboardWidgetSettings } from './DashboardWidgetSettings';
 import { NotificationDevices } from './NotificationDevices';
@@ -58,6 +59,7 @@ export function SettingsHome() {
             <NotificationDevices />
           </div>
 
+          <NativeDeviceSettings />
           <DashboardWidgetSettings />
 
           {appSettings.length > 0 && (
