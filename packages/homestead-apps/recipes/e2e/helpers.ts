@@ -10,6 +10,7 @@ export interface RecipeIngredientInput {
   qty: number;
   unit: string;
   raw?: string;
+  group?: string;
 }
 
 export interface CreateRecipeInput {

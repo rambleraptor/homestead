@@ -61,11 +61,13 @@ function asIngredients(value: unknown): Partial<RecipeIngredient>[] {
       const item = asString(ing.item);
       const unit = asString(ing.unit);
       const raw = asString(ing.raw);
+      const group = asString(ing.group);
       const qty = asNumber(ing.qty);
       if (item) out.item = item;
       if (qty !== undefined) out.qty = qty;
       if (unit) out.unit = unit;
       if (raw) out.raw = raw;
+      if (group) out.group = group;
       return out;
     })
     .filter((ing) => Object.keys(ing).length > 0);

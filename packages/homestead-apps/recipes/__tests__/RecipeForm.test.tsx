@@ -69,4 +69,31 @@ describe('RecipeForm', () => {
     expect(screen.getByTestId('ingredient-unit-0')).toHaveValue('');
     expect(screen.getByTestId('ingredient-item-0')).toHaveValue('flour');
   });
+
+  it('trims ingredient sections into the payload and starts new rows in the same section', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(
+      <RecipeForm
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        initialData={baseRecipe([{ item: 'stock', qty: 1, unit: 'cup', raw: '1 cup stock' }])}
+      />,
+    );
+
+    await user.type(screen.getByTestId('ingredient-group-0'), '  For the sauce ');
+    await user.click(screen.getByTestId('add-ingredient-button'));
+    expect(screen.getByTestId('ingredient-group-1')).toHaveValue('For the sauce');
+    await user.type(screen.getByTestId('ingredient-item-1'), 'butter');
+
+    await user.click(screen.getByTestId('recipe-form-submit'));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const payload = onSubmit.mock.calls[0][0];
+    expect(payload.parsed_ingredients).toEqual([
+      expect.objectContaining({ item: 'stock', group: 'For the sauce' }),
+      expect.objectContaining({ item: 'butter', group: 'For the sauce' }),
+    ]);
+  });
 });

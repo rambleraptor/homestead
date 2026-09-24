@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatMinutes, importRecipeFromHtml } from '../importers/urlImporter';
+import type { RecipeObject } from 'recipe-scrapers';
+import { formatMinutes, importRecipeFromHtml, mapIngredients } from '../importers/urlImporter';
 
 /** Wrap a schema.org Recipe node in a page, the way a blog's JSON-LD arrives. */
 function page(recipe: Record<string, unknown>, wrapInGraph = false): string {
@@ -201,5 +202,21 @@ describe('importRecipeFromHtml', () => {
       // the failure is reported rather than thrown.
       expect(result.errors.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('mapIngredients', () => {
+  it('carries an ingredient group name onto its members as `group`, not notes', () => {
+    const recipe = {
+      ingredients: [
+        { name: 'For the sauce', items: [{ value: '1 cup stock (low sodium)' }] },
+        { name: '', items: [{ value: '2 eggs' }] },
+      ],
+    } as unknown as RecipeObject;
+
+    const [stock, eggs] = mapIngredients(recipe);
+    expect(stock).toMatchObject({ item: 'stock', group: 'For the sauce', notes: 'low sodium' });
+    expect(eggs).not.toHaveProperty('group');
+    expect(eggs).not.toHaveProperty('notes');
   });
 });

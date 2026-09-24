@@ -3,6 +3,7 @@ import {
   textImporter,
   parseQuantity,
   parseIngredientLine,
+  parseIngredientLines,
   extractNote,
   splitSteps,
   extractRecipeMeta,
@@ -113,6 +114,30 @@ describe('parseIngredientLine', () => {
   it('omits notes entirely when there is no parenthetical', () => {
     const ing = parseIngredientLine('2 cups flour');
     expect(ing).not.toHaveProperty('notes');
+  });
+});
+
+describe('parseIngredientLines', () => {
+  it('assigns sub-headings as the group of the lines that follow', () => {
+    const result = parseIngredientLines([
+      '2 chicken breasts',
+      '',
+      'For the sauce:',
+      '1 cup stock',
+      '2 tbsp butter',
+    ]);
+    expect(result.map((i) => [i.item, i.group])).toEqual([
+      ['chicken breasts', undefined],
+      ['stock', 'For the sauce'],
+      ['butter', 'For the sauce'],
+    ]);
+    expect(result[0]).not.toHaveProperty('group');
+  });
+
+  it('does not treat a line starting with a quantity as a heading', () => {
+    const result = parseIngredientLines(['2 cups stock:', '½ cup cream:']);
+    expect(result).toHaveLength(2);
+    expect(result.every((i) => i.group === undefined)).toBe(true);
   });
 });
 
@@ -232,6 +257,16 @@ CALORIES: 177kcal
 CARBOHYDRATES: 3g
 
 Source: https://www.wellplated.com/bacon-wrapped-asparagus/`;
+
+  it('keeps ingredient sub-headings as groups', () => {
+    const result = textImporter.parse(
+      'Chicken Piccata\n\nIngredients:\n2 chicken breasts\nFor the sauce:\n1 cup stock\n\nDirections:\nCook.',
+    );
+    expect(result.data?.parsed_ingredients.map((i) => i.group)).toEqual([
+      undefined,
+      'For the sauce',
+    ]);
+  });
 
   it('extracts the title', () => {
     const result = textImporter.parse(SAMPLE);

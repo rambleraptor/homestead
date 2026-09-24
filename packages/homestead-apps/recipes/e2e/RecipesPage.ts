@@ -146,6 +146,51 @@ export class RecipesPage {
     ).toBeVisible();
   }
 
+  async expectRecipeViewIngredientGroup(name: string, items: string[]) {
+    const heading = this.page
+      .getByTestId('recipe-view-ingredients')
+      .getByRole('heading', { name });
+    await expect(heading).toBeVisible();
+    const section = heading.locator('xpath=..');
+    for (const item of items) {
+      await expect(section.getByText(item)).toBeVisible();
+    }
+  }
+
+  async toggleCookMode() {
+    await this.page.getByTestId('recipe-view-cook-mode').click();
+  }
+
+  async expectCookMode(on: boolean) {
+    await expect(this.page.getByTestId('recipe-view-cook-mode')).toHaveAttribute(
+      'aria-pressed',
+      String(on),
+    );
+    await expect(this.page.getByTestId('recipe-view-cook-mode-banner')).toHaveCount(on ? 1 : 0);
+  }
+
+  async toggleCookModeIngredient(index: number) {
+    await this.page.getByTestId(`recipe-view-ingredient-${index}`).click();
+  }
+
+  async expectCookModeIngredientChecked(index: number, checked: boolean) {
+    await expect(this.page.getByTestId(`recipe-view-ingredient-${index}`)).toHaveAttribute(
+      'aria-pressed',
+      String(checked),
+    );
+  }
+
+  async selectCookModeStep(index: number) {
+    await this.page.getByTestId(`recipe-view-step-${index}`).click();
+  }
+
+  async expectCookModeCurrentStep(index: number) {
+    await expect(this.page.getByTestId(`recipe-view-step-${index}`)).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  }
+
   async expectRecipeViewMethod(text: string) {
     await expect(
       this.page.getByTestId('recipe-view-method'),

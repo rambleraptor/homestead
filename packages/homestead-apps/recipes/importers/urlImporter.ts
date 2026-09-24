@@ -118,12 +118,8 @@ function joinNotes(...parts: Array<string | undefined>): string | undefined {
 }
 
 /**
- * Flatten the library's ingredient *groups* into the flat list the schema holds.
- *
- * A group name ("For the sauce") has nowhere to live in `parsed_ingredients`, so
- * it's folded into each member's `notes` rather than dropped — losing which half
- * of a two-component recipe an ingredient belongs to makes the list wrong, not
- * merely terser.
+ * Flatten the library's ingredient *groups* into the flat list the schema holds,
+ * carrying each group's name ("For the sauce") onto its members as `group`.
  */
 export function mapIngredients(recipe: RecipeObject): RecipeIngredient[] {
   const out: RecipeIngredient[] = [];
@@ -147,8 +143,12 @@ export function mapIngredients(recipe: RecipeObject): RecipeIngredient[] {
       // `notes` is optional in the schema, so omit the key rather than
       // sending an undefined one.
       const { notes: _parsedNotes, ...base } = parsed;
-      const notes = joinNotes(groupName, parsed.notes, range);
-      out.push(notes ? { ...base, notes } : base);
+      const notes = joinNotes(parsed.notes, range);
+      out.push({
+        ...base,
+        ...(notes ? { notes } : {}),
+        ...(groupName ? { group: groupName } : {}),
+      });
     }
   }
 

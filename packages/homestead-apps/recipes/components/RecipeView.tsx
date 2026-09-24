@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   ChefHat,
   Clock,
+  CookingPot,
   ExternalLink,
   Pencil,
   ShoppingCart,
@@ -24,10 +25,12 @@ import { useUpdateRecipe } from '../hooks/useUpdateRecipe';
 import { useAddIngredientsToGroceryList } from '../hooks/useAddIngredientsToGroceryList';
 import { RecipeForm } from './RecipeForm';
 import { RecipeImage } from './RecipeImage';
+import { RecipeIngredients } from './RecipeIngredients';
+import { RecipeSteps } from './RecipeSteps';
+import { isWakeLockSupported, useWakeLock } from '../hooks/useWakeLock';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { decimalToFraction } from '@rambleraptor/homestead-core/shared/utils/fractionUtils';
-import type { RecipeFormData, RecipeIngredient } from '../types';
+import type { RecipeFormData } from '../types';
 
 interface RecipeViewProps {
   recipeId: string;
@@ -35,11 +38,35 @@ interface RecipeViewProps {
 
 export function RecipeView({ recipeId }: RecipeViewProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [cookMode, setCookMode] = useState(false);
+  const [checkedIngredients, setCheckedIngredients] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
+  const [currentStep, setCurrentStep] = useState<number | null>(null);
   const { data: recipe, isLoading, isError, error } = useRecipe(recipeId);
   const updateMutation = useUpdateRecipe();
   const { addIngredients, isPending: isAddingToGroceries } =
     useAddIngredientsToGroceryList();
   const toast = useToast();
+  const wakeLock = useWakeLock(cookMode, (err) => toast.error(err));
+
+  const toggleCookMode = () => {
+    // Leaving cook mode clears your place, so the next cook starts fresh.
+    if (cookMode) {
+      setCheckedIngredients(new Set());
+      setCurrentStep(null);
+    }
+    setCookMode(!cookMode);
+  };
+
+  const toggleIngredient = (index: number) => {
+    setCheckedIngredients((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
 
   const handleSubmit = async (data: RecipeFormData) => {
     try {
@@ -157,7 +184,21 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           )
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleCookMode}
+              aria-pressed={cookMode}
+              data-testid="recipe-view-cook-mode"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium font-body transition-colors shadow-sm border ${
+                cookMode
+                  ? 'bg-accent-terracotta hover:bg-accent-terracotta-hover text-white border-accent-terracotta'
+                  : 'bg-white hover:bg-bg-pearl text-brand-navy border-gray-200'
+              }`}
+            >
+              <CookingPot className="w-4 h-4" />
+              {cookMode ? 'Exit cook mode' : 'Cook mode'}
+            </button>
             <button
               onClick={handleAddToGroceries}
               disabled={ingredients.length === 0 || isAddingToGroceries}
@@ -179,7 +220,23 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
         }
       />
 
-      {recipe.image && (
+      {cookMode && (
+        <div
+          role="status"
+          data-testid="recipe-view-cook-mode-banner"
+          className="rounded-lg border border-accent-terracotta/40 bg-bg-pearl px-4 py-3 text-sm text-brand-navy"
+        >
+          Cook mode is on
+          {wakeLock === 'held'
+            ? ' — your screen will stay awake. '
+            : !isWakeLockSupported() || wakeLock === 'failed'
+              ? ", but your screen can't be kept awake. "
+              : '. '}
+          Tap ingredients to check them off and tap a step to mark your place.
+        </div>
+      )}
+
+      {recipe.image && !cookMode && (
         <RecipeImage
           recipe={recipe}
           alt={recipe.title}
@@ -243,33 +300,12 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           >
             Ingredients
           </h2>
-          {ingredients.length === 0 ? (
-            <p className="text-sm text-text-muted">No ingredients listed.</p>
-          ) : (
-            <ul data-testid="recipe-view-ingredients" className="space-y-2">
-              {ingredients.map((ing, idx) => (
-                <li
-                  key={`${ing.item}-${idx}`}
-                  className="flex items-baseline gap-2 text-base text-brand-navy"
-                >
-                  <span className="font-medium tabular-nums shrink-0">
-                    {formatQty(ing)}
-                  </span>
-                  <span className="min-w-0">
-                    {ing.item || ing.raw}
-                    {ing.notes && (
-                      <span
-                        data-testid={`recipe-view-ingredient-notes-${idx}`}
-                        className="block text-sm text-text-muted"
-                      >
-                        {ing.notes}
-                      </span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <RecipeIngredients
+            ingredients={ingredients}
+            cookMode={cookMode}
+            checked={checkedIngredients}
+            onToggle={toggleIngredient}
+          />
         </section>
 
         <section
@@ -279,24 +315,16 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           <div>
             <h2
               id="method-heading"
-              className="text-xl font-display font-semibold text-brand-navy mb-3"
+              className="text-xl font-display font-semibold text-brand-navy mb-5"
             >
               Steps
             </h2>
-            {steps.length > 0 ? (
-              <ol
-                data-testid="recipe-view-steps"
-                className="list-decimal list-outside ml-6 space-y-3 font-body text-base leading-relaxed text-brand-navy marker:text-accent-terracotta marker:font-semibold"
-              >
-                {steps.map((step, idx) => (
-                  <li key={idx} className="pl-1 whitespace-pre-wrap">
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="text-sm text-text-muted">No steps listed.</p>
-            )}
+            <RecipeSteps
+              steps={steps}
+              cookMode={cookMode}
+              currentStep={currentStep}
+              onSelectStep={setCurrentStep}
+            />
           </div>
 
           {recipe.method && (
@@ -316,12 +344,6 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
       </div>
     </div>
   );
-}
-
-function formatQty(ing: RecipeIngredient): string {
-  const qty = ing.qty > 0 ? decimalToFraction(ing.qty) : '';
-  const unit = ing.unit?.trim() ?? '';
-  return [qty, unit].filter(Boolean).join(' ');
 }
 
 function toHref(source?: string): string | null {

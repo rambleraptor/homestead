@@ -64,6 +64,13 @@ const recipe: DocType = {
             type: 'string',
             description: 'The original ingredient line, exactly as printed.',
           },
+          group: {
+            label: 'Section',
+            type: 'string',
+            description:
+              'The sub-heading the ingredient is listed under (e.g. "For the ' +
+              'sauce"). Null when the list has no sub-headings.',
+          },
         },
       },
     },
