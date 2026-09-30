@@ -8,6 +8,7 @@
 import { MutationCache, QueryClient, type DefaultOptions } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getAepErrorMessage } from './errorMessage';
+import { isNetworkError, reportNetworkFailure } from './connectivity';
 
 /**
  * Per-mutation opt-outs the global error handler understands. Attach via a
@@ -34,8 +35,17 @@ const defaultQueryOptions: DefaultOptions = {
     // Refetch on window focus in development, not in production
     refetchOnWindowFocus: process.env.NODE_ENV !== 'production',
 
-    // Retry failed queries 1 time
-    retry: 1,
+    // Retry a failed query once. A request that never reached the server
+    // instead flips the app offline and keeps retrying: with `offlineFirst`
+    // the retry pauses until the probe sees the server again, and the cached
+    // data stays on screen instead of an error.
+    retry: (failureCount, error) => {
+      if (isNetworkError(error)) {
+        reportNetworkFailure();
+        return true;
+      }
+      return failureCount < 1;
+    },
 
     // Consider data stale after 5 minutes
     staleTime: 5 * 60 * 1000,
@@ -55,7 +65,10 @@ const defaultQueryOptions: DefaultOptions = {
     networkMode: 'offlineFirst',
   },
   mutations: {
-    // No automatic retry — offline writes pause and resume via onlineManager.
+    // No automatic retry. The resource factory's create/update/delete opt
+    // back in for network failures only (see registerResourceMutationDefaults
+    // and connectivity.ts) — their replays are safe; an arbitrary custom
+    // method's may not be.
     retry: 0,
 
     // Default 'online' mode: when offline, mutations are paused (variables
@@ -75,6 +88,9 @@ const defaultQueryOptions: DefaultOptions = {
  */
 const mutationCache = new MutationCache({
   onError: (error, _variables, _context, mutation) => {
+    // The request never reached the server: show the offline state (and start
+    // probing for the way back) so the user knows why nothing saved.
+    if (isNetworkError(error)) reportNetworkFailure();
     const meta = mutation.meta;
     if (meta?.skipErrorToast) return;
     toast.error(meta?.errorMessage ?? getAepErrorMessage(error));
