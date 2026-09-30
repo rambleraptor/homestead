@@ -1,25 +1,26 @@
 /**
- * Client for the server's `/api/events` change feed.
+ * Client for the server's `/api/events` change feed (contract:
+ * docs/guides/events.md).
  *
- * A write on one device becomes a `change` event (naming only the resource
- * singular) on every other open tab, which invalidates the owning app's
- * queries so a shared list — the grocery list two people are shopping from —
- * refetches within a moment instead of on the next poll. `useLiveRefresh`
- * keeps polling as a safety net, just much less often while this is connected.
+ * Another device's write arrives as a `resource.*` event carrying the changed
+ * record, which is written straight into the cache (see resourceEvents.ts) —
+ * so the grocery list two people are shopping from updates within a moment,
+ * with no request. `useLiveRefresh` keeps polling as a slow safety net.
  *
  * The stream is read with `fetch` rather than `EventSource` because the engine
  * authenticates with a bearer header, which EventSource can't send.
  *
- * Invalidation rules:
- *
- * - While a mutation for the app is in flight (or queued), the event is
- *   dropped: that mutation invalidates the app when it settles, and a refetch
- *   now could land before our own write and flicker the optimistic row back.
- *   This also swallows the echo of the user's own writes.
- * - Events are coalesced per app, so clearing ten checked items refetches the
- *   list once, not ten times.
- * - After a reconnect every app query is invalidated, since any events sent
- *   while the stream was down were missed.
+ * - **Own writes** come back with `origin` set to this tab's client id and are
+ *   skipped: the mutation already put them in the cache.
+ * - **Resume**: the last event id is sent as `Last-Event-ID` on reconnect, and
+ *   the server replays what was missed. Only when it answers `resumed: false`
+ *   (a restart, or a long absence) is every app query refetched.
+ * - **Fallback**: an event that can't be written into the cache directly (the
+ *   list is filtered, or its hook didn't register its shape) invalidates the
+ *   owning app instead — coalesced per app, and skipped while that app has
+ *   writes in flight, since their settle invalidates anyway. A patched event
+ *   still invalidates the app's *other* queries (widgets, derived views), just
+ *   not the slots it already brought up to date.
  */
 
 import { useEffect, useSyncExternalStore } from 'react';
@@ -27,6 +28,13 @@ import { onlineManager, useQueryClient, type QueryClient } from '@tanstack/react
 import { authStore, refreshSession } from './aepbase';
 import { queryKeys } from './queryClient';
 import { appIdsForResource } from './registerResourceMutationDefaults';
+import { getClientId } from './clientId';
+import {
+  applyResourceEvent,
+  isResourceEventType,
+  type ResourceEventData,
+  type ResourceEventType,
+} from './resourceEvents';
 
 export const CHANGE_FEED_URL = '/api/events';
 
@@ -64,37 +72,49 @@ export function useChangeFeedConnected(): boolean {
 
 // --- SSE framing ------------------------------------------------------------
 
-export interface ChangeEvent {
-  resource: string;
+export interface SseFrame {
+  id?: string;
   event: string;
+  data?: unknown;
 }
 
 /**
- * Split a buffer into complete SSE frames. Returns the parsed `change` events
- * and the unconsumed tail (a frame still being received).
+ * Split a buffer into complete SSE frames. Returns the parsed frames and the
+ * unconsumed tail (a frame still being received). Comment-only frames
+ * (keepalives) and frames with unparseable data are dropped.
  */
-export function parseFrames(buffer: string): { events: ChangeEvent[]; rest: string } {
-  const frames = buffer.split(/\r?\n\r?\n/);
-  const rest = frames.pop() ?? '';
-  const events: ChangeEvent[] = [];
-  for (const frame of frames) {
-    let name = 'message';
+export function parseFrames(buffer: string): { frames: SseFrame[]; rest: string } {
+  const chunks = buffer.split(/\r?\n\r?\n/);
+  const rest = chunks.pop() ?? '';
+  const frames: SseFrame[] = [];
+  for (const chunk of chunks) {
+    let event = '';
+    let id: string | undefined;
     const data: string[] = [];
-    for (const line of frame.split(/\r?\n/)) {
-      if (line.startsWith('event:')) name = line.slice(6).trim();
+    for (const line of chunk.split(/\r?\n/)) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('id:')) id = line.slice(3).trim();
       else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
     }
-    if (name !== 'change' || data.length === 0) continue;
-    try {
-      const parsed = JSON.parse(data.join('\n')) as Partial<ChangeEvent>;
-      if (typeof parsed.resource === 'string') {
-        events.push({ resource: parsed.resource, event: String(parsed.event ?? '') });
+    if (!event) continue;
+    const frame: SseFrame = { event };
+    if (id !== undefined) frame.id = id;
+    if (data.length > 0) {
+      try {
+        frame.data = JSON.parse(data.join('\n'));
+      } catch {
+        continue; // malformed — the safety-net poll catches up
       }
-    } catch {
-      // malformed frame — ignore it, the next poll catches up
     }
+    frames.push(frame);
   }
-  return { events, rest };
+  return { frames, rest };
+}
+
+interface StreamReady {
+  version: number;
+  resumed: boolean;
+  last_event_id: string;
 }
 
 // --- connection manager -----------------------------------------------------
@@ -130,36 +150,48 @@ const defaultDeps: ChangeFeedDeps = {
   },
 };
 
-/** Invalidate an app's queries for one change event, per the rules above. */
+/**
+ * Coalesced per-app invalidation. `except` names resource singulars whose
+ * slots an event already patched; a later unpatched event for the same app in
+ * the same window widens it back to the whole app.
+ */
 function makeInvalidator(qc: QueryClient) {
+  const pending = new Map<string, { all: boolean; except: Set<string> }>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  const onChange = (event: ChangeEvent) => {
-    for (const appId of appIdsForResource(event.resource)) {
-      if (timers.has(appId)) continue;
-      timers.set(
-        appId,
-        setTimeout(() => {
-          timers.delete(appId);
-          if (qc.isMutating({ mutationKey: ['app', appId] }) > 0) return;
-          void qc.invalidateQueries({ queryKey: queryKeys.app(appId).all() });
-        }, COALESCE_MS),
-      );
-    }
+  const flush = (appId: string) => {
+    timers.delete(appId);
+    const job = pending.get(appId);
+    pending.delete(appId);
+    if (!job) return;
+    if (qc.isMutating({ mutationKey: ['app', appId] }) > 0) return;
+    void qc.invalidateQueries({
+      queryKey: queryKeys.app(appId).all(),
+      predicate: job.all ? undefined : (q) => !job.except.has(String(q.queryKey[2])),
+    });
+  };
+
+  const schedule = (appId: string, patchedResource: string | null) => {
+    const job = pending.get(appId) ?? { all: false, except: new Set<string>() };
+    if (patchedResource === null) job.all = true;
+    else job.except.add(patchedResource);
+    pending.set(appId, job);
+    if (!timers.has(appId)) timers.set(appId, setTimeout(() => flush(appId), COALESCE_MS));
   };
 
   const cancel = () => {
     for (const timer of timers.values()) clearTimeout(timer);
     timers.clear();
+    pending.clear();
   };
 
-  return { onChange, cancel };
+  return { schedule, cancel };
 }
 
 /**
  * Hold the change feed open until the returned function is called:
- * reconnecting with backoff, pausing while offline or hidden, and invalidating
- * the owning app's queries on each event.
+ * reconnecting (and resuming) with backoff, pausing while offline or hidden,
+ * and applying each event to the cache.
  */
 export function connectChangeFeed(
   qc: QueryClient,
@@ -170,8 +202,39 @@ export function connectChangeFeed(
   let abort: AbortController | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let backoff = MIN_BACKOFF_MS;
+  let lastEventId: string | null = null;
   let hasConnectedBefore = false;
   let running = false;
+
+  const onResourceEvent = (type: ResourceEventType, data: ResourceEventData) => {
+    if (data.origin && data.origin === getClientId()) return;
+    for (const appId of appIdsForResource(data.resource)) {
+      const patched = applyResourceEvent(qc, appId, type, data);
+      invalidator.schedule(appId, patched ? data.resource : null);
+    }
+  };
+
+  const onFrame = (frame: SseFrame) => {
+    if (frame.id) lastEventId = frame.id;
+    if (frame.event === 'stream.ready') {
+      const ready = frame.data as Partial<StreamReady> | undefined;
+      setConnected(true);
+      if (!ready?.resumed) {
+        // Events were missed and can't be replayed: refetch what's cached.
+        if (hasConnectedBefore) void qc.invalidateQueries({ queryKey: ['app'] });
+        if (typeof ready?.last_event_id === 'string') lastEventId = ready.last_event_id;
+      }
+      hasConnectedBefore = true;
+      return;
+    }
+    if (isResourceEventType(frame.event) && frame.data && typeof frame.data === 'object') {
+      const data = frame.data as ResourceEventData;
+      if (typeof data.resource === 'string' && typeof data.id === 'string') {
+        onResourceEvent(frame.event, data);
+      }
+    }
+    // Unknown event types are ignored, so the server can add them freely.
+  };
 
   const canRun = () => !stopped && deps.isOnline() && deps.isVisible();
 
@@ -186,12 +249,14 @@ export function connectChangeFeed(
 
   const open = async (signal: AbortSignal): Promise<Response> => {
     await deps.refresh(false);
-    const send = () =>
-      deps.fetch(CHANGE_FEED_URL, {
-        headers: { Authorization: `Bearer ${deps.getToken()}`, Accept: 'text/event-stream' },
-        signal,
-        cache: 'no-store',
-      });
+    const send = () => {
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${deps.getToken()}`,
+        Accept: 'text/event-stream',
+      };
+      if (lastEventId) headers['Last-Event-ID'] = lastEventId;
+      return deps.fetch(CHANGE_FEED_URL, { headers, signal, cache: 'no-store' });
+    };
     let res = await send();
     if (res.status === 401 && (await deps.refresh(true))) res = await send();
     return res;
@@ -206,11 +271,7 @@ export function connectChangeFeed(
       const res = await open(signal);
       if (!res.ok || !res.body) throw new Error(`change feed: HTTP ${res.status}`);
 
-      setConnected(true);
       backoff = MIN_BACKOFF_MS;
-      // Whatever changed while we were disconnected never reached us.
-      if (hasConnectedBefore) void qc.invalidateQueries({ queryKey: ['app'] });
-      hasConnectedBefore = true;
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -219,9 +280,9 @@ export function connectChangeFeed(
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const { events, rest } = parseFrames(buffer);
+        const { frames, rest } = parseFrames(buffer);
         buffer = rest;
-        for (const event of events) invalidator.onChange(event);
+        for (const frame of frames) onFrame(frame);
       }
     } catch {
       // Network drop, abort, or server refusal — handled by the retry below.

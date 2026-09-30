@@ -776,6 +776,8 @@ export function handleDelete(reg: Registry, match: RouteMatch, req: Request): Re
   // `previous`. Only materialized when a dispatcher is wired.
   const preState = reg.syncDispatcher ? storedToMap(reg, r, existing) : null;
 
+  reg.syncDispatcher?.beforeDelete?.({ resource: r.singular, recordId: match.id, path });
+
   const filePaths: string[] = [];
   reg.db.transaction(() => {
     applyReferenceCleanup(reg, r.singular, target, filePaths);

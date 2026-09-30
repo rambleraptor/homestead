@@ -138,7 +138,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   // The same post-commit seam also feeds /api/events, which tells open tabs a
   // collection changed so a shared list refreshes on every device at once.
   const { createChangeFeed, teeDispatcher } = await import('./change-feed');
-  const changeFeed = createChangeFeed();
+  const changeFeed = createChangeFeed(engine);
   engine.setSyncDispatcher(
     teeDispatcher(createSyncDispatcher(engine.db, resourceSyncs, operationStore), changeFeed),
   );
@@ -201,7 +201,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   publicApp.route('/api/tokens', makeTokensRoute(engine));
   publicApp.route('/api/security', makeSecurityRoute());
   publicApp.route('/api/chat', chatRoute);
-  publicApp.route('/api/events', makeEventsRoute(changeFeed));
+  publicApp.route('/api/events', makeEventsRoute(changeFeed, (token) => engine.authenticateToken(token)));
   publicApp.route('/api/aep', makeAepGateway(engine, loopbackOrigin));
   // OAuth login redirects (Homestead as client) arrive on the public origin;
   // the engine serves them.

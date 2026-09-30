@@ -115,6 +115,7 @@ export default defineConfig({
             { text: 'Defining Resources', link: '/guides/resources' },
             { text: 'State Management', link: '/guides/state-management' },
             { text: 'Offline Support', link: '/guides/offline' },
+            { text: 'Live Updates', link: '/guides/events' },
           ],
         },
         {

@@ -591,12 +591,18 @@ first.
 
 ### Not yet modeled
 
-- Record-level realtime subscriptions. `GET /api/events` (SSE,
-  `src/change-feed.ts` + `src/routes/events.ts`) only announces *which
-  collection* changed; the SPA (`homestead-core/api/changeFeed.ts`) turns that
-  into a query invalidation and refetches through the normal endpoints, with
-  `useLiveRefresh` polling as a slow fallback.
 - Thumbnail generation for file fields
+
+Realtime updates **are** modeled: `GET /api/events` (SSE; public contract in
+[`packages/homestead-site/docs/guides/events.md`](packages/homestead-site/docs/guides/events.md))
+streams a `resource.created|updated|deleted` event, carrying the record, for
+every committed write. `src/change-feed.ts` decides per subscriber with
+`engine.canRead` — the same `authorizeRecordRead` a GET runs (deletes are
+decided pre-commit via the dispatcher's `beforeDelete`) — and keeps a replay
+buffer for `Last-Event-ID` resume. The SPA (`homestead-core/api/changeFeed.ts`)
+writes each event into the resource's cache slots (`resourceEvents.ts`; lists
+register their shape via `useResourceList`) and skips its own writes by the
+`X-Homestead-Client` origin tag.
 
 Row-level security **is** modeled and enforced: per-collection and per-record
 access is governed by the grant-based ACL system (`access-grant` records +

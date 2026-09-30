@@ -1,47 +1,80 @@
 /**
- * `GET /api/events` — a Server-Sent Events stream of collection changes.
+ * `GET /api/events` — Server-Sent Events stream of record changes.
  *
- * Each committed create/update/delete becomes one `change` event naming the
- * resource singular (see change-feed.ts for why that's all it carries). The
- * SPA turns an event into a query invalidation, so the list on someone else's
- * phone refetches — through the normal ACL-checked endpoints — a moment after
- * the write instead of on the next poll.
+ * Public API; the full contract lives in docs/guides/events.md. In short:
  *
- * The caller authenticates with the same bearer token as every other `/api`
- * call; the SPA reads the stream with `fetch` (EventSource can't send an
- * Authorization header). The token is re-checked on every heartbeat, so a
- * logout or revocation ends the stream within one interval rather than leaving
- * it open for the life of the tab.
+ *   Authorization: Bearer <token>        (required — same tokens as /api/aep)
+ *   Last-Event-ID: <id>                  (optional — resume after this event)
+ *   ?resources=grocery,store             (optional — narrow to these singulars)
+ *
+ *   event: stream.ready                  first frame, no id
+ *   data: {"version":1,"resumed":true,"last_event_id":"<epoch>.<seq>"}
+ *
+ *   id: <epoch>.<seq>
+ *   event: resource.created | resource.updated | resource.deleted
+ *   data: {"resource","path","id","actor","origin","update_time","record"?}
+ *
+ * `resumed: false` on a reconnect means events were missed and could not be
+ * replayed; the client must refetch whatever it caches. Each event reaches
+ * only callers allowed to read its record (see change-feed.ts). The token is
+ * re-validated on every heartbeat, so logout or revocation ends the stream
+ * within one interval.
  */
 
 import { Hono } from 'hono';
-import { authenticate, type AuthResult } from '@rambleraptor/homestead-core/server/aepbase';
-import type { ChangeFeed } from '../change-feed';
+import type { ChangeFeed, FeedEvent, Subscriber } from '../change-feed';
+import type { User } from '../engine/types';
 
-export type AuthFn = (request: Request) => Promise<AuthResult | null>;
+export const EVENT_STREAM_VERSION = 1;
 
 /** Comment-line keepalive so proxies don't reap an idle stream. */
 export const HEARTBEAT_MS = 25_000;
 
+/** Upper bound on `?resources=` entries — a filter, not a query language. */
+const MAX_RESOURCE_FILTERS = 100;
+
+export type TokenAuthenticator = (token: string) => Promise<User | null>;
+
 export interface EventsRouteOptions {
-  auth?: AuthFn;
   heartbeatMs?: number;
 }
 
-export function makeEventsRoute(feed: ChangeFeed, opts: EventsRouteOptions = {}): Hono {
-  const auth = opts.auth ?? authenticate;
+function bearerToken(req: Request): string {
+  const header = req.headers.get('authorization') ?? '';
+  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+  return match ? match[1]!.trim() : '';
+}
+
+function resourceFilter(raw: string | undefined): Set<string> | null {
+  if (!raw) return null;
+  const names = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^[a-z0-9-]+$/.test(s))
+    .slice(0, MAX_RESOURCE_FILTERS);
+  return names.length > 0 ? new Set(names) : null;
+}
+
+export function frameEvent(event: FeedEvent): string {
+  return `id: ${event.id}\nevent: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`;
+}
+
+export function makeEventsRoute(
+  feed: ChangeFeed,
+  authenticate: TokenAuthenticator,
+  opts: EventsRouteOptions = {},
+): Hono {
   const heartbeatMs = opts.heartbeatMs ?? HEARTBEAT_MS;
   const app = new Hono();
 
   app.get('/', async (c) => {
-    const authed = await auth(c.req.raw);
-    if (!authed) return c.json({ error: { code: 401, message: 'unauthorized' } }, 401);
-
-    // A header-only re-check request, so the heartbeat can re-validate the
-    // token without holding on to the original request object.
-    const recheck = new Request(c.req.url, {
-      headers: { authorization: `Bearer ${authed.token}` },
-    });
+    const token = bearerToken(c.req.raw);
+    const caller = token ? await authenticate(token) : null;
+    if (!caller) {
+      return c.json({ error: { code: 401, message: 'missing or invalid bearer token' } }, 401);
+    }
+    const resources = resourceFilter(c.req.query('resources'));
+    const lastEventId = c.req.header('last-event-id') ?? null;
 
     const encoder = new TextEncoder();
     let cleanup = () => {};
@@ -49,7 +82,7 @@ export function makeEventsRoute(feed: ChangeFeed, opts: EventsRouteOptions = {})
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         let closed = false;
-        const send = (chunk: string) => {
+        const write = (chunk: string) => {
           if (closed) return;
           try {
             controller.enqueue(encoder.encode(chunk));
@@ -58,35 +91,43 @@ export function makeEventsRoute(feed: ChangeFeed, opts: EventsRouteOptions = {})
           }
         };
 
-        const unsubscribe = feed.subscribe((event) => {
-          send(`event: change\ndata: ${JSON.stringify(event)}\n\n`);
-        });
+        const subscriber: Subscriber = {
+          caller,
+          resources,
+          send: (event) => write(frameEvent(event)),
+        };
+        const subscription = feed.subscribe(subscriber, lastEventId);
+
+        const end = () => {
+          cleanup();
+          try {
+            controller.close();
+          } catch {
+            // already closed by the client
+          }
+        };
 
         const heartbeat = setInterval(() => {
-          void auth(recheck).then((still) => {
-            if (!still) {
-              cleanup();
-              try {
-                controller.close();
-              } catch {
-                // already closed by the client
-              }
-              return;
-            }
-            send(': keepalive\n\n');
-          });
+          void authenticate(token).then((still) => {
+            if (!still || !subscription.updateCaller(still)) return end();
+            write(': keepalive\n\n');
+          }, end);
         }, heartbeatMs);
 
         cleanup = () => {
           if (closed) return;
           closed = true;
           clearInterval(heartbeat);
-          unsubscribe();
+          subscription.close();
         };
 
-        // Tell the client how long to wait before reconnecting, and give it a
-        // first byte so it knows the stream is live.
-        send('retry: 5000\n: connected\n\n');
+        const ready = {
+          version: EVENT_STREAM_VERSION,
+          resumed: subscription.resumed,
+          last_event_id: subscription.headId,
+        };
+        write(`retry: 5000\nevent: stream.ready\ndata: ${JSON.stringify(ready)}\n\n`);
+        for (const event of subscription.replay) write(frameEvent(event));
       },
       cancel() {
         cleanup();
