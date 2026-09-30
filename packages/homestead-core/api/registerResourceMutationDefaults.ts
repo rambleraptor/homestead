@@ -20,8 +20,9 @@
 
 import type { QueryClient, MutationOptions } from '@tanstack/react-query';
 import { onlineManager } from '@tanstack/react-query';
-import { aepbase, type ParentPath } from './aepbase';
+import { aepbase, AepbaseError, type ParentPath } from './aepbase';
 import { queryKeys } from './queryClient';
+import { isNetworkError, reportNetworkFailure } from './connectivity';
 
 // ---------------------------------------------------------------------------
 // Temp-id helpers
@@ -38,6 +39,50 @@ export function newTempId(): string {
     return `${TEMP_ID_PREFIX}${crypto.randomUUID()}`;
   }
   return `${TEMP_ID_PREFIX}${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * The server id a create is sent with, derived from its temp id.
+ *
+ * Choosing the id client-side (AEP-133) is what makes a create safe to send
+ * twice. A create whose response never arrived — the connection dropped
+ * mid-request, or the tab closed and the persisted queue replayed it — is
+ * retried with the same id, so the engine answers 409 instead of storing a
+ * duplicate. Deterministic from the temp id so the retry, even after a reload,
+ * reproduces it without any extra persisted state.
+ */
+export function serverIdForTempId(tempId: string): string {
+  return tempId
+    .slice(TEMP_ID_PREFIX.length)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Retry policy for the factory's writes. A server that answered with an error
+ * is final — the write rolls back and toasts. A request that never reached it
+ * (store wifi with no internet, one bar of signal) is not: flip the app
+ * offline so the retry pauses into the persisted queue, exactly as if the
+ * browser had reported being offline, and it resumes when the connectivity
+ * probe sees the server again. Replaying is safe for all three: creates carry
+ * a client-chosen id, updates are merge patches, and a delete that finds
+ * nothing counts as done.
+ */
+function retryOnNetworkError(_failureCount: number, error: Error): boolean {
+  if (!isNetworkError(error)) return false;
+  reportNetworkFailure();
+  return true;
+}
+
+/**
+ * Short and flat, so a write that fails again right after the probe resumed
+ * it re-enters the paused (queued, badged) state promptly rather than after
+ * React Query's default exponential backoff.
+ */
+const NETWORK_RETRY_DELAY_MS = 1_000;
+
+function isHttpStatus(error: unknown, status: number): boolean {
+  return error instanceof AepbaseError && error.code === status;
 }
 
 // One reconciliation map per (appId, singular). Maps survive across
@@ -407,12 +452,24 @@ export function registerResourceMutationDefaults<
   // ---- create -----------------------------------------------------------
   const createDef: MutationOptions<T, Error, C, { previous: T[] }> = {
     networkMode: 'online',
+    retry: retryOnNetworkError,
+    retryDelay: NETWORK_RETRY_DELAY_MS,
     mutationFn: async (vars: C) => {
       const body = buildBody(vars);
       const parent = parentForCreate(vars);
-      return parent
-        ? aepbase.create<T>(plural, body, { parent })
-        : aepbase.create<T>(plural, body);
+      const id = serverIdForTempId(vars.tempId);
+      try {
+        return await aepbase.create<T>(plural, body, parent ? { parent, id } : { id });
+      } catch (error) {
+        // 409 on our own client-chosen id: an earlier attempt of this same
+        // create landed but its response was lost. Adopt that record.
+        if (!isHttpStatus(error, 409)) throw error;
+        try {
+          return await aepbase.get<T>(plural, id, parent ? { parent } : {});
+        } catch {
+          throw error;
+        }
+      }
     },
     onMutate: async (vars: C) => {
       await qc.cancelQueries({ queryKey: listKey });
@@ -452,6 +509,8 @@ export function registerResourceMutationDefaults<
     { previous: T[]; previousDetail: T | undefined }
   > = {
     networkMode: 'online',
+    retry: retryOnNetworkError,
+    retryDelay: NETWORK_RETRY_DELAY_MS,
     mutationFn: async (vars: UpdateVars<U>) => {
       const realId = resolveId(vars.id);
       if (isTempId(realId)) {
@@ -541,6 +600,8 @@ export function registerResourceMutationDefaults<
     typeof vars === 'string' ? undefined : vars.parent;
   const deleteDef: MutationOptions<string, Error, DeleteVars, DeleteContext> = {
     networkMode: 'online',
+    retry: retryOnNetworkError,
+    retryDelay: NETWORK_RETRY_DELAY_MS,
     mutationFn: async (vars: DeleteVars) => {
       const id = deleteId(vars);
       const realId = resolveId(id);
@@ -561,10 +622,17 @@ export function registerResourceMutationDefaults<
       // force: a "delete" in the UI means delete the whole subtree — the app's
       // confirm dialogs say as much. Harmless for childless resources (the
       // server ignores force when there are no children).
-      if (parent) {
-        await aepbase.remove(plural, realId, { parent, force: true });
-      } else {
-        await aepbase.remove(plural, realId, { force: true });
+      try {
+        if (parent) {
+          await aepbase.remove(plural, realId, { parent, force: true });
+        } else {
+          await aepbase.remove(plural, realId, { force: true });
+        }
+      } catch (error) {
+        // Already gone — removed by someone else, or by an earlier attempt of
+        // this delete whose response was lost. Either way the user's intent
+        // holds, so this is success, not a rollback that resurrects the row.
+        if (!isHttpStatus(error, 404)) throw error;
       }
       return realId;
     },

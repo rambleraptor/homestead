@@ -9,13 +9,15 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MutationObserver, QueryClient, onlineManager } from '@tanstack/react-query';
-import { aepbase } from '../aepbase';
+import { aepbase, AepbaseError } from '../aepbase';
+import { NetworkError, resetConnectivityProbe } from '../connectivity';
 import {
   clearResourceMetaRegistry,
   clearTempIdMaps,
   newTempId,
   registerResourceMutationDefaults,
   resourceMutationKeys,
+  serverIdForTempId,
 } from '../registerResourceMutationDefaults';
 import { queryKeys } from '../queryClient';
 
@@ -67,6 +69,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  resetConnectivityProbe();
   onlineManager.setOnline(true);
 });
 
@@ -82,7 +85,48 @@ describe('create', () => {
     const list = client.getQueryData<Thingy[]>(LIST_KEY) ?? [];
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('srv-1');
-    expect(aepbase.create).toHaveBeenCalledWith('thingies', expect.objectContaining({ name: 'Foo' }));
+    expect(aepbase.create).toHaveBeenCalledWith(
+      'thingies',
+      expect.objectContaining({ name: 'Foo' }),
+      { id: serverIdForTempId(tempId) },
+    );
+  });
+
+  it('sends a valid, deterministic server id derived from the temp id', () => {
+    const tempId = newTempId();
+    const id = serverIdForTempId(tempId);
+    expect(id).toMatch(/^[a-z0-9]+$/);
+    expect(id.length).toBeGreaterThanOrEqual(16);
+    expect(serverIdForTempId(tempId)).toBe(id);
+  });
+
+  it('adopts the existing record when a replayed create hits a 409 on its own id', async () => {
+    const client = makeClient();
+    client.setQueryData<Thingy[]>(LIST_KEY, []);
+    const tempId = newTempId();
+    const id = serverIdForTempId(tempId);
+    vi.mocked(aepbase.create).mockRejectedValueOnce(
+      new AepbaseError(409, 'already exists', '/thingies'),
+    );
+    vi.mocked(aepbase.get).mockResolvedValueOnce({ id, name: 'Foo' });
+
+    await run(client, KEYS.create, { name: 'Foo', tempId });
+
+    expect(aepbase.get).toHaveBeenCalledWith('thingies', id, {});
+    expect(client.getQueryData<Thingy[]>(LIST_KEY)).toEqual([{ id, name: 'Foo' }]);
+  });
+
+  it('surfaces the 409 when no record with its id exists', async () => {
+    const client = makeClient();
+    client.setQueryData<Thingy[]>(LIST_KEY, []);
+    const conflict = new AepbaseError(409, 'conflict', '/thingies');
+    vi.mocked(aepbase.create).mockRejectedValueOnce(conflict);
+    vi.mocked(aepbase.get).mockRejectedValueOnce(new AepbaseError(404, 'nope', '/thingies/x'));
+
+    await expect(run(client, KEYS.create, { name: 'Foo', tempId: newTempId() })).rejects.toBe(
+      conflict,
+    );
+    expect(client.getQueryData<Thingy[]>(LIST_KEY)).toEqual([]);
   });
 
   it('rolls back the cache when the server rejects', async () => {
@@ -261,6 +305,78 @@ describe('detail cache slot', () => {
   });
 });
 
+describe('delete races', () => {
+  it('treats a 404 as done instead of resurrecting the record', async () => {
+    const client = makeClient();
+    client.setQueryData<Thingy[]>(LIST_KEY, [{ id: 'srv-1', name: 'Foo' }]);
+    vi.mocked(aepbase.remove).mockRejectedValueOnce(
+      new AepbaseError(404, 'not found', '/thingies/srv-1'),
+    );
+
+    await run(client, KEYS.delete, 'srv-1');
+
+    expect(client.getQueryData<Thingy[]>(LIST_KEY)).toEqual([]);
+  });
+});
+
+/**
+ * Store wifi with no internet: the browser says online, but every request
+ * fails before reaching the server. The write must queue, not roll back.
+ */
+describe('network failures', () => {
+  it('pauses a write that never reached the server and replays it once back online', async () => {
+    const client = makeClient();
+    client.mount();
+    client.setQueryData<Thingy[]>(LIST_KEY, [{ id: 'srv-1', name: 'Foo', done: false }]);
+    vi.mocked(aepbase.update)
+      .mockRejectedValueOnce(new NetworkError(new TypeError('Failed to fetch')))
+      .mockResolvedValueOnce({ id: 'srv-1', name: 'Foo', done: true });
+
+    const pending = run(client, KEYS.update, { id: 'srv-1', data: { done: true } });
+
+    // Flipped offline and parked in the queue, optimistic edit intact.
+    await vi.waitFor(() => {
+      expect(onlineManager.isOnline()).toBe(false);
+      expect(client.getMutationCache().getAll()[0]?.state.isPaused).toBe(true);
+    }, { timeout: 3_000 });
+    expect(client.getQueryData<Thingy[]>(LIST_KEY)?.[0]?.done).toBe(true);
+
+    onlineManager.setOnline(true);
+    await pending;
+
+    expect(aepbase.update).toHaveBeenCalledTimes(2);
+    expect(client.getQueryData<Thingy[]>(LIST_KEY)?.[0]?.done).toBe(true);
+    client.unmount();
+  });
+
+  it('still rolls back on an HTTP error, which is an answer rather than an outage', async () => {
+    const client = makeClient();
+    client.setQueryData<Thingy[]>(LIST_KEY, [{ id: 'srv-1', name: 'Foo', done: false }]);
+    vi.mocked(aepbase.update).mockRejectedValueOnce(
+      new AepbaseError(400, 'bad', '/thingies/srv-1'),
+    );
+
+    await expect(
+      run(client, KEYS.update, { id: 'srv-1', data: { done: true } }),
+    ).rejects.toThrow();
+
+    expect(onlineManager.isOnline()).toBe(true);
+    expect(aepbase.update).toHaveBeenCalledTimes(1);
+    expect(client.getQueryData<Thingy[]>(LIST_KEY)?.[0]?.done).toBe(false);
+  });
+
+  it('does not mistake a plain TypeError (a bug) for an outage', async () => {
+    const client = makeClient();
+    client.setQueryData<Thingy[]>(LIST_KEY, [{ id: 'srv-1', name: 'Foo' }]);
+    vi.mocked(aepbase.update).mockRejectedValueOnce(new TypeError('x is undefined'));
+
+    await expect(
+      run(client, KEYS.update, { id: 'srv-1', data: { name: 'Bar' } }),
+    ).rejects.toThrow(TypeError);
+    expect(onlineManager.isOnline()).toBe(true);
+  });
+});
+
 describe('nested resources (convention-driven from `parents`)', () => {
   const CC = 'credit-cards';
 
@@ -324,7 +440,7 @@ describe('nested resources (convention-driven from `parents`)', () => {
     expect(aepbase.create).toHaveBeenCalledWith(
       'perks',
       expect.objectContaining({ name: 'Dining' }),
-      { parent: ['credit-cards', 'card-1'] },
+      { parent: ['credit-cards', 'card-1'], id: expect.any(String) },
     );
     expect(vi.mocked(aepbase.create).mock.calls[0][1]).not.toHaveProperty('credit_card');
 
@@ -349,7 +465,7 @@ describe('nested resources (convention-driven from `parents`)', () => {
     expect(aepbase.create).toHaveBeenCalledWith(
       'redemptions',
       expect.objectContaining({ amount: 10 }),
-      { parent: ['credit-cards', 'card-1', 'perks', 'perk-1'] },
+      { parent: ['credit-cards', 'card-1', 'perks', 'perk-1'], id: expect.any(String) },
     );
     expect(vi.mocked(aepbase.create).mock.calls[0][1]).not.toHaveProperty('perk');
   });

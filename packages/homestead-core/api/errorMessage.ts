@@ -18,6 +18,7 @@
  */
 
 import { AepbaseError } from './aepbase';
+import { isNetworkError } from './connectivity';
 
 /** Friendly fallbacks keyed by AEP/HTTP status, used only when the server
  *  supplied a code but no message. */
@@ -42,8 +43,9 @@ export function getAepErrorMessage(error: unknown): string {
     if (message) return message;
     return CODE_FALLBACKS[error.code] ?? GENERIC_MESSAGE;
   }
-  // fetch() rejects with a TypeError when the network is unreachable.
-  if (error instanceof TypeError) {
+  // The request never reached the server: aepbase rewraps fetch's TypeError
+  // as a NetworkError (see connectivity.ts); other callers may pass it raw.
+  if (isNetworkError(error) || error instanceof TypeError) {
     return 'Network error — check your connection and try again.';
   }
   if (error instanceof Error) {
