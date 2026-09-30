@@ -336,6 +336,7 @@ The whole backend in one Bun process:
 - `src/routes/` — the API routes the SPA can't serve itself:
   `POST /api/notifications/send-test`, `POST /api/chat` (the AI chat;
   requires an `ai` block in `homestead.config.ts`), `GET /api/custom-methods`,
+  `GET /api/events` (the SSE change feed),
   and the
   `/api/aep` gateway (`aep-gateway.ts`) that dispatches AEP-136 custom
   methods and passes everything else to the engine in-process.
@@ -590,7 +591,11 @@ first.
 
 ### Not yet modeled
 
-- Realtime subscriptions (polling only)
+- Record-level realtime subscriptions. `GET /api/events` (SSE,
+  `src/change-feed.ts` + `src/routes/events.ts`) only announces *which
+  collection* changed; the SPA (`homestead-core/api/changeFeed.ts`) turns that
+  into a query invalidation and refetches through the normal endpoints, with
+  `useLiveRefresh` polling as a slow fallback.
 - Thumbnail generation for file fields
 
 Row-level security **is** modeled and enforced: per-collection and per-record

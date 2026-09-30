@@ -4,6 +4,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
 
 export interface VaccineFormInput {
   name: string;
@@ -66,7 +67,7 @@ export class HealthPage {
     await this.clickAddVaccine();
     await this.fillVaccineForm(data);
     await this.submitVaccineForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async editVaccine(name: string, newData: Partial<VaccineFormInput>) {
@@ -77,7 +78,7 @@ export class HealthPage {
     await this.page.locator('#name').waitFor({ state: 'visible' });
     await this.fillVaccineForm(newData);
     await this.submitVaccineForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async deleteVaccine(name: string) {
@@ -89,7 +90,7 @@ export class HealthPage {
     const confirmButton = this.page.getByRole('button', { name: /^delete$/i }).last();
     await confirmButton.waitFor({ state: 'visible' });
     await confirmButton.click();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectVaccineInList(name: string) {
@@ -159,7 +160,7 @@ export class HealthPage {
     await this.clickAddDose(vaccineName);
     await this.fillDoseForm(data);
     await this.submitDoseForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async editDose(dateAdministered: string, newData: Partial<VaccinationFormInput>) {
@@ -172,7 +173,7 @@ export class HealthPage {
     await this.page.locator('#date_administered').waitFor({ state: 'visible' });
     await this.fillDoseForm(newData);
     await this.submitDoseForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async deleteDose(dateAdministered: string) {
@@ -185,7 +186,7 @@ export class HealthPage {
     const confirmButton = this.page.getByRole('button', { name: /^delete$/i }).last();
     await confirmButton.waitFor({ state: 'visible' });
     await confirmButton.click();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectDoseInHistory(vaccineName: string, text: string) {

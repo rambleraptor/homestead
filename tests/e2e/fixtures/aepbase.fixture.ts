@@ -17,6 +17,7 @@
 import { test as base, Page } from '@playwright/test';
 import { getAepbaseUrl, readAdminCreds } from '../config/aepbase.setup';
 import { testUsers } from './test-data';
+import { trackNetwork } from '../utils/network';
 
 /**
  * The seeded role-bearing group every fixture user joins. Boot seeds
@@ -43,6 +44,13 @@ type AepbaseFixtures = {
 };
 
 export const test = base.extend<AepbaseFixtures>({
+  // Track requests from the start so `waitForNetworkIdle` sees everything
+  // (see utils/network.ts for why the built-in `networkidle` can't be used).
+  page: async ({ page }, use) => {
+    trackNetwork(page);
+    await use(page);
+  },
+
   adminToken: async ({}, use) => {
     const creds = await readAdminCreds();
     await use(creds.token);

@@ -21,6 +21,7 @@
 
 import { chromium } from '@playwright/test';
 import { startAepbase, getAepbaseUrl, getAppUrl } from './aepbase.setup';
+import { waitForNetworkIdle } from '../utils/network';
 
 /** Seeded role-bearing group every fixture user joins (`permissions/seed.ts`). */
 const MEMBER_GROUP_ID = 'members';
@@ -63,7 +64,7 @@ async function globalSetup() {
     await page.getByLabel(/password/i).fill(creds.password);
     await page.getByRole('button', { name: /login|sign in/i }).click();
     await page.waitForURL('**/dashboard', { timeout: 120000 });
-    await page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(page);
   } finally {
     await browser.close();
   }

@@ -8,12 +8,18 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { LIVE_REFRESH_INTERVAL_MS, useLiveRefresh } from '../useLiveRefresh';
+import {
+  LIVE_REFRESH_FALLBACK_MS,
+  LIVE_REFRESH_INTERVAL_MS,
+  useLiveRefresh,
+} from '../useLiveRefresh';
+import { useChangeFeedConnected } from '../changeFeed';
 import { useHasQueuedWrites } from '../usePendingSync';
 import { useOnlineStatus } from '../../shared/hooks/useOnlineStatus';
 
 vi.mock('../usePendingSync', () => ({ useHasQueuedWrites: vi.fn() }));
 vi.mock('../../shared/hooks/useOnlineStatus', () => ({ useOnlineStatus: vi.fn() }));
+vi.mock('../changeFeed', () => ({ useChangeFeedConnected: vi.fn(() => false) }));
 
 function setState({ online, queued }: { online: boolean; queued: boolean }) {
   vi.mocked(useOnlineStatus).mockReturnValue({ isOnline: online, isOffline: !online });
@@ -22,6 +28,7 @@ function setState({ online, queued }: { online: boolean; queued: boolean }) {
 
 beforeEach(() => {
   setState({ online: true, queued: false });
+  vi.mocked(useChangeFeedConnected).mockReturnValue(false);
 });
 
 describe('useLiveRefresh', () => {
@@ -49,6 +56,13 @@ describe('useLiveRefresh', () => {
     const { result } = renderHook(() => useLiveRefresh());
 
     expect(result.current.staleTime).toBeLessThan(LIVE_REFRESH_INTERVAL_MS);
+  });
+
+  it('drops to a slow safety-net poll while the change feed is connected', () => {
+    vi.mocked(useChangeFeedConnected).mockReturnValue(true);
+    const { result } = renderHook(() => useLiveRefresh());
+
+    expect(result.current.refetchInterval).toBe(LIVE_REFRESH_FALLBACK_MS);
   });
 
   it('stops polling while offline', () => {
