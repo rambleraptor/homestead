@@ -114,4 +114,48 @@ test.describe('Groceries — offline support', () => {
     // Offline badge clears once we're back online.
     await expect(page.getByTestId('groceries-offline-badge')).toBeHidden();
   });
+
+  test('writes queue instead of rolling back when the browser says online but the server is unreachable', async ({
+    page,
+    authenticatedPage,
+    userToken,
+  }) => {
+    // Store wifi with no internet behind it: navigator.onLine stays true,
+    // but every request fails before reaching the server.
+    await e2eClient(userToken).collection<GroceryItemRecord>('groceries').create({
+      name: 'Eggs',
+      checked: false,
+    });
+
+    await authenticatedPage.goto('/groceries');
+    await expect(page.getByText('Eggs')).toBeVisible();
+
+    await page.route('**/api/**', (route) => route.abort('internetdisconnected'));
+
+    await page.getByRole('checkbox', { name: /Mark Eggs as checked/i }).click();
+    await page.getByTestId('quick-add-input').fill('Lie-fi butter');
+    await page.getByTestId('quick-add-button').click();
+
+    // The failed request flips the app offline; nothing rolls back.
+    await expect(page.getByTestId('groceries-offline-badge')).toBeVisible();
+    await expect(page.getByText('Lie-fi butter')).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: /Mark Eggs as unchecked/i })).toBeVisible();
+
+    // The server comes back; the connectivity probe notices and the queue drains.
+    await page.unroute('**/api/**');
+
+    await expect
+      .poll(
+        async () => {
+          const items = await listOrEmpty<GroceryItemRecord>(userToken, 'groceries');
+          return items
+            .map((i) => `${i.name}:${i.checked}`)
+            .sort()
+            .join(',');
+        },
+        { timeout: 30_000 },
+      )
+      .toBe('Eggs:true,Lie-fi butter:false');
+    await expect(page.getByTestId('groceries-offline-badge')).toBeHidden();
+  });
 });

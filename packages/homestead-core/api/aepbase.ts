@@ -22,6 +22,7 @@
 import { isNativeHomestead, nativeRequest, revokeNativeDeviceOnLogout } from '../mobile/bridge';
 import { takeOAuthReturnUrl } from '../auth/oauthReturn';
 import { CLIENT_ID_HEADER, getClientId } from './clientId';
+import { fetchOrNetworkError } from './connectivity';
 import type { OAuthSession, User, UserType } from '../auth/types';
 
 const AEP_BASE = '/api/aep';
@@ -302,7 +303,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         : 'application/json';
       init.body = JSON.stringify(body);
     }
-    return fetch(url, init);
+    return fetchOrNetworkError(url, init);
   };
 
   // Renew a near-expired access token before spending it, then send. If the
@@ -424,14 +425,20 @@ export async function get<T>(plural: string, id: string, options: ItemOptions = 
   return await request<T>(itemPath(plural, id, options.parent));
 }
 
+/**
+ * Create a record. Pass `id` to choose the new record's id (AEP-133
+ * user-specified ids) instead of letting the engine mint one — which makes the
+ * create idempotent: sending it twice yields a 409 rather than a duplicate.
+ */
 export async function create<T>(
   plural: string,
   body: Record<string, unknown> | FormData,
-  options: ItemOptions = {},
+  options: ItemOptions & { id?: string } = {},
 ): Promise<T> {
   return await request<T>(collectionPath(plural, options.parent), {
     method: 'POST',
     body,
+    query: options.id ? { id: options.id } : undefined,
   });
 }
 
@@ -489,7 +496,7 @@ export async function download(
     'Content-Type': 'application/json',
   };
   if (authStore.token) headers.Authorization = `Bearer ${authStore.token}`;
-  const res = await fetch(url, {
+  const res = await fetchOrNetworkError(url, {
     method: 'POST',
     headers,
     body: JSON.stringify({ field }),
@@ -553,7 +560,7 @@ export async function customMethod<T>(
     init.body = JSON.stringify(body);
   }
 
-  const res = await fetch(url, init);
+  const res = await fetchOrNetworkError(url, init);
   if (res.status === 204) return undefined as T;
 
   const text = await res.text();
