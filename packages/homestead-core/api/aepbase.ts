@@ -21,6 +21,7 @@
 
 import { isNativeHomestead, nativeRequest, revokeNativeDeviceOnLogout } from '../mobile/bridge';
 import { takeOAuthReturnUrl } from '../auth/oauthReturn';
+import { CLIENT_ID_HEADER, getClientId } from './clientId';
 import { fetchOrNetworkError } from './connectivity';
 import type { OAuthSession, User, UserType } from '../auth/types';
 
@@ -288,7 +289,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   const send = (): Promise<Response> => {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { [CLIENT_ID_HEADER]: getClientId() };
     if (authStore.token) {
       headers.Authorization = `Bearer ${authStore.token}`;
     }
@@ -548,7 +549,7 @@ export async function customMethod<T>(
     : collectionPath(plural, options.parent);
   const url = `${AEP_BASE}${base}:${verb}`;
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { [CLIENT_ID_HEADER]: getClientId() };
   if (authStore.token) headers.Authorization = `Bearer ${authStore.token}`;
   const userId = authStore.model?.id;
   if (userId) headers['X-User-Id'] = userId;

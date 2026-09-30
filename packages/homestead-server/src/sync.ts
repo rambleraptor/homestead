@@ -93,6 +93,20 @@ export interface SyncDispatcher {
    * mirror itself all happen off the caller's stack.
    */
   dispatch(input: SyncDispatchInput): void;
+  /**
+   * Called just before a dynamic-resource delete commits, while the row still
+   * exists — for an observer that must evaluate something against it (the
+   * change feed decides who could read the record). Optional; synchronous and
+   * must not throw.
+   */
+  beforeDelete?(input: PreDeleteInput): void;
+}
+
+/** The record a delete is about to remove. */
+export interface PreDeleteInput {
+  resource: string;
+  recordId: string;
+  path: string;
 }
 
 /** The `method` recorded on the operation a sync firing spawns. */

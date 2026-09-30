@@ -7,6 +7,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
 
 export class CharitablePage {
   constructor(private page: Page) {}
@@ -68,7 +69,7 @@ export class CharitablePage {
     await this.clickAddDonation();
     await this.fillDonationForm(data);
     await this.submitDonationForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   /**
@@ -108,13 +109,13 @@ export class CharitablePage {
 
   async selectYear(year: number) {
     await this.page.getByTestId('charitable-year-select').selectOption(String(year));
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   /** Pick a year by clicking its row in the by-year table. */
   async selectYearFromTable(year: number) {
     await this.page.getByTestId(`charitable-year-${year}`).click();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectYearTotal(year: number, total: number) {
@@ -137,7 +138,7 @@ export class CharitablePage {
     });
     await markButton.waitFor({ state: 'visible' });
     await markButton.click();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectDonationStatus(organization: string, status: 'Unclaimed' | 'Claimed') {
@@ -149,7 +150,7 @@ export class CharitablePage {
     const filter = this.page.getByTestId('charitable-status-filter');
     await filter.waitFor({ state: 'visible' });
     await filter.selectOption(status);
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async editDonation(
@@ -177,7 +178,7 @@ export class CharitablePage {
 
     await submit.click();
     await submit.waitFor({ state: 'hidden' });
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async deleteDonation(organization: string) {
@@ -194,7 +195,7 @@ export class CharitablePage {
     if (isConfirmVisible) {
       await confirmButton.click();
     }
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectEmptyState() {

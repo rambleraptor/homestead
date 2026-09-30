@@ -1,8 +1,9 @@
 /**
  * Keep a shared list in step with edits made on someone else's device.
  *
- * Reads in Homestead are pull-only — there is no realtime channel — so a list
- * two people edit at once goes stale on the device that isn't typing. The
+ * Another device's edits arrive through the server's change feed (see
+ * changeFeed.ts) when it's connected; without it, reads are pull-only, so a
+ * list two people edit at once goes stale on the device that isn't typing. The
  * global query defaults deliberately make refetching rare (`staleTime` of five
  * minutes, `refetchOnWindowFocus` off in production), which is right for data
  * one person owns and wrong for a household grocery list.
@@ -26,11 +27,19 @@
  *   the list when it settles.
  */
 
+import { useChangeFeedConnected } from './changeFeed';
 import { useHasQueuedWrites } from './usePendingSync';
 import { useOnlineStatus } from '../shared/hooks/useOnlineStatus';
 
 /** How often an open, focused tab re-reads the list. */
 export const LIVE_REFRESH_INTERVAL_MS = 15_000;
+
+/**
+ * The poll interval while the server's change feed is connected. The feed
+ * delivers other devices' edits within a moment, so polling drops to a slow
+ * safety net for anything it might miss.
+ */
+export const LIVE_REFRESH_FALLBACK_MS = 60_000;
 
 /**
  * Short enough that returning to the tab always re-reads, long enough to
@@ -49,10 +58,15 @@ export function useLiveRefresh(
 ): LiveRefreshOptions {
   const hasQueuedWrites = useHasQueuedWrites();
   const { isOffline } = useOnlineStatus();
+  const feedConnected = useChangeFeedConnected();
+
+  let refetchInterval: number | false = intervalMs;
+  if (isOffline || hasQueuedWrites) refetchInterval = false;
+  else if (feedConnected) refetchInterval = Math.max(intervalMs, LIVE_REFRESH_FALLBACK_MS);
 
   return {
     refetchOnWindowFocus: true,
     staleTime: LIVE_STALE_TIME_MS,
-    refetchInterval: isOffline || hasQueuedWrites ? false : intervalMs,
+    refetchInterval,
   };
 }

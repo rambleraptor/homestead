@@ -3,6 +3,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
 
 export class EventsPage {
   constructor(private page: Page) {}
@@ -96,7 +97,7 @@ export class EventsPage {
     await this.clickAddEvent();
     await this.fillEventForm(data);
     await this.submitEventForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectEventInList(name: string) {
@@ -147,7 +148,7 @@ export class EventsPage {
     }
 
     await this.submitEventForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async filterByName(query: string) {
@@ -174,6 +175,6 @@ export class EventsPage {
     if (isVisible) {
       await confirmButton.click();
     }
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 }

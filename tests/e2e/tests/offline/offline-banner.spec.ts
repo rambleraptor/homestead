@@ -13,6 +13,7 @@
  */
 
 import { test, expect } from '../../fixtures/aepbase.fixture';
+import { waitForNetworkIdle } from '../../utils/network';
 
 test.describe('Offline banner', () => {
   test('appears on a non-groceries page when the network drops', async ({
@@ -27,7 +28,7 @@ test.describe('Offline banner', () => {
     // the network: a dynamic import that's still in flight when the network
     // drops rejects and takes the whole app down — that's the cold-offline
     // navigation case the header note already scopes out.
-    await page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(page);
 
     await context.setOffline(true);
     await expect(page.getByTestId('offline-banner')).toBeVisible();

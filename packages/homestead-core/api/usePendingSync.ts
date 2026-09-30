@@ -33,7 +33,7 @@ import { isTempId } from './registerResourceMutationDefaults';
  * carry an `id` field belonging to something else entirely (a grocery item's
  * `store`, say, is not the record being created).
  */
-function affectedRecordId(variables: unknown): string | undefined {
+export function affectedRecordId(variables: unknown): string | undefined {
   if (typeof variables === 'string') return variables;
   if (!variables || typeof variables !== 'object') return undefined;
   const vars = variables as { tempId?: unknown; id?: unknown };

@@ -135,8 +135,12 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     resourceSyncs,
   );
 
+  // The same post-commit seam also feeds /api/events, which tells open tabs a
+  // collection changed so a shared list refreshes on every device at once.
+  const { createChangeFeed, teeDispatcher } = await import('./change-feed');
+  const changeFeed = createChangeFeed(engine);
   engine.setSyncDispatcher(
-    createSyncDispatcher(engine.db, resourceSyncs, operationStore),
+    teeDispatcher(createSyncDispatcher(engine.db, resourceSyncs, operationStore), changeFeed),
   );
 
   // Homestead-as-OAuth-provider (authorization server). Opt-in via
@@ -160,6 +164,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   const { makeSetupRoute } = await import('./routes/setup');
   const { bulkImportTemplateRoute } = await import('./routes/bulk-import-template');
   const { makeAuthRoutes } = await import('./routes/auth');
+  const { makeEventsRoute } = await import('./routes/events');
 
   // In prod the SPA is served from disk; resolve it up front so /api/app-version
   // can report its current output hash. Dev serves via Vite middleware (no hash).
@@ -196,6 +201,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   publicApp.route('/api/tokens', makeTokensRoute(engine));
   publicApp.route('/api/security', makeSecurityRoute());
   publicApp.route('/api/chat', chatRoute);
+  publicApp.route('/api/events', makeEventsRoute(changeFeed, (token) => engine.authenticateToken(token)));
   publicApp.route('/api/aep', makeAepGateway(engine, loopbackOrigin));
   // OAuth login redirects (Homestead as client) arrive on the public origin;
   // the engine serves them.

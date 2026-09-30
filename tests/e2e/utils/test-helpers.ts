@@ -3,6 +3,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { waitForNetworkIdle } from './network';
 
 /**
  * Wait for toast notification to appear and optionally check its message
@@ -63,5 +64,5 @@ export async function isVisible(page: Page, selector: string): Promise<boolean> 
  */
 export async function reloadAndWait(page: Page) {
   await page.reload();
-  await page.waitForLoadState('networkidle');
+  await waitForNetworkIdle(page);
 }

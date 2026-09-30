@@ -21,6 +21,7 @@ import {
 import { aepbase, type ParentPath } from './aepbase';
 import { logger } from '../utils/logger';
 import { queryKeys } from './queryClient';
+import { registerListShape } from './resourceEvents';
 import {
   newTempId,
   resolveParentChainFromCache,
@@ -124,6 +125,13 @@ export function useResourceList<T, R = T>(
 ): UseQueryResult<R[], Error> {
   const { filter, orderBy, parent, maxPageSize, map, sort, ...queryOptions } = options;
   const comparator = sort ?? (orderBy ? comparatorFromOrderBy<R>(orderBy) : undefined);
+  // Tell the change feed how this slot is built, so another device's edit can
+  // be written straight into it (see resourceEvents.ts).
+  registerListShape(appId, singular, {
+    map: map as ((record: never) => unknown) | undefined,
+    comparator: comparator as ((a: never, b: never) => number) | undefined,
+    complete: !filter && !parent,
+  });
   return useQuery<R[], Error>({
     queryKey: queryKeys.app(appId).resource(singular).list(),
     queryFn: async (): Promise<R[]> => {

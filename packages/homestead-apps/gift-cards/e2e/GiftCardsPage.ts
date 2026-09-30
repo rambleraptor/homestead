@@ -3,6 +3,7 @@
  */
 
 import { Page, expect, Locator } from '@playwright/test';
+import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
 
 export class GiftCardsPage {
   constructor(private page: Page) {}
@@ -60,7 +61,7 @@ export class GiftCardsPage {
     await this.fillGiftCardForm(data);
     await this.submitGiftCardForm();
     // Wait for network to settle after mutation
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectGiftCardInList(merchant: string, amount?: number) {
@@ -92,7 +93,7 @@ export class GiftCardsPage {
     await merchantCard.waitFor({ state: 'visible' });
     await merchantCard.click();
     // Wait for detail view to load
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async editGiftCard(merchant: string, newData: Partial<{
@@ -175,7 +176,7 @@ export class GiftCardsPage {
     }
 
     // Wait for network to settle after deletion
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectMerchantSummary(merchant: string, totalAmount: number) {

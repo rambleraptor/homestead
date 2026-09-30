@@ -2,6 +2,8 @@ import { NativeIntegration } from '@rambleraptor/homestead-core/mobile/NativeInt
 import React, { Suspense, lazy } from 'react';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { AuthProvider } from '@rambleraptor/homestead-core/auth/AuthContext';
+import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
+import { useChangeFeed } from '@rambleraptor/homestead-core/api/changeFeed';
 import { queryClient } from '@rambleraptor/homestead-core/api/queryClient';
 import { persistOptions } from '@rambleraptor/homestead-core/api/persistQueryClient';
 import { registerResourceMutationDefaults } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
@@ -35,6 +37,13 @@ const ReactQueryDevtools = import.meta.env.DEV
     )
   : (_props: { initialIsOpen?: boolean }) => null;
 
+/** Hold the server's change feed open while someone is signed in. */
+function ChangeFeed() {
+  const { user } = useAuth();
+  useChangeFeed(!!user);
+  return null;
+}
+
 interface ProvidersProps {
   children: React.ReactNode;
 }
@@ -54,6 +63,7 @@ export function Providers({ children }: ProvidersProps) {
     >
       <AuthProvider>
         <NativeIntegration />
+        <ChangeFeed />
         <ToastProvider>{children}</ToastProvider>
       </AuthProvider>
       {import.meta.env.DEV && (
