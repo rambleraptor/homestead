@@ -1,0 +1,36 @@
+# Gitleaks configuration for Homestead.
+#
+# Extends the bundled default ruleset (AWS keys, GitHub tokens, private-key
+# blocks, high-entropy strings, etc.) and layers on an allowlist for the
+# repo's own fixtures/tests, where deliberately fake credentials live. Keep the
+# allowlist narrow — path- and pattern-scoped — so it never masks a real leak
+# in production code.
+#
+# Tune with: gitleaks detect --config .gitleaks.toml --no-git (working tree)
+# or         gitleaks detect --config .gitleaks.toml           (git history)
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Homestead-specific false positives"
+
+# Test/fixture/mock/doc files carry intentionally fake secrets, sample tokens,
+# and example bcrypt hashes. Real credentials never live in these paths.
+paths = [
+  '''.*\.test\.ts$''',
+  '''.*/__tests__/.*''',
+  '''.*/__mocks__/.*''',
+  '''.*/test/.*''',
+  '''.*/tests/.*''',
+  '''.*/fixtures/.*''',
+  '''packages/homestead-site/docs/.*''',
+]
+
+# Placeholder/example values that appear in docs and scaffolding. Anchored so
+# they only suppress the obvious dummies, not anything that merely contains them.
+regexes = [
+  '''(?i)example[_-]?(api[_-]?key|token|secret)''',
+  '''(?i)your[_-].*[_-](key|token|secret)[_-]here''',
+  '''(?i)(changeme|placeholder|dummy|fake|sample)[_-]?(secret|token|password|key)''',
+]
