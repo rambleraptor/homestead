@@ -17,10 +17,17 @@
  * Two shapes, one component: `block` is the form-field version (full-width,
  * shows its current value), and the inline version is an action — "Classify
  * as…" — that holds no selection and fires on pick.
+ *
+ * On a phone either shape opens as a full-screen sheet instead of a popover. A
+ * popover anchored near the bottom of the page left room for three or four
+ * types, the on-screen keyboard then covered the results, and the list scrolled
+ * inside a page that also scrolled. The sheet is portalled to the body, so no
+ * ancestor's overflow or transform can clip it.
  */
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, Search } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Check, ChevronDown, Search, X } from 'lucide-react';
 import { AppIcon } from '@rambleraptor/homestead-core/apps/lazy';
 import { useDismissOnOutside } from '@rambleraptor/homestead-core/shared/hooks/useDismissOnOutside';
 import {
@@ -72,6 +79,13 @@ const UNMATCHED_OPTION: Option = {
 
 /** Roughly the panel's height: the search row plus a full list. */
 const PANEL_HEIGHT = 340;
+
+/** Below Tailwind's `sm` breakpoint the picker opens as a full-screen sheet. */
+const SHEET_QUERY = '(max-width: 639px)';
+
+function prefersSheet(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia?.(SHEET_QUERY).matches;
+}
 
 /** Lowercase and drop punctuation, so "1099-INT" and "1099 int" are one string. */
 function normalize(text: string): string {
@@ -138,6 +152,8 @@ export function DocTypeCombobox({
   // it opens. The picker sits at the bottom of a card on the detail page, where
   // a panel that always dropped down would open below the fold.
   const [dropUp, setDropUp] = useState(false);
+  // Whether this opening is the phone sheet — decided when it opens, like dropUp.
+  const [sheet, setSheet] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -160,6 +176,7 @@ export function DocTypeCombobox({
       const below = rect ? window.innerHeight - rect.bottom : Infinity;
       const above = rect ? rect.top : 0;
       setDropUp(below < PANEL_HEIGHT && above > below);
+      setSheet(prefersSheet());
     }
     setQuery('');
     setOpen((v) => !v);
@@ -173,7 +190,9 @@ export function DocTypeCombobox({
 
   // Escape is handled on the search input rather than the document, so closing
   // the picker can't also close a dialog behind it.
-  useDismissOnOutside(rootRef, open, () => close(false));
+  // The sheet covers the whole screen and is portalled out of rootRef, so a tap
+  // inside it would read as "outside" — it closes through its own button.
+  useDismissOnOutside(rootRef, open && !sheet, () => close(false));
 
   // A fresh query renders a fresh list, so the highlight goes back to the top.
   useEffect(() => setActiveIndex(0), [query]);
@@ -231,6 +250,123 @@ export function DocTypeCombobox({
     block ? 'w-full px-3 py-2 text-left' : ''
   }`;
 
+  const panelBody = (
+    <>
+      <div className="relative border-b border-gray-100 p-2">
+        <Search
+          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+          aria-hidden="true"
+        />
+        <input
+          type="text"
+          // Not on the sheet: the keyboard would cover the list before the
+          // user has seen it. Tapping the field is one step away.
+          autoFocus={!sheet}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Search document types…"
+          aria-label="Search document types"
+          role="combobox"
+          aria-controls={listboxId}
+          aria-expanded
+          aria-autocomplete="list"
+          aria-activedescendant={
+            flat[activeIndex] ? `${listboxId}-${flat[activeIndex].id}` : undefined
+          }
+          data-testid={testId ? `${testId}-search` : undefined}
+          className="w-full rounded-lg border border-gray-200 bg-surface-white py-1.5 pl-8 pr-2 text-sm text-brand-slate placeholder:text-gray-400 focus:border-accent-terracotta focus:outline-none focus:ring-2 focus:ring-accent-terracotta/30"
+        />
+      </div>
+
+      <ul
+        ref={listRef}
+        id={listboxId}
+        role="listbox"
+        aria-label="Document types"
+        className={`overflow-y-auto overscroll-contain p-1 ${sheet ? 'flex-1' : 'max-h-72'}`}
+      >
+        {flat.length === 0 && (
+          <li
+            className="px-3 py-6 text-center text-sm text-text-muted"
+            data-testid={testId ? `${testId}-empty` : undefined}
+          >
+            No document type matches “{query}”.
+          </li>
+        )}
+
+        {groups.map((group) => {
+          const tone = categoryTone(group.category || OTHER_CATEGORY);
+          return (
+            <li key={group.category || 'pinned'}>
+              {group.label && (
+                <p
+                  className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-text-muted"
+                  aria-hidden="true"
+                >
+                  <span
+                    className={`inline-flex h-3.5 w-3.5 items-center justify-center rounded ${tone.surface}`}
+                  >
+                    <span className="h-1 w-1 rounded-full bg-current" />
+                  </span>
+                  {group.label}
+                </p>
+              )}
+              <ul role="none">
+                {group.options.map((option) => {
+                  const index = flat.indexOf(option);
+                  const isActive = index === activeIndex;
+                  const isSelected = option.id === value;
+                  return (
+                    <li key={option.id} role="none">
+                      <button
+                        id={`${listboxId}-${option.id}`}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        onClick={() => choose(option)}
+                        data-testid={`doc-type-option-${option.id}`}
+                        className={`flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
+                          isActive ? 'bg-bg-pearl' : ''
+                        }`}
+                      >
+                        <span
+                          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded ${tone.surface}`}
+                          aria-hidden="true"
+                        >
+                          {option.icon && (
+                            <AppIcon icon={option.icon} className="h-3.5 w-3.5" />
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium text-brand-navy">
+                            {option.label}
+                          </span>
+                          {option.description && (
+                            <span className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-text-muted">
+                              {option.description}
+                            </span>
+                          )}
+                        </span>
+                        {isSelected && (
+                          <Check
+                            className="mt-0.5 h-4 w-4 shrink-0 text-accent-terracotta"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+
   return (
     <div ref={rootRef} className={`relative ${block ? 'block' : 'inline-block'}`}>
       <button
@@ -252,7 +388,8 @@ export function DocTypeCombobox({
         <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
       </button>
 
-      {open && (
+
+      {open && !sheet && (
         <div
           // The panel grows out of the edge it is anchored to, so a dropped-up
           // panel expands upward from the control rather than downward into it.
@@ -261,118 +398,39 @@ export function DocTypeCombobox({
           } ${block ? 'w-full' : 'right-0 w-[min(20rem,calc(100vw-3rem))]'}`}
           data-testid={testId ? `${testId}-panel` : undefined}
         >
-          <div className="relative border-b border-gray-100 p-2">
-            <Search
-              className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-              aria-hidden="true"
-            />
-            <input
-              type="text"
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Search document types…"
-              aria-label="Search document types"
-              role="combobox"
-              aria-controls={listboxId}
-              aria-expanded
-              aria-autocomplete="list"
-              aria-activedescendant={
-                flat[activeIndex] ? `${listboxId}-${flat[activeIndex].id}` : undefined
-              }
-              data-testid={testId ? `${testId}-search` : undefined}
-              className="w-full rounded-lg border border-gray-200 bg-surface-white py-1.5 pl-8 pr-2 text-sm text-brand-slate placeholder:text-gray-400 focus:border-accent-terracotta focus:outline-none focus:ring-2 focus:ring-accent-terracotta/30"
-            />
-          </div>
-
-          <ul
-            ref={listRef}
-            id={listboxId}
-            role="listbox"
-            aria-label="Document types"
-            className="max-h-72 overflow-y-auto p-1"
-          >
-            {flat.length === 0 && (
-              <li
-                className="px-3 py-6 text-center text-sm text-text-muted"
-                data-testid={testId ? `${testId}-empty` : undefined}
-              >
-                No document type matches “{query}”.
-              </li>
-            )}
-
-            {groups.map((group) => {
-              const tone = categoryTone(group.category || OTHER_CATEGORY);
-              return (
-                <li key={group.category || 'pinned'}>
-                  {group.label && (
-                    <p
-                      className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-text-muted"
-                      aria-hidden="true"
-                    >
-                      <span
-                        className={`inline-flex h-3.5 w-3.5 items-center justify-center rounded ${tone.surface}`}
-                      >
-                        <span className="h-1 w-1 rounded-full bg-current" />
-                      </span>
-                      {group.label}
-                    </p>
-                  )}
-                  <ul role="none">
-                    {group.options.map((option) => {
-                      const index = flat.indexOf(option);
-                      const isActive = index === activeIndex;
-                      const isSelected = option.id === value;
-                      return (
-                        <li key={option.id} role="none">
-                          <button
-                            id={`${listboxId}-${option.id}`}
-                            type="button"
-                            role="option"
-                            aria-selected={isSelected}
-                            onMouseEnter={() => setActiveIndex(index)}
-                            onClick={() => choose(option)}
-                            data-testid={`doc-type-option-${option.id}`}
-                            className={`flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
-                              isActive ? 'bg-bg-pearl' : ''
-                            }`}
-                          >
-                            <span
-                              className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded ${tone.surface}`}
-                              aria-hidden="true"
-                            >
-                              {option.icon && (
-                                <AppIcon icon={option.icon} className="h-3.5 w-3.5" />
-                              )}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-medium text-brand-navy">
-                                {option.label}
-                              </span>
-                              {option.description && (
-                                <span className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-text-muted">
-                                  {option.description}
-                                </span>
-                              )}
-                            </span>
-                            {isSelected && (
-                              <Check
-                                className="mt-0.5 h-4 w-4 shrink-0 text-accent-terracotta"
-                                aria-hidden="true"
-                              />
-                            )}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
+          {panelBody}
         </div>
       )}
+
+      {open &&
+        sheet &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={ariaLabel ?? placeholder}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') close(true);
+            }}
+            className="fixed inset-0 z-50 flex flex-col bg-surface-white pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
+            data-testid={testId ? `${testId}-panel` : undefined}
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
+              <span className="text-sm font-semibold text-brand-navy">Document type</span>
+              <button
+                type="button"
+                onClick={() => close(true)}
+                aria-label="Close"
+                className="rounded-lg p-2 text-gray-500 hover:bg-bg-pearl"
+                data-testid={testId ? `${testId}-close` : undefined}
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            {panelBody}
+          </div>,
+          window.document.body,
+        )}
     </div>
   );
 }

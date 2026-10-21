@@ -5,8 +5,8 @@
  * replaced couldn't offer.
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DocTypeCombobox } from '../components/DocTypeCombobox';
 import { UNKNOWN_DOC_TYPE } from '../doc-types/docType';
@@ -138,5 +138,56 @@ describe('DocTypeCombobox', () => {
     const { user } = setup({ disabled: true });
     await user.click(screen.getByTestId('picker'));
     expect(screen.queryByTestId('picker-panel')).not.toBeInTheDocument();
+  });
+
+  describe('on a phone', () => {
+    const original = window.matchMedia;
+
+    // Report every media query as matching, so the picker sees a narrow screen.
+    function narrowScreen() {
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: (query: string) => ({ matches: true, media: query }),
+      });
+    }
+
+    afterEach(() => {
+      Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+    });
+
+    it('opens as a full-screen sheet with the whole catalogue', async () => {
+      narrowScreen();
+      const { user } = setup();
+      await user.click(screen.getByTestId('picker'));
+
+      const sheet = screen.getByRole('dialog');
+      expect(sheet).toBe(screen.getByTestId('picker-panel'));
+      // Portalled to the body, out of any clipping ancestor.
+      expect(sheet.parentElement).toBe(document.body);
+      expect(within(sheet).getAllByRole('option')).toHaveLength(getDocTypes().length);
+      // No autofocus: the keyboard would cover the list before it's been seen.
+      expect(screen.getByTestId('picker-search')).not.toHaveFocus();
+    });
+
+    it('selects a tapped option and closes', async () => {
+      narrowScreen();
+      const { onSelect, user } = setup();
+      await user.click(screen.getByTestId('picker'));
+      await user.type(screen.getByTestId('picker-search'), 'charitable receipt');
+      await user.click(screen.getByTestId('doc-type-option-charitable-donation-receipt'));
+
+      expect(onSelect).toHaveBeenCalledWith('charitable-donation-receipt');
+      expect(screen.queryByTestId('picker-panel')).not.toBeInTheDocument();
+    });
+
+    it('closes from its close button without selecting', async () => {
+      narrowScreen();
+      const { onSelect, user } = setup();
+      await user.click(screen.getByTestId('picker'));
+      await user.click(screen.getByTestId('picker-close'));
+
+      expect(onSelect).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('picker-panel')).not.toBeInTheDocument();
+    });
   });
 });
