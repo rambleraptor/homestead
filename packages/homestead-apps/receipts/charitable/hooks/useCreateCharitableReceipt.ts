@@ -24,6 +24,7 @@ export function useCreateCharitableReceipt() {
         gift_type: data.gift_type,
         status: data.status,
       };
+      if (data.source) resource.source = data.source;
       if (data.organization_ein) resource.organization_ein = data.organization_ein;
       if (typeof data.tax_year === 'number') resource.tax_year = data.tax_year;
       if (typeof data.amount === 'number') resource.amount = data.amount;

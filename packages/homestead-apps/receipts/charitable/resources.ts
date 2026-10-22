@@ -31,6 +31,16 @@ export const charitableResources: ResourceDefinition[] = [
         // when the acknowledgment states an amount.
         default: 'Cash',
       },
+      // Where the money came from. A grant out of a donor-advised fund is not
+      // deductible — the deduction was taken when the fund was contributed to —
+      // so a DAF gift is tracked but left out of the year's deduction total.
+      // Optional so rows that predate it read as Self.
+      source: {
+        type: 'string',
+        enum: ['Self', 'DAF'],
+        default: 'Self',
+        description: 'Who made the gift: Self (paid directly) or DAF (granted from a donor-advised fund).',
+      },
       // What you're claiming. Deliberately *not* required: a charity describes
       // donated goods but never puts a value on them, so a goods receipt lands
       // here unvalued and the UI asks its owner for a number.

@@ -120,6 +120,7 @@ interface CreateCharitableReceiptInput {
   donation_date: string;
   gift_type: 'Cash' | 'Goods' | 'Other';
   status: 'Unclaimed' | 'Claimed';
+  source?: 'Self' | 'DAF';
   amount?: number;
   value_received?: number;
   tax_year?: number;

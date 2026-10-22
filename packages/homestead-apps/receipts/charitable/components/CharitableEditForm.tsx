@@ -33,7 +33,8 @@ export function CharitableEditForm({
     <SchemaForm<Partial<CharitableReceipt>>
       resource={charitableReceiptDef}
       mode="edit"
-      initialData={receipt}
+      // A receipt from before `source` existed was paid directly; show it so.
+      initialData={{ ...receipt, source: receipt.source ?? 'Self' }}
       onSubmit={onSubmit}
       onCancel={onCancel}
       isSubmitting={isSubmitting}
@@ -44,6 +45,7 @@ export function CharitableEditForm({
           'organization',
           'donation_date',
           'gift_type',
+          'source',
           'amount',
           'description_of_property',
           'value_received',
@@ -60,6 +62,7 @@ export function CharitableEditForm({
         organization: { id: 'edit-organization', label: 'Organization' },
         donation_date: { id: 'edit-donation_date', label: 'Donation Date' },
         gift_type: { id: 'edit-gift_type', label: 'Gift Type' },
+        source: { id: 'edit-source', label: 'Paid by' },
         amount: { id: 'edit-amount', widget: 'currency', placeholder: '0.00' },
         description_of_property: {
           id: 'edit-description_of_property',

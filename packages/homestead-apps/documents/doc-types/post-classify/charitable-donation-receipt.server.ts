@@ -102,6 +102,9 @@ const handler: PostClassifyHandler = async ({ document, metadata, auth }) => {
       asString(metadata.organization_name) ?? document.title ?? 'Unknown organization',
     donation_date: toDateTime(asString(metadata.donation_date), fallbackDate),
     gift_type: inferGiftType(amount, property),
+    // A letter that names the fund the gift came from is a DAF grant — not
+    // deductible, so the tab keeps it out of the year's total.
+    source: asString(metadata.donor_advised_fund) ? 'DAF' : 'Self',
     status: 'Unclaimed',
     source_document: `${DOCUMENTS}/${document.id}`,
   };

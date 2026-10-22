@@ -17,9 +17,9 @@ import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/curren
 import { formatDate } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
 import { usePeople } from '../../../people/hooks/usePeople';
 import { ReceiptVault, type VaultColumn } from '../../shared/ReceiptVault';
-import { deductibleAmount, isUnvalued, needsAcknowledgment } from '../stats';
+import { deductibleAmount, isDafGrant, isUnvalued, needsAcknowledgment } from '../stats';
 import { CharitableReceiptThumb } from './CharitableReceiptThumb';
-import type { CharitableReceipt, CharitableStatus, GiftType } from '../types';
+import type { CharitableReceipt, CharitableStatus, DonationSource, GiftType } from '../types';
 
 const SHORT_DATE: Intl.DateTimeFormatOptions = {
   month: 'short',
@@ -64,8 +64,30 @@ function StatusBadge({ status }: { status: CharitableStatus }) {
   );
 }
 
-/** The deduction, or the reason there isn't one yet. */
+/** Marks a gift granted from a donor-advised fund. */
+function DafBadge() {
+  return (
+    <span
+      className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700"
+      title="Granted from a donor-advised fund"
+    >
+      DAF
+    </span>
+  );
+}
+
+/** The deduction, or the reason there isn't one. */
 function Amount({ receipt }: { receipt: CharitableReceipt }) {
+  if (isDafGrant(receipt)) {
+    return (
+      <span
+        className="font-normal text-text-muted"
+        title="Granted from a donor-advised fund — deducted when the fund was contributed to, not now"
+      >
+        {formatCurrency(receipt.amount ?? 0)} via DAF
+      </span>
+    );
+  }
   if (isUnvalued(receipt)) {
     return (
       <span className="text-xs font-medium text-amber-600" title="Enter a value to claim this gift">
@@ -107,6 +129,7 @@ export function CharitableVault({
 
   // 'All', 'Unlinked' (no person set), or a `people/{id}` path.
   const [personFilter, setPersonFilter] = useState<string>('All');
+  const [sourceFilter, setSourceFilter] = useState<DonationSource | 'All'>('All');
 
   const namesById = useMemo(
     () => new Map((people ?? []).map((p) => [p.id, p.name])),
@@ -130,6 +153,7 @@ export function CharitableVault({
       all: receipts.length,
       unclaimed: receipts.filter((r) => r.status === 'Unclaimed').length,
       claimed: receipts.filter((r) => r.status === 'Claimed').length,
+      daf: receipts.filter(isDafGrant).length,
     }),
     [receipts],
   );
@@ -138,17 +162,21 @@ export function CharitableVault({
     () =>
       receipts.filter((r) => {
         if (statusFilter !== 'All' && r.status !== statusFilter) return false;
+        if (sourceFilter !== 'All' && isDafGrant(r) !== (sourceFilter === 'DAF')) {
+          return false;
+        }
         if (personFilter === 'All') return true;
         if (personFilter === 'Unlinked') return !r.person;
         return r.person === personFilter;
       }),
-    [receipts, statusFilter, personFilter],
+    [receipts, statusFilter, sourceFilter, personFilter],
   );
 
   const selectClass =
     'flex-1 sm:flex-none px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-brand-navy focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta';
 
-  const filtersActive = statusFilter !== 'All' || personFilter !== 'All';
+  const filtersActive =
+    statusFilter !== 'All' || sourceFilter !== 'All' || personFilter !== 'All';
 
   const columns: VaultColumn<CharitableReceipt>[] = [
     {
@@ -183,7 +211,12 @@ export function CharitableVault({
       key: 'gift_type',
       header: 'Type',
       cellClassName: 'whitespace-nowrap',
-      cell: (receipt) => <GiftTypeBadge giftType={receipt.gift_type} />,
+      cell: (receipt) => (
+        <div className="flex items-center gap-1.5">
+          <GiftTypeBadge giftType={receipt.gift_type} />
+          {isDafGrant(receipt) && <DafBadge />}
+        </div>
+      ),
     },
     {
       key: 'donor',
@@ -260,6 +293,7 @@ export function CharitableVault({
       filtersActive={filtersActive}
       onClearFilters={() => {
         onStatusFilterChange('All');
+        setSourceFilter('All');
         setPersonFilter('All');
       }}
       filters={
@@ -279,6 +313,20 @@ export function CharitableVault({
             <option value="All">All ({counts.all})</option>
             <option value="Unclaimed">Unclaimed ({counts.unclaimed})</option>
             <option value="Claimed">Claimed ({counts.claimed})</option>
+          </select>
+          <label htmlFor="charitable-source-filter" className="sr-only">
+            Filter by source
+          </label>
+          <select
+            id="charitable-source-filter"
+            data-testid="charitable-source-filter"
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value as DonationSource | 'All')}
+            className={selectClass}
+          >
+            <option value="All">Any source</option>
+            <option value="Self">Self ({counts.all - counts.daf})</option>
+            <option value="DAF">DAF ({counts.daf})</option>
           </select>
           <label htmlFor="charitable-person-filter" className="sr-only">
             Filter by donor
@@ -320,6 +368,7 @@ export function CharitableVault({
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <GiftTypeBadge giftType={receipt.gift_type} />
+                {isDafGrant(receipt) && <DafBadge />}
                 <StatusBadge status={receipt.status} />
                 {(personNameFor(receipt.person, namesById) || receipt.donor) && (
                   <span className="text-xs text-text-muted">

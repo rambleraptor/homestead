@@ -7,6 +7,12 @@
 /** How the gift was made. `Other` covers stock, mileage, and crypto for now. */
 export type GiftType = 'Cash' | 'Goods' | 'Other';
 
+/**
+ * Who paid: the donor directly, or a donor-advised fund. A DAF grant isn't
+ * deductible — the deduction belongs to the contribution into the fund.
+ */
+export type DonationSource = 'Self' | 'DAF';
+
 /** Whether the donation has gone onto a filed return yet. */
 export type CharitableStatus = 'Unclaimed' | 'Claimed';
 
@@ -18,6 +24,8 @@ export interface CharitableReceipt {
   /** The year claimed against; falls back to the donation date's year. */
   tax_year?: number;
   gift_type: GiftType;
+  /** Absent on receipts that predate the field; read as `Self`. */
+  source?: DonationSource;
   /** Absent on a goods gift nobody has valued yet. */
   amount?: number;
   /** Stated value of goods/services received back; reduces the deduction. */
@@ -45,6 +53,7 @@ export interface CharitableReceiptFormData {
   donation_date: string;
   tax_year?: number;
   gift_type: GiftType;
+  source?: DonationSource;
   amount?: number;
   value_received?: number;
   description_of_property?: string;
@@ -87,6 +96,9 @@ export interface CharitableStats {
   nonCashCount: number;
   /** Gifts of goods with no value entered yet — they count for nothing until they have one. */
   unvalued: number;
+  /** Granted from a donor-advised fund: tracked, but not part of `total`. */
+  dafGranted: number;
+  dafCount: number;
   /** Gifts of $250 or more with no acknowledgment file or source document. */
   missingAcknowledgment: number;
   organizationBreakdown: OrganizationBreakdown[];

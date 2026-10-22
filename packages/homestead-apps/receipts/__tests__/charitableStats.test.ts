@@ -163,6 +163,33 @@ describe('computeCharitableStats', () => {
   });
 });
 
+describe('donor-advised fund grants', () => {
+  const daf = receipt({ id: 'daf', source: 'DAF', amount: 1000, receipt_file: undefined });
+
+  it('are not deductible — the deduction was taken when the fund was funded', () => {
+    expect(deductibleAmount(daf)).toBe(0);
+  });
+
+  it('never need an acknowledgment, however large', () => {
+    expect(needsAcknowledgment(daf)).toBe(false);
+  });
+
+  it('read a receipt with no source as paid directly', () => {
+    expect(deductibleAmount(receipt({ amount: 100 }))).toBe(100);
+  });
+
+  it('are totalled apart from the deduction and from the cash and non-cash counts', () => {
+    const stats = computeCharitableStats([receipt({ amount: 100 }), daf], 2025);
+    expect(stats.total).toBe(100);
+    expect(stats.cash).toBe(100);
+    expect(stats.cashCount).toBe(1);
+    expect(stats.dafGranted).toBe(1000);
+    expect(stats.dafCount).toBe(1);
+    expect(stats.count).toBe(2);
+    expect(stats.missingAcknowledgment).toBe(0);
+  });
+});
+
 describe('defaultYear', () => {
   const years = [
     { year: 2024, total: 0, cash: 0, nonCash: 0, count: 1 },
