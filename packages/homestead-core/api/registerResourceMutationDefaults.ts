@@ -199,6 +199,18 @@ export function resolveParentChainFromCache(
   return chain.length ? chain : undefined;
 }
 
+/**
+ * Ids of the apps that registered a resource singular — how a server change
+ * event (which names only the singular) finds the query caches to invalidate.
+ */
+export function appIdsForResource(singular: string): string[] {
+  const ids: string[] = [];
+  for (const meta of resourceMetaRegistry.values()) {
+    if (meta.singular === singular) ids.push(meta.appId);
+  }
+  return ids;
+}
+
 /** True when a resource declares any parent (i.e. is nested). */
 export function resourceHasParents(appId: string, singular: string): boolean {
   return (metaFor(appId, singular)?.parents.length ?? 0) > 0;

@@ -3,6 +3,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
 
 export interface RecipeFormInput {
   title: string;
@@ -73,7 +74,7 @@ export class RecipesPage {
     await this.clickAddRecipe();
     await this.fillRecipeForm(data);
     await this.submitRecipeForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async clickEdit(title: string) {
@@ -89,7 +90,7 @@ export class RecipesPage {
     const confirm = this.page.getByRole('button', { name: /^delete$/i });
     await confirm.waitFor({ state: 'visible' });
     await confirm.click();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   /** Edit just the title of an existing recipe. */
@@ -98,7 +99,7 @@ export class RecipesPage {
     await this.page.locator('#title').waitFor({ state: 'visible' });
     await this.page.locator('#title').fill(newTitle);
     await this.submitRecipeForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectRecipeInList(title: string) {

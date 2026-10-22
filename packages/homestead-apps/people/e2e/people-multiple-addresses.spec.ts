@@ -10,6 +10,7 @@ import {
   deleteAllPeople,
   getPersonSharedData,
 } from './helpers';
+import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
 
 interface AddressRecord {
   id: string;
@@ -52,7 +53,7 @@ test.describe('People Multiple Addresses', () => {
     const submitButton = authenticatedPage.getByTestId('person-form-submit');
     await submitButton.click();
     await submitButton.waitFor({ state: 'hidden' });
-    await authenticatedPage.waitForLoadState('networkidle');
+    await waitForNetworkIdle(authenticatedPage);
 
     const sharedData = await getPersonSharedData(userToken, person.id);
     expect(sharedData).not.toBeNull();
@@ -95,7 +96,7 @@ test.describe('People Multiple Addresses', () => {
     await authenticatedPage.locator('#address-1-line1').fill('321 Elm Dr');
 
     await peoplePage.submitPersonForm();
-    await authenticatedPage.waitForLoadState('networkidle');
+    await waitForNetworkIdle(authenticatedPage);
 
     const people = await listOrEmpty<{ id: string; name: string }>(userToken, 'people');
     const jane = people.find((p) => p.name === 'Jane Smith');
@@ -148,7 +149,7 @@ test.describe('People Multiple Addresses', () => {
     await removeButton.click();
 
     await peoplePage.submitPersonForm();
-    await authenticatedPage.waitForLoadState('networkidle');
+    await waitForNetworkIdle(authenticatedPage);
 
     const allAddresses = await listOrEmpty<AddressRecord>(userToken, 'addresses');
     void allAddresses.find((a) => a.id === secondAddress.id);

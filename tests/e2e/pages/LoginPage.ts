@@ -3,6 +3,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { waitForNetworkIdle } from '../utils/network';
 
 export class LoginPage {
   constructor(private page: Page) {}
@@ -10,7 +11,7 @@ export class LoginPage {
   async goto() {
     await this.page.goto('/login');
     // Wait for the page to be fully loaded and hydrated
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async login(email: string, password: string) {
@@ -29,7 +30,7 @@ export class LoginPage {
 
     // Wait for the async login to complete
     // The page will either redirect (success) or show an error (failure)
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectLoginError(message?: string | RegExp) {

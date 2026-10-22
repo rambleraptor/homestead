@@ -123,6 +123,54 @@ function resolve(reg: Registry, segments: string[]): ResolvedRoute | null {
 }
 
 /**
+ * Resolve an AEP resource path (`groceries/abc`, `credit-cards/1/perks/2`, or a
+ * singleton's path) to its route match — the same resolution a request for
+ * that path gets. Null when no registered resource owns the path.
+ */
+export function matchResourcePath(reg: Registry, path: string): RouteMatch | null {
+  const segments = path.split('/').filter((s) => s.length > 0);
+  const resolved = resolve(reg, segments);
+  if (!resolved) return null;
+  const { match, rawId } = resolved;
+  if (match.kind === 'collection') return null;
+  if (match.kind === 'resource') match.id = rawId;
+  return match;
+}
+
+/**
+ * Authorize reading one record (or a singleton): the checks a GET of it runs,
+ * in the same order. Throws HttpError(403) when denied.
+ *
+ * Shared by the GET routes below and by the change feed, which must decide
+ * whether a subscriber may see a record exactly as a GET would — a second copy
+ * of this sequence would be a second copy to keep in step.
+ */
+export function authorizeRecordRead(
+  reg: Registry,
+  match: RouteMatch,
+  caller: User | null,
+  ctx?: EnforceContext,
+): void {
+  checkUserScope(match, caller);
+  if (!ctx) return;
+  const r = match.resource;
+  // Grant rows are readable by any authenticated caller (see routeGrant).
+  if (r.plural === ACCESS_GRANTS_PLURAL) return;
+  const opts = {
+    caller,
+    verb: 'read' as const,
+    resourceType: r.singular,
+    plural: r.plural,
+    schema: r.schema,
+    ...(match.kind === 'resource'
+      ? { recordId: match.id, recordPath: buildResourcePath(r, match.parentIds, match.id) }
+      : {}),
+  };
+  if (match.parentIds.user_id !== undefined) enforceCredentialCeiling(ctx, reg.db, opts);
+  else enforceRecordAccess(ctx, reg.db, opts);
+}
+
+/**
  * Warn (once per process) that no baseline (grant/role) exists yet. Enforcement
  * is fail-closed, so until one is seeded a non-superuser sees only their own
  * owned rows — the superuser (break-glass) still has full access to seed/recover.
@@ -215,7 +263,7 @@ export async function routeDynamic(
 
   if (match.kind === 'singleton') {
     if (req.method === 'GET') {
-      enforce('read');
+      authorizeRecordRead(reg, match, caller, ctx);
       return handleSingletonGet(reg, match);
     }
     if (req.method === 'PATCH') {
@@ -265,7 +313,7 @@ export async function routeDynamic(
       if (match.verb !== '') {
         return errorResponse(404, `custom method "${match.verb}" not found`);
       }
-      enforce('read', match.id, recordPath);
+      authorizeRecordRead(reg, match, caller, ctx);
       return handleGet(reg, match);
     case 'POST':
       if (match.verb === '') {

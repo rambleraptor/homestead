@@ -22,7 +22,8 @@ import {
 import { OAuthRoutes, type OAuthConfig, type SessionIssuer } from './oauth';
 import { buildOpenApi } from './openapi';
 import { Registry } from './registry';
-import { notFoundText, routeDynamic } from './router';
+import { authorizeRecordRead, matchResourcePath, notFoundText, routeDynamic } from './router';
+import { originOf, runWithRequestContext } from './request-context';
 import { PermissionStore, permissionCacheTtlMs } from './permission-store';
 import { type Grant } from './permissions';
 import type { EnforceContext } from './enforce';
@@ -231,6 +232,42 @@ export class Engine {
     };
   }
 
+  /**
+   * Resolve a bearer token to its caller, exactly as a request carrying it
+   * would be (expiry, revocation, PAT/OAuth attenuation). Null when invalid.
+   */
+  async authenticateToken(token: string): Promise<User | null> {
+    if (!token) return null;
+    return this.tokenValidator ? this.tokenValidator(token) : getUserByToken(this.db, token);
+  }
+
+  /**
+   * Whether `caller` may read the record at `path` (a resource of type
+   * `resource`) — the same decision a GET of that path makes, run in-process
+   * and synchronously. Evaluated against the database as it is now, so for a
+   * delete it must run before the row goes.
+   */
+  canRead(caller: User, resource: string, path: string): boolean {
+    const segments = path.split('/').filter((s) => s.length > 0);
+    if (this.accessCheck) {
+      const probe = new Request(`http://engine.local/${path}`, { method: 'GET' });
+      if (this.accessCheck(probe, segments, caller)) return false;
+    }
+    if (resource === 'user') {
+      // Mirrors handleUserGet: superusers, or the user themself.
+      return caller.type === TYPE_SUPERUSER || segments[1] === caller.id;
+    }
+    const match = matchResourcePath(this.registry, path);
+    if (!match || match.resource.singular !== resource) return false;
+    try {
+      authorizeRecordRead(this.registry, match, caller, this.enforceContext());
+      return true;
+    } catch (err) {
+      if (err instanceof HttpError) return false;
+      throw err;
+    }
+  }
+
   /** CORS headers for the request origin, when allowed. */
   private corsHeaders(req: Request): Record<string, string> {
     const origin = req.headers.get('origin');
@@ -240,7 +277,7 @@ export class Engine {
         return {
           'Access-Control-Allow-Origin': origin,
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Homestead-Client',
         };
       }
     }
@@ -308,6 +345,13 @@ export class Engine {
       if (caller.pat) touchPatLastUsed(this.db, caller.pat.id);
     }
 
+    // Post-commit observers (the change feed) read the writer from here.
+    return runWithRequestContext({ caller, origin: originOf(req) }, () =>
+      this.route(req, path, caller),
+    );
+  }
+
+  private async route(req: Request, path: string, caller: User | null): Promise<Response> {
     const segments = path.split('/').filter((s) => s.length > 0);
 
     if (this.accessCheck) {

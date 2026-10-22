@@ -3,6 +3,7 @@
  */
 
 import { Page, expect, Locator } from '@playwright/test';
+import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
 
 export class PeoplePage {
   constructor(private page: Page) { }
@@ -37,7 +38,7 @@ export class PeoplePage {
         const addAddressButton = this.page.getByRole('button', { name: /add address/i });
         await addAddressButton.waitFor({ state: 'visible' });
         await addAddressButton.click();
-        await this.page.waitForLoadState('networkidle');
+        await waitForNetworkIdle(this.page);
       }
 
       // Fill in the first address line1 field
@@ -59,7 +60,7 @@ export class PeoplePage {
     await this.clickAddPerson();
     await this.fillPersonForm(data);
     await this.submitPersonForm();
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectPersonInList(personName: string) {
@@ -104,7 +105,7 @@ export class PeoplePage {
         const addAddressButton = this.page.getByRole('button', { name: /add address/i });
         await addAddressButton.waitFor({ state: 'visible' });
         await addAddressButton.click();
-        await this.page.waitForLoadState('networkidle');
+        await waitForNetworkIdle(this.page);
       }
 
       // Clear and fill the first address line1 field
@@ -129,7 +130,7 @@ export class PeoplePage {
       await confirmButton.click();
     }
 
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   // Bulk Import Methods
@@ -162,7 +163,7 @@ export class PeoplePage {
 
   async expectParsedPeopleCount(validCount: number, invalidCount?: number) {
     // Wait for parsing to complete and stats to be visible
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
 
     // Check the valid count stat card
     const validCard = this.page.locator('text="Valid People"').locator('..');

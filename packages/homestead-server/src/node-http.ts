@@ -60,10 +60,18 @@ export async function bridge(
 
   if (response.body) {
     const reader = response.body.getReader();
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      res.write(value);
+    // A client that hangs up mid-body (a tab closing on /api/events) must
+    // cancel the stream, or an endless one keeps its producer alive forever.
+    const cancel = () => void reader.cancel().catch(() => {});
+    res.once('close', cancel);
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+    } finally {
+      res.off('close', cancel);
     }
   }
   res.end();

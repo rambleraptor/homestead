@@ -3,6 +3,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
 
 export class HSAPage {
   constructor(private page: Page) {}
@@ -76,7 +77,7 @@ export class HSAPage {
     await this.fillReceiptForm(data);
     await this.submitReceiptForm();
     // Wait for network to settle after mutation
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectReceiptInList(merchant: string, amount?: number) {
@@ -147,7 +148,7 @@ export class HSAPage {
 
     await submit.click();
     await submit.waitFor({ state: 'hidden' });
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async markReceiptAsReimbursed(merchant: string) {
@@ -157,7 +158,7 @@ export class HSAPage {
     await markButton.waitFor({ state: 'visible' });
     await markButton.click();
     // Wait for network to settle after mutation
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async deleteReceipt(merchant: string) {
@@ -176,7 +177,7 @@ export class HSAPage {
     }
 
     // Wait for network to settle after deletion
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async filterByStatus(status: 'All' | 'Stored' | 'Reimbursed') {
@@ -184,7 +185,7 @@ export class HSAPage {
     await filterSelect.waitFor({ state: 'visible' });
     await filterSelect.selectOption(status);
     // Wait for filter to apply
-    await this.page.waitForLoadState('networkidle');
+    await waitForNetworkIdle(this.page);
   }
 
   async expectReceiptStatus(merchant: string, status: 'Stored' | 'Reimbursed') {
