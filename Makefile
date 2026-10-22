@@ -1,4 +1,4 @@
-.PHONY: help install clean lint type-check type-check-cli type-check-server type-check-client build test test-cli test-node test-e2e test-e2e-ui test-all dev start audit format all ci install-service start-services stop restart status logs homestead homestead-test release
+.PHONY: help install clean lint type-check type-check-cli type-check-server type-check-client type-check-harness build test test-cli test-node test-vm test-e2e test-e2e-ui test-all dev start audit format all ci install-service start-services stop restart status logs homestead homestead-test release
 
 # Release target platforms (filename arch follows Bun's convention: x64/arm64).
 RELEASE_PLATFORMS := linux-x64 linux-arm64 darwin-x64 darwin-arm64
@@ -32,13 +32,17 @@ lint: ## Run ESLint
 	@echo "Running ESLint..."
 	cd $(FRONTEND_DIR) && npm run lint
 
-type-check: type-check-cli type-check-server type-check-client ## Run TypeScript type checking (frontend + CLI + server + client)
+type-check: type-check-cli type-check-server type-check-client type-check-harness ## Run TypeScript type checking (frontend + CLI + server + client + VM harness)
 	@echo "Running TypeScript type check..."
 	cd $(FRONTEND_DIR) && npm run type-check
 
 type-check-client: ## Type-check the standalone client library
 	@echo "Type-checking homestead-client..."
 	npx tsc -p $(CLIENT_DIR)/tsconfig.json
+
+type-check-harness: ## Type-check the VM test harness and VM specs
+	@echo "Type-checking homestead-test-harness..."
+	npx tsc -p packages/homestead-test-harness/tsconfig.json
 
 type-check-cli: ## Type-check the homestead CLI package
 	@echo "Type-checking homestead CLI..."
@@ -76,6 +80,10 @@ test-node: ## Run the homestead CLI + server unit tests under Node (vitest)
 	cd $(SERVER_DIR) && npx vitest run
 	@echo "Running homestead CLI tests (node)..."
 	cd $(CLI_DIR) && npx vitest run
+
+test-vm: ## Run VM-tier tests (real SPA in happy-dom against the in-process server)
+	@echo "Running VM tests..."
+	cd packages/homestead-test-harness && npx vitest run
 
 test-e2e: ## Run end-to-end tests with Playwright
 	@echo "Running e2e tests..."

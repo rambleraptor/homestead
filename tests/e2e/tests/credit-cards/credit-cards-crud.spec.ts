@@ -11,6 +11,7 @@
 
 import { test, expect } from '../../fixtures/aepbase.fixture';
 import { CreditCardsPage } from '../../pages/CreditCardsPage';
+import { playwrightDriver } from '../../../../packages/homestead-test-harness/driver/pw-driver';
 import { deleteIfPresent, listOrEmpty } from '../../utils/aepbase-helpers';
 
 interface CardRec {
@@ -31,7 +32,7 @@ test.describe('Credit Cards — nested perk/redemption flow', () => {
 
   test.beforeEach(async ({ authenticatedPage, userToken }) => {
     await clearCards(userToken);
-    cc = new CreditCardsPage(authenticatedPage);
+    cc = new CreditCardsPage(playwrightDriver(authenticatedPage));
     await cc.goto();
   });
 
@@ -63,12 +64,12 @@ test.describe('Credit Cards — nested perk/redemption flow', () => {
 
     // Update — useUpdatePerk (PATCH nested; parent resolved from cache).
     await cc.editPerkValue('Dining Credit', 30);
-    await expect(cc.perkRow('Dining Credit')).toContainText('$30');
+    await cc.driver.expect(cc.perkRow('Dining Credit')).toContainText('$30');
 
     // Delete — useDeletePerk (parent chain resolved before optimistic removal
     // and baked into the persisted variables).
     await cc.deletePerk('Dining Credit');
-    await expect(cc.perkRow('Dining Credit')).toHaveCount(0);
+    await cc.driver.expect(cc.perkRow('Dining Credit')).toHaveCount(0);
   });
 
   test('persists a nested perk to the server under the correct parent', async ({

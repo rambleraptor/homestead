@@ -129,6 +129,20 @@ Vitest + Testing Library. Tests live next to the code they cover, under
 `__tests__/` directories. `src/test/setup.ts` mocks the aepbase client
 globally — individual tests can override behavior via `vi.mocked(...)`.
 
+### VM tests (in-process, no browser)
+
+`make test-vm` runs `*.vm.ts` specs (under an app's `vm/` dir) on the
+**VM tier** (`packages/homestead-test-harness`): the real SPA mounted in
+happy-dom, served by the real server's fetch handler (`createApp()` in
+`homestead-server/src/app.ts`) in the same Vitest worker — no browser, no
+sockets. `bootHomestead()` gives each test a fresh copy of a per-worker
+template database (schema synced, admin claimed, a member user), so specs
+need no cleanup. Page objects are written against the shared `Driver`
+(`homestead-test-harness/driver/`), which has a Playwright implementation too,
+so one page object serves both tiers. There is no layout engine: visibility is
+computed-style only, so layout, service-worker, push, and download flows stay
+in Playwright.
+
 ### End-to-end (E2E) tests
 
 Playwright against a real aepbase instance. Located in `tests/e2e/`.
