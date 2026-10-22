@@ -152,6 +152,12 @@ export class CharitablePage {
     await this.page.waitForLoadState('networkidle');
   }
 
+  async filterBySource(source: 'All' | 'Self' | 'DAF') {
+    const filter = this.page.getByTestId('charitable-source-filter');
+    await filter.waitFor({ state: 'visible' });
+    await filter.selectOption(source);
+  }
+
   async editDonation(
     organization: string,
     updates: { organization?: string; amount?: number; notes?: string },

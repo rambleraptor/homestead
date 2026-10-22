@@ -15,6 +15,11 @@
  * A gift of goods nobody has valued yet contributes nothing — it is counted in
  * `unvalued` instead, so the number on the page is one you could defend rather
  * than one padded with blanks.
+ *
+ * A grant from a donor-advised fund contributes nothing either: the deduction
+ * was taken when the fund was funded, and claiming the grant too would count
+ * the same money twice. It is totalled on its own (`dafGranted`) and never
+ * flagged as needing a value or an acknowledgment.
  */
 
 import type {
@@ -39,8 +44,14 @@ export function effectiveYear(receipt: CharitableReceipt): number | undefined {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.getFullYear();
 }
 
+/** Granted out of a donor-advised fund rather than paid by the donor. */
+export function isDafGrant(receipt: CharitableReceipt): boolean {
+  return receipt.source === 'DAF';
+}
+
 /** What a receipt is actually worth as a deduction: given minus received back. */
 export function deductibleAmount(receipt: CharitableReceipt): number {
+  if (isDafGrant(receipt)) return 0;
   if (typeof receipt.amount !== 'number' || !Number.isFinite(receipt.amount)) return 0;
   const received =
     typeof receipt.value_received === 'number' && Number.isFinite(receipt.value_received)
@@ -51,6 +62,7 @@ export function deductibleAmount(receipt: CharitableReceipt): number {
 
 /** A gift of goods still waiting for its owner to put a number on it. */
 export function isUnvalued(receipt: CharitableReceipt): boolean {
+  if (isDafGrant(receipt)) return false;
   return typeof receipt.amount !== 'number' || !Number.isFinite(receipt.amount);
 }
 
@@ -62,7 +74,9 @@ export function isSubstantiated(receipt: CharitableReceipt): boolean {
 /** A $250-or-more gift with nothing on file to back it up. */
 export function needsAcknowledgment(receipt: CharitableReceipt): boolean {
   return (
-    (receipt.amount ?? 0) >= ACKNOWLEDGMENT_THRESHOLD && !isSubstantiated(receipt)
+    !isDafGrant(receipt) &&
+    (receipt.amount ?? 0) >= ACKNOWLEDGMENT_THRESHOLD &&
+    !isSubstantiated(receipt)
   );
 }
 
@@ -118,8 +132,10 @@ export function computeCharitableStats(
   year: number,
 ): CharitableStats {
   const scoped = receiptsForYear(receipts, year);
-  const cashGifts = scoped.filter((r) => r.gift_type === 'Cash');
-  const nonCashGifts = scoped.filter((r) => r.gift_type !== 'Cash');
+  const ownGifts = scoped.filter((r) => !isDafGrant(r));
+  const dafGrants = scoped.filter(isDafGrant);
+  const cashGifts = ownGifts.filter((r) => r.gift_type === 'Cash');
+  const nonCashGifts = ownGifts.filter((r) => r.gift_type !== 'Cash');
   const sum = (items: CharitableReceipt[]) =>
     items.reduce((acc, r) => acc + deductibleAmount(r), 0);
 
@@ -131,6 +147,8 @@ export function computeCharitableStats(
     count: scoped.length,
     cashCount: cashGifts.length,
     nonCashCount: nonCashGifts.length,
+    dafGranted: dafGrants.reduce((acc, r) => acc + (r.amount ?? 0), 0),
+    dafCount: dafGrants.length,
     unvalued: scoped.filter(isUnvalued).length,
     missingAcknowledgment: scoped.filter(needsAcknowledgment).length,
     organizationBreakdown: summarizeOrganizations(scoped),

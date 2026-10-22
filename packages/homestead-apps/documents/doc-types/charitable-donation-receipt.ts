@@ -46,6 +46,15 @@ const charitableDonationReceipt: DocType = {
       person: true,
       description: 'The donor the receipt is addressed to.',
     },
+    donor_advised_fund: {
+      label: 'Donor-advised fund',
+      type: 'string',
+      description:
+        'The name of the donor-advised fund the gift was granted from, when the ' +
+        'acknowledgment says it came from one — e.g. "Fidelity Charitable", ' +
+        '"Schwab Charitable", "Vanguard Charitable", or a community foundation ' +
+        'fund ("the Smith Family Fund at …"). Omit when the donor paid directly.',
+    },
     donation_date: {
       label: 'Donation date',
       type: 'string',

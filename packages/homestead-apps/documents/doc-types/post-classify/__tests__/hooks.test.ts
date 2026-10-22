@@ -194,6 +194,7 @@ describe('charitable-donation-receipt post_classify', () => {
       tax_year: 2025,
       status: 'Unclaimed',
       donor: 'Jamie',
+      source: 'Self',
       source_document: 'documents/doc1',
       created_by: 'users/u1',
     });
@@ -201,6 +202,22 @@ describe('charitable-donation-receipt post_classify', () => {
       'No goods or services were provided in exchange.',
     );
     expect(result).toEqual({ linked_resource: 'charitable-receipts/created1' });
+  });
+
+  it('marks a gift granted from a donor-advised fund as a DAF grant', async () => {
+    await charitableReceiptHook({
+      document: doc(),
+      metadata: {
+        doc_type: 'charitable-donation-receipt',
+        organization_name: 'Food Bank',
+        donation_amount: 500,
+        donor_advised_fund: 'Fidelity Charitable',
+      },
+      auth,
+    });
+
+    const [, body] = createFn.mock.calls[0] as [string, Record<string, unknown>];
+    expect(body.source).toBe('DAF');
   });
 
   it('leaves a gift of goods unvalued rather than inventing a deduction', async () => {

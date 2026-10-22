@@ -56,6 +56,7 @@ export function CharitableCaptureForm({
           'organization',
           'donation_date',
           'gift_type',
+          'source',
           'amount',
           'description_of_property',
           'value_received',
@@ -76,6 +77,12 @@ export function CharitableCaptureForm({
         },
         donation_date: { id: 'donation_date', label: 'Donation Date' },
         gift_type: { id: 'gift_type', label: 'Gift Type', default: 'Cash' },
+        source: {
+          id: 'source',
+          label: 'Paid by',
+          default: 'Self',
+          help: 'Self if you paid the charity directly. DAF if it was a grant from a donor-advised fund — not deductible, since the deduction was taken when the fund was funded.',
+        },
         amount: {
           id: 'amount',
           widget: 'currency',

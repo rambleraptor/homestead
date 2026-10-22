@@ -19,6 +19,13 @@ export const receiptsApp: AppConfig = {
   name: 'Receipts',
   description: 'Medical and charitable receipts, kept for tax time',
   resources: [...hsaResources, ...charitableResources],
+  migrations: [
+    {
+      id: 'receipts-backfill-charitable-source',
+      title: 'Mark existing charitable receipts as paid by Self',
+      load: () => import('./migrations/backfill-charitable-source'),
+    },
+  ],
   web: {
     icon: () => import('lucide-react').then((m) => m.Receipt),
     basePath: '/receipts',

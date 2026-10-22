@@ -123,6 +123,39 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDonationNotInList('City Food Bank');
   });
 
+  test('should leave a DAF grant out of the deduction and filter by source', async ({
+    userToken,
+  }) => {
+    await createCharitableReceipt(userToken, {
+      organization: 'City Food Bank',
+      donation_date: '2025-06-01',
+      gift_type: 'Cash',
+      amount: 100,
+      status: 'Unclaimed',
+      source: 'Self',
+    });
+    await createCharitableReceipt(userToken, {
+      organization: 'Public Radio',
+      donation_date: '2025-07-01',
+      gift_type: 'Cash',
+      amount: 1000,
+      status: 'Unclaimed',
+      source: 'DAF',
+    });
+
+    await charitablePage.goto(2025);
+    // The grant was deducted when the fund was funded — only the direct gift counts.
+    await charitablePage.expectDeductibleTotal(100);
+
+    await charitablePage.filterBySource('DAF');
+    await charitablePage.expectDonationInList('Public Radio');
+    await charitablePage.expectDonationNotInList('City Food Bank');
+
+    await charitablePage.filterBySource('Self');
+    await charitablePage.expectDonationInList('City Food Bank');
+    await charitablePage.expectDonationNotInList('Public Radio');
+  });
+
   test('should edit a donation', async ({ userToken }) => {
     await createCharitableReceipt(userToken, testCharitableReceipts[2]);
 

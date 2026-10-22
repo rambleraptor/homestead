@@ -192,7 +192,11 @@ export function CharitableTab({ addOpen, onOpenAdd, onCloseAdd }: CharitableTabP
             value={formatCurrency(stats.total)}
             caption={`Across ${stats.count} ${
               stats.count === 1 ? 'receipt' : 'receipts'
-            } in ${year}`}
+            } in ${year}${
+              stats.dafCount > 0
+                ? ` · ${formatCurrency(stats.dafGranted)} granted from a DAF, not deductible`
+                : ''
+            }`}
             footnote="What you gave, less anything you received in return. A gift of $250 or more needs a written acknowledgment from the charity to be deductible at all."
             icon={HandHeart}
           />
