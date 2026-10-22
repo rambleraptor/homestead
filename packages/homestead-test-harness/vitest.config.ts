@@ -27,7 +27,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['packages/**/vm/**/*.vm.ts'],
+    include: ['packages/**/vm/**/*.vm.ts', 'tests/vm/**/*.vm.ts'],
     exclude: ['**/node_modules/**'],
     environment: path.resolve(__dirname, 'vm/environment.ts'),
     deps: {
@@ -42,6 +42,8 @@ export default defineConfig({
       PERMISSION_CACHE_TTL_MS: '0',
       // Server-side helpers read this at import time; point them at the VM.
       AEPBASE_URL: `${VM_ORIGIN}/api/aep`,
+      // Point the e2e seed helpers (tests/e2e/utils) at the VM too.
+      HOMESTEAD_E2E_APP_URL: VM_ORIGIN,
     },
   },
 });

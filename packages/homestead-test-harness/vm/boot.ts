@@ -18,15 +18,24 @@ import '@/apps/registry';
 import { App } from '@/App';
 import type { Driver } from '../driver/Driver';
 import { vmDriver } from '../driver/vm-driver';
-import { installFetchShim, setActiveHandler } from './fetch-shim';
+import { inFlightRequests, installFetchShim, setActiveHandler } from './fetch-shim';
 import { VM_ORIGIN } from './origin';
-import { workerTemplate } from './template';
+import { workerTemplate, type VmUser } from './template';
+
+export interface Session {
+  id: string;
+  email: string;
+  token: string;
+}
 
 export interface Harness {
   driver: Driver;
   app: HomesteadApp;
-  /** Log in through the real login form as the template's member user. */
-  loginAsMember(): Promise<{ id: string; token: string }>;
+  /** The template's bootstrap superuser and member (Members group) accounts. */
+  admin: VmUser;
+  member: VmUser;
+  /** Log in through the real login form; resolves once the app shell is up. */
+  loginAs(user: VmUser): Promise<Session>;
   close(): Promise<void>;
 }
 
@@ -40,26 +49,42 @@ export async function bootHomestead(): Promise<Harness> {
   const app = await createApp({ dev: true, dataDir, origin: VM_ORIGIN });
   setActiveHandler(app.fetch);
 
-  window.history.replaceState({}, '', '/login');
-  document.body.innerHTML = '<div id="root"></div>';
-  const root: Root = createRoot(document.getElementById('root')!);
-  root.render(createElement(BrowserRouter, null, createElement(App)));
+  document.body.innerHTML = '';
+  let root: Root | null = null;
 
-  const driver = vmDriver();
+  /**
+   * Mount the SPA at `path`, replacing any mounted instance — what a page load
+   * does. In-memory state (the React Query cache, component state) is lost;
+   * localStorage, and with it the session and the persisted query cache,
+   * survives.
+   */
+  async function load(path: string): Promise<void> {
+    root?.unmount();
+    queryClient.clear();
+    window.history.replaceState({}, '', path);
+    document.body.innerHTML = '<div id="root"></div>';
+    root = createRoot(document.getElementById('root')!);
+    root.render(createElement(BrowserRouter, null, createElement(App)));
+  }
+
+  const driver = vmDriver({ navigate: load, inFlight: inFlightRequests });
+  await load('/login');
 
   return {
     driver,
     app,
-    async loginAsMember() {
-      const { email, password, id } = template.member;
-      await driver.getByLabel(/email/i).fill(email);
-      await driver.getByLabel(/password/i).fill(password);
+    admin: template.admin,
+    member: template.member,
+    async loginAs(user) {
+      await driver.getByLabel(/email/i).fill(user.email);
+      await driver.getByLabel(/password/i).fill(user.password);
       await driver.getByRole('button', { name: /login|sign in/i }).click();
+      await driver.expectURL(/\/dashboard$/);
       await driver.expect(driver.getByTestId('app-shell')).toBeVisible();
-      return { id, token: authStore.token };
+      return { id: user.id, email: user.email, token: authStore.token };
     },
     async close() {
-      root.unmount();
+      root?.unmount();
       // Module singletons outlive the test (Vitest isolates per file, not per
       // test): drop the session and caches so the next boot starts clean.
       queryClient.clear();

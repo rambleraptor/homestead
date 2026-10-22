@@ -13,7 +13,7 @@
     "**/*.ts",
     "../homestead-app/src/vite-env.d.ts",
     "../homestead-apps/**/vm/**/*.ts",
-    "../../tests/e2e/pages/CreditCardsPage.ts"
+    "../../tests/vm/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

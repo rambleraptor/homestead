@@ -8,6 +8,7 @@
 import { expect } from '@playwright/test';
 import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
 import { TodosPage } from './TodosPage';
+import { playwrightDriver } from '../../../homestead-test-harness/driver/pw-driver';
 import {
   createTodo,
   deleteAllPersonalTodos,
@@ -21,7 +22,7 @@ test.describe('Todos CRUD', () => {
   test.beforeEach(async ({ adminToken, adminCreds, authenticatedAdminPage }) => {
     await deleteAllTodos(adminToken);
     await deleteAllPersonalTodos(adminToken, adminCreds.id);
-    todosPage = new TodosPage(authenticatedAdminPage);
+    todosPage = new TodosPage(playwrightDriver(authenticatedAdminPage));
     await todosPage.goto();
   });
 

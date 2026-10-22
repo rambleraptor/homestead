@@ -24,7 +24,7 @@ describe('Credit Cards — nested perk/redemption flow', () => {
 
   beforeEach(async () => {
     h = await bootHomestead();
-    ({ token: userToken } = await h.loginAsMember());
+    ({ token: userToken } = await h.loginAs(h.member));
     cc = new CreditCardsPage(h.driver);
     await cc.goto();
   });

@@ -5,6 +5,7 @@
 import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
 import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 import { GiftCardsPage } from './GiftCardsPage';
+import { playwrightDriver } from '../../../homestead-test-harness/driver/pw-driver';
 import {
   createGiftCard,
   createMultipleGiftCards,
@@ -16,7 +17,7 @@ test.describe('Gift Cards CRUD', () => {
   let giftCardsPage: GiftCardsPage;
 
   test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    giftCardsPage = new GiftCardsPage(authenticatedPage);
+    giftCardsPage = new GiftCardsPage(playwrightDriver(authenticatedPage));
 
     // Clean up any existing gift cards for this test user
     await deleteAllGiftCards(userToken);

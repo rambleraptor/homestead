@@ -1,22 +1,29 @@
 /**
  * Gift Cards Page Object Model
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`../vm/`).
  */
 
-import { Page, expect, Locator } from '@playwright/test';
+import type { Driver, Locator } from '../../../homestead-test-harness/driver/Driver';
 
 export class GiftCardsPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/gift-cards');
+    await this.driver.goto('/gift-cards');
   }
 
   async expectToBeOnGiftCardsPage() {
-    await expect(this.page).toHaveURL(/\/gift-cards/);
+    await this.driver.expectURL(/\/gift-cards/);
   }
 
   async clickAddGiftCard() {
-    const addButton = this.page.getByTestId('add-gift-card-button');
+    const addButton = this.driver.getByTestId('add-gift-card-button');
     await addButton.waitFor({ state: 'visible' });
     await addButton.click();
   }
@@ -28,21 +35,21 @@ export class GiftCardsPage {
     pin?: string;
     notes?: string;
   }) {
-    await this.page.locator('#merchant').fill(data.merchant);
-    await this.page.locator('#card_number').fill(data.card_number || '1234-5678-9012-3456');
-    await this.page.locator('#amount').fill(data.amount.toString());
+    await this.driver.locator('#merchant').fill(data.merchant);
+    await this.driver.locator('#card_number').fill(data.card_number || '1234-5678-9012-3456');
+    await this.driver.locator('#amount').fill(data.amount.toString());
 
     if (data.pin) {
-      await this.page.locator('#pin').fill(data.pin);
+      await this.driver.locator('#pin').fill(data.pin);
     }
 
     if (data.notes) {
-      await this.page.locator('#notes').fill(data.notes);
+      await this.driver.locator('#notes').fill(data.notes);
     }
   }
 
   async submitGiftCardForm() {
-    const submitButton = this.page.getByTestId('gift-card-form-submit');
+    const submitButton = this.driver.getByTestId('gift-card-form-submit');
     await submitButton.waitFor({ state: 'visible' });
     await submitButton.click();
     // Wait for the submit button to disappear (form closed)
@@ -60,39 +67,35 @@ export class GiftCardsPage {
     await this.fillGiftCardForm(data);
     await this.submitGiftCardForm();
     // Wait for network to settle after mutation
-    await this.page.waitForLoadState('networkidle');
+    await this.driver.waitForNetworkIdle();
   }
 
   async expectGiftCardInList(merchant: string, amount?: number) {
     // Use .first() to handle cases where merchant appears in multiple places
-    await expect(this.page.getByText(merchant).first()).toBeVisible();
+    await this.expect(this.driver.getByText(merchant).first()).toBeVisible();
 
     if (amount !== undefined) {
       const formattedAmount = `$${amount.toFixed(2)}`;
-      await expect(this.page.getByText(formattedAmount).first()).toBeVisible();
+      await this.expect(this.driver.getByText(formattedAmount).first()).toBeVisible();
     }
   }
 
   async expectGiftCardNotInList(merchant: string) {
-    // Check that the merchant text is not visible
-    const merchantLocator = this.page.getByText(merchant).first();
-    await expect(merchantLocator).not.toBeVisible({ timeout: 2000 }).catch(() => {
-      // Element doesn't exist, which is fine
-    });
+    await this.expect(this.driver.getByText(merchant).first()).toBeHidden();
   }
 
-  async getGiftCardRow(merchant: string): Promise<Locator> {
+  getGiftCardRow(merchant: string): Locator {
     // Gift cards are displayed as card components
-    return this.page.locator('.bg-white.rounded-lg.border').filter({ hasText: merchant }).first();
+    return this.driver.locator('.bg-white.rounded-lg.border').filter({ hasText: merchant }).first();
   }
 
   async clickMerchant(merchant: string) {
     // Click on a merchant card to view its gift cards
-    const merchantCard = this.page.getByText(merchant);
+    const merchantCard = this.driver.getByText(merchant);
     await merchantCard.waitFor({ state: 'visible' });
     await merchantCard.click();
     // Wait for detail view to load
-    await this.page.waitForLoadState('networkidle');
+    await this.driver.waitForNetworkIdle();
   }
 
   async editGiftCard(merchant: string, newData: Partial<{
@@ -110,36 +113,36 @@ export class GiftCardsPage {
     let editButton: Locator;
     if (cardAmount !== undefined) {
       const buttonName = `Edit ${merchant} card ($${cardAmount.toFixed(2)})`;
-      editButton = this.page.getByRole('button', { name: buttonName }).first();
+      editButton = this.driver.getByRole('button', { name: buttonName }).first();
     } else {
-      editButton = this.page.getByRole('button', { name: new RegExp(`Edit ${merchant}`, 'i') }).first();
+      editButton = this.driver.getByRole('button', { name: new RegExp(`Edit ${merchant}`, 'i') }).first();
     }
 
     await editButton.waitFor({ state: 'visible' });
     await editButton.click();
 
     // Wait for form to be visible
-    await this.page.locator('#merchant').waitFor({ state: 'visible' });
+    await this.driver.locator('#merchant').waitFor({ state: 'visible' });
 
     // Fill in changed fields
     if (newData.merchant) {
-      await this.page.locator('#merchant').fill(newData.merchant);
+      await this.driver.locator('#merchant').fill(newData.merchant);
     }
 
     if (newData.amount !== undefined) {
-      await this.page.locator('#amount').fill(newData.amount.toString());
+      await this.driver.locator('#amount').fill(newData.amount.toString());
     }
 
     if (newData.card_number) {
-      await this.page.locator('#card_number').fill(newData.card_number);
+      await this.driver.locator('#card_number').fill(newData.card_number);
     }
 
     if (newData.pin) {
-      await this.page.locator('#pin').fill(newData.pin);
+      await this.driver.locator('#pin').fill(newData.pin);
     }
 
     if (newData.notes) {
-      await this.page.locator('#notes').fill(newData.notes);
+      await this.driver.locator('#notes').fill(newData.notes);
     }
 
     // Submit and wait for form to close
@@ -154,11 +157,11 @@ export class GiftCardsPage {
     // Find and click delete button
     let deleteButton: Locator;
     if (cardAmount !== undefined) {
-      deleteButton = this.page.getByRole('button', {
+      deleteButton = this.driver.getByRole('button', {
         name: `Delete ${merchant} card ($${cardAmount.toFixed(2)})`
       }).first();
     } else {
-      deleteButton = this.page.getByRole('button', {
+      deleteButton = this.driver.getByRole('button', {
         name: new RegExp(`Delete ${merchant}`, 'i')
       }).first();
     }
@@ -166,21 +169,16 @@ export class GiftCardsPage {
     await deleteButton.waitFor({ state: 'visible' });
     await deleteButton.click();
 
-    // Handle confirmation dialog if present
-    const confirmButton = this.page.getByRole('button', { name: /confirm|yes|delete/i });
-    const isConfirmVisible = await confirmButton.isVisible({ timeout: 1000 }).catch(() => false);
-
-    if (isConfirmVisible) {
-      await confirmButton.click();
-    }
+    // Deleting always asks for confirmation (ConfirmDialog in GiftCardHome).
+    await this.driver.getByRole('button', { name: 'Delete', exact: true }).click();
 
     // Wait for network to settle after deletion
-    await this.page.waitForLoadState('networkidle');
+    await this.driver.waitForNetworkIdle();
   }
 
   async expectMerchantSummary(merchant: string, totalAmount: number) {
-    await expect(this.page.getByText(merchant)).toBeVisible();
+    await this.expect(this.driver.getByText(merchant)).toBeVisible();
     const formattedTotal = `$${totalAmount.toFixed(2)}`;
-    await expect(this.page.getByText(formattedTotal)).toBeVisible();
+    await this.expect(this.driver.getByText(formattedTotal)).toBeVisible();
   }
 }

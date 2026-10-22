@@ -8,6 +8,7 @@
 
 import { test, expect } from '../../fixtures/aepbase.fixture';
 import { UsersPage } from '../../pages/UsersPage';
+import { playwrightDriver } from '../../../../packages/homestead-test-harness/driver/pw-driver';
 import { createUser, deleteUsersExcept, listOrEmpty } from '../../utils/aepbase-helpers';
 
 const uniqueEmail = (tag: string) =>
@@ -17,7 +18,7 @@ test.describe('Users page (superuser)', () => {
   let usersPage: UsersPage;
 
   test.beforeEach(async ({ authenticatedAdminPage, adminCreds, adminToken, testUser }) => {
-    usersPage = new UsersPage(authenticatedAdminPage);
+    usersPage = new UsersPage(playwrightDriver(authenticatedAdminPage));
     // Clear every user except the bootstrap admin and the fixture test user.
     await deleteUsersExcept(adminToken, [adminCreds.id, testUser.id]);
     await usersPage.goto();
@@ -83,7 +84,7 @@ test.describe('Users page (superuser)', () => {
     await usersPage.submitForm('Save');
 
     // Modal should close.
-    await expect(usersPage['page'].getByTestId('user-email-input')).not.toBeVisible();
+    await usersPage.driver.expect(usersPage.driver.getByTestId('user-email-input')).toBeHidden();
 
     const users = await listOrEmpty<{ id: string; display_name?: string; type?: string }>(
       adminToken,
@@ -109,7 +110,7 @@ test.describe('Users page (superuser)', () => {
     await usersPage.confirmDelete();
 
     // Row disappears.
-    await expect(usersPage['page'].getByText(email)).toHaveCount(0);
+    await usersPage.driver.expect(usersPage.driver.getByText(email)).toHaveCount(0);
 
     const users = await listOrEmpty<{ id: string }>(adminToken, 'users');
     expect(users.find((u) => u.id === created.id)).toBeUndefined();

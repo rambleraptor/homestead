@@ -35,8 +35,13 @@ export function getProjectRoot(): string {
   return join(process.cwd(), '../..');
 }
 
+/**
+ * The app origin. `HOMESTEAD_E2E_APP_URL` overrides it so the VM test tier
+ * (packages/homestead-test-harness), which serves the app in-process at its
+ * own origin, can reuse these helpers unchanged.
+ */
 export function getAppUrl(): string {
-  return `http://localhost:${APP_PORT}`;
+  return process.env.HOMESTEAD_E2E_APP_URL ?? `http://localhost:${APP_PORT}`;
 }
 
 /** The engine base URL — aepbase is reachable only under /api/aep. */

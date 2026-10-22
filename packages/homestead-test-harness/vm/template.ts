@@ -19,10 +19,16 @@ import { createApp } from '@rambleraptor/homestead-server/src/app';
 import { setActiveHandler } from './fetch-shim';
 import { VM_ORIGIN } from './origin';
 
+export interface VmUser {
+  id: string;
+  email: string;
+  password: string;
+}
+
 export interface VmTemplate {
   dbPath: string;
-  admin: { email: string; password: string };
-  member: { email: string; password: string; id: string };
+  admin: VmUser;
+  member: VmUser;
 }
 
 const ADMIN = { email: 'admin@vm.test', password: 'vm-admin-password' };
@@ -56,6 +62,7 @@ async function buildTemplate(): Promise<VmTemplate> {
       method: 'POST',
       body: JSON.stringify(ADMIN),
     });
+    const admin = await call<{ id: string }>('/api/aep/users/me', { token: adminToken });
     const member = await call<{ id: string }>('/api/aep/users', {
       method: 'POST',
       token: adminToken,
@@ -74,7 +81,7 @@ async function buildTemplate(): Promise<VmTemplate> {
 
     const dbPath = join(root, 'template.db');
     app.engine.db.query('VACUUM INTO ?').run(dbPath);
-    return { dbPath, admin: ADMIN, member: { ...MEMBER, id: member.id } };
+    return { dbPath, admin: { ...ADMIN, id: admin.id }, member: { ...MEMBER, id: member.id } };
   } finally {
     setActiveHandler(null);
     app.close();

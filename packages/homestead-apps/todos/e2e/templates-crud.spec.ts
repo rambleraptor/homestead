@@ -9,6 +9,7 @@
 import { expect } from '@playwright/test';
 import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
 import { TodosPage } from './TodosPage';
+import { playwrightDriver } from '../../../homestead-test-harness/driver/pw-driver';
 import { TemplatesPage } from './TemplatesPage';
 import {
   addTemplateItem,
@@ -30,7 +31,7 @@ test.describe('Todos list templates', () => {
     await deleteAllTodos(adminToken);
     await deleteAllProjects(adminToken);
     await deleteAllListTemplates(adminToken);
-    todosPage = new TodosPage(authenticatedAdminPage);
+    todosPage = new TodosPage(playwrightDriver(authenticatedAdminPage));
     templatesPage = new TemplatesPage(authenticatedAdminPage);
   });
 

@@ -11,6 +11,12 @@ type Handler = (req: Request) => Response | Promise<Response>;
 
 let active: Handler | null = null;
 let installed = false;
+let inFlight = 0;
+
+/** Requests the shim has handed to the app and not yet answered. */
+export function inFlightRequests(): number {
+  return inFlight;
+}
 
 export function setActiveHandler(handler: Handler | null): void {
   active = handler;
@@ -29,6 +35,11 @@ export function installFetchShim(): void {
       throw new TypeError(`homestead VM: blocked network request to ${req.url}`);
     }
     if (!active) throw new TypeError(`homestead VM: no app booted for ${req.url}`);
-    return active(req);
+    inFlight++;
+    try {
+      return await active(req);
+    } finally {
+      inFlight--;
+    }
   };
 }

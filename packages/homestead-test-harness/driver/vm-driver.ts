@@ -10,12 +10,24 @@
 
 import { queryAllByLabelText, queryAllByRole } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
-import type { Driver, FilterOptions, Locator, LocatorAssertions, RoleOptions } from './Driver';
+import type {
+  Driver,
+  FilterOptions,
+  Locator,
+  LocatorAssertions,
+  RoleOptions,
+  SelectValue,
+  TextOptions,
+  WaitState,
+} from './Driver';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 const POLL_MS = 5;
+/** How long the network must stay quiet to count as idle. */
+const NETWORK_QUIET_MS = 20;
 
 type Resolve = () => Element[];
+type Attempt<T> = () => { ok: true; value: T } | { ok: false; why: string };
 
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 
@@ -37,6 +49,10 @@ function isVisible(el: Element): boolean {
   return true;
 }
 
+function isDisabled(el: Element): boolean {
+  return (el as HTMLButtonElement).disabled === true || !!el.closest('fieldset[disabled]');
+}
+
 /**
  * Whether pointer events reach the element: the nearest `pointer-events`
  * declaration up the tree isn't `none`. (happy-dom doesn't inherit the
@@ -50,13 +66,55 @@ function receivesPointerEvents(el: Element): boolean {
   return true;
 }
 
+const IGNORED_TEXT_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD']);
+
+/**
+ * Playwright's text matching: the deepest elements whose normalized text
+ * matches — an element is skipped when one of its children matches on its own.
+ */
+function queryAllByPwText(scope: Element, text: string | RegExp, exact?: boolean): Element[] {
+  const matches = (el: Element) => {
+    const content = normalize(el.textContent ?? '');
+    if (text instanceof RegExp) return text.test(content);
+    return exact ? content === normalize(text) : textMatches(content, text);
+  };
+  return Array.from(scope.querySelectorAll('*')).filter(
+    (el) =>
+      !IGNORED_TEXT_TAGS.has(el.tagName) &&
+      matches(el) &&
+      !Array.from(el.children).some((child) => matches(child)),
+  );
+}
+
+function queryAllByTestId(scope: Element, testId: string | RegExp): Element[] {
+  if (typeof testId === 'string') {
+    return Array.from(scope.querySelectorAll(`[data-testid="${CSS.escape(testId)}"]`));
+  }
+  return Array.from(scope.querySelectorAll('[data-testid]')).filter((el) =>
+    testId.test(el.getAttribute('data-testid') ?? ''),
+  );
+}
+
+function nameMatcher(name: string | RegExp, exact?: boolean) {
+  if (name instanceof RegExp) return name;
+  return exact
+    ? (accessibleName: string) => accessibleName === name
+    : (accessibleName: string) => accessibleName.toLowerCase().includes(name.toLowerCase());
+}
+
+function queryAllByPwRole(scope: Element, role: string, opts: RoleOptions): Element[] {
+  return queryAllByRole(scope as HTMLElement, role, {
+    ...(opts.name === undefined ? {} : { name: nameMatcher(opts.name, opts.exact) }),
+    ...(opts.level === undefined ? {} : { level: opts.level }),
+  });
+}
+
+const describeRole = (role: string, opts: RoleOptions) =>
+  `role=${role}${opts.name ? `[name=${String(opts.name)}]` : ''}`;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function poll<T>(
-  describe: () => string,
-  attempt: () => { ok: true; value: T } | { ok: false; why: string },
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-): Promise<T> {
+async function poll<T>(describe: () => string, attempt: Attempt<T>, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const result = attempt();
@@ -79,43 +137,79 @@ function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectE
   else el.value = value;
 }
 
+function strictViolation(describe: string, count: number): Error {
+  return new Error(`${describe}: strict mode violation — ${count} elements match`);
+}
+
+type User = ReturnType<typeof userEvent.setup>;
+
 class VmLoc implements Locator {
   constructor(
     readonly resolve: Resolve,
     readonly describe: string,
-    private readonly user: ReturnType<typeof userEvent.setup>,
+    private readonly user: User,
   ) {}
 
+  private derive(resolve: Resolve, step: string): VmLoc {
+    return new VmLoc(resolve, `${this.describe} >> ${step}`, this.user);
+  }
+
   locator(css: string): Locator {
-    return new VmLoc(
-      () => this.resolve().flatMap((el) => Array.from(el.querySelectorAll(css))),
-      `${this.describe} >> ${css}`,
-      this.user,
+    return this.derive(() => this.resolve().flatMap((el) => Array.from(el.querySelectorAll(css))), css);
+  }
+
+  getByTestId(testId: string | RegExp): Locator {
+    return this.derive(
+      () => this.resolve().flatMap((el) => queryAllByTestId(el, testId)),
+      `testId=${String(testId)}`,
+    );
+  }
+
+  getByRole(role: string, opts: RoleOptions = {}): Locator {
+    return this.derive(
+      () => this.resolve().flatMap((el) => queryAllByPwRole(el, role, opts)),
+      describeRole(role, opts),
+    );
+  }
+
+  getByText(text: string | RegExp, opts: TextOptions = {}): Locator {
+    return this.derive(
+      () => this.resolve().flatMap((el) => queryAllByPwText(el, text, opts.exact)),
+      `text=${String(text)}`,
     );
   }
 
   filter({ hasText }: FilterOptions): Locator {
     if (hasText === undefined) return this;
-    return new VmLoc(
+    return this.derive(
       () => this.resolve().filter((el) => textMatches(el.textContent ?? '', hasText)),
-      `${this.describe} >> hasText=${String(hasText)}`,
-      this.user,
+      `hasText=${String(hasText)}`,
     );
   }
 
-  /** Wait for exactly one visible, enabled match (Playwright actionability). */
+  first(): Locator {
+    return this.derive(() => this.resolve().slice(0, 1), 'first');
+  }
+
+  last(): Locator {
+    return this.derive(() => this.resolve().slice(-1), 'last');
+  }
+
+  private single(): Element | undefined {
+    const els = this.resolve();
+    if (els.length > 1) throw strictViolation(this.describe, els.length);
+    return els[0];
+  }
+
+  /** Wait for exactly one visible, enabled element (Playwright actionability). */
   private actionable(): Promise<Element> {
     return poll(
       () => this.describe,
       () => {
-        const els = this.resolve();
-        if (els.length > 1) {
-          throw new Error(`${this.describe}: strict mode violation — ${els.length} elements match`);
-        }
-        const [el] = els;
+        const el = this.single();
         if (!el) return { ok: false, why: 'no element matches' };
         if (!isVisible(el)) return { ok: false, why: 'element is not visible' };
-        if ((el as HTMLButtonElement).disabled) return { ok: false, why: 'element is disabled' };
+        if (isDisabled(el)) return { ok: false, why: 'element is disabled' };
         // Retried, like Playwright's "receives events" check: overlays such as
         // Radix dialogs disable pointer events on <body> a render before they
         // re-enable them on their own content.
@@ -137,26 +231,56 @@ class VmLoc implements Locator {
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  async selectOption(value: string): Promise<void> {
+  async selectOption(value: SelectValue): Promise<void> {
     const el = (await this.actionable()) as HTMLSelectElement;
-    const option = Array.from(el.options).find((o) => o.value === value || o.label === value);
-    if (!option) throw new Error(`${this.describe}: no option "${value}"`);
+    const option = Array.from(el.options).find((o) =>
+      typeof value === 'string' ? o.value === value || o.label === value : o.label === value.label,
+    );
+    if (!option) throw new Error(`${this.describe}: no option ${JSON.stringify(value)}`);
     setNativeValue(el, option.value);
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  async getAttribute(name: string): Promise<string | null> {
+  async check(): Promise<void> {
+    const el = (await this.actionable()) as HTMLInputElement;
+    if (!el.checked) await this.user.click(el);
+    if (!el.checked) throw new Error(`${this.describe}: click did not check the element`);
+  }
+
+  getAttribute(name: string): Promise<string | null> {
     return poll(
       () => this.describe,
       () => {
-        const els = this.resolve();
-        if (els.length > 1) {
-          throw new Error(`${this.describe}: strict mode violation — ${els.length} elements match`);
-        }
-        return els[0] ? { ok: true, value: els[0].getAttribute(name) } : { ok: false, why: 'no element matches' };
+        const el = this.single();
+        return el ? { ok: true, value: el.getAttribute(name) } : { ok: false, why: 'no element matches' };
       },
     );
+  }
+
+  async waitFor({ state = 'visible' }: { state?: WaitState } = {}): Promise<void> {
+    await poll(
+      () => this.describe,
+      () => {
+        const els = this.resolve();
+        if (state === 'detached') {
+          return els.length === 0 ? { ok: true, value: undefined } : { ok: false, why: 'element is attached' };
+        }
+        if (state === 'hidden') {
+          return els.some(isVisible) ? { ok: false, why: 'element is visible' } : { ok: true, value: undefined };
+        }
+        if (els.length > 1) throw strictViolation(this.describe, els.length);
+        const [el] = els;
+        if (!el) return { ok: false, why: 'no element matches' };
+        if (state === 'visible' && !isVisible(el)) return { ok: false, why: 'element is not visible' };
+        return { ok: true, value: undefined };
+      },
+    );
+  }
+
+  async isVisible(): Promise<boolean> {
+    const el = this.single();
+    return !!el && isVisible(el);
   }
 }
 
@@ -166,7 +290,8 @@ function assertions(loc: VmLoc): LocatorAssertions {
       () => loc.describe,
       () => {
         const els = loc.resolve();
-        if (els.length !== 1) return { ok: false, why: `expected one element, found ${els.length}` };
+        if (els.length > 1) throw strictViolation(loc.describe, els.length);
+        if (els.length === 0) return { ok: false, why: 'no element matches' };
         const why = check(els[0]!);
         return why ? { ok: false, why } : { ok: true, value: undefined };
       },
@@ -177,15 +302,12 @@ function assertions(loc: VmLoc): LocatorAssertions {
       poll(
         () => loc.describe,
         () =>
-          loc.resolve().some(isVisible)
-            ? { ok: false, why: 'element is visible' }
-            : { ok: true, value: undefined },
+          loc.resolve().some(isVisible) ? { ok: false, why: 'element is visible' } : { ok: true, value: undefined },
       ),
+    toBeDisabled: () => one((el) => (isDisabled(el) ? null : 'element is enabled')),
     toContainText: (text) =>
       one((el) =>
-        textMatches(el.textContent ?? '', text)
-          ? null
-          : `text was "${normalize(el.textContent ?? '')}"`,
+        textMatches(el.textContent ?? '', text) ? null : `text was "${normalize(el.textContent ?? '')}"`,
       ),
     toHaveCount: (count) =>
       poll(
@@ -195,35 +317,32 @@ function assertions(loc: VmLoc): LocatorAssertions {
           return n === count ? { ok: true, value: undefined } : { ok: false, why: `count was ${n}` };
         },
       ),
+    toHaveValue: (value) =>
+      one((el) => {
+        const actual = (el as HTMLInputElement).value;
+        return actual === value ? null : `value was "${actual}"`;
+      }),
   };
 }
 
-function nameMatcher(name: string | RegExp, exact?: boolean) {
-  if (name instanceof RegExp) return name;
-  return exact
-    ? (accessibleName: string) => accessibleName === name
-    : (accessibleName: string) => accessibleName.toLowerCase().includes(name.toLowerCase());
+export interface VmDriverHooks {
+  /** Load `path` the way a browser navigation would (the harness remounts the app). */
+  navigate(path: string): Promise<void>;
+  /** Requests currently in flight through the fetch shim. */
+  inFlight(): number;
 }
 
-export function vmDriver(): Driver {
+export function vmDriver(hooks: VmDriverHooks): Driver {
   const user = userEvent.setup({ delay: null, document });
   const root = () => document.body;
   const loc = (resolve: Resolve, describe: string) => new VmLoc(resolve, describe, user);
 
   return {
-    async goto(path) {
-      window.history.pushState({}, '', path);
-      window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
-    },
+    goto: (path) => hooks.navigate(path),
     locator: (css) => loc(() => Array.from(root().querySelectorAll(css)), css),
-    getByTestId: (id) =>
-      loc(() => Array.from(root().querySelectorAll(`[data-testid="${CSS.escape(id)}"]`)), `testId=${id}`),
+    getByTestId: (id) => loc(() => queryAllByTestId(root(), id), `testId=${String(id)}`),
     getByRole: (role, opts: RoleOptions = {}) =>
-      loc(
-        () =>
-          queryAllByRole(root(), role, opts.name === undefined ? {} : { name: nameMatcher(opts.name, opts.exact) }),
-        `role=${role}${opts.name ? `[name=${String(opts.name)}]` : ''}`,
-      ),
+      loc(() => queryAllByPwRole(root(), role, opts), describeRole(role, opts)),
     getByLabel: (text) =>
       loc(
         () =>
@@ -232,9 +351,32 @@ export function vmDriver(): Driver {
           ),
         `label=${String(text)}`,
       ),
+    getByText: (text, opts: TextOptions = {}) =>
+      loc(() => queryAllByPwText(root(), text, opts.exact), `text=${String(text)}`),
     expect(locator) {
       if (!(locator instanceof VmLoc)) throw new Error('vmDriver: foreign locator');
       return assertions(locator);
+    },
+    async expectURL(pattern) {
+      await poll(
+        () => `url ${String(pattern)}`,
+        () =>
+          pattern.test(window.location.href)
+            ? { ok: true, value: undefined }
+            : { ok: false, why: `url was ${window.location.href}` },
+      );
+    },
+    async waitForNetworkIdle() {
+      let quietSince = Date.now();
+      await poll(
+        () => 'network idle',
+        () => {
+          if (hooks.inFlight() > 0) quietSince = Date.now();
+          return Date.now() - quietSince >= NETWORK_QUIET_MS
+            ? { ok: true, value: undefined }
+            : { ok: false, why: `${hooks.inFlight()} request(s) in flight` };
+        },
+      );
     },
   };
 }
