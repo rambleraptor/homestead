@@ -118,6 +118,29 @@ export class RecipesPage {
     await this.page.goto(`/recipes/${id}`);
   }
 
+  /** Open the edit form from a recipe's own page. */
+  async clickViewEdit() {
+    await this.page.getByTestId('recipe-view-edit').click();
+    await this.page.locator('#title').waitFor({ state: 'visible' });
+  }
+
+  async expectTitleInput(value: string) {
+    await expect(this.page.locator('#title')).toHaveValue(value);
+  }
+
+  /** The notice an edit form shows when someone else saves the same recipe. */
+  async expectRemoteEditNotice(text: string | RegExp) {
+    await expect(this.page.getByTestId('remote-edit-notice')).toContainText(text);
+  }
+
+  async expectNoRemoteEditNotice() {
+    await expect(this.page.getByTestId('remote-edit-notice')).toBeHidden();
+  }
+
+  async loadSavedVersion() {
+    await this.page.getByTestId('remote-edit-reload').click();
+  }
+
   async clickRecipeCard(title: string) {
     const link = this.page.getByTestId(`recipe-view-${title}`);
     await link.waitFor({ state: 'visible' });

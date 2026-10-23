@@ -27,6 +27,8 @@ export interface ResourceEventData {
   path: string;
   id: string;
   actor: string | null;
+  /** The writer's display name. Absent from servers that predate it. */
+  actor_name?: string | null;
   origin: string | null;
   update_time: string;
   record?: Record<string, unknown>;
@@ -69,6 +71,24 @@ function hasPendingWrite(qc: QueryClient, id: string): boolean {
 }
 
 type Row = { id: string } & Record<string, unknown>;
+
+/**
+ * The record as this tab last cached it — the detail slot, else its row in the
+ * list slot (which holds whatever the list hook mapped it to). Read before an
+ * event is applied, so a listener can tell what changed and name a record that
+ * was just deleted.
+ */
+export function cachedRecord(
+  qc: QueryClient,
+  appId: string,
+  singular: string,
+  id: string,
+): Record<string, unknown> | undefined {
+  const keys = queryKeys.app(appId).resource(singular);
+  const detail = qc.getQueryData<Row>(keys.detail(id));
+  if (detail) return detail;
+  return qc.getQueryData<Row[]>(keys.list())?.find((r) => r.id === id);
+}
 
 /**
  * Write one event into `appId`'s cache. Returns true when the list and detail

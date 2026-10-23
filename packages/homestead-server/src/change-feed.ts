@@ -47,6 +47,12 @@ export interface ResourceEventData {
   id: string;
   /** `users/<id>` of the writer; null for writes with no authenticated caller. */
   actor: string | null;
+  /**
+   * The writer's display name, so a client can say who made a change without
+   * being allowed to read the user record (only superusers list users). Null
+   * when the writer has none set, or there is no authenticated caller.
+   */
+  actor_name: string | null;
   /** The writer's `X-Homestead-Client` tag, echoed so it can skip its own events. */
   origin: string | null;
   update_time: string;
@@ -210,6 +216,7 @@ export function createChangeFeed(
           path,
           id: input.recordId,
           actor: ctx?.caller ? `users/${ctx.caller.id}` : null,
+          actor_name: ctx?.caller?.display_name || null,
           origin: ctx?.origin ?? null,
           update_time:
             typeof input.record?.update_time === 'string'

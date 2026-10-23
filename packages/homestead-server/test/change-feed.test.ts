@@ -74,7 +74,7 @@ describe('delivery', () => {
     const alice = listen(user('alice'));
     feed.subscribe(alice.subscriber);
 
-    runWithRequestContext({ caller: user('alice'), origin: 'tab-1' }, () =>
+    runWithRequestContext({ caller: user('alice', { display_name: 'Alice' }), origin: 'tab-1' }, () =>
       feed.dispatch(input('update', 'groceries/g-alice')),
     );
 
@@ -85,10 +85,23 @@ describe('delivery', () => {
       path: 'groceries/g-alice',
       id: 'g-alice',
       actor: 'users/alice',
+      actor_name: 'Alice',
       origin: 'tab-1',
       update_time: '2026-09-30T00:00:00Z',
       record: { id: 'g-alice', path: 'groceries/g-alice', name: 'Milk', update_time: '2026-09-30T00:00:00Z' },
     });
+  });
+
+  test('names the writer as null when they have no display name', () => {
+    const feed = createChangeFeed(ownRecordsOnly);
+    const alice = listen(user('alice'));
+    feed.subscribe(alice.subscriber);
+
+    runWithRequestContext({ caller: user('alice', { display_name: '' }), origin: null }, () =>
+      feed.dispatch(input('update', 'groceries/g-alice')),
+    );
+
+    expect(alice.got[0]!.data.actor_name).toBeNull();
   });
 
   test('a delete carries no record and uses the decision taken before the row went', () => {

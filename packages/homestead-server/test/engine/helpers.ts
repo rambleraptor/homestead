@@ -37,7 +37,7 @@ export async function makeEngine(): Promise<TestEngine> {
 
 export async function seedUser(
   engine: Engine,
-  opts: { email: string; type?: string; password?: string },
+  opts: { email: string; type?: string; password?: string; displayName?: string },
 ): Promise<{ user: User; token: string }> {
   const id = generateId();
   const now = nowRFC3339();
@@ -46,6 +46,7 @@ export async function seedUser(
     path: `users/${id}`,
     email: opts.email,
     type: opts.type ?? TYPE_REGULAR,
+    ...(opts.displayName ? { display_name: opts.displayName } : {}),
     create_time: now,
     update_time: now,
   };

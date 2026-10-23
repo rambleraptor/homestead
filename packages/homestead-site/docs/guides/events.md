@@ -64,6 +64,7 @@ data: {
   "path": "groceries/9f3c0a41",
   "id": "9f3c0a41",
   "actor": "users/8a1e…",
+  "actor_name": "Sam",
   "origin": "web-5c2f…",
   "update_time": "2026-09-30T17:02:11Z",
   "record": { "id": "9f3c0a41", "path": "groceries/9f3c0a41", "name": "Milk", "checked": true, … }
@@ -79,6 +80,7 @@ reading.)
 | `path` | The record's AEP path, including parents: `credit-cards/1/perks/2`. |
 | `id` | The record id (the last path segment). |
 | `actor` | `users/<id>` of whoever made the change; `null` for writes with no authenticated caller. |
+| `actor_name` | Their display name, so you can say who made the change without reading their user record (only superusers can). `null` when they haven't set one. |
 | `origin` | The `X-Homestead-Client` header the writer sent, if any. See [Recognising your own writes](#recognising-your-own-writes). |
 | `update_time` | When the change committed. |
 | `record` | The record after the change, exactly as `GET` returns it. **Absent on `resource.deleted`.** |
@@ -159,3 +161,71 @@ resource's cached list and detail views (the slots
 filtered or parent-scoped can't tell whether a new record belongs in it, so it
 is refetched instead. `useLiveRefresh` keeps a slow 60-second poll as a safety
 net while the stream is connected.
+
+## Reacting to other people's changes
+
+Keeping data current needs no code. Showing *what someone else did* — a toast
+saying "Sam checked off Milk", the row Sam just touched lighting up, an edit
+form noticing that Sam saved the same recipe — is a few lines, using the hooks
+in `@rambleraptor/homestead-core/api/remoteChanges`. Each one receives every
+change that didn't come from this tab, after it has been written into the
+cache.
+
+| Hook | Use it for |
+|---|---|
+| `useResourceEvents(resource, handler)` | Anything custom: a callback per change. |
+| `useRecentRemoteChanges(resource)` | Briefly highlighting changed rows. Returns a map of record id → change, each entry cleared after a few seconds. |
+| `useChangeToasts(resource, describe, { summarize })` | A toast per change. `describe` writes the sentence (or returns `null` to skip one); a burst — a bulk clear, or a reconnect replaying what was missed — becomes one toast via `summarize`. |
+| `useRemoteEdits(resource, id, { enabled })` | An open edit form learning that its record was saved or deleted elsewhere. |
+
+`resource` is a singular (`'grocery'`), or an array of them. Each change is a
+`RemoteChange`:
+
+| Field | |
+|---|---|
+| `kind` | `'created'`, `'updated'` or `'deleted'`. |
+| `record` | The record after the change. Absent on a delete. |
+| `previous` | The record as this tab had it cached just before — compare it with `record` to tell *what* changed, or read a deleted record's name from it. Absent when the tab didn't have it. |
+| `actorName`, `byMe` | Who made it. `byMe` is the signed-in user on another device or tab. `actorLabel(change)` turns these into "Sam", "You" or "Someone". |
+
+The highlight and toast hooks skip `byMe` changes unless you pass
+`includeMine: true` — your own edit on your laptop isn't news on your phone.
+`useRemoteEdits` includes them, since a form is just as stale either way.
+
+Pair them with the shared pieces in
+`@rambleraptor/homestead-core/shared/components/RemoteChange`:
+`remoteChangeClass(change)` and `<RemoteChangeBadge change={…} />` for a row,
+`<RemoteEditNotice change={…} noun="recipe" onReload={…} onDismiss={…} />` for
+a form.
+
+```tsx
+// A list: highlight what others change, and narrate it.
+const recent = useRecentRemoteChanges('grocery');
+useChangeToasts<Grocery>('grocery', (c) =>
+  c.kind === 'created' ? `${actorLabel(c)} added ${c.record?.name}` : null,
+);
+
+<div className={cn('px-4 py-3', remoteChangeClass(recent.get(item.id)))}>
+  {item.name}
+  <RemoteChangeBadge change={recent.get(item.id)} />
+</div>
+
+// An edit form: offer the saved version instead of writing over it.
+const [formVersion, setFormVersion] = useState(0);
+const remote = useRemoteEdits('recipe', recipeId, { enabled: isEditing });
+
+{remote.change && (
+  <RemoteEditNotice
+    change={remote.change}
+    noun="recipe"
+    onReload={() => { setFormVersion((v) => v + 1); remote.dismiss(); }}
+    onDismiss={remote.dismiss}
+  />
+)}
+<RecipeForm key={formVersion} initialData={recipe} … />
+```
+
+Remounting the form (the `key`) re-seeds it from the cached record, which the
+change feed has already updated. Groceries, todos and recipes use these hooks;
+see `useGroceryChangeToasts`, `TodosHome` and `RecipeView` for complete
+examples.

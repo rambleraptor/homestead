@@ -19,6 +19,12 @@ import {
   registerResourceMutationDefaults,
 } from '../registerResourceMutationDefaults';
 import { clearListShapes, registerListShape } from '../resourceEvents';
+import { subscribeRemoteChanges, type RemoteChange } from '../remoteChanges';
+
+vi.mock('../aepbase', () => ({
+  authStore: { token: 'tok', needsRenewal: false, model: { id: 'me' } },
+  refreshSession: async () => true,
+}));
 
 interface Item {
   id: string;
@@ -175,6 +181,33 @@ describe('connectChangeFeed', () => {
 
     expect(client.getQueryData<Item[]>(LIST)).toHaveLength(1);
     expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  it('tells remote-change listeners, with the record as this tab had it before', async () => {
+    registerListShape('groceries', 'grocery', { complete: true });
+    const server = fakeServer();
+    const seen: { change: RemoteChange; listAtTheTime: Item[] | undefined }[] = [];
+    const unsubscribe = subscribeRemoteChanges((change) =>
+      seen.push({ change, listAtTheTime: client.getQueryData<Item[]>(LIST) }),
+    );
+    stop = connectChangeFeed(client, makeDeps(server.fetch));
+    await vi.waitFor(() => expect(isChangeFeedConnected()).toBe(true));
+
+    server.send('resource.created', resourceEvent('own', 'Mine', getClientId()));
+    server.send('resource.updated', { ...resourceEvent('a', 'Green apples'), actor_name: 'Sam' });
+
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    unsubscribe();
+    expect(seen[0]!.change).toMatchObject({
+      kind: 'updated',
+      id: 'a',
+      actorName: 'Sam',
+      byMe: false,
+      record: { name: 'Green apples' },
+      previous: { id: 'a', name: 'Apples' },
+    });
+    // Listeners run after the cache is updated.
+    expect(seen[0]!.listAtTheTime).toEqual([{ id: 'a', path: 'groceries/a', name: 'Green apples' }]);
   });
 
   it('resumes from the last event id after a drop, refetching nothing', async () => {

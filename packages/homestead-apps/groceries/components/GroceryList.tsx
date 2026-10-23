@@ -6,12 +6,20 @@
 
 import { Check, Trash2, Store as StoreIcon, Eraser, ShoppingCart } from 'lucide-react';
 import { usePendingSyncIds } from '@rambleraptor/homestead-core/api/usePendingSync';
+import {
+  useRecentRemoteChanges,
+  type RemoteChange,
+} from '@rambleraptor/homestead-core/api/remoteChanges';
 import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
 import { SwipeRow } from '@rambleraptor/homestead-core/shared/gestures';
 import {
   PendingSyncBadge,
   pendingSyncClass,
 } from '@rambleraptor/homestead-core/shared/components/PendingSyncBadge';
+import {
+  RemoteChangeBadge,
+  remoteChangeClass,
+} from '@rambleraptor/homestead-core/shared/components/RemoteChange';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import type { StoreGroupedGroceries, GroceryItem } from '../types';
 
@@ -33,6 +41,7 @@ export function GroceryList({
   // most likely to be open on a phone with no signal, and it can hold a lot of
   // rows.
   const pendingSyncIds = usePendingSyncIds();
+  const recentChanges = useRecentRemoteChanges('grocery');
 
   if (storeGroups.length === 0) {
     return (
@@ -87,6 +96,7 @@ export function GroceryList({
                   onToggle={onToggleItem}
                   onDelete={onDeleteItem}
                   isPendingSync={pendingSyncIds.has(item.id)}
+                  remoteChange={recentChanges.get(item.id)}
                 />
               ))}
             </div>
@@ -104,6 +114,8 @@ interface GroceryItemRowProps {
   disabled?: boolean;
   /** Write for this item is queued for reconnect. */
   isPendingSync?: boolean;
+  /** Someone else just changed this item. */
+  remoteChange?: RemoteChange;
 }
 
 function GroceryItemRow({
@@ -112,6 +124,7 @@ function GroceryItemRow({
   onDelete,
   disabled = false,
   isPendingSync = false,
+  remoteChange,
 }: GroceryItemRowProps) {
   return (
     // Swipe mirrors the two controls already on the row — it never offers an
@@ -138,8 +151,10 @@ function GroceryItemRow({
         className={cn(
           'px-4 py-3 flex items-center gap-3 hover:bg-bg-pearl group transition-colors',
           pendingSyncClass(isPendingSync),
+          remoteChangeClass(remoteChange),
         )}
         data-testid="grocery-item"
+        data-remote-change={remoteChange ? true : undefined}
         data-pending-sync={isPendingSync || undefined}
       >
         <Checkbox
@@ -162,6 +177,7 @@ function GroceryItemRow({
                 wraps onto as many lines as it takes instead of truncating. */}
             <span className="break-words min-w-0">{item.name}</span>
             {isPendingSync && <PendingSyncBadge className="no-underline" />}
+            <RemoteChangeBadge change={remoteChange} className="no-underline" />
           </p>
           {item.notes && (
             <p className="text-sm font-body text-text-muted mt-0.5">{item.notes}</p>

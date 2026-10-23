@@ -21,6 +21,9 @@
  *   writes in flight, since their settle invalidates anyway. A patched event
  *   still invalidates the app's *other* queries (widgets, derived views), just
  *   not the slots it already brought up to date.
+ *
+ * After the cache is updated, each event is also handed to remoteChanges.ts,
+ * whose hooks let an app react to it ("Sam checked off Milk").
  */
 
 import { useEffect, useSyncExternalStore } from 'react';
@@ -29,8 +32,10 @@ import { authStore, refreshSession } from './aepbase';
 import { queryKeys } from './queryClient';
 import { appIdsForResource } from './registerResourceMutationDefaults';
 import { getClientId } from './clientId';
+import { publishRemoteChange } from './remoteChanges';
 import {
   applyResourceEvent,
+  cachedRecord,
   isResourceEventType,
   type ResourceEventData,
   type ResourceEventType,
@@ -208,10 +213,14 @@ export function connectChangeFeed(
 
   const onResourceEvent = (type: ResourceEventType, data: ResourceEventData) => {
     if (data.origin && data.origin === getClientId()) return;
-    for (const appId of appIdsForResource(data.resource)) {
+    const appIds = appIdsForResource(data.resource);
+    let previous: Record<string, unknown> | undefined;
+    for (const appId of appIds) {
+      previous ??= cachedRecord(qc, appId, data.resource, data.id);
       const patched = applyResourceEvent(qc, appId, type, data);
       invalidator.schedule(appId, patched ? data.resource : null);
     }
+    publishRemoteChange(type, data, previous);
   };
 
   const onFrame = (frame: SseFrame) => {

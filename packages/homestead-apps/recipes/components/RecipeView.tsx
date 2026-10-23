@@ -30,6 +30,8 @@ import { RecipeSteps } from './RecipeSteps';
 import { isWakeLockSupported, useWakeLock } from '../hooks/useWakeLock';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
+import { useRemoteEdits } from '@rambleraptor/homestead-core/api/remoteChanges';
+import { RemoteEditNotice } from '@rambleraptor/homestead-core/shared/components/RemoteChange';
 import type { RecipeFormData } from '../types';
 
 interface RecipeViewProps {
@@ -38,6 +40,8 @@ interface RecipeViewProps {
 
 export function RecipeView({ recipeId }: RecipeViewProps) {
   const [isEditing, setIsEditing] = useState(false);
+  // Bumped to remount the form on the latest saved recipe.
+  const [formVersion, setFormVersion] = useState(0);
   const [cookMode, setCookMode] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<ReadonlySet<number>>(
     () => new Set(),
@@ -49,6 +53,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
     useAddIngredientsToGroceryList();
   const toast = useToast();
   const wakeLock = useWakeLock(cookMode, (err) => toast.error(err));
+  const remoteEdit = useRemoteEdits('recipe', recipeId, { enabled: isEditing });
 
   const toggleCookMode = () => {
     // Leaving cook mode clears your place, so the next cook starts fresh.
@@ -126,8 +131,21 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
         </button>
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Recipe</h2>
+          {remoteEdit.change && (
+            <RemoteEditNotice
+              change={remoteEdit.change}
+              noun="recipe"
+              onReload={() => {
+                setFormVersion((v) => v + 1);
+                remoteEdit.dismiss();
+              }}
+              onDismiss={remoteEdit.dismiss}
+              className="mb-4"
+            />
+          )}
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
             <RecipeForm
+              key={formVersion}
               onSubmit={handleSubmit}
               onCancel={() => setIsEditing(false)}
               initialData={recipe}
