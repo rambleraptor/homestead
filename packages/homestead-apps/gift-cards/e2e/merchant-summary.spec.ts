@@ -4,13 +4,14 @@
 
 import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
 import { GiftCardsPage } from './GiftCardsPage';
+import { playwrightDriver } from '../../../homestead-test-harness/driver/pw-driver';
 import { createMultipleGiftCards, deleteAllGiftCards } from './helpers';
 
 test.describe('Merchant Summaries', () => {
   let giftCardsPage: GiftCardsPage;
 
   test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    giftCardsPage = new GiftCardsPage(authenticatedPage);
+    giftCardsPage = new GiftCardsPage(playwrightDriver(authenticatedPage));
 
     // Clean up any existing gift cards
     await deleteAllGiftCards(userToken);

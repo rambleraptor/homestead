@@ -126,6 +126,17 @@ function responsesReply(payload: unknown) {
   };
 }
 
+/**
+ * The stub as a fetch handler: the reply for one OpenAI request, after the
+ * deliberate delay. The e2e server below serves it over HTTP; the VM test tier
+ * (packages/homestead-test-harness) serves it in-process.
+ */
+export async function aiStubFetch(req: Request): Promise<Response> {
+  const payload = payloadForBody(await req.text());
+  await new Promise((resolve) => setTimeout(resolve, RESPONSE_DELAY_MS));
+  return Response.json(responsesReply(payload));
+}
+
 /** Start the stub on an ephemeral port; returns its OpenAI-style base URL. */
 export async function startAiStub(): Promise<string> {
   server = createServer((req, res) => {
@@ -134,11 +145,10 @@ export async function startAiStub(): Promise<string> {
       body += chunk;
     });
     req.on('end', () => {
-      const payload = payloadForBody(body);
-      setTimeout(() => {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(responsesReply(payload)));
-      }, RESPONSE_DELAY_MS);
+      void aiStubFetch(new Request('http://ai-stub/', { method: 'POST', body })).then(async (reply) => {
+        res.writeHead(reply.status, { 'Content-Type': 'application/json' });
+        res.end(await reply.text());
+      });
     });
   });
 

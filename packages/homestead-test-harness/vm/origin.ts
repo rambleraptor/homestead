@@ -5,3 +5,6 @@
  * resolves to a real host.
  */
 export const VM_ORIGIN = 'http://homestead.vm';
+
+/** Where the VM serves the e2e AI stub (tests/e2e/config/ai-stub.ts) in-process. */
+export const AI_STUB_ORIGIN = 'http://ai-stub.vm';

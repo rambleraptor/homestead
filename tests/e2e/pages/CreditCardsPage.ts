@@ -5,24 +5,32 @@
  * redemptions are aepbase children of a credit-card, so exercising this UI
  * drives the generic offline mutation factory's convention-based nesting
  * (create/update/delete/redeem across two levels of parent).
+ *
+ * Written against the shared `Driver`, so the same page object drives both the
+ * Playwright suite (`playwrightDriver(page)`) and the in-process VM tier
+ * (`packages/homestead-apps/credit-cards/vm/`).
  */
 
-import { Page, Locator, expect } from '@playwright/test';
+import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class CreditCardsPage {
-  constructor(private readonly page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto(): Promise<void> {
-    await this.page.goto('/credit-cards');
-    await expect(
-      this.page.getByRole('heading', { name: 'Credit Cards' }),
+    await this.driver.goto('/credit-cards');
+    await this.expect(
+      this.driver.getByRole('heading', { name: 'Credit Cards' }),
     ).toBeVisible();
   }
 
   // ---- cards --------------------------------------------------------------
 
   cardRow(name: string): Locator {
-    return this.page
+    return this.driver
       .locator('[data-testid^="card-row-"]')
       .filter({ hasText: name });
   }
@@ -33,25 +41,25 @@ export class CreditCardsPage {
     annualFee: number;
     anniversary: string; // yyyy-mm-dd
   }): Promise<void> {
-    await this.page.getByTestId('add-credit-card-button').click();
-    await expect(this.page.getByTestId('credit-card-form')).toBeVisible();
-    await this.page.locator('#card-name').fill(opts.name);
-    await this.page.locator('#card-issuer').fill(opts.issuer);
-    await this.page.locator('#card-annual-fee').fill(String(opts.annualFee));
-    await this.page.locator('#card-anniversary').fill(opts.anniversary);
-    await this.page.getByTestId('credit-card-form-submit').click();
-    await expect(this.cardRow(opts.name)).toBeVisible();
+    await this.driver.getByTestId('add-credit-card-button').click();
+    await this.expect(this.driver.getByTestId('credit-card-form')).toBeVisible();
+    await this.driver.locator('#card-name').fill(opts.name);
+    await this.driver.locator('#card-issuer').fill(opts.issuer);
+    await this.driver.locator('#card-annual-fee').fill(String(opts.annualFee));
+    await this.driver.locator('#card-anniversary').fill(opts.anniversary);
+    await this.driver.getByTestId('credit-card-form-submit').click();
+    await this.expect(this.cardRow(opts.name)).toBeVisible();
   }
 
   async openCard(name: string): Promise<void> {
     await this.cardRow(name).click();
-    await expect(this.page.getByTestId('add-perk-button')).toBeVisible();
+    await this.expect(this.driver.getByTestId('add-perk-button')).toBeVisible();
   }
 
   // ---- perks (nested under a card) ---------------------------------------
 
   perkRow(name: string): Locator {
-    return this.page
+    return this.driver
       .locator('[data-testid^="perk-row-"]')
       .filter({ hasText: name });
   }
@@ -61,25 +69,25 @@ export class CreditCardsPage {
     value: number;
     frequency?: 'monthly' | 'quarterly' | 'semi_annual' | 'annual';
   }): Promise<void> {
-    await this.page.getByTestId('add-perk-button').click();
-    await expect(this.page.getByTestId('perk-form')).toBeVisible();
-    await this.page.locator('#perk-name').fill(opts.name);
-    await this.page.locator('#perk-value').fill(String(opts.value));
+    await this.driver.getByTestId('add-perk-button').click();
+    await this.expect(this.driver.getByTestId('perk-form')).toBeVisible();
+    await this.driver.locator('#perk-name').fill(opts.name);
+    await this.driver.locator('#perk-value').fill(String(opts.value));
     if (opts.frequency) {
-      await this.page.locator('#perk-frequency').selectOption(opts.frequency);
+      await this.driver.locator('#perk-frequency').selectOption(opts.frequency);
     }
-    await this.page.getByTestId('perk-form-submit').click();
-    await expect(this.perkRow(opts.name)).toBeVisible();
+    await this.driver.getByTestId('perk-form-submit').click();
+    await this.expect(this.perkRow(opts.name)).toBeVisible();
   }
 
   async editPerkValue(name: string, newValue: number): Promise<void> {
     await this.perkRow(name)
       .locator('[data-testid^="edit-perk-"]')
       .click();
-    await expect(this.page.getByTestId('perk-form')).toBeVisible();
-    await this.page.locator('#perk-value').fill(String(newValue));
-    await this.page.getByTestId('perk-form-submit').click();
-    await expect(this.page.getByTestId('perk-form')).toBeHidden();
+    await this.expect(this.driver.getByTestId('perk-form')).toBeVisible();
+    await this.driver.locator('#perk-value').fill(String(newValue));
+    await this.driver.getByTestId('perk-form-submit').click();
+    await this.expect(this.driver.getByTestId('perk-form')).toBeHidden();
   }
 
   async redeemPerk(name: string): Promise<void> {
@@ -92,7 +100,7 @@ export class CreditCardsPage {
     await this.perkRow(name)
       .locator('[data-testid^="delete-perk-"]')
       .click();
-    await this.page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await this.driver.getByRole('button', { name: 'Delete', exact: true }).click();
   }
 
   /** The perk row's derived redemption status: 'none' | 'partial' | 'full'. */

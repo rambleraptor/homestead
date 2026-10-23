@@ -8,16 +8,19 @@
  * "covered by another element" or "scrolled off-screen" can't be detected.
  */
 
-import { queryAllByLabelText, queryAllByRole } from '@testing-library/dom';
+import { queryAllByLabelText, queryAllByPlaceholderText, queryAllByRole } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
 import type {
   Driver,
+  FilePayload,
   FilterOptions,
   Locator,
   LocatorAssertions,
+  ResponseInfo,
   RoleOptions,
   SelectValue,
   TextOptions,
+  TimeoutOptions,
   WaitState,
 } from './Driver';
 
@@ -38,6 +41,14 @@ function textMatches(actual: string, expected: string | RegExp): boolean {
     : expected.test(text);
 }
 
+/** Playwright's string matching for text/label/placeholder: substring, or whole string when `exact`. */
+function stringMatcher(expected: string | RegExp, exact?: boolean) {
+  return (content: string) => {
+    if (expected instanceof RegExp) return expected.test(normalize(content));
+    return exact ? normalize(content) === normalize(expected) : textMatches(content, expected);
+  };
+}
+
 function isVisible(el: Element): boolean {
   if (!el.isConnected) return false;
   for (let node: Element | null = el; node; node = node.parentElement) {
@@ -51,6 +62,11 @@ function isVisible(el: Element): boolean {
 
 function isDisabled(el: Element): boolean {
   return (el as HTMLButtonElement).disabled === true || !!el.closest('fieldset[disabled]');
+}
+
+function isChecked(el: Element): boolean {
+  if (el instanceof HTMLInputElement) return el.checked;
+  return el.getAttribute('aria-checked') === 'true';
 }
 
 /**
@@ -73,11 +89,7 @@ const IGNORED_TEXT_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'H
  * matches — an element is skipped when one of its children matches on its own.
  */
 function queryAllByPwText(scope: Element, text: string | RegExp, exact?: boolean): Element[] {
-  const matches = (el: Element) => {
-    const content = normalize(el.textContent ?? '');
-    if (text instanceof RegExp) return text.test(content);
-    return exact ? content === normalize(text) : textMatches(content, text);
-  };
+  const matches = (el: Element) => stringMatcher(text, exact)(el.textContent ?? '');
   return Array.from(scope.querySelectorAll('*')).filter(
     (el) =>
       !IGNORED_TEXT_TAGS.has(el.tagName) &&
@@ -95,22 +107,26 @@ function queryAllByTestId(scope: Element, testId: string | RegExp): Element[] {
   );
 }
 
-function nameMatcher(name: string | RegExp, exact?: boolean) {
-  if (name instanceof RegExp) return name;
-  return exact
-    ? (accessibleName: string) => accessibleName === name
-    : (accessibleName: string) => accessibleName.toLowerCase().includes(name.toLowerCase());
-}
-
 function queryAllByPwRole(scope: Element, role: string, opts: RoleOptions): Element[] {
+  const name = opts.name;
   return queryAllByRole(scope as HTMLElement, role, {
-    ...(opts.name === undefined ? {} : { name: nameMatcher(opts.name, opts.exact) }),
+    ...(name === undefined
+      ? {}
+      : { name: name instanceof RegExp ? name : stringMatcher(name, opts.exact) }),
     ...(opts.level === undefined ? {} : { level: opts.level }),
+    ...(opts.checked === undefined ? {} : { checked: opts.checked }),
   });
 }
 
 const describeRole = (role: string, opts: RoleOptions) =>
   `role=${role}${opts.name ? `[name=${String(opts.name)}]` : ''}`;
+
+/** Keep `els` in document order with duplicates dropped (for `or`). */
+function inDocumentOrder(els: Element[]): Element[] {
+  return [...new Set(els)].sort((a, b) =>
+    a === b ? 0 : a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+  );
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -137,9 +153,26 @@ function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectE
   else el.value = value;
 }
 
+function dispatchValueEvents(el: Element) {
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+/** A FileList-alike: `length`, index access and `item()` are all React and app code read. */
+function fileList(files: File[]): FileList {
+  const list = Object.assign(Object.create(null), files, {
+    length: files.length,
+    item: (i: number) => files[i] ?? null,
+    [Symbol.iterator]: () => files[Symbol.iterator](),
+  });
+  return list as FileList;
+}
+
 function strictViolation(describe: string, count: number): Error {
   return new Error(`${describe}: strict mode violation — ${count} elements match`);
 }
+
+const ok = { ok: true as const, value: undefined };
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -154,36 +187,79 @@ class VmLoc implements Locator {
     return new VmLoc(resolve, `${this.describe} >> ${step}`, this.user);
   }
 
+  private within(query: (scope: Element) => Element[], step: string): VmLoc {
+    return this.derive(() => this.resolve().flatMap(query), step);
+  }
+
   locator(css: string): Locator {
-    return this.derive(() => this.resolve().flatMap((el) => Array.from(el.querySelectorAll(css))), css);
+    return this.within((el) => Array.from(el.querySelectorAll(css)), css);
   }
 
   getByTestId(testId: string | RegExp): Locator {
-    return this.derive(
-      () => this.resolve().flatMap((el) => queryAllByTestId(el, testId)),
-      `testId=${String(testId)}`,
-    );
+    return this.within((el) => queryAllByTestId(el, testId), `testId=${String(testId)}`);
   }
 
   getByRole(role: string, opts: RoleOptions = {}): Locator {
-    return this.derive(
-      () => this.resolve().flatMap((el) => queryAllByPwRole(el, role, opts)),
-      describeRole(role, opts),
-    );
+    return this.within((el) => queryAllByPwRole(el, role, opts), describeRole(role, opts));
   }
 
   getByText(text: string | RegExp, opts: TextOptions = {}): Locator {
-    return this.derive(
-      () => this.resolve().flatMap((el) => queryAllByPwText(el, text, opts.exact)),
-      `text=${String(text)}`,
+    return this.within((el) => queryAllByPwText(el, text, opts.exact), `text=${String(text)}`);
+  }
+
+  getByLabel(text: string | RegExp, opts: TextOptions = {}): Locator {
+    return this.within(
+      (el) => queryAllByLabelText(el as HTMLElement, stringMatcher(text, opts.exact)),
+      `label=${String(text)}`,
     );
   }
 
-  filter({ hasText }: FilterOptions): Locator {
-    if (hasText === undefined) return this;
-    return this.derive(
-      () => this.resolve().filter((el) => textMatches(el.textContent ?? '', hasText)),
-      `hasText=${String(hasText)}`,
+  getByPlaceholder(text: string | RegExp, opts: TextOptions = {}): Locator {
+    return this.within(
+      (el) => queryAllByPlaceholderText(el as HTMLElement, stringMatcher(text, opts.exact)),
+      `placeholder=${String(text)}`,
+    );
+  }
+
+  filter({ hasText, hasNotText, has }: FilterOptions): Locator {
+    let loc: VmLoc = this;
+    if (hasText !== undefined) {
+      const prev = loc;
+      loc = prev.derive(
+        () => prev.resolve().filter((el) => textMatches(el.textContent ?? '', hasText)),
+        `hasText=${String(hasText)}`,
+      );
+    }
+    if (hasNotText !== undefined) {
+      const prev = loc;
+      loc = prev.derive(
+        () => prev.resolve().filter((el) => !textMatches(el.textContent ?? '', hasNotText)),
+        `hasNotText=${String(hasNotText)}`,
+      );
+    }
+    if (has !== undefined) {
+      if (!(has instanceof VmLoc)) throw new Error('vmDriver: foreign locator');
+      const inner = has.resolve;
+      const prev = loc;
+      // `has` is relative: evaluate it against the whole document, then keep
+      // the candidates containing one of its matches.
+      loc = prev.derive(
+        () => {
+          const hits = inner();
+          return prev.resolve().filter((el) => hits.some((h) => el !== h && el.contains(h)));
+        },
+        `has=(${has.describe})`,
+      );
+    }
+    return loc;
+  }
+
+  or(other: Locator): Locator {
+    if (!(other instanceof VmLoc)) throw new Error('vmDriver: foreign locator');
+    return new VmLoc(
+      () => inDocumentOrder([...this.resolve(), ...other.resolve()]),
+      `(${this.describe}) or (${other.describe})`,
+      this.user,
     );
   }
 
@@ -195,19 +271,36 @@ class VmLoc implements Locator {
     return this.derive(() => this.resolve().slice(-1), 'last');
   }
 
+  nth(index: number): Locator {
+    return this.derive(() => {
+      const els = this.resolve();
+      const el = index < 0 ? els[els.length + index] : els[index];
+      return el ? [el] : [];
+    }, `nth=${index}`);
+  }
+
+  async all(): Promise<Locator[]> {
+    return this.resolve().map((_, i) => this.nth(i));
+  }
+
+  async count(): Promise<number> {
+    return this.resolve().length;
+  }
+
   private single(): Element | undefined {
     const els = this.resolve();
     if (els.length > 1) throw strictViolation(this.describe, els.length);
     return els[0];
   }
 
-  /** Wait for exactly one visible, enabled element (Playwright actionability). */
-  private actionable(): Promise<Element> {
+  /** Wait for exactly one element (strict mode), optionally visible and enabled. */
+  private waitForOne(requireActionable: boolean, timeout?: number): Promise<Element> {
     return poll(
       () => this.describe,
       () => {
         const el = this.single();
         if (!el) return { ok: false, why: 'no element matches' };
+        if (!requireActionable) return { ok: true, value: el };
         if (!isVisible(el)) return { ok: false, why: 'element is not visible' };
         if (isDisabled(el)) return { ok: false, why: 'element is disabled' };
         // Retried, like Playwright's "receives events" check: overlays such as
@@ -216,19 +309,44 @@ class VmLoc implements Locator {
         if (!receivesPointerEvents(el)) return { ok: false, why: 'element does not receive pointer events' };
         return { ok: true, value: el };
       },
+      timeout,
     );
+  }
+
+  private actionable(): Promise<Element> {
+    return this.waitForOne(true);
   }
 
   async click(): Promise<void> {
     await this.user.click(await this.actionable());
   }
 
+  async hover(): Promise<void> {
+    await this.user.hover(await this.actionable());
+  }
+
   async fill(value: string): Promise<void> {
     const el = (await this.actionable()) as HTMLInputElement | HTMLTextAreaElement;
     el.focus();
     setNativeValue(el, value);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    dispatchValueEvents(el);
+  }
+
+  clear(): Promise<void> {
+    return this.fill('');
+  }
+
+  async pressSequentially(text: string): Promise<void> {
+    const el = (await this.actionable()) as HTMLElement;
+    el.focus();
+    // `{` and `[` are user-event's key-descriptor syntax; double them to type them.
+    await this.user.keyboard(text.replace(/[{[]/g, (c) => c + c));
+  }
+
+  async press(key: string): Promise<void> {
+    const el = (await this.actionable()) as HTMLElement;
+    el.focus();
+    await this.user.keyboard(`{${key}}`);
   }
 
   async selectOption(value: SelectValue): Promise<void> {
@@ -238,43 +356,71 @@ class VmLoc implements Locator {
     );
     if (!option) throw new Error(`${this.describe}: no option ${JSON.stringify(value)}`);
     setNativeValue(el, option.value);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    dispatchValueEvents(el);
   }
 
-  async check(): Promise<void> {
-    const el = (await this.actionable()) as HTMLInputElement;
-    if (!el.checked) await this.user.click(el);
-    if (!el.checked) throw new Error(`${this.describe}: click did not check the element`);
+  private async setChecked(checked: boolean): Promise<void> {
+    const el = await this.actionable();
+    if (isChecked(el) !== checked) await this.user.click(el);
+    if (isChecked(el) !== checked) {
+      throw new Error(`${this.describe}: click did not ${checked ? 'check' : 'uncheck'} the element`);
+    }
   }
 
-  getAttribute(name: string): Promise<string | null> {
-    return poll(
-      () => this.describe,
-      () => {
-        const el = this.single();
-        return el ? { ok: true, value: el.getAttribute(name) } : { ok: false, why: 'no element matches' };
-      },
+  check(): Promise<void> {
+    return this.setChecked(true);
+  }
+
+  uncheck(): Promise<void> {
+    return this.setChecked(false);
+  }
+
+  async setInputFiles(files: FilePayload | FilePayload[]): Promise<void> {
+    // Like Playwright, file inputs are usually hidden behind a styled button,
+    // so this needs the input attached, not visible.
+    const el = (await this.waitForOne(false)) as HTMLInputElement;
+    const list = (Array.isArray(files) ? files : [files]).map(
+      (f) => new File([new Uint8Array(f.buffer)], f.name, { type: f.mimeType }),
     );
+    Object.defineProperty(el, 'files', { configurable: true, get: () => fileList(list) });
+    dispatchValueEvents(el);
   }
 
-  async waitFor({ state = 'visible' }: { state?: WaitState } = {}): Promise<void> {
+  async scrollIntoViewIfNeeded(): Promise<void> {
+    // No layout, nothing to scroll: just wait for the element like Playwright does.
+    await this.waitForOne(false);
+  }
+
+  async getAttribute(name: string): Promise<string | null> {
+    return (await this.waitForOne(false)).getAttribute(name);
+  }
+
+  async textContent(): Promise<string | null> {
+    return (await this.waitForOne(false)).textContent;
+  }
+
+  async inputValue(): Promise<string> {
+    return ((await this.waitForOne(false)) as HTMLInputElement).value;
+  }
+
+  async waitFor({ state = 'visible', timeout }: { state?: WaitState } & TimeoutOptions = {}): Promise<void> {
     await poll(
       () => this.describe,
       () => {
         const els = this.resolve();
         if (state === 'detached') {
-          return els.length === 0 ? { ok: true, value: undefined } : { ok: false, why: 'element is attached' };
+          return els.length === 0 ? ok : { ok: false, why: 'element is attached' };
         }
         if (state === 'hidden') {
-          return els.some(isVisible) ? { ok: false, why: 'element is visible' } : { ok: true, value: undefined };
+          return els.some(isVisible) ? { ok: false, why: 'element is visible' } : ok;
         }
         if (els.length > 1) throw strictViolation(this.describe, els.length);
         const [el] = els;
         if (!el) return { ok: false, why: 'no element matches' };
         if (state === 'visible' && !isVisible(el)) return { ok: false, why: 'element is not visible' };
-        return { ok: true, value: undefined };
+        return ok;
       },
+      timeout,
     );
   }
 
@@ -282,46 +428,74 @@ class VmLoc implements Locator {
     const el = this.single();
     return !!el && isVisible(el);
   }
+
+  async isChecked(): Promise<boolean> {
+    return isChecked(await this.waitForOne(false));
+  }
 }
 
 function assertions(loc: VmLoc): LocatorAssertions {
-  const one = (check: (el: Element) => string | null) =>
+  const describe = () => loc.describe;
+  /** Retry `check` against exactly one element (Playwright's strict assertions). */
+  const one = (check: (el: Element) => string | null, timeout?: number) =>
     poll(
-      () => loc.describe,
+      describe,
       () => {
         const els = loc.resolve();
         if (els.length > 1) throw strictViolation(loc.describe, els.length);
         if (els.length === 0) return { ok: false, why: 'no element matches' };
         const why = check(els[0]!);
-        return why ? { ok: false, why } : { ok: true, value: undefined };
+        return why ? { ok: false, why } : ok;
       },
+      timeout,
     );
+  const count = (accept: (n: number) => boolean, expected: string, timeout?: number) =>
+    poll(
+      describe,
+      () => {
+        const n = loc.resolve().length;
+        return accept(n) ? ok : { ok: false, why: `count was ${n}, expected ${expected}` };
+      },
+      timeout,
+    );
+  const text = (el: Element) => normalize(el.textContent ?? '');
+  const valueMatches = (actual: string | null, expected: string | RegExp) =>
+    actual !== null && (typeof expected === 'string' ? actual === expected : expected.test(actual));
+
   return {
-    toBeVisible: () => one((el) => (isVisible(el) ? null : 'element is not visible')),
-    toBeHidden: () =>
-      poll(
-        () => loc.describe,
-        () =>
-          loc.resolve().some(isVisible) ? { ok: false, why: 'element is visible' } : { ok: true, value: undefined },
-      ),
-    toBeDisabled: () => one((el) => (isDisabled(el) ? null : 'element is enabled')),
-    toContainText: (text) =>
-      one((el) =>
-        textMatches(el.textContent ?? '', text) ? null : `text was "${normalize(el.textContent ?? '')}"`,
-      ),
-    toHaveCount: (count) =>
-      poll(
-        () => loc.describe,
-        () => {
-          const n = loc.resolve().length;
-          return n === count ? { ok: true, value: undefined } : { ok: false, why: `count was ${n}` };
-        },
-      ),
-    toHaveValue: (value) =>
+    toBeVisible: (o) => one((el) => (isVisible(el) ? null : 'element is not visible'), o?.timeout),
+    toBeHidden: (o) =>
+      poll(describe, () => (loc.resolve().some(isVisible) ? { ok: false, why: 'element is visible' } : ok), o?.timeout),
+    toBeAttached: (o) => one(() => null, o?.timeout),
+    toBeEnabled: (o) => one((el) => (isDisabled(el) ? 'element is disabled' : null), o?.timeout),
+    toBeDisabled: (o) => one((el) => (isDisabled(el) ? null : 'element is enabled'), o?.timeout),
+    toBeChecked: (o) => one((el) => (isChecked(el) ? null : 'element is not checked'), o?.timeout),
+    toContainText: (expected, o) =>
+      one((el) => (textMatches(el.textContent ?? '', expected) ? null : `text was "${text(el)}"`), o?.timeout),
+    toHaveText: (expected, o) =>
+      one((el) => {
+        const actual = text(el);
+        const matches = typeof expected === 'string' ? actual === normalize(expected) : expected.test(actual);
+        return matches ? null : `text was "${actual}"`;
+      }, o?.timeout),
+    toHaveCount: (n, o) => count((actual) => actual === n, String(n), o?.timeout),
+    toHaveValue: (expected, o) =>
       one((el) => {
         const actual = (el as HTMLInputElement).value;
-        return actual === value ? null : `value was "${actual}"`;
-      }),
+        return valueMatches(actual, expected) ? null : `value was "${actual}"`;
+      }, o?.timeout),
+    toHaveAttribute: (name, expected, o) =>
+      one((el) => {
+        const actual = el.getAttribute(name);
+        return valueMatches(actual, expected) ? null : `${name} was ${JSON.stringify(actual)}`;
+      }, o?.timeout),
+    not: {
+      toBeVisible: (o) =>
+        poll(describe, () => (loc.resolve().some(isVisible) ? { ok: false, why: 'element is visible' } : ok), o?.timeout),
+      toContainText: (expected, o) =>
+        one((el) => (textMatches(el.textContent ?? '', expected) ? `text was "${text(el)}"` : null), o?.timeout),
+      toHaveCount: (n, o) => count((actual) => actual !== n, `not ${n}`, o?.timeout),
+    },
   };
 }
 
@@ -330,6 +504,16 @@ export interface VmDriverHooks {
   navigate(path: string): Promise<void>;
   /** Requests currently in flight through the fetch shim (long-lived streams excluded). */
   inFlight(): number;
+  /** Subscribe to the responses the app sends; returns the unsubscribe. */
+  onResponse(listener: (res: ResponseInfo) => void): () => void;
+}
+
+function urlMatches(url: string | RegExp, href: string): boolean {
+  if (url instanceof RegExp) return url.test(href);
+  const { pathname, search } = new URL(href);
+  // Playwright's `**/path` glob form, or a baseURL-relative path.
+  if (url.startsWith('**')) return (pathname + search).endsWith(url.slice(2));
+  return pathname + search === url || pathname === url;
 }
 
 export function vmDriver(hooks: VmDriverHooks): Driver {
@@ -337,34 +521,51 @@ export function vmDriver(hooks: VmDriverHooks): Driver {
   const root = () => document.body;
   const loc = (resolve: Resolve, describe: string) => new VmLoc(resolve, describe, user);
 
+  const waitForURL = async (url: string | RegExp, opts?: TimeoutOptions) => {
+    await poll(
+      () => `url ${String(url)}`,
+      () => (urlMatches(url, window.location.href) ? ok : { ok: false, why: `url was ${window.location.href}` }),
+      opts?.timeout,
+    );
+  };
+
   return {
     goto: (path) => hooks.navigate(path),
+    reload: () => hooks.navigate(window.location.pathname + window.location.search),
+    url: () => window.location.href,
     locator: (css) => loc(() => Array.from(root().querySelectorAll(css)), css),
     getByTestId: (id) => loc(() => queryAllByTestId(root(), id), `testId=${String(id)}`),
     getByRole: (role, opts: RoleOptions = {}) =>
       loc(() => queryAllByPwRole(root(), role, opts), describeRole(role, opts)),
-    getByLabel: (text) =>
-      loc(
-        () =>
-          queryAllByLabelText(root(), (content) =>
-            typeof text === 'string' ? textMatches(content, text) : text.test(content),
-          ),
-        `label=${String(text)}`,
-      ),
+    getByLabel: (text, opts: TextOptions = {}) =>
+      loc(() => queryAllByLabelText(root(), stringMatcher(text, opts.exact)), `label=${String(text)}`),
     getByText: (text, opts: TextOptions = {}) =>
       loc(() => queryAllByPwText(root(), text, opts.exact), `text=${String(text)}`),
+    getByPlaceholder: (text, opts: TextOptions = {}) =>
+      loc(
+        () => queryAllByPlaceholderText(root(), stringMatcher(text, opts.exact)),
+        `placeholder=${String(text)}`,
+      ),
     expect(locator) {
       if (!(locator instanceof VmLoc)) throw new Error('vmDriver: foreign locator');
       return assertions(locator);
     },
-    async expectURL(pattern) {
-      await poll(
-        () => `url ${String(pattern)}`,
-        () =>
-          pattern.test(window.location.href)
-            ? { ok: true, value: undefined }
-            : { ok: false, why: `url was ${window.location.href}` },
-      );
+    expectURL: (pattern, opts) => waitForURL(pattern, opts),
+    waitForURL,
+    waitForResponse(predicate, opts) {
+      const timeout = opts?.timeout ?? DEFAULT_TIMEOUT_MS;
+      return new Promise<ResponseInfo>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          unsubscribe();
+          reject(new Error(`waitForResponse: no matching response within ${timeout}ms`));
+        }, timeout);
+        const unsubscribe = hooks.onResponse((res) => {
+          if (!predicate(res)) return;
+          clearTimeout(timer);
+          unsubscribe();
+          resolve(res);
+        });
+      });
     },
     async waitForNetworkIdle() {
       let quietSince = Date.now();
@@ -373,7 +574,7 @@ export function vmDriver(hooks: VmDriverHooks): Driver {
         () => {
           if (hooks.inFlight() > 0) quietSince = Date.now();
           return Date.now() - quietSince >= NETWORK_QUIET_MS
-            ? { ok: true, value: undefined }
+            ? ok
             : { ok: false, why: `${hooks.inFlight()} request(s) in flight` };
         },
       );

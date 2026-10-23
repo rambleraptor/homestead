@@ -19,8 +19,15 @@ import '@/apps/registry';
 import { App } from '@/App';
 import type { Driver } from '../driver/Driver';
 import { vmDriver } from '../driver/vm-driver';
-import { inFlightRequests, installFetchShim, setActiveHandler } from './fetch-shim';
-import { VM_ORIGIN } from './origin';
+import { aiStubFetch } from '../../../tests/e2e/config/ai-stub';
+import {
+  inFlightRequests,
+  installFetchShim,
+  onResponse,
+  registerService,
+  setActiveHandler,
+} from './fetch-shim';
+import { AI_STUB_ORIGIN, VM_ORIGIN } from './origin';
 import { workerTemplate, type VmUser } from './template';
 
 export interface Session {
@@ -35,6 +42,8 @@ export interface Harness {
   /** The template's bootstrap superuser and member (Members group) accounts. */
   admin: VmUser;
   member: VmUser;
+  /** Another member ("Sam"), writing from their own account. */
+  householdMember: VmUser & { name: string };
   /**
    * Sign in and land on /dashboard, as the Playwright login fixture does.
    * By default the template's pre-minted session is installed directly;
@@ -46,6 +55,9 @@ export interface Harness {
 
 export async function bootHomestead(): Promise<Harness> {
   installFetchShim();
+  // AI-backed server code (documents:classify) calls the provider at
+  // AI_BASE_URL, which the VM config points here.
+  registerService(AI_STUB_ORIGIN, aiStubFetch);
   const template = await workerTemplate();
 
   const dataDir = await mkdtemp(join(tmpdir(), 'homestead-vm-test-'));
@@ -72,7 +84,7 @@ export async function bootHomestead(): Promise<Harness> {
     root.render(createElement(BrowserRouter, null, createElement(App)));
   }
 
-  const driver = vmDriver({ navigate: load, inFlight: inFlightRequests });
+  const driver = vmDriver({ navigate: load, inFlight: inFlightRequests, onResponse });
   await load('/login');
 
   return {
@@ -80,6 +92,7 @@ export async function bootHomestead(): Promise<Harness> {
     app,
     admin: template.admin,
     member: template.member,
+    householdMember: template.householdMember,
     async loginAs(user, { via = 'session' } = {}) {
       if (via === 'form') {
         await driver.getByLabel(/email/i).fill(user.email);

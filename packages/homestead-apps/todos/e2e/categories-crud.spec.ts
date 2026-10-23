@@ -6,6 +6,7 @@
 
 import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
 import { TodosPage } from './TodosPage';
+import { playwrightDriver } from '../../../homestead-test-harness/driver/pw-driver';
 import { TemplatesPage } from './TemplatesPage';
 import {
   addTemplateCategory,
@@ -40,7 +41,7 @@ test.describe('Todo categories', () => {
     await createCategory(adminToken, project.id, { name: 'Food', position: 0 });
     await createCategory(adminToken, project.id, { name: 'Fun', position: 1 });
 
-    const todos = new TodosPage(authenticatedAdminPage);
+    const todos = new TodosPage(playwrightDriver(authenticatedAdminPage));
     await todos.goto();
     await todos.selectProject('Party');
 
@@ -75,7 +76,7 @@ test.describe('Todo categories', () => {
     await templates.createListFrom('Camping');
 
     // Instantiation navigates to the new list; its category + assignment carry.
-    const todos = new TodosPage(authenticatedAdminPage);
+    const todos = new TodosPage(playwrightDriver(authenticatedAdminPage));
     await todos.expectCategoryGroupVisible('Gear');
     await todos.expectTodoInGroup('Gear', 'Tent');
     await todos.expectRowVisible('Snacks');

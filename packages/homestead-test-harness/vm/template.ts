@@ -41,10 +41,13 @@ export interface VmTemplate {
   dbPath: string;
   admin: VmUser;
   member: VmUser;
+  /** A second household member ("Sam"), for specs about seeing someone else's changes. */
+  householdMember: VmUser & { name: string };
 }
 
 const ADMIN = { email: 'admin@vm.test', password: 'vm-admin-password' };
 const MEMBER = { email: 'member@vm.test', password: 'vm-member-password' };
+const HOUSEHOLD_MEMBER = { email: 'sam@vm.test', password: 'vm-sam-password', name: 'Sam' };
 /** Seeded role-bearing group that confers the household member role. */
 const MEMBER_GROUP_ID = 'members';
 
@@ -75,28 +78,34 @@ async function buildTemplate(): Promise<VmTemplate> {
       body: JSON.stringify(ADMIN),
     });
     const admin = await call<{ id: string }>('/api/aep/users/me', { token: adminToken });
-    const member = await call<{ id: string }>('/api/aep/users', {
-      method: 'POST',
-      token: adminToken,
-      body: JSON.stringify({
-        email: MEMBER.email,
-        password: MEMBER.password,
-        display_name: 'VM Member',
-        type: 'regular',
-      }),
-    });
-    await call(`/api/aep/groups/${MEMBER_GROUP_ID}/group-memberships`, {
-      method: 'POST',
-      token: adminToken,
-      body: JSON.stringify({ user: member.id }),
-    });
+    /** A regular user in the Members group, as the e2e fixtures create one. */
+    const createMember = async (creds: { email: string; password: string }, displayName: string) => {
+      const user = await call<{ id: string }>('/api/aep/users', {
+        method: 'POST',
+        token: adminToken,
+        body: JSON.stringify({ ...creds, display_name: displayName, type: 'regular' }),
+      });
+      await call(`/api/aep/groups/${MEMBER_GROUP_ID}/group-memberships`, {
+        method: 'POST',
+        token: adminToken,
+        body: JSON.stringify({ user: user.id }),
+      });
+      return user;
+    };
+    const member = await createMember(MEMBER, 'VM Member');
+    const sam = await createMember(HOUSEHOLD_MEMBER, HOUSEHOLD_MEMBER.name);
 
-    const withToken = (creds: typeof ADMIN, id: string): VmUser => ({
+    const withToken = (creds: { email: string; password: string }, id: string): VmUser => ({
       ...creds,
       id,
       token: mintTokenForUser(app.engine.db, id).token,
     });
-    const users = { admin: withToken(ADMIN, admin.id), member: withToken(MEMBER, member.id) };
+    const { name, ...samCreds } = HOUSEHOLD_MEMBER;
+    const users = {
+      admin: withToken(ADMIN, admin.id),
+      member: withToken(MEMBER, member.id),
+      householdMember: { ...withToken(samCreds, sam.id), name },
+    };
 
     const dbPath = join(root, 'template.db');
     app.engine.db.query('VACUUM INTO ?').run(dbPath);

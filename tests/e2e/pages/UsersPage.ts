@@ -1,23 +1,30 @@
 /**
  * Users Page Object Model
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`tests/vm/`).
  */
 
-import { Page, expect } from '@playwright/test';
+import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class UsersPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/superuser/users');
+    await this.driver.goto('/superuser/users');
   }
 
   async expectToBeOnUsersPage() {
-    await expect(this.page).toHaveURL(/\/superuser\/users$/);
-    await expect(this.page.getByRole('heading', { name: 'Users', level: 1 })).toBeVisible();
+    await this.driver.expectURL(/\/superuser\/users$/);
+    await this.expect(this.driver.getByRole('heading', { name: 'Users', level: 1 })).toBeVisible();
   }
 
   async clickAddUser() {
-    const btn = this.page.getByTestId('add-user-button');
+    const btn = this.driver.getByTestId('add-user-button');
     await btn.waitFor({ state: 'visible' });
     await btn.click();
   }
@@ -28,20 +35,20 @@ export class UsersPage {
     type?: 'regular' | 'superuser';
     password?: string;
   }) {
-    await this.page.getByTestId('user-email-input').fill(data.email);
+    await this.driver.getByTestId('user-email-input').fill(data.email);
     if (data.displayName !== undefined) {
-      await this.page.getByTestId('user-display-name-input').fill(data.displayName);
+      await this.driver.getByTestId('user-display-name-input').fill(data.displayName);
     }
     if (data.type) {
-      await this.page.getByTestId('user-type-select').selectOption(data.type);
+      await this.driver.getByTestId('user-type-select').selectOption(data.type);
     }
     if (data.password !== undefined) {
-      await this.page.getByTestId('user-password-input').fill(data.password);
+      await this.driver.getByTestId('user-password-input').fill(data.password);
     }
   }
 
   async submitForm(label: 'Create User' | 'Save' = 'Create User') {
-    const submit = this.page.getByRole('button', { name: label });
+    const submit = this.driver.getByRole('button', { name: label });
     await submit.click();
   }
 
@@ -56,36 +63,36 @@ export class UsersPage {
     await this.fillUserForm(data);
     await this.submitForm('Create User');
     // Wait for modal to close
-    await expect(this.page.getByTestId('user-email-input')).not.toBeVisible();
+    await this.expect(this.driver.getByTestId('user-email-input')).toBeHidden();
   }
 
   async expectUserInList(email: string) {
-    await expect(this.page.getByText(email).first()).toBeVisible();
+    await this.expect(this.driver.getByText(email).first()).toBeVisible();
   }
 
   async expectUserNotInList(email: string) {
-    await expect(this.page.getByText(email)).toHaveCount(0);
+    await this.expect(this.driver.getByText(email)).toHaveCount(0);
   }
 
   async clickEditUser(userId: string) {
-    await this.page.getByTestId(`edit-user-${userId}`).click();
+    await this.driver.getByTestId(`edit-user-${userId}`).click();
   }
 
   async clickDeleteUser(userId: string) {
-    await this.page.getByTestId(`delete-user-${userId}`).click();
+    await this.driver.getByTestId(`delete-user-${userId}`).click();
   }
 
   async confirmDelete() {
-    const confirm = this.page.getByRole('button', { name: /^delete$/i }).last();
+    const confirm = this.driver.getByRole('button', { name: /^delete$/i }).last();
     await confirm.click();
   }
 
   async expectSuperuserBadge(email: string) {
-    const row = this.page.locator('div', { hasText: email }).first();
-    await expect(row.getByText('superuser')).toBeVisible();
+    const row = this.driver.locator('div').filter({ hasText: email }).first();
+    await this.expect(row.getByText('superuser')).toBeVisible();
   }
 
   async expectUserTag(userId: string, tag: string) {
-    await expect(this.page.getByTestId(`user-tag-${userId}-${tag}`)).toBeVisible();
+    await this.expect(this.driver.getByTestId(`user-tag-${userId}-${tag}`)).toBeVisible();
   }
 }

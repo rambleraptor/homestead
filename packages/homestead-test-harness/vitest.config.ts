@@ -10,7 +10,7 @@
 import { defineConfig } from 'vitest/config';
 import path from 'node:path';
 import { discoveredApps } from '../homestead-app/vite/discovered-apps';
-import { VM_ORIGIN } from './vm/origin';
+import { AI_STUB_ORIGIN, VM_ORIGIN } from './vm/origin';
 
 const repoRoot = path.resolve(__dirname, '../..');
 const reactDev = !!process.env.HOMESTEAD_VM_REACT_DEV;
@@ -57,8 +57,15 @@ export default defineConfig({
       // HOMESTEAD_VM_REACT_DEV=1 to get the development build (and its
       // warnings) back while debugging a spec.
       NODE_ENV: reactDev ? 'development' : 'production',
-      // Honor grant changes on the very next request (matches the e2e suite).
+      // The rest mirrors the e2e server's environment (tests/e2e/config).
+      // Honor grant changes on the very next request.
       PERMISSION_CACHE_TTL_MS: '0',
+      AEPBASE_ACCESS_CACHE_TTL_MS: '1000',
+      // The stub AI provider, served in-process by the fetch shim (vm/boot.ts).
+      AI_API_KEY: 'e2e-stub-key',
+      AI_PROVIDER: 'openai',
+      AI_MODEL: 'stub-model',
+      AI_BASE_URL: `${AI_STUB_ORIGIN}/v1`,
       // Server-side helpers read this at import time; point them at the VM.
       AEPBASE_URL: `${VM_ORIGIN}/api/aep`,
       // Point the e2e seed helpers (tests/e2e/utils) at the VM too.

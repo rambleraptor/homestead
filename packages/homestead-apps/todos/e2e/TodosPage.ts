@@ -1,15 +1,22 @@
 /**
  * Todos Page Object Model
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`../vm/`).
  */
 
-import { Page, expect, Locator } from '@playwright/test';
+import type { Driver, Locator } from '../../../homestead-test-harness/driver/Driver';
 
 export class TodosPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/todos');
-    await this.page.getByTestId('todos-add-input').waitFor({ state: 'visible' });
+    await this.driver.goto('/todos');
+    await this.driver.getByTestId('todos-add-input').waitFor({ state: 'visible' });
   }
 
   /**
@@ -17,16 +24,16 @@ export class TodosPage {
    * and shared — so `kind` selects between them wherever we are.
    */
   async addTodo(title: string, kind: 'personal' | 'family' = 'personal') {
-    const input = this.page.getByTestId('todos-add-input');
+    const input = this.driver.getByTestId('todos-add-input');
     await input.fill(title);
-    await this.page
+    await this.driver
       .getByTestId(
         kind === 'family'
           ? 'todos-add-submit-family'
           : 'todos-add-submit-personal',
       )
       .click();
-    await expect(input).toHaveValue('');
+    await this.expect(input).toHaveValue('');
   }
 
   async addPersonalTodo(title: string) {
@@ -51,16 +58,16 @@ export class TodosPage {
    */
   async expectKindMarker(title: string, kind: 'personal' | 'family') {
     const testId = await this.rowTestId(title);
-    await expect(this.page.getByTestId(`${testId}-${kind}`)).toBeVisible();
+    await this.expect(this.driver.getByTestId(`${testId}-${kind}`)).toBeVisible();
     const other = kind === 'family' ? 'personal' : 'family';
-    await expect(this.page.getByTestId(`${testId}-${other}`)).toHaveCount(0);
+    await this.expect(this.driver.getByTestId(`${testId}-${other}`)).toHaveCount(0);
   }
 
   // --- Categories (project view) ---
 
   /** Expand the (collapsed-by-default) category manager panel if needed. */
   async openCategoryManager() {
-    const toggle = this.page.getByTestId('todos-category-manager-toggle');
+    const toggle = this.driver.getByTestId('todos-category-manager-toggle');
     if ((await toggle.getAttribute('aria-expanded')) === 'false') {
       await toggle.click();
     }
@@ -68,10 +75,10 @@ export class TodosPage {
 
   async addCategory(name: string) {
     await this.openCategoryManager();
-    await this.page.getByTestId('todos-category-add-input').fill(name);
-    await this.page.getByTestId('todos-category-add-submit').click();
-    await expect(
-      this.page.getByTestId('todos-category-list').getByText(name, {
+    await this.driver.getByTestId('todos-category-add-input').fill(name);
+    await this.driver.getByTestId('todos-category-add-submit').click();
+    await this.expect(
+      this.driver.getByTestId('todos-category-list').getByText(name, {
         exact: true,
       }),
     ).toBeVisible();
@@ -79,14 +86,14 @@ export class TodosPage {
 
   /** Choose the category new todos are added into ('' clears to Uncategorized). */
   async selectAddCategory(name: string) {
-    await this.page
+    await this.driver
       .getByTestId('todos-add-category')
       .selectOption({ label: name });
   }
 
   async deleteCategory(name: string) {
     await this.openCategoryManager();
-    const item = this.page
+    const item = this.driver
       .locator('[data-testid^="todos-category-item-"]')
       .filter({ hasText: name })
       .first();
@@ -94,25 +101,25 @@ export class TodosPage {
   }
 
   private categoryGroup(name: string): Locator {
-    return this.page
+    return this.driver
       .locator('[data-testid^="todos-category-group-"]')
       .filter({ hasText: name })
       .first();
   }
 
   async expectCategoryGroupVisible(name: string) {
-    await expect(this.categoryGroup(name)).toBeVisible();
+    await this.expect(this.categoryGroup(name)).toBeVisible();
   }
 
   /** The named todo appears inside the group whose header is `categoryName`. */
   async expectTodoInGroup(categoryName: string, title: string) {
-    await expect(
+    await this.expect(
       this.categoryGroup(categoryName).getByText(title, { exact: true }),
     ).toBeVisible();
   }
 
   private rowFor(title: string) {
-    return this.page
+    return this.driver
       .locator('[data-testid^="todo-row-"]')
       .filter({ hasText: title })
       .first();
@@ -123,7 +130,7 @@ export class TodosPage {
     await row.waitFor({ state: 'visible' });
     const testId = await row.getAttribute('data-testid');
     if (!testId) throw new Error(`Row for "${title}" missing testid`);
-    await this.page.getByTestId(`${testId}-${action}`).click();
+    await this.driver.getByTestId(`${testId}-${action}`).click();
   }
 
   async markComplete(title: string) {
@@ -145,42 +152,42 @@ export class TodosPage {
 
   /** Open the list dropdown (no-op if it's already open). */
   private async openListMenu() {
-    const menu = this.page.getByTestId('todos-list-menu');
+    const menu = this.driver.getByTestId('todos-list-menu');
     if (await menu.isVisible()) return;
-    await this.page.getByTestId('todos-list-selector').click();
+    await this.driver.getByTestId('todos-list-selector').click();
     await menu.waitFor({ state: 'visible' });
   }
 
   private async closeListMenu() {
-    const menu = this.page.getByTestId('todos-list-menu');
+    const menu = this.driver.getByTestId('todos-list-menu');
     if (!(await menu.isVisible())) return;
-    await this.page.getByTestId('todos-list-selector').click();
+    await this.driver.getByTestId('todos-list-selector').click();
     await menu.waitFor({ state: 'hidden' });
   }
 
   /** The trigger names the list in view, so it's what "which list" asserts on. */
   async expectActiveList(name: string) {
-    await expect(this.page.getByTestId('todos-list-selector')).toContainText(
+    await this.expect(this.driver.getByTestId('todos-list-selector')).toContainText(
       name,
     );
   }
 
   /** The trigger's "Temporary" badge — shown only on a list that deletes itself. */
   async expectTemporaryBadge(visible: boolean) {
-    const badge = this.page.getByTestId('todos-list-temporary');
-    if (visible) await expect(badge).toBeVisible();
-    else await expect(badge).toHaveCount(0);
+    const badge = this.driver.getByTestId('todos-list-temporary');
+    if (visible) await this.expect(badge).toBeVisible();
+    else await this.expect(badge).toHaveCount(0);
   }
 
   async selectMainProject() {
     await this.openListMenu();
-    await this.page.getByTestId('todos-list-option-main').click();
+    await this.driver.getByTestId('todos-list-option-main').click();
     await this.expectActiveList('Main');
   }
 
   async selectProject(name: string) {
     await this.openListMenu();
-    await this.page
+    await this.driver
       .getByTestId(/^todos-list-option-/)
       .filter({ hasText: name })
       .first()
@@ -190,16 +197,16 @@ export class TodosPage {
 
   async createProject(name: string) {
     await this.openListMenu();
-    await this.page.getByTestId('todos-project-add').click();
-    await this.page.getByTestId('todos-project-name-input').fill(name);
-    await this.page.getByTestId('todos-project-create-submit').click();
+    await this.driver.getByTestId('todos-project-add').click();
+    await this.driver.getByTestId('todos-project-name-input').fill(name);
+    await this.driver.getByTestId('todos-project-create-submit').click();
     // After create, the new list becomes the active one.
     await this.expectActiveList(name);
   }
 
   async createListFromTemplate(templateName: string) {
     await this.openListMenu();
-    await this.page
+    await this.driver
       .getByTestId('todos-template-menu')
       .getByText(templateName, { exact: true })
       .click();
@@ -207,7 +214,7 @@ export class TodosPage {
 
   async gotoTemplates() {
     await this.openListMenu();
-    await this.page.getByTestId('todos-templates-link').click();
+    await this.driver.getByTestId('todos-templates-link').click();
   }
 
   /**
@@ -216,14 +223,14 @@ export class TodosPage {
    */
   async deleteCurrentProject(opts: { deleteTodos?: boolean } = {}) {
     await this.openListMenu();
-    await this.page
+    await this.driver
       .locator('[data-testid^="todos-project-delete-"]')
       .first()
       .click();
     if (opts.deleteTodos) {
-      await this.page.getByTestId('todos-project-delete-todos').check();
+      await this.driver.getByTestId('todos-project-delete-todos').check();
     }
-    await this.page.getByRole('button', { name: 'Delete' }).click();
+    await this.driver.getByRole('button', { name: 'Delete' }).click();
   }
 
   async pinToMain(title: string) {
@@ -235,34 +242,34 @@ export class TodosPage {
   }
 
   async expectRowVisible(title: string) {
-    await expect(this.rowFor(title)).toBeVisible();
+    await this.expect(this.rowFor(title)).toBeVisible();
   }
 
   async expectRowAbsent(title: string) {
-    await expect(this.rowFor(title)).toHaveCount(0);
+    await this.expect(this.rowFor(title)).toHaveCount(0);
   }
 
   /** The list is gone from the dropdown entirely. */
   async expectListAbsent(projectId: string) {
     await this.openListMenu();
-    await expect(
-      this.page.getByTestId(`todos-list-option-${projectId}`),
+    await this.expect(
+      this.driver.getByTestId(`todos-list-option-${projectId}`),
     ).toHaveCount(0);
     await this.closeListMenu();
   }
 
   async expectInActive(title: string) {
-    const section = this.page.getByTestId('todos-section-active');
-    await expect(section.getByText(title).first()).toBeVisible();
+    const section = this.driver.getByTestId('todos-section-active');
+    await this.expect(section.getByText(title).first()).toBeVisible();
   }
 
   async expectInDoLater(title: string) {
-    const section = this.page.getByTestId('todos-section-dolater');
-    await expect(section.getByText(title).first()).toBeVisible();
+    const section = this.driver.getByTestId('todos-section-dolater');
+    await this.expect(section.getByText(title).first()).toBeVisible();
   }
 
   /** Undo the last status change from its toast. */
   async undoFromToast() {
-    await this.page.getByRole('button', { name: 'Undo' }).click();
+    await this.driver.getByRole('button', { name: 'Undo' }).click();
   }
 }
