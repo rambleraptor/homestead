@@ -18,6 +18,8 @@ import { join, relative, resolve } from 'node:path';
 
 const REPO_ROOT = resolve(import.meta.dirname, '../../..');
 const CACHE_DIR = join(REPO_ROOT, 'node_modules/.cache/homestead-vm');
+/** Templates for other source states are pruned once this old. */
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /** Trees and files whose contents can change what the template holds. */
 const KEY_SOURCES = [
@@ -91,7 +93,7 @@ export async function readCachedTemplate<T>(key: string): Promise<(T & { dbPath:
 }
 
 /**
- * Store a freshly built template under `key` and drop older entries. Writes
+ * Store a freshly built template under `key` and prune stale entries. Writes
  * go to temp names and are renamed into place, so concurrent workers never
  * read a partial file.
  */
@@ -104,10 +106,13 @@ export async function writeCachedTemplate<T>(key: string, dbPath: string, meta: 
   await writeFile(target.meta + tmp, JSON.stringify(meta));
   await rename(target.meta + tmp, target.meta);
 
-  const current = new Set([target.db, target.meta].map((p) => p.slice(CACHE_DIR.length + 1)));
+  // Prune older templates, but only stale ones: a concurrent run on other
+  // sources may still be copying from its own entry.
+  const cutoff = Date.now() - STALE_AFTER_MS;
   for (const name of await readdir(CACHE_DIR)) {
-    if (name.startsWith('template-') && !current.has(name) && !name.includes('.db.') && !name.includes('.json.')) {
-      await rm(join(CACHE_DIR, name), { force: true });
-    }
+    if (!name.startsWith('template-') || name.startsWith(`template-${key}.`)) continue;
+    const path = join(CACHE_DIR, name);
+    const info = await stat(path).catch(() => null);
+    if (info && info.mtimeMs < cutoff) await rm(path, { force: true });
   }
 }

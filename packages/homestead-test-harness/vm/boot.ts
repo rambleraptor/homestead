@@ -28,6 +28,7 @@ import {
   setActiveHandler,
 } from './fetch-shim';
 import { AI_STUB_ORIGIN, VM_ORIGIN } from './origin';
+import { cancelQueryTimers, installQueryTimers } from './query-timers';
 import { workerTemplate, type VmUser } from './template';
 
 export interface Session {
@@ -55,6 +56,7 @@ export interface Harness {
 
 export async function bootHomestead(): Promise<Harness> {
   installFetchShim();
+  installQueryTimers();
   // AI-backed server code (documents:classify) calls the provider at
   // AI_BASE_URL, which the VM config points here.
   registerService(AI_STUB_ORIGIN, aiStubFetch);
@@ -117,6 +119,9 @@ export async function bootHomestead(): Promise<Harness> {
       // Module singletons outlive the test (and, with isolate: false, the
       // spec file): drop the session and caches so the next boot starts clean.
       queryClient.clear();
+      // Before clearing storage: a pending throttled cache save would otherwise
+      // land in the next test's localStorage (see query-timers.ts).
+      cancelQueryTimers();
       authStore.clear();
       window.localStorage.clear();
       document.body.innerHTML = '';

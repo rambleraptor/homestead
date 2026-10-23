@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, test } from 'vitest';
+import { PERSISTER_STORAGE_KEY } from '@rambleraptor/homestead-core/api/persistQueryClient';
 import { serverClient } from '@rambleraptor/homestead-core/server/client';
 import { bootHomestead } from '../boot';
 
@@ -92,5 +93,28 @@ describe('bootHomestead', () => {
       await h.close();
     }
     await poll(() => feed.size() === 0, 'the subscription to close');
+  });
+
+  test("a test's pending cache save never lands in the next test's storage", async () => {
+    const first = await bootHomestead();
+    try {
+      await first.loginAs(first.member);
+      await serverClient(first.member.token)
+        .collection('gift-cards')
+        .create({ merchant: 'Leaky Merchant', amount: 10, card_number: '1' });
+      await first.driver.goto('/gift-cards');
+      await first.driver.expect(first.driver.getByText('Leaky Merchant').first()).toBeVisible();
+    } finally {
+      await first.close();
+    }
+
+    const second = await bootHomestead();
+    try {
+      // Outlast the persister's 2s save throttle.
+      await new Promise((r) => setTimeout(r, 2500));
+      expect(window.localStorage.getItem(PERSISTER_STORAGE_KEY) ?? '').not.toContain('Leaky Merchant');
+    } finally {
+      await second.close();
+    }
   });
 });

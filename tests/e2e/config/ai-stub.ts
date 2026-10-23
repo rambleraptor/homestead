@@ -19,8 +19,19 @@
 import { createServer, type Server } from 'http';
 import type { AddressInfo } from 'net';
 
-/** Long enough to observe "running", short enough to keep tests quick. */
+/**
+ * Long enough to observe "running", short enough to keep tests quick.
+ * `AI_STUB_DELAY_MS` overrides it: the VM test tier, which polls every few
+ * milliseconds rather than at browser speed, needs far less.
+ */
 export const RESPONSE_DELAY_MS = 2500;
+
+function responseDelayMs(): number {
+  const override = Number(process.env.AI_STUB_DELAY_MS);
+  return Number.isFinite(override) && override >= 0 && process.env.AI_STUB_DELAY_MS
+    ? override
+    : RESPONSE_DELAY_MS;
+}
 
 /**
  * Document classify markers.
@@ -133,7 +144,7 @@ function responsesReply(payload: unknown) {
  */
 export async function aiStubFetch(req: Request): Promise<Response> {
   const payload = payloadForBody(await req.text());
-  await new Promise((resolve) => setTimeout(resolve, RESPONSE_DELAY_MS));
+  await new Promise((resolve) => setTimeout(resolve, responseDelayMs()));
   return Response.json(responsesReply(payload));
 }
 

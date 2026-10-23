@@ -351,8 +351,11 @@ class VmLoc implements Locator {
 
   async selectOption(value: SelectValue): Promise<void> {
     const el = (await this.actionable()) as HTMLSelectElement;
+    // An option's label is its `label` attribute, else its text. happy-dom
+    // doesn't implement HTMLOptionElement.label, so read both.
+    const labelOf = (o: HTMLOptionElement) => o.getAttribute('label') ?? normalize(o.text);
     const option = Array.from(el.options).find((o) =>
-      typeof value === 'string' ? o.value === value || o.label === value : o.label === value.label,
+      typeof value === 'string' ? o.value === value || labelOf(o) === value : labelOf(o) === value.label,
     );
     if (!option) throw new Error(`${this.describe}: no option ${JSON.stringify(value)}`);
     setNativeValue(el, option.value);
