@@ -1,17 +1,23 @@
 /**
- * Recipes bulk import E2E.
+ * Recipes bulk import, on the VM tier.
  *
- * Recipes is the multi-format case: pasted text and Paprika archives, both
- * behind the same `recipes:bulk-import` verb.
+ * A port of the Playwright recipes-bulk-import spec. Recipes is the
+ * multi-format case: pasted text and Paprika archives, both behind the same
+ * `recipes:bulk-import` verb.
  *
  * Everything runs as the superuser, matching the other recipes specs: the app's
  * `enabled` flag defaults to 'superusers', so a regular user is gated out of
- * writing recipes at all.
+ * writing recipes at all. Each test boots from a fresh database.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { getAppUrl } from '../../../../tests/e2e/config/aepbase.setup';
 import { e2eClient, listOrEmpty, postCustomMethod } from '../../../../tests/e2e/utils/aepbase-helpers';
-import { deleteAllRecipes, type RecipeRecord } from './helpers';
+import type { RecipeRecord } from '../e2e/helpers';
+
+/** Long enough for the operation poll below (15s) plus the boot. */
+const BULK_IMPORT_TIMEOUT_MS = 30_000;
 
 interface OperationRow {
   id: string;
@@ -79,12 +85,20 @@ async function bulkImport(
   return e2eClient(token).collection<OperationRow>('operations').get(id);
 }
 
-test.describe('Recipes bulk import — API', () => {
-  test.beforeEach(async ({ adminToken }) => {
-    await deleteAllRecipes(adminToken);
+describe('Recipes bulk import — API', () => {
+  let h: Harness;
+  let adminToken: string;
+
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: adminToken } = await h.loginAs(h.admin));
   });
 
-  test('imports a recipe pasted as text', async ({ adminToken }) => {
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test('imports a recipe pasted as text', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
     const operation = await bulkImport(adminToken, { format: 'text', text: RECIPE_TEXT });
 
     expect(operation.response?.created).toBe(1);
@@ -95,7 +109,7 @@ test.describe('Recipes bulk import — API', () => {
     expect(recipes[0].steps?.length).toBeGreaterThan(0);
   });
 
-  test('imports a gzipped Paprika recipe', async ({ adminToken }) => {
+  test('imports a gzipped Paprika recipe', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
     const file = await gzip(JSON.stringify(paprikaJson('Bacon Wrapped Asparagus')));
     const operation = await bulkImport(adminToken, {
       format: 'paprika',
@@ -109,7 +123,7 @@ test.describe('Recipes bulk import — API', () => {
     expect(recipes[0].prep_time).toBe('10 mins');
   });
 
-  test('imports several Paprika files in one call', async ({ adminToken }) => {
+  test('imports several Paprika files in one call', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
     const [a, b] = await Promise.all([
       gzip(JSON.stringify(paprikaJson('Recipe A'))),
       gzip(JSON.stringify(paprikaJson('Recipe B'))),
@@ -126,25 +140,30 @@ test.describe('Recipes bulk import — API', () => {
     expect(recipes.map((r) => r.title).sort()).toEqual(['Recipe A', 'Recipe B']);
   });
 
-  test('one unreadable file does not stop its siblings importing', async ({ adminToken }) => {
-    // The whole point of reporting problems per item rather than throwing.
-    const good = await gzip(JSON.stringify(paprikaJson('Recipe A')));
-    const operation = await bulkImport(adminToken, {
-      format: 'paprika',
-      data: [Buffer.from('not a paprika file').toString('base64'), good.toString('base64')],
-      filenames: ['broken.paprikarecipe', 'good.paprikarecipe'],
-      dryRun: true,
-    });
+  test(
+    'one unreadable file does not stop its siblings importing',
+    { timeout: BULK_IMPORT_TIMEOUT_MS },
+    async () => {
+      // The whole point of reporting problems per item rather than throwing.
+      const good = await gzip(JSON.stringify(paprikaJson('Recipe A')));
+      const operation = await bulkImport(adminToken, {
+        format: 'paprika',
+        data: [Buffer.from('not a paprika file').toString('base64'), good.toString('base64')],
+        filenames: ['broken.paprikarecipe', 'good.paprikarecipe'],
+        dryRun: true,
+      });
 
-    expect(operation.response?.summary).toEqual({ total: 2, valid: 1, invalid: 1 });
-    const broken = operation.response?.items?.find((i) => i.errors.length > 0);
-    // The error names the file it came from — "1 of 2 failed" isn't actionable
-    // otherwise.
-    expect(broken?.errors[0]).toContain('broken.paprikarecipe');
-  });
+      expect(operation.response?.summary).toEqual({ total: 2, valid: 1, invalid: 1 });
+      const broken = operation.response?.items?.find((i) => i.errors.length > 0);
+      // The error names the file it came from — "1 of 2 failed" isn't actionable
+      // otherwise.
+      expect(broken?.errors[0]).toContain('broken.paprikarecipe');
+    },
+  );
 
-  test('advertises every format for discovery', async ({ request }) => {
-    const res = await request.get('/api/custom-methods');
+  test('advertises every format for discovery', async () => {
+    // Unauthenticated, like Playwright's `request` fixture.
+    const res = await fetch(`${getAppUrl()}/api/custom-methods`);
     const { methods } = (await res.json()) as {
       methods: Array<{
         plural: string;
@@ -165,52 +184,57 @@ test.describe('Recipes bulk import — API', () => {
   });
 });
 
-test.describe('Recipes bulk import — page', () => {
-  test.beforeEach(async ({ adminToken }) => {
-    await deleteAllRecipes(adminToken);
+describe('Recipes bulk import — page', () => {
+  let h: Harness;
+  let adminToken: string;
+
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: adminToken } = await h.loginAs(h.admin));
   });
 
-  test('imports pasted text through the standardized page', async ({
-    authenticatedAdminPage: authenticatedPage,
-    adminToken,
-  }) => {
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test('imports pasted text through the standardized page', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
+    const d = h.driver;
     // Import used to be a modal; it has its own route now, like every other app.
-    await authenticatedPage.goto('/recipes');
-    await authenticatedPage.getByTestId('import-recipe-button').click();
-    await authenticatedPage.waitForURL(/\/recipes\/import$/);
+    await d.goto('/recipes');
+    await d.getByTestId('import-recipe-button').click();
+    await d.waitForURL(/\/recipes\/import$/);
 
     // URL is the first format, so it's the one selected by default. Pick the
     // text importer explicitly — both accept text input, so without this the
     // pasted recipe would be handed to the URL importer.
-    await authenticatedPage.getByTestId('import-format-text').click();
-    await authenticatedPage.getByTestId('import-text-input').fill(RECIPE_TEXT);
-    await authenticatedPage.getByTestId('bulk-import-preview-button').click();
+    await d.getByTestId('import-format-text').click();
+    await d.getByTestId('import-text-input').fill(RECIPE_TEXT);
+    await d.getByTestId('bulk-import-preview-button').click();
 
     // Assert against the preview row, not the page: the pasted text is still
     // sitting in the textarea, so a bare getByText matches even on no preview.
-    await expect(
-      authenticatedPage
-        .getByTestId('recipe-import-preview-row')
-        .filter({ hasText: 'Bacon Wrapped Asparagus' }),
-    ).toBeVisible();
-    await authenticatedPage.getByTestId('import-button').click();
-    await authenticatedPage.waitForURL(/\/recipes$/);
+    await d
+      .expect(
+        d.getByTestId('recipe-import-preview-row').filter({ hasText: 'Bacon Wrapped Asparagus' }),
+      )
+      .toBeVisible();
+    await d.getByTestId('import-button').click();
+    await d.waitForURL(/\/recipes$/);
 
     const recipes = await listOrEmpty<RecipeRecord>(adminToken, 'recipes');
     expect(recipes.map((r) => r.title)).toEqual(['Bacon Wrapped Asparagus']);
   });
 
-  test('offers a format picker and switches to the Paprika file input', async ({
-    authenticatedAdminPage: authenticatedPage,
-  }) => {
-    await authenticatedPage.goto('/recipes/import');
+  test('offers a format picker and switches to the Paprika file input', async () => {
+    const d = h.driver;
+    await d.goto('/recipes/import');
 
     // The picker is built from the server's format list, not client code.
-    await expect(authenticatedPage.getByTestId('import-format-text')).toBeVisible();
-    await expect(authenticatedPage.getByTestId('import-text-input')).toBeVisible();
+    await d.expect(d.getByTestId('import-format-text')).toBeVisible();
+    await d.expect(d.getByTestId('import-text-input')).toBeVisible();
 
-    await authenticatedPage.getByTestId('import-format-paprika').click();
-    await expect(authenticatedPage.getByTestId('bulk-import-file-input')).toBeAttached();
-    await expect(authenticatedPage.getByTestId('import-text-input')).toHaveCount(0);
+    await d.getByTestId('import-format-paprika').click();
+    await d.expect(d.getByTestId('bulk-import-file-input')).toBeAttached();
+    await d.expect(d.getByTestId('import-text-input')).toHaveCount(0);
   });
 });

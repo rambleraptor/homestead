@@ -3,7 +3,7 @@
  * sample data the recipes specs use.
  */
 
-import { deleteIfPresent, e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
+import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 
 export interface RecipeIngredientInput {
   item: string;
@@ -56,13 +56,6 @@ export async function createRecipe(
     servings: data.servings,
     tags: data.tags,
   });
-}
-
-export async function deleteAllRecipes(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('recipes').listAll();
-  for (const item of items) {
-    await deleteIfPresent(token, 'recipes', item.id, { force: true });
-  }
 }
 
 export const testRecipes = [

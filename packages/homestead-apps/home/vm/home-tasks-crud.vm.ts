@@ -1,30 +1,38 @@
 /**
- * Home E2E Tests — upkeep reminder CRUD.
+ * Home upkeep reminder CRUD, on the VM tier.
  *
- * `home-task` is household-wide, so each test clears the whole collection in
- * `beforeEach` rather than relying on per-user scoping.
+ * A port of the Playwright home-tasks-crud spec. Each test boots from a fresh
+ * database, so the household-wide `home-task` collection starts empty and there
+ * is no cleanup to do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { HomePage } from './HomePage';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { HomePage } from '../e2e/HomePage';
 import {
   createHomeTask,
-  deleteAllHomeTasks,
   getHomeTask,
   isoDaysFromToday,
   listHomeTasks,
   testHomeTasks,
-} from './helpers';
+} from '../e2e/helpers';
 
-test.describe('Home upkeep CRUD', () => {
+describe('Home upkeep CRUD', () => {
+  let h: Harness;
   let homePage: HomePage;
+  let userToken: string;
 
   // Seeding happens BEFORE the single per-test navigation: each test's page
   // navigates exactly once, after its API setup, so the UI renders the seeded
   // state without a reload.
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    homePage = new HomePage(authenticatedPage);
-    await deleteAllHomeTasks(userToken);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    homePage = new HomePage(h.driver);
+  });
+
+  afterEach(async () => {
+    await h.close();
   });
 
   test('shows the empty state with no upkeep scheduled', async () => {
@@ -32,7 +40,7 @@ test.describe('Home upkeep CRUD', () => {
     await homePage.expectEmptyState();
   });
 
-  test('creates a reminder with a cadence and notes', async ({ userToken }) => {
+  test('creates a reminder with a cadence and notes', async () => {
     await homePage.goto();
     await homePage.createTask({
       name: 'Replace furnace filter',
@@ -56,7 +64,7 @@ test.describe('Home upkeep CRUD', () => {
     });
   });
 
-  test('lists seeded tasks and flags the overdue one', async ({ userToken }) => {
+  test('lists seeded tasks and flags the overdue one', async () => {
     for (const seed of testHomeTasks) await createHomeTask(userToken, seed);
 
     await homePage.goto();
@@ -66,7 +74,7 @@ test.describe('Home upkeep CRUD', () => {
     await homePage.expectUrgency('Clean gutters', /overdue/i);
   });
 
-  test('edits a reminder’s notes', async ({ userToken }) => {
+  test('edits a reminder’s notes', async () => {
     const task = await createHomeTask(userToken, testHomeTasks[0]);
 
     await homePage.goto();
@@ -78,7 +86,7 @@ test.describe('Home upkeep CRUD', () => {
       .toBe('16x25x1, MERV 13');
   });
 
-  test('marking one done rolls it forward by one interval', async ({ userToken }) => {
+  test('marking one done rolls it forward by one interval', async () => {
     const task = await createHomeTask(userToken, {
       name: 'Test smoke alarms',
       interval_count: 6,
@@ -98,7 +106,7 @@ test.describe('Home upkeep CRUD', () => {
     expect(rolled.next_due > isoDaysFromToday(0)).toBe(true);
   });
 
-  test('pauses a reminder without losing its schedule', async ({ userToken }) => {
+  test('pauses a reminder without losing its schedule', async () => {
     const task = await createHomeTask(userToken, testHomeTasks[1]);
 
     await homePage.goto();
@@ -110,7 +118,7 @@ test.describe('Home upkeep CRUD', () => {
       .toBe(true);
   });
 
-  test('deletes a reminder', async ({ userToken }) => {
+  test('deletes a reminder', async () => {
     const task = await createHomeTask(userToken, testHomeTasks[0]);
 
     await homePage.goto();

@@ -1,26 +1,30 @@
 /**
- * Home E2E Tests — the Devices section and the low-battery reminder loop.
+ * Home devices, on the VM tier — the Devices section and the low-battery
+ * reminder loop.
  *
- * `device-info` is household-wide, so each test clears the whole collection
- * (and any charge todos) in `beforeEach` rather than relying on per-user scoping.
+ * A port of the Playwright home-devices spec. Each test boots from a fresh
+ * database, so the household-wide `device-info` collection starts empty and
+ * there is no cleanup to do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { HomePage } from './HomePage';
-import {
-  createDevice,
-  deleteAllDevices,
-  getDevice,
-  listChargeTodos,
-  reportDevice,
-} from './helpers';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { HomePage } from '../e2e/HomePage';
+import { createDevice, getDevice, listChargeTodos, reportDevice } from '../e2e/helpers';
 
-test.describe('Home devices', () => {
+describe('Home devices', () => {
+  let h: Harness;
   let homePage: HomePage;
+  let userToken: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    homePage = new HomePage(authenticatedPage);
-    await deleteAllDevices(userToken);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    homePage = new HomePage(h.driver);
+  });
+
+  afterEach(async () => {
+    await h.close();
   });
 
   test('shows the empty state before any device reports', async () => {
@@ -28,7 +32,7 @@ test.describe('Home devices', () => {
     await homePage.expectNoDevices();
   });
 
-  test('lists a reporting device with its charge', async ({ userToken }) => {
+  test('lists a reporting device with its charge', async () => {
     await createDevice(userToken, 'fridge-panel', { name: 'Fridge panel', battery_percent: 64 });
 
     await homePage.goto();
@@ -37,7 +41,7 @@ test.describe('Home devices', () => {
     await homePage.expectBattery('Fridge panel', '64%');
   });
 
-  test('changes a device threshold', async ({ userToken }) => {
+  test('changes a device threshold', async () => {
     await createDevice(userToken, 'fridge-panel', { name: 'Fridge panel', battery_percent: 64 });
 
     await homePage.goto();
@@ -48,7 +52,7 @@ test.describe('Home devices', () => {
       .toBe(30);
   });
 
-  test('forgets a device', async ({ userToken }) => {
+  test('forgets a device', async () => {
     await createDevice(userToken, 'fridge-panel', { name: 'Fridge panel', battery_percent: 64 });
 
     await homePage.goto();
@@ -57,9 +61,7 @@ test.describe('Home devices', () => {
     await homePage.expectDeviceNotInList('Fridge panel');
   });
 
-  test('a low battery raises one charge todo, closed again on recharge', async ({
-    userToken,
-  }) => {
+  test('a low battery raises one charge todo, closed again on recharge', async () => {
     await createDevice(userToken, 'fridge-panel', { name: 'Fridge panel', battery_percent: 50 });
     await reportDevice(userToken, 'fridge-panel', { battery_percent: 15 });
 

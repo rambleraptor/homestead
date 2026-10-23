@@ -1,7 +1,8 @@
 /**
- * Recipes app — view-detail E2E tests
+ * Recipes view detail, on the VM tier.
  *
- * Covers the read-only "cooking mode" page at `/recipes/{id}`:
+ * A port of the Playwright recipes-view spec. Covers the read-only "cooking
+ * mode" page at `/recipes/{id}`:
  *  - rendering a recipe seeded via REST (title, ingredients, steps,
  *    method notes, prep/cook/serving meta)
  *  - navigating from the list card into the view
@@ -9,15 +10,14 @@
  *  - ingredient sections (`group`) rendered under their own headings
  *  - cook mode: checking off ingredients and marking the current step
  *
- * Mirrors the CRUD spec's worker model: all data ops run with
- * `adminToken`, and UI interactions go through `authenticatedAdminPage`
- * so the Recipes app is visible regardless of the `enabled` flag.
+ * Runs as the superuser, so the Recipes app is visible regardless of the
+ * `enabled` flag. Each test boots from a fresh database.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { resetAppFlags } from '../../../../tests/e2e/utils/aepbase-helpers';
-import { RecipesPage } from './RecipesPage';
-import { createRecipe, deleteAllRecipes } from './helpers';
+import { afterEach, beforeEach, describe, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { RecipesPage } from '../e2e/RecipesPage';
+import { createRecipe } from '../e2e/helpers';
 
 const richRecipe = {
   title: 'Roast Chicken',
@@ -39,21 +39,22 @@ const richRecipe = {
   tags: ['dinner', 'poultry'],
 };
 
-test.describe('Recipes view', () => {
+describe('Recipes view', () => {
+  let h: Harness;
   let recipesPage: RecipesPage;
+  let adminToken: string;
 
-  test.beforeEach(async ({ adminToken, authenticatedAdminPage }) => {
-    await resetAppFlags(adminToken);
-    await deleteAllRecipes(adminToken);
-    recipesPage = new RecipesPage(authenticatedAdminPage);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: adminToken } = await h.loginAs(h.admin));
+    recipesPage = new RecipesPage(h.driver);
   });
 
-  test.afterEach(async ({ adminToken }) => {
-    await deleteAllRecipes(adminToken);
-    await resetAppFlags(adminToken);
+  afterEach(async () => {
+    await h.close();
   });
 
-  test('renders a seeded recipe at /recipes/{id}', async ({ adminToken }) => {
+  test('renders a seeded recipe at /recipes/{id}', async () => {
     const created = await createRecipe(adminToken, richRecipe);
 
     await recipesPage.gotoRecipe(created.id);
@@ -74,9 +75,7 @@ test.describe('Recipes view', () => {
     await recipesPage.expectRecipeViewMethod(richRecipe.method);
   });
 
-  test('navigates from the list card into the recipe view', async ({
-    adminToken,
-  }) => {
+  test('navigates from the list card into the recipe view', async () => {
     const created = await createRecipe(adminToken, richRecipe);
 
     await recipesPage.goto();
@@ -88,10 +87,7 @@ test.describe('Recipes view', () => {
     await recipesPage.expectRecipeViewTitle(richRecipe.title);
   });
 
-  test('"Back to recipes" returns to the list from the view', async ({
-    adminToken,
-    authenticatedAdminPage,
-  }) => {
+  test('"Back to recipes" returns to the list from the view', async () => {
     const created = await createRecipe(adminToken, richRecipe);
 
     await recipesPage.gotoRecipe(created.id);
@@ -99,11 +95,11 @@ test.describe('Recipes view', () => {
 
     await recipesPage.clickBackToRecipes();
 
-    await expect(authenticatedAdminPage).toHaveURL(/\/recipes$/);
+    await h.driver.expectURL(/\/recipes$/);
     await recipesPage.expectRecipeInList(richRecipe.title);
   });
 
-  test('renders ingredient sections under their own headings', async ({ adminToken }) => {
+  test('renders ingredient sections under their own headings', async () => {
     const created = await createRecipe(adminToken, {
       ...richRecipe,
       parsed_ingredients: [
@@ -126,7 +122,7 @@ test.describe('Recipes view', () => {
     await recipesPage.expectRecipeViewIngredientGroup('For the gravy', ['chicken stock', 'flour']);
   });
 
-  test('cook mode checks off ingredients and marks the current step', async ({ adminToken }) => {
+  test('cook mode checks off ingredients and marks the current step', async () => {
     const created = await createRecipe(adminToken, richRecipe);
 
     await recipesPage.gotoRecipe(created.id);

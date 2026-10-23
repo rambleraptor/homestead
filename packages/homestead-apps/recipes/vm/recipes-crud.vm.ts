@@ -1,21 +1,18 @@
 /**
- * Recipes app E2E tests
+ * Recipes CRUD, on the VM tier.
  *
- * Covers CRUD on /recipes. Sidebar visibility is no longer an app-level
- * flag — it's governed by the permission system — so there are no
- * visibility-gate tests here anymore.
- *
- * All data operations use `adminToken` (the persistent superuser session
- * loaded once per worker). Earlier runs that used a per-test `userToken`
- * hit intermittent 401s — the regular test user is torn down between
- * tests and its token can race against in-flight requests. The admin
- * token survives the whole run, which mirrors the flag-management spec.
+ * A port of the Playwright recipes-crud spec (which ran as the bootstrap
+ * superuser): same page object and seed helpers, but the SPA runs in happy-dom
+ * against the server's in-process fetch handler. Each test boots from a fresh
+ * copy of the template database, so there is no cleanup (and no flag reset) to
+ * do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { e2eClient, listOrEmpty, resetAppFlags } from '../../../../tests/e2e/utils/aepbase-helpers';
-import { RecipesPage } from './RecipesPage';
-import { createRecipe, deleteAllRecipes, testRecipes } from './helpers';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { e2eClient, listOrEmpty } from '../../../../tests/e2e/utils/aepbase-helpers';
+import { RecipesPage } from '../e2e/RecipesPage';
+import { createRecipe, testRecipes } from '../e2e/helpers';
 
 interface RecipeRecord {
   id: string;
@@ -24,27 +21,27 @@ interface RecipeRecord {
   tags?: string[];
 }
 
-test.describe('Recipes CRUD', () => {
+describe('Recipes CRUD', () => {
+  let h: Harness;
   let recipesPage: RecipesPage;
+  let adminToken: string;
 
-  test.beforeEach(async ({ adminToken, authenticatedAdminPage }) => {
-    await resetAppFlags(adminToken);
-    await deleteAllRecipes(adminToken);
-
-    recipesPage = new RecipesPage(authenticatedAdminPage);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: adminToken } = await h.loginAs(h.admin));
+    recipesPage = new RecipesPage(h.driver);
     await recipesPage.goto();
   });
 
-  test.afterEach(async ({ adminToken }) => {
-    await deleteAllRecipes(adminToken);
-    await resetAppFlags(adminToken);
+  afterEach(async () => {
+    await h.close();
   });
 
   test('shows the empty state when no recipes exist', async () => {
     await recipesPage.expectEmptyState();
   });
 
-  test('creates a new recipe via the UI', async ({ adminToken }) => {
+  test('creates a new recipe via the UI', async () => {
     const recipe = testRecipes[0];
     await recipesPage.createRecipe({
       title: recipe.title,
@@ -61,12 +58,10 @@ test.describe('Recipes CRUD', () => {
     const created = all.find((r) => r.title === recipe.title);
     expect(created).toBeDefined();
     expect(created?.parsed_ingredients).toHaveLength(recipe.parsed_ingredients.length);
-    expect(created?.parsed_ingredients[0].item).toBe(
-      recipe.parsed_ingredients[0].item,
-    );
+    expect(created?.parsed_ingredients[0].item).toBe(recipe.parsed_ingredients[0].item);
   });
 
-  test('edits an existing recipe', async ({ adminToken }) => {
+  test('edits an existing recipe', async () => {
     const seed = testRecipes[0];
     const created = await createRecipe(adminToken, {
       title: seed.title,
@@ -89,7 +84,7 @@ test.describe('Recipes CRUD', () => {
     expect(updated.title).toBe(newTitle);
   });
 
-  test('deletes a recipe', async ({ adminToken }) => {
+  test('deletes a recipe', async () => {
     const seed = testRecipes[1];
     await createRecipe(adminToken, {
       title: seed.title,
