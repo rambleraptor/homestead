@@ -1,16 +1,15 @@
 /**
- * People E2E Tests - Multiple Addresses
+ * People Multiple Addresses, on the VM tier.
+ *
+ * A port of ../e2e/people-multiple-addresses.spec.ts. Each test boots from a
+ * fresh copy of the template database, so there is no cleanup to do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { e2eClient, listOrEmpty } from '../../../../tests/e2e/utils/aepbase-helpers';
-import { PeoplePage } from './PeoplePage';
-import {
-  createPerson,
-  deleteAllPeople,
-  getPersonSharedData,
-} from './helpers';
-import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
+import { PeoplePage } from '../e2e/PeoplePage';
+import { createPerson, getPersonSharedData } from '../e2e/helpers';
 
 interface AddressRecord {
   id: string;
@@ -18,16 +17,24 @@ interface AddressRecord {
   shared_data_id?: string;
 }
 
-test.describe('People Multiple Addresses', () => {
+describe('People Multiple Addresses', () => {
+  let h: Harness;
   let peoplePage: PeoplePage;
+  let userToken: string;
+  let userId: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    peoplePage = new PeoplePage(authenticatedPage);
-    await deleteAllPeople(userToken);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken, id: userId } = await h.loginAs(h.member));
+    peoplePage = new PeoplePage(h.driver);
     await peoplePage.goto();
   });
 
-  test('should add a second address to an existing person', async ({ authenticatedPage, userToken, userId }) => {
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test('should add a second address to an existing person', async () => {
     const person = await createPerson(userToken, {
       name: 'John Doe',
       address: '123 Main St',
@@ -37,23 +44,23 @@ test.describe('People Multiple Addresses', () => {
     await peoplePage.goto();
     await peoplePage.expectPersonInList('John Doe');
 
-    const editButton = authenticatedPage.getByRole('button', { name: 'Edit John Doe' }).first();
+    const editButton = h.driver.getByRole('button', { name: 'Edit John Doe' }).first();
     await editButton.waitFor({ state: 'visible' });
     await editButton.click();
-    await authenticatedPage.locator('#name').waitFor({ state: 'visible' });
+    await h.driver.locator('#name').waitFor({ state: 'visible' });
 
-    const addAddressButton = authenticatedPage.getByRole('button', { name: /add address/i });
+    const addAddressButton = h.driver.getByRole('button', { name: /add address/i });
     await addAddressButton.waitFor({ state: 'visible' });
     await addAddressButton.click();
 
-    const secondAddressInput = authenticatedPage.locator('#address-1-line1');
+    const secondAddressInput = h.driver.locator('#address-1-line1');
     await secondAddressInput.waitFor({ state: 'visible' });
     await secondAddressInput.fill('456 Oak Ave');
 
-    const submitButton = authenticatedPage.getByTestId('person-form-submit');
+    const submitButton = h.driver.getByTestId('person-form-submit');
     await submitButton.click();
     await submitButton.waitFor({ state: 'hidden' });
-    await waitForNetworkIdle(authenticatedPage);
+    await h.driver.waitForNetworkIdle();
 
     const sharedData = await getPersonSharedData(userToken, person.id);
     expect(sharedData).not.toBeNull();
@@ -75,28 +82,28 @@ test.describe('People Multiple Addresses', () => {
     expect(additionalAddresses[0].shared_data_id).toBe(sharedData.id);
 
     await peoplePage.expectPersonInList('John Doe');
-    const editButton2 = authenticatedPage.getByRole('button', { name: 'Edit John Doe' }).first();
+    const editButton2 = h.driver.getByRole('button', { name: 'Edit John Doe' }).first();
     await editButton2.click();
-    await authenticatedPage.locator('#name').waitFor({ state: 'visible' });
+    await h.driver.locator('#name').waitFor({ state: 'visible' });
 
-    await expect(authenticatedPage.locator('#address-0-line1')).toHaveValue('123 Main St');
-    await expect(authenticatedPage.locator('#address-1-line1')).toHaveValue('456 Oak Ave');
+    await h.driver.expect(h.driver.locator('#address-0-line1')).toHaveValue('123 Main St');
+    await h.driver.expect(h.driver.locator('#address-1-line1')).toHaveValue('456 Oak Ave');
   });
 
-  test('should create a person with multiple addresses from the start', async ({ authenticatedPage, userToken }) => {
+  test('should create a person with multiple addresses from the start', async () => {
     await peoplePage.clickAddPerson();
 
-    await authenticatedPage.locator('#name').fill('Jane Smith');
+    await h.driver.locator('#name').fill('Jane Smith');
 
-    const addAddressButton = authenticatedPage.getByRole('button', { name: /add address/i });
+    const addAddressButton = h.driver.getByRole('button', { name: /add address/i });
     await addAddressButton.click();
-    await authenticatedPage.locator('#address-0-line1').fill('789 Pine Blvd');
+    await h.driver.locator('#address-0-line1').fill('789 Pine Blvd');
 
     await addAddressButton.click();
-    await authenticatedPage.locator('#address-1-line1').fill('321 Elm Dr');
+    await h.driver.locator('#address-1-line1').fill('321 Elm Dr');
 
     await peoplePage.submitPersonForm();
-    await waitForNetworkIdle(authenticatedPage);
+    await h.driver.waitForNetworkIdle();
 
     const people = await listOrEmpty<{ id: string; name: string }>(userToken, 'people');
     const jane = people.find((p) => p.name === 'Jane Smith');
@@ -120,7 +127,7 @@ test.describe('People Multiple Addresses', () => {
     expect(additionalAddresses[0].line1).toBe('321 Elm Dr');
   });
 
-  test('should remove a second address', async ({ authenticatedPage, userToken, userId }) => {
+  test('should remove a second address', async () => {
     const person = await createPerson(userToken, {
       name: 'Bob Jones',
       address: '111 First St',
@@ -138,18 +145,18 @@ test.describe('People Multiple Addresses', () => {
 
     await peoplePage.goto();
 
-    const editButton = authenticatedPage.getByRole('button', { name: 'Edit Bob Jones' }).first();
+    const editButton = h.driver.getByRole('button', { name: 'Edit Bob Jones' }).first();
     await editButton.click();
-    await authenticatedPage.locator('#name').waitFor({ state: 'visible' });
+    await h.driver.locator('#name').waitFor({ state: 'visible' });
 
-    await expect(authenticatedPage.locator('#address-0-line1')).toHaveValue('111 First St');
-    await expect(authenticatedPage.locator('#address-1-line1')).toHaveValue('222 Second St');
+    await h.driver.expect(h.driver.locator('#address-0-line1')).toHaveValue('111 First St');
+    await h.driver.expect(h.driver.locator('#address-1-line1')).toHaveValue('222 Second St');
 
-    const removeButton = authenticatedPage.getByRole('button', { name: /remove address 2/i });
+    const removeButton = h.driver.getByRole('button', { name: /remove address 2/i });
     await removeButton.click();
 
     await peoplePage.submitPersonForm();
-    await waitForNetworkIdle(authenticatedPage);
+    await h.driver.waitForNetworkIdle();
 
     const allAddresses = await listOrEmpty<AddressRecord>(userToken, 'addresses');
     void allAddresses.find((a) => a.id === secondAddress.id);

@@ -1,30 +1,34 @@
 /**
- * Events app E2E — CRUD via the UI plus backend assertions.
+ * Events CRUD, on the VM tier.
+ *
+ * A port of ../e2e/events-crud.spec.ts: CRUD via the UI plus backend
+ * assertions. Each test boots from a fresh copy of the template database, so
+ * there is no cleanup to do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { EventsPage } from './EventsPage';
-import { createEvent, deleteAllEvents, listEvents } from './helpers';
-import {
-  createPerson,
-  deleteAllPeople,
-  deleteAllPersonSharedData,
-} from '../../people/e2e/helpers';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { EventsPage } from '../e2e/EventsPage';
+import { createEvent, listEvents } from '../e2e/helpers';
+import { createPerson } from '../../people/e2e/helpers';
 
-test.describe('Events CRUD', () => {
+describe('Events CRUD', () => {
+  let h: Harness;
   let eventsPage: EventsPage;
+  let userToken: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    eventsPage = new EventsPage(authenticatedPage);
-    await deleteAllEvents(userToken);
-    await deleteAllPersonSharedData(userToken);
-    await deleteAllPeople(userToken);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    eventsPage = new EventsPage(h.driver);
     await eventsPage.goto();
   });
 
-  test('creates a new event with a tag and a tagged person', async ({
-    userToken,
-  }) => {
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test('creates a new event with a tag and a tagged person', async () => {
     const alice = await createPerson(userToken, { name: 'Alice' });
 
     await eventsPage.goto();
@@ -46,7 +50,7 @@ test.describe('Events CRUD', () => {
     });
   });
 
-  test('edits an existing event', async ({ userToken }) => {
+  test('edits an existing event', async () => {
     const original = await createEvent(userToken, {
       name: 'Test Event',
       date: '1990-06-20',
@@ -69,7 +73,7 @@ test.describe('Events CRUD', () => {
     expect(updated?.day).toBe(21);
   });
 
-  test('deletes an event', async ({ userToken }) => {
+  test('deletes an event', async () => {
     await createEvent(userToken, {
       name: 'Doomed Event',
       date: '1990-06-20',
@@ -84,9 +88,7 @@ test.describe('Events CRUD', () => {
     expect(remaining.find((e) => e.name === 'Doomed Event')).toBeUndefined();
   });
 
-  test('creates a yearly Nth-weekday event (2nd Sunday of May)', async ({
-    userToken,
-  }) => {
+  test('creates a yearly Nth-weekday event (2nd Sunday of May)', async () => {
     // 2026-05-10 is the 2nd Sunday of May 2026 — pre-fills the rule.
     await eventsPage.goto();
     await eventsPage.createEvent({
@@ -104,7 +106,7 @@ test.describe('Events CRUD', () => {
     expect(created!.recurrence_rule).toBe('2:0');
   });
 
-  test('filters events by name and by tag', async ({ userToken }) => {
+  test('filters events by name and by tag', async () => {
     await createEvent(userToken, {
       name: 'Alice Birthday',
       date: '1990-06-20',
@@ -133,9 +135,7 @@ test.describe('Events CRUD', () => {
     await eventsPage.expectEventNotInList('Alice Birthday');
   });
 
-  test('tags multiple people on an anniversary event', async ({
-    userToken,
-  }) => {
+  test('tags multiple people on an anniversary event', async () => {
     const alice = await createPerson(userToken, { name: 'Alice' });
     const bob = await createPerson(userToken, { name: 'Bob' });
 

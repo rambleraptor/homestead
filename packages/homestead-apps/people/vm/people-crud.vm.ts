@@ -1,27 +1,33 @@
 /**
- * People E2E Tests - CRUD Operations
+ * People CRUD, on the VM tier.
+ *
+ * A port of ../e2e/people-crud.spec.ts: same page object and seed helpers,
+ * but the SPA runs in happy-dom against the server's in-process fetch handler.
+ * Each test boots from a fresh copy of the template database, so there is no
+ * cleanup to do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
-import { PeoplePage } from './PeoplePage';
-import {
-  createPerson,
-  deleteAllPeople,
-  getPersonSharedData,
-  testPeople,
-} from './helpers';
+import { PeoplePage } from '../e2e/PeoplePage';
+import { createPerson, getPersonSharedData, testPeople } from '../e2e/helpers';
 
-test.describe('People CRUD', () => {
+describe('People CRUD', () => {
+  let h: Harness;
   let peoplePage: PeoplePage;
+  let userToken: string;
+  let userId: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    peoplePage = new PeoplePage(authenticatedPage);
-
-    // Clean up any existing people
-    await deleteAllPeople(userToken);
-
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken, id: userId } = await h.loginAs(h.member));
+    peoplePage = new PeoplePage(h.driver);
     await peoplePage.goto();
+  });
+
+  afterEach(async () => {
+    await h.close();
   });
 
   test('should create a new person', async () => {
@@ -35,7 +41,7 @@ test.describe('People CRUD', () => {
     await peoplePage.expectPersonInList(personData.name);
   });
 
-  test('should edit an existing person', async ({ userToken, userId }) => {
+  test('should edit an existing person', async () => {
     const created = await createPerson(userToken, {
       name: 'Original Name',
       address: '123 Old St',
@@ -66,7 +72,7 @@ test.describe('People CRUD', () => {
     await peoplePage.expectPersonNotInList('Original Name');
   });
 
-  test('should delete a person', async ({ userToken }) => {
+  test('should delete a person', async () => {
     await createPerson(userToken, {
       name: 'Person to Delete',
     });
