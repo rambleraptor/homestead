@@ -1,17 +1,27 @@
 /**
- * Bridge E2E Tests — drives the quick-entry UI end-to-end. Bridge
- * persists hands in localStorage, so the POM clears it before each
- * navigation.
+ * Bridge CRUD, on the VM tier.
+ *
+ * A port of ../e2e/bridge-crud.spec.ts — drives the quick-entry UI end to
+ * end. Bridge persists hands in localStorage, which every fresh boot starts
+ * without.
  */
 
-import { test } from '../../../../../tests/e2e/fixtures/aepbase.fixture';
-import { BridgePage } from './BridgePage';
+import { afterEach, beforeEach, describe, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { BridgePage } from '../e2e/BridgePage';
 
-test.describe('Bridge CRUD', () => {
+describe('Bridge CRUD', () => {
+  let h: Harness;
   let bridgePage: BridgePage;
 
-  test.beforeEach(async ({ authenticatedPage }) => {
-    bridgePage = new BridgePage(authenticatedPage);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    await h.loginAs(h.member);
+    bridgePage = new BridgePage(h.driver);
+  });
+
+  afterEach(async () => {
+    await h.close();
   });
 
   test('enters a hand through the UI and shows every direction on the list', async () => {
@@ -61,7 +71,7 @@ test.describe('Bridge CRUD', () => {
     await bridgePage.expectFirstCardBoard('Board 9');
   });
 
-  test('shows only the selected board\'s hands', async () => {
+  test("shows only the selected board's hands", async () => {
     await bridgePage.goto();
 
     // One hand on board 3...

@@ -1,36 +1,33 @@
 /**
- * Minigolf E2E Tests — full happy-path.
+ * Minigolf CRUD, on the VM tier — full happy-path.
  *
- * Seeds 2 players via aepbase, then plays a short game through the UI
- * using the ScoreStepper controls, confirms winner, confirms the game
- * appears in the list.
+ * A port of ../e2e/minigolf-crud.spec.ts: seeds 2 players via aepbase, then
+ * plays a short game through the UI using the ScoreStepper controls, confirms
+ * winner, confirms the game appears in the list.
  */
 
-import { test, expect } from '../../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { listOrEmpty } from '../../../../../tests/e2e/utils/aepbase-helpers';
-import { MinigolfPage } from './MinigolfPage';
-import { deleteAllGames } from './helpers';
-import {
-  createPerson,
-  deleteAllPeople,
-  deleteAllPersonSharedData,
-} from '../../../people/e2e/helpers';
+import { MinigolfPage } from '../e2e/MinigolfPage';
+import { createPerson } from '../../../people/e2e/helpers';
 
-test.describe('Minigolf CRUD', () => {
+describe('Minigolf CRUD', () => {
+  let h: Harness;
   let minigolfPage: MinigolfPage;
+  let userToken: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    minigolfPage = new MinigolfPage(authenticatedPage);
-
-    // Clean slate — games first (children of none), then people + shared data.
-    await deleteAllGames(userToken);
-    await deleteAllPersonSharedData(userToken);
-    await deleteAllPeople(userToken);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    minigolfPage = new MinigolfPage(h.driver);
   });
 
-  test('plays a 2-hole game, declares a winner, and lists it', async ({
-    userToken,
-  }) => {
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test('plays a 2-hole game, declares a winner, and lists it', async () => {
     // Seed two players via API (fast path).
     const alice = await createPerson(userToken, { name: 'Alice Stroker' });
     const bob = await createPerson(userToken, { name: 'Bob Putts' });
@@ -79,7 +76,7 @@ test.describe('Minigolf CRUD', () => {
     await minigolfPage.expectGameInList();
   });
 
-  test('records ties as multiple winners', async ({ userToken }) => {
+  test('records ties as multiple winners', async () => {
     const alice = await createPerson(userToken, { name: 'Alice Tie' });
     const bob = await createPerson(userToken, { name: 'Bob Tie' });
 

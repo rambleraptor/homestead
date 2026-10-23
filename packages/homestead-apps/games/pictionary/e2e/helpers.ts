@@ -3,7 +3,7 @@
  * REST API.
  */
 
-import { deleteIfPresent, e2eClient } from '../../../../../tests/e2e/utils/aepbase-helpers';
+import { e2eClient } from '../../../../../tests/e2e/utils/aepbase-helpers';
 
 export interface CreatePictionaryTeamInput {
   players: string[];
@@ -65,9 +65,3 @@ export async function createPictionaryGame(
   return { game, teams };
 }
 
-export async function deleteAllPictionaryGames(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('pictionary-games').listAll();
-  for (const item of items) {
-    await deleteIfPresent(token, 'pictionary-games', item.id, { force: true });
-  }
-}

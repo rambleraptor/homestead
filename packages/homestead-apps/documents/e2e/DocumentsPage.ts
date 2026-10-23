@@ -5,75 +5,69 @@
  * showing just name + type) and a document's detail page (its parsed fields,
  * full text, and the edit form). A row is located by its title, since that's
  * what a user reads; fields and status are asserted on `data-testid`s.
+ *
+ * Written against the shared `Driver`, so it runs on the VM tier (`../vm/`)
+ * and, via `playwrightDriver(page)`, in Playwright. Drawing a redaction box
+ * needs real layout and a mouse, so that step lives in redaction.spec.ts.
  */
 
-import { Page, Locator, expect } from '@playwright/test';
+import type { Driver, Locator } from '../../../homestead-test-harness/driver/Driver';
 
 export class DocumentsPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto(): Promise<void> {
-    await this.page.goto('/documents');
+    await this.driver.goto('/documents');
   }
 
   /** Upload a file via the real (hidden) input the dropzone button drives. */
   async uploadFile(name: string, mimeType: string, contents: string): Promise<void> {
-    await this.page
+    await this.driver
       .getByTestId('document-file-input')
-      .setInputFiles({ name, mimeType, buffer: Buffer.from(contents) });
+      .setInputFiles({ name, mimeType, buffer: new TextEncoder().encode(contents) });
   }
 
   // --- Redaction ------------------------------------------------------------
 
   /** Choose a file for the "Redact & upload" path; opens the redaction editor. */
-  async pickRedactFile(name: string, mimeType: string, buffer: Buffer): Promise<void> {
-    await this.page
+  async pickRedactFile(name: string, mimeType: string, buffer: Uint8Array): Promise<void> {
+    await this.driver
       .getByTestId('document-redact-input')
       .setInputFiles({ name, mimeType, buffer });
   }
 
   redactionEditor(): Locator {
-    return this.page.getByTestId('redaction-editor');
+    return this.driver.getByTestId('redaction-editor');
   }
 
   redactionSurface(): Locator {
-    return this.page.getByTestId('redaction-surface');
+    return this.driver.getByTestId('redaction-surface');
   }
 
   redactionRects(): Locator {
-    return this.page.getByTestId('redaction-rect');
-  }
-
-  /** Drag a rectangle across the middle of the page to redact a region. */
-  async drawRedaction(): Promise<void> {
-    const box = await this.redactionSurface().boundingBox();
-    if (!box) throw new Error('redaction surface has no bounding box');
-    const x1 = box.x + box.width * 0.25;
-    const y1 = box.y + box.height * 0.25;
-    const x2 = box.x + box.width * 0.7;
-    const y2 = box.y + box.height * 0.6;
-    await this.page.mouse.move(x1, y1);
-    await this.page.mouse.down();
-    await this.page.mouse.move(x2, y2, { steps: 8 });
-    await this.page.mouse.up();
+    return this.driver.getByTestId('redaction-rect');
   }
 
   async confirmRedaction(): Promise<void> {
-    await this.page.getByTestId('redaction-confirm').click();
+    await this.driver.getByTestId('redaction-confirm').click();
   }
 
   // --- Index rows -----------------------------------------------------------
 
   /** The row whose title matches, regardless of its position in the list. */
   card(title: string): Locator {
-    return this.page
+    return this.driver
       .getByTestId('document-card')
-      .filter({ has: this.page.getByTestId('document-title').filter({ hasText: title }) });
+      .filter({ has: this.driver.getByTestId('document-title').filter({ hasText: title }) });
   }
 
   /** The single row, when a test has created exactly one document. */
   onlyCard(): Locator {
-    return this.page.getByTestId('document-card');
+    return this.driver.getByTestId('document-card');
   }
 
   /** The row's parse badge — present only while reading, or after it failed. */
@@ -102,40 +96,40 @@ export class DocumentsPage {
 
 
   async expectEmpty(): Promise<void> {
-    await expect(this.page.getByTestId('documents-empty')).toBeVisible();
+    await this.expect(this.driver.getByTestId('documents-empty')).toBeVisible();
   }
 
   // --- Index filters --------------------------------------------------------
 
   /** Type into the free-text search box. */
   async search(text: string): Promise<void> {
-    await this.page.getByTestId('document-search').fill(text);
+    await this.driver.getByTestId('document-search').fill(text);
   }
 
   /** Select a document type by its visible label (e.g. "Form 1099-INT"). */
   async filterByType(label: string): Promise<void> {
-    await this.page.getByTestId('document-type-filter').selectOption({ label });
+    await this.driver.getByTestId('document-type-filter').selectOption({ label });
   }
 
   /** Select a person by name. */
   async filterByPerson(name: string): Promise<void> {
-    await this.page.getByTestId('document-person-filter').selectOption({ label: name });
+    await this.driver.getByTestId('document-person-filter').selectOption({ label: name });
   }
 
   /** Reset every filter via the Clear button. */
   async clearFilters(): Promise<void> {
-    await this.page.getByTestId('document-filters-clear').click();
+    await this.driver.getByTestId('document-filters-clear').click();
   }
 
   /** The "no documents match your filters" placeholder. */
   noMatches(): Locator {
-    return this.page.getByTestId('documents-no-matches');
+    return this.driver.getByTestId('documents-no-matches');
   }
 
   // --- Detail page ----------------------------------------------------------
 
   detail(): Locator {
-    return this.page.getByTestId('document-detail');
+    return this.driver.getByTestId('document-detail');
   }
 
   detailType(): Locator {
@@ -156,14 +150,14 @@ export class DocumentsPage {
   }
 
   async setTitle(title: string): Promise<void> {
-    await this.page.getByTestId('document-edit-title').fill(title);
+    await this.driver.getByTestId('document-edit-title').fill(title);
   }
 
   editField(fieldName: string): Locator {
-    return this.page.getByTestId(`document-edit-field-${fieldName}`).locator('input');
+    return this.driver.getByTestId(`document-edit-field-${fieldName}`).locator('input');
   }
 
   async save(): Promise<void> {
-    await this.page.getByTestId('document-edit-save').click();
+    await this.driver.getByTestId('document-edit-save').click();
   }
 }

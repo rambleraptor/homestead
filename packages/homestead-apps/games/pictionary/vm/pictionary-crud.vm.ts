@@ -1,33 +1,34 @@
 /**
- * Pictionary E2E Tests — create / list / delete a game with teams.
+ * Pictionary CRUD, on the VM tier — create / list / delete a game with teams.
  *
- * Players are seeded via aepbase REST (fast path) so the UI test only
- * exercises the game form and the list view.
+ * A port of ../e2e/pictionary-crud.spec.ts. Players are seeded via aepbase
+ * REST (fast path) so the UI test only exercises the game form and the list
+ * view.
  */
 
-import { test, expect } from '../../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { listOrEmpty } from '../../../../../tests/e2e/utils/aepbase-helpers';
-import { PictionaryPage } from './PictionaryPage';
-import { createPictionaryGame, deleteAllPictionaryGames } from './helpers';
-import {
-  createPerson,
-  deleteAllPeople,
-  deleteAllPersonSharedData,
-} from '../../../people/e2e/helpers';
+import { PictionaryPage } from '../e2e/PictionaryPage';
+import { createPictionaryGame } from '../e2e/helpers';
+import { createPerson } from '../../../people/e2e/helpers';
 
-test.describe('Pictionary CRUD', () => {
+describe('Pictionary CRUD', () => {
+  let h: Harness;
   let pictionaryPage: PictionaryPage;
+  let userToken: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    pictionaryPage = new PictionaryPage(authenticatedPage);
-    await deleteAllPictionaryGames(userToken);
-    await deleteAllPersonSharedData(userToken);
-    await deleteAllPeople(userToken);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    pictionaryPage = new PictionaryPage(h.driver);
   });
 
-  test('creates a 2-team game with a winning word and lists it', async ({
-    userToken,
-  }) => {
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test('creates a 2-team game with a winning word and lists it', async () => {
     const alice = await createPerson(userToken, { name: 'Alice Drawer' });
     const bob = await createPerson(userToken, { name: 'Bob Sketcher' });
     const carol = await createPerson(userToken, { name: 'Carol Doodle' });
@@ -75,7 +76,7 @@ test.describe('Pictionary CRUD', () => {
     expect(teams.filter((t) => t.won === true)).toHaveLength(1);
   });
 
-  test('shows the winning team on the detail page', async ({ userToken }) => {
+  test('shows the winning team on the detail page', async () => {
     const alice = await createPerson(userToken, { name: 'Alice Win' });
     const bob = await createPerson(userToken, { name: 'Bob Win' });
 
@@ -94,7 +95,7 @@ test.describe('Pictionary CRUD', () => {
     await pictionaryPage.expectWinningWord('Bite the bullet');
   });
 
-  test('deletes a game and removes it from the list', async ({ userToken }) => {
+  test('deletes a game and removes it from the list', async () => {
     const alice = await createPerson(userToken, { name: 'Alice Del' });
     const bob = await createPerson(userToken, { name: 'Bob Del' });
 

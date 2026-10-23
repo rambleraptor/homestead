@@ -36,9 +36,3 @@ export async function createGame(
   });
 }
 
-export async function deleteAllGames(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('games').listAll();
-  for (const item of items) {
-    await deleteIfPresent(token, 'games', item.id, { force: true });
-  }
-}

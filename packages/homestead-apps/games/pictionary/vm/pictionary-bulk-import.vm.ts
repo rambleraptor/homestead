@@ -1,5 +1,6 @@
 /**
- * Pictionary bulk import E2E.
+ * Pictionary bulk import, on the VM tier — a port of
+ * ../e2e/pictionary-bulk-import.spec.ts (API-only; the server runs in-process).
  *
  * The framework's hardest case: one CSV row becomes a game *plus* a team child
  * per populated team column, and player names must resolve against the People
@@ -7,14 +8,10 @@
  * disagree about who exists.
  */
 
-import { test, expect } from '../../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { e2eClient, listOrEmpty, postCustomMethod } from '../../../../../tests/e2e/utils/aepbase-helpers';
-import { deleteAllPictionaryGames } from './helpers';
-import {
-  createPerson,
-  deleteAllPeople,
-  deleteAllPersonSharedData,
-} from '../../../people/e2e/helpers';
+import { createPerson } from '../../../people/e2e/helpers';
 
 interface GameRow {
   id: string;
@@ -61,20 +58,20 @@ async function bulkImport(
   return e2eClient(token).collection<OperationRow>('operations').get(id);
 }
 
-test.describe('Pictionary bulk import', () => {
-  test.beforeEach(async ({ userToken }) => {
-    await deleteAllPictionaryGames(userToken);
-    await deleteAllPersonSharedData(userToken);
-    await deleteAllPeople(userToken);
+describe('Pictionary bulk import', () => {
+  let h: Harness;
+  let userToken: string;
+
+  beforeEach(async () => {
+    h = await bootHomestead();
+    userToken = h.member.token;
   });
 
-  test.afterEach(async ({ userToken }) => {
-    await deleteAllPictionaryGames(userToken);
-    await deleteAllPersonSharedData(userToken);
-    await deleteAllPeople(userToken);
+  afterEach(async () => {
+    await h.close();
   });
 
-  test('one row becomes a game plus its team children', async ({ userToken }) => {
+  test('one row becomes a game plus its team children', async () => {
     await Promise.all(
       ['Alice', 'Bob', 'Charlie', 'Dave'].map((name) => createPerson(userToken, { name })),
     );
@@ -107,9 +104,7 @@ test.describe('Pictionary bulk import', () => {
     expect(byRank[1].won).toBe(true);
   });
 
-  test('reports unknown players at preview time, before anything is written', async ({
-    userToken,
-  }) => {
+  test('reports unknown players at preview time, before anything is written', async () => {
     await createPerson(userToken, { name: 'Alice' });
 
     const csv = [HEADER, '2026-04-25,,,,"Alice,Nobody","Alice",1', ''].join('\n');
@@ -124,9 +119,7 @@ test.describe('Pictionary bulk import', () => {
     expect(await listOrEmpty<GameRow>(userToken, 'pictionary-games')).toHaveLength(0);
   });
 
-  test('rejects a row whose winner names a team the row has no players for', async ({
-    userToken,
-  }) => {
+  test('rejects a row whose winner names a team the row has no players for', async () => {
     await Promise.all(['Alice', 'Bob'].map((name) => createPerson(userToken, { name })));
 
     // `winner: 3` is a legal position, but this file has no team_3 column.
@@ -143,7 +136,7 @@ test.describe('Pictionary bulk import', () => {
     );
   });
 
-  test('rejects a winner position outside the six team columns', async ({ userToken }) => {
+  test('rejects a winner position outside the six team columns', async () => {
     await Promise.all(['Alice', 'Bob'].map((name) => createPerson(userToken, { name })));
 
     const csv = [HEADER, '2026-04-25,,,,"Alice","Bob",9', ''].join('\n');

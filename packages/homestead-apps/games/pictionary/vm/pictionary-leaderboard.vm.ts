@@ -1,27 +1,29 @@
 /**
- * Pictionary Leaderboard E2E tests.
+ * Pictionary Leaderboard tests, on the VM tier.
  *
- * Seeds games via aepbase REST and verifies that the leaderboard ranks
- * both players and teams.
+ * A port of ../e2e/pictionary-leaderboard.spec.ts. Seeds games via aepbase
+ * REST and verifies that the leaderboard ranks both players and teams.
  */
 
-import { test, expect } from '../../../../../tests/e2e/fixtures/aepbase.fixture';
-import { PictionaryPage } from './PictionaryPage';
-import { createPictionaryGame, deleteAllPictionaryGames } from './helpers';
-import {
-  createPerson,
-  deleteAllPeople,
-  deleteAllPersonSharedData,
-} from '../../../people/e2e/helpers';
+import { afterEach, beforeEach, describe, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { PictionaryPage } from '../e2e/PictionaryPage';
+import { createPictionaryGame } from '../e2e/helpers';
+import { createPerson } from '../../../people/e2e/helpers';
 
-test.describe('Pictionary Leaderboard', () => {
+describe('Pictionary Leaderboard', () => {
+  let h: Harness;
   let pictionaryPage: PictionaryPage;
+  let userToken: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    pictionaryPage = new PictionaryPage(authenticatedPage);
-    await deleteAllPictionaryGames(userToken);
-    await deleteAllPersonSharedData(userToken);
-    await deleteAllPeople(userToken);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    pictionaryPage = new PictionaryPage(h.driver);
+  });
+
+  afterEach(async () => {
+    await h.close();
   });
 
   test('shows the empty state when no games have been played', async () => {
@@ -30,9 +32,7 @@ test.describe('Pictionary Leaderboard', () => {
     await pictionaryPage.expectLeaderboardEmpty();
   });
 
-  test('ranks players by wins across multiple games', async ({
-    userToken,
-  }) => {
+  test('ranks players by wins across multiple games', async () => {
     const alice = await createPerson(userToken, { name: 'Alice Lead' });
     const bob = await createPerson(userToken, { name: 'Bob Lead' });
     const carol = await createPerson(userToken, { name: 'Carol Lead' });
@@ -72,19 +72,17 @@ test.describe('Pictionary Leaderboard', () => {
     const bobRow = pictionaryPage.leaderboardRow(bob.id);
     const carolRow = pictionaryPage.leaderboardRow(carol.id);
 
-    await expect(aliceRow).toBeVisible();
-    await expect(bobRow).toBeVisible();
-    await expect(carolRow).toBeVisible();
+    await h.driver.expect(aliceRow).toBeVisible();
+    await h.driver.expect(bobRow).toBeVisible();
+    await h.driver.expect(carolRow).toBeVisible();
 
-    await expect(aliceRow).toContainText('Alice Lead');
-    await expect(aliceRow).toContainText('2 wins');
-    await expect(bobRow).toContainText('1 win');
-    await expect(carolRow).toContainText('0 wins');
+    await h.driver.expect(aliceRow).toContainText('Alice Lead');
+    await h.driver.expect(aliceRow).toContainText('2 wins');
+    await h.driver.expect(bobRow).toContainText('1 win');
+    await h.driver.expect(carolRow).toContainText('0 wins');
   });
 
-  test('switches to team mode and ranks teams by their roster', async ({
-    userToken,
-  }) => {
+  test('switches to team mode and ranks teams by their roster', async () => {
     const alice = await createPerson(userToken, { name: 'Alice T' });
     const bob = await createPerson(userToken, { name: 'Bob T' });
     const carol = await createPerson(userToken, { name: 'Carol T' });
@@ -118,14 +116,14 @@ test.describe('Pictionary Leaderboard', () => {
     const winningTeamRow = pictionaryPage.leaderboardRow(sortedAb);
     const losingTeamRow = pictionaryPage.leaderboardRow(sortedCd);
 
-    await expect(winningTeamRow).toBeVisible();
-    await expect(winningTeamRow).toContainText('Alice T');
-    await expect(winningTeamRow).toContainText('Bob T');
-    await expect(winningTeamRow).toContainText('2 wins');
-    await expect(winningTeamRow).toContainText('2 games');
+    await h.driver.expect(winningTeamRow).toBeVisible();
+    await h.driver.expect(winningTeamRow).toContainText('Alice T');
+    await h.driver.expect(winningTeamRow).toContainText('Bob T');
+    await h.driver.expect(winningTeamRow).toContainText('2 wins');
+    await h.driver.expect(winningTeamRow).toContainText('2 games');
 
-    await expect(losingTeamRow).toBeVisible();
-    await expect(losingTeamRow).toContainText('0 wins');
-    await expect(losingTeamRow).toContainText('2 games');
+    await h.driver.expect(losingTeamRow).toBeVisible();
+    await h.driver.expect(losingTeamRow).toContainText('0 wins');
+    await h.driver.expect(losingTeamRow).toContainText('2 games');
   });
 });
