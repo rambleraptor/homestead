@@ -1,12 +1,10 @@
 /**
- * End-to-end permission enforcement, against the real server. Enforcement is
- * unconditional, so this runs as part of the default suite (the grant cache is
- * disabled in global-setup, so a create/delete is seen on the next request).
+ * Permission enforcement, on the VM tier.
  *
- * This is the "does enforcement break anything?" gate. It drives the real HTTP
- * API — enforcement lives in the engine, not the UI — with three real
- * principals: two regular users (alice, bob) and the bootstrap superuser
- * (admin). It proves three things end-to-end:
+ * A port of tests/e2e/tests/permissions/enforcement.spec.ts. Enforcement lives
+ * in the engine, not the UI, so this drives the real HTTP API (the server's
+ * in-process fetch handler) with three real principals: two regular users
+ * (alice, bob) and the bootstrap superuser (admin). It proves three things:
  *
  *   1. The Member role (`all`-scope write, conferred by the seeded Members
  *      group that `createUser` joins) gives a regular user full CRUD over a
@@ -18,20 +16,20 @@
  *   3. Break-glass: the superuser account is never locked out, even by a deny
  *      that targets everyone.
  *
- * Grants are cleaned up after each test so one case can't leak into the next
- * (the grant cache is disabled in this run, so a create/delete is seen on the
- * next request).
+ * Each test boots from a fresh database (and the grant cache is off in the VM
+ * config), so there are no grants or rows to clean up.
  */
 
-import { test, expect } from '../../fixtures/aepbase.fixture';
-import { getAepbaseUrl, readAdminCreds } from '../../config/aepbase.setup';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { getAepbaseUrl } from '../e2e/config/aepbase.setup';
 import {
   deleteIfPresent,
   e2eClient,
   listOrEmpty,
   createUser,
   type UserRecord,
-} from '../../utils/aepbase-helpers';
+} from '../e2e/utils/aepbase-helpers';
 
 const TODOS = 'todos';
 const ACCESS_GRANTS = 'access-grants';
@@ -64,41 +62,28 @@ async function getStatus(token: string, path: string): Promise<number> {
   return res.status;
 }
 
-test.describe('permission enforcement', () => {
+describe('permission enforcement', () => {
+  let h: Harness;
   let adminToken: string;
-  const created: { plural: string; id: string }[] = [];
-  const createdUsers: string[] = [];
-  const createdGrants: string[] = [];
 
-  test.beforeAll(async () => {
-    adminToken = (await readAdminCreds()).token;
+  beforeEach(async () => {
+    h = await bootHomestead();
+    adminToken = h.admin.token;
   });
 
-  test.afterEach(async () => {
-    // Grants first (a deny left in place would break the next test), then rows.
-    for (const id of createdGrants.splice(0)) {
-      await deleteIfPresent(adminToken, ACCESS_GRANTS, id);
-    }
-    for (const { plural, id } of created.splice(0)) {
-      await deleteIfPresent(adminToken, plural, id);
-    }
-    for (const id of createdUsers.splice(0)) {
-      await deleteIfPresent(adminToken, 'users', id, { force: true });
-    }
+  afterEach(async () => {
+    await h.close();
   });
 
   async function makeUser(label: string): Promise<{ user: UserRecord; token: string }> {
     const email = `perm-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
     const password = 'perm-e2e-password';
     const user = await createUser(adminToken, { email, password, display_name: label });
-    createdUsers.push(user.id);
     return { user, token: await login(email, password) };
   }
 
   async function makeTodo(token: string, title: string): Promise<Todo> {
-    const todo = await e2eClient(token).collection<Todo>(TODOS).create({ title, status: 'pending' });
-    created.push({ plural: TODOS, id: todo.id });
-    return todo;
+    return e2eClient(token).collection<Todo>(TODOS).create({ title, status: 'pending' });
   }
 
   test('the Member role gives a regular user full CRUD', async () => {
@@ -144,7 +129,6 @@ test.describe('permission enforcement', () => {
       capability: 'read',
       effect: 'deny',
     });
-    createdGrants.push(deny.id);
 
     // Deny wins: Bob is blocked (403 on the record, empty list)...
     expect(await getStatus(bob.token, `/${TODOS}/${todo.id}`)).toBe(403);
@@ -154,7 +138,6 @@ test.describe('permission enforcement', () => {
 
     // Lift the deny → Bob reads again.
     await deleteIfPresent(adminToken, ACCESS_GRANTS, deny.id);
-    createdGrants.splice(createdGrants.indexOf(deny.id), 1);
     expect(await getStatus(bob.token, `/${TODOS}/${todo.id}`)).toBe(200);
   });
 
@@ -163,14 +146,13 @@ test.describe('permission enforcement', () => {
     const todo = await makeTodo(alice.token, 'admin can still see me');
 
     // Deny *everyone* read on the todo collection.
-    const deny = await e2eClient(adminToken).collection<Grant>(ACCESS_GRANTS).create({
+    await e2eClient(adminToken).collection<Grant>(ACCESS_GRANTS).create({
       subject_type: 'everyone',
       target_scope: 'collection',
       resource_type: 'todo',
       capability: 'read',
       effect: 'deny',
     });
-    createdGrants.push(deny.id);
 
     // Alice (regular) is blocked; the superuser breaks glass.
     expect(await getStatus(alice.token, `/${TODOS}/${todo.id}`)).toBe(403);

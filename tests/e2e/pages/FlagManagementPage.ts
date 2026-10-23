@@ -3,40 +3,47 @@
  *
  * Drives the superuser-only /superuser/flag-management surface that
  * lists every declared app flag and lets an operator flip values.
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`tests/vm/`).
  */
 
-import { Page, expect } from '@playwright/test';
+import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class FlagManagementPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/superuser/flag-management');
+    await this.driver.goto('/superuser/flag-management');
   }
 
   async expectToBeOnFlagManagementPage() {
-    await expect(this.page).toHaveURL(/\/superuser\/flag-management$/);
-    await expect(
-      this.page.getByRole('heading', { name: 'Flag Management', level: 1 }),
+    await this.driver.expectURL(/\/superuser\/flag-management$/);
+    await this.expect(
+      this.driver.getByRole('heading', { name: 'Flag Management', level: 1 }),
     ).toBeVisible();
   }
 
   async expectAppSectionVisible(appId: string) {
-    await expect(this.page.getByTestId(`flag-app-${appId}`)).toBeVisible();
+    await this.expect(this.driver.getByTestId(`flag-app-${appId}`)).toBeVisible();
   }
 
   async expectFlagDescriptionVisible(description: string) {
-    await expect(this.page.getByText(description).first()).toBeVisible();
+    await this.expect(this.driver.getByText(description).first()).toBeVisible();
   }
 
   async selectEnumFlag(appId: string, key: string, value: string) {
-    const control = this.page.getByTestId(`flag-${appId}-${key}`);
+    const control = this.driver.getByTestId(`flag-${appId}-${key}`);
     await control.waitFor({ state: 'visible' });
     await control.selectOption(value);
   }
 
   async expectEnumFlagValue(appId: string, key: string, value: string) {
-    const control = this.page.getByTestId(`flag-${appId}-${key}`);
-    await expect(control).toHaveValue(value);
+    const control = this.driver.getByTestId(`flag-${appId}-${key}`);
+    await this.expect(control).toHaveValue(value);
   }
 }

@@ -1,33 +1,40 @@
 /**
  * Settings Page Object Model
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`tests/vm/`).
  */
 
-import { Page, expect } from '@playwright/test';
+import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class SettingsPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/settings');
+    await this.driver.goto('/settings');
   }
 
   async expectToBeOnSettingsPage() {
-    await expect(this.page).toHaveURL(/\/settings/);
+    await this.driver.expectURL(/\/settings/);
   }
 
   async changePassword(currentPassword: string, newPassword: string, confirmPassword?: string) {
-    await this.page.getByLabel(/current password|old password/i).fill(currentPassword);
-    await this.page.getByLabel(/^new password/i).fill(newPassword);
-    await this.page.getByLabel(/confirm password|confirm new password/i).fill(confirmPassword || newPassword);
-    await this.page.getByRole('button', { name: /change password|update password/i }).click();
+    await this.driver.getByLabel(/current password|old password/i).fill(currentPassword);
+    await this.driver.getByLabel(/^new password/i).fill(newPassword);
+    await this.driver.getByLabel(/confirm password|confirm new password/i).fill(confirmPassword || newPassword);
+    await this.driver.getByRole('button', { name: /change password|update password/i }).click();
   }
 
   async expectPasswordChangeSuccess() {
     // Sonner toast with success message
     // Toasts typically appear with data attributes like [data-sonner-toast]
     // and contain the success text "Password changed successfully"
-    const successToast = this.page.getByText(/password.*changed.*successfully/i);
-    await expect(successToast).toBeVisible({ timeout: 5000 });
+    const successToast = this.driver.getByText(/password.*changed.*successfully/i);
+    await this.expect(successToast).toBeVisible({ timeout: 5000 });
   }
 
   async expectPasswordChangeError(message?: string | RegExp) {
@@ -37,12 +44,12 @@ export class SettingsPage {
 
     if (message) {
       // Look for text matching the error message pattern
-      const errorText = this.page.getByText(message).first();
-      await expect(errorText).toBeVisible({ timeout: 5000 });
+      const errorText = this.driver.getByText(message).first();
+      await this.expect(errorText).toBeVisible({ timeout: 5000 });
     } else {
       // Look for any error indicator
-      const errorElement = this.page.locator('.text-red-600, [data-type="error"]').first();
-      await expect(errorElement).toBeVisible({ timeout: 5000 });
+      const errorElement = this.driver.locator('.text-red-600, [data-type="error"]').first();
+      await this.expect(errorElement).toBeVisible({ timeout: 5000 });
     }
   }
 
@@ -53,9 +60,9 @@ export class SettingsPage {
    * navigation, which matters after a credential rotation.
    */
   async expectSessionStillAuthenticates() {
-    await this.page.getByTestId('settings-tab-connections').click();
-    await expect(this.page.getByTestId('settings-connections')).toBeVisible();
-    await expect(this.page.getByRole('heading', { name: /personal access tokens/i })).toBeVisible({
+    await this.driver.getByTestId('settings-tab-connections').click();
+    await this.expect(this.driver.getByTestId('settings-connections')).toBeVisible();
+    await this.expect(this.driver.getByRole('heading', { name: /personal access tokens/i })).toBeVisible({
       timeout: 10000,
     });
   }
@@ -65,16 +72,16 @@ export class SettingsPage {
    * back a fresh session for this tab, so the page stays signed in.
    */
   async signOutEverywhere() {
-    await this.page.getByTestId('sign-out-everywhere').click();
+    await this.driver.getByTestId('sign-out-everywhere').click();
     // The confirm dialog's own button carries the same label.
-    await this.page
+    await this.driver
       .getByRole('button', { name: /^sign out everywhere$/i })
       .last()
       .click();
   }
 
   async expectSignOutEverywhereSuccess() {
-    await expect(this.page.getByText(/signed out on all other devices/i)).toBeVisible({
+    await this.expect(this.driver.getByText(/signed out on all other devices/i)).toBeVisible({
       timeout: 5000,
     });
   }
@@ -85,22 +92,19 @@ export class SettingsPage {
    * section of the Settings page.
    */
   async selectMapProvider(provider: 'google' | 'apple') {
-    const select = this.page.getByTestId('user-setting-people-map_provider');
+    const select = this.driver.getByTestId('user-setting-people-map_provider');
     // The change handler persists the value to the user's `preferences`
     // record. Wait for that write to land so a subsequent reload reads the
     // saved value rather than racing the in-flight save.
-    const saved = this.page.waitForResponse(
-      (r) =>
-        /\/preferences(\/|\?|$)/.test(r.url()) &&
-        ['POST', 'PATCH'].includes(r.request().method()) &&
-        r.ok(),
+    const saved = this.driver.waitForResponse(
+      (r) => /\/preferences(\/|\?|$)/.test(r.url) && ['POST', 'PATCH'].includes(r.method) && r.ok,
     );
     await select.selectOption(provider);
     await saved;
   }
 
   async expectMapProvider(provider: 'google' | 'apple') {
-    const select = this.page.getByTestId('user-setting-people-map_provider');
-    await expect(select).toHaveValue(provider);
+    const select = this.driver.getByTestId('user-setting-people-map_provider');
+    await this.expect(select).toHaveValue(provider);
   }
 }
