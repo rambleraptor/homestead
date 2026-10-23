@@ -1,0 +1,21 @@
+{
+  "name": "@rambleraptor/homestead-test-harness",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "In-process VM test tier: the real SPA in happy-dom, served by the real server's fetch handler, no browser or sockets.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rambleraptor/homestead-core": "^0.2.0",
+    "@rambleraptor/homestead-server": "^0.2.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/user-event": "^14.6.1"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.14.6",
+    "vitest": "^4.0.15"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "extends": "../homestead-apps/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../homestead-app/src/*"],
+      "@homestead/config": ["../../homestead.config.ts"]
+    },
+    "types": ["node"],
+    "incremental": false
+  },
+  "include": [
+    "**/*.ts",
+    "../homestead-app/src/vite-env.d.ts",
+    "../homestead-apps/**/vm/**/*.ts",
+    "../../tests/vm/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
