@@ -2,10 +2,11 @@
  * On-disk cache for the VM template database, so a run with no relevant code
  * changes skips the schema sync and account setup entirely.
  *
- * The key is deliberately broad: the path, size and mtime of every source file
+ * The key is deliberately broad: the path and contents of every source file
  * that could shape the database — server, core and app code, the config, the
  * lockfile, and this harness — plus HOMESTEAD_APPS_DIRS. Any edit to any of
- * them is a miss. Spec, e2e and unit-test files are left out, so editing a
+ * them is a miss. Contents rather than mtimes, so a fresh checkout (CI, a
+ * branch switch) still hits when nothing actually changed. Spec, e2e and unit-test files are left out, so editing a
  * spec keeps the cache. A stale hit would hand every test the wrong schema,
  * so when in doubt this rebuilds. HOMESTEAD_VM_NO_TEMPLATE_CACHE=1 turns the
  * cache off.
@@ -43,7 +44,8 @@ async function collect(path: string, out: string[]): Promise<void> {
     return;
   }
   if (info.isFile()) {
-    out.push(`${relative(REPO_ROOT, path)}\0${info.size}\0${info.mtimeMs}`);
+    const digest = createHash('sha256').update(await readFile(path)).digest('hex');
+    out.push(`${relative(REPO_ROOT, path)}\0${digest}`);
     return;
   }
   if (!info.isDirectory()) return;

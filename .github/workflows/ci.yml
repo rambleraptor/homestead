@@ -57,9 +57,6 @@ jobs:
       - name: Run server + CLI tests under Node
         run: make test-node
 
-      - name: Run VM-tier tests (SPA in happy-dom against the in-process server)
-        run: make test-vm
-
       - name: CI Summary
         if: success()
         run: |
@@ -68,3 +65,43 @@ jobs:
           echo "🔀 Branch: ${{ github.ref_name }}"
           echo ""
           echo "Your server can now pull this commit and deploy automatically."
+
+  # The VM tier (the real SPA in happy-dom against the in-process server) runs
+  # in parallel with the checks above rather than after them.
+  vm-tests:
+    runs-on: ubuntu-latest
+    name: VM Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # node:sqlite (the server runs under Node here) needs >= 22.13
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: make install
+
+      # Warm-start caches, restored after install so npm leaves them alone.
+      # All three validate their own contents (the template db is keyed on the
+      # sources it was built from, Vitest's caches on file contents), so the
+      # newest entry is always safe to restore.
+      - name: Restore VM test caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.cache/homestead-vm
+            node_modules/.experimental-vitest-cache
+            node_modules/.vite
+          key: vm-tests-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            vm-tests-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            vm-tests-${{ runner.os }}-
+
+      - name: Run VM-tier tests
+        run: make test-vm
