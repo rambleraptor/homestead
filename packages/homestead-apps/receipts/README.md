@@ -154,5 +154,5 @@ up `data/` as a whole — the SQLite database and the blobs belong together.
 
 ```bash
 make test                                    # unit
-cd tests/e2e && npm run test:receipts        # both tabs, end to end
+make test-vm                                 # both tabs, end to end (VM tier)
 ```

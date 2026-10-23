@@ -1,13 +1,13 @@
 ---
 name: create-app
-description: Scaffold a new Homestead feature app end-to-end — TypeScript resource definition(s), aepbase collection constants, the app package directory (types, hooks, components, config, tests), `homestead.config.ts` wiring, and e2e Page Object + CRUD spec. Use when the user asks to "create an app", "add a new app", "scaffold a feature", or to "wire up <feature> end-to-end".
+description: Scaffold a new Homestead feature app end-to-end — TypeScript resource definition(s), aepbase collection constants, the app package directory (types, hooks, components, config, tests), `homestead.config.ts` wiring, and a Page Object + VM-tier CRUD spec. Use when the user asks to "create an app", "add a new app", "scaffold a feature", or to "wire up <feature> end-to-end".
 ---
 
 # Create a Homestead App
 
 Homestead features are self-contained apps. Adding one touches (at minimum)
 a per-app `resources.ts` declaring the aepbase schema, the app package
-directory, `homestead.config.ts`, and the e2e tests. Routes are wired
+directory, `homestead.config.ts`, and the UI flow tests. Routes are wired
 by declaring `component` inside `app.config.ts` — there are no per-route
 Next.js page files. This skill walks through every step so nothing gets
 skipped.
@@ -128,7 +128,8 @@ packages/homestead-apps/<app-id>/
 ├── components/               # React UI components
 ├── hooks/                    # TanStack Query hooks, one per operation
 ├── __tests__/                # Vitest tests colocated per the CLAUDE.md rule
-├── e2e/                      # Playwright POM + specs + seed helpers (see step 8)
+├── e2e/                      # Driver POM + seed helpers (see step 8)
+├── vm/                       # VM-tier specs (see step 8)
 ├── types.ts                  # TypeScript interfaces
 ├── resources.ts              # ResourceDefinition[]
 ├── app.config.ts          # AppConfig config object
@@ -241,36 +242,40 @@ in `CLAUDE.md` → "Testing Guidelines":
 - Test hooks and components separately.
 - Avoid snapshot tests for anything richer than pure text.
 
-### 8. Add e2e coverage (Playwright)
+### 8. Add UI flow coverage (VM tier)
 
-E2E artifacts live next to the app they cover, under `e2e/`. Cross-
-cutting plumbing (the aepbase fixture, generic REST primitives, the
-`testUsers` fixture, core POMs like `LoginPage`/`DashboardPage`) stays
-under `tests/e2e/`.
+Specs for the app's flows run on the VM tier (see CLAUDE.md, "VM tests"):
+the real SPA in happy-dom against the real server, in-process. Page objects
+and seed helpers live under the app's `e2e/`, specs under its `vm/`.
+Cross-cutting plumbing (the `Driver`, `bootHomestead()`, the shared client,
+core POMs like `LoginPage`/`DashboardPage`) lives in
+`packages/homestead-test-harness/` and `tests/e2e/`.
 
 1. Ensure the components you just built have `data-testid` on primary
    buttons/inputs (required by CLAUDE.md).
 2. Create the Page Object at
-   `packages/homestead-apps/<app-id>/e2e/<App>Page.ts`. POMs
-   contain interactions only — no assertions, no `console.log`.
-3. Add aepbase seed helpers (`create<Thing>`, `deleteAll<Things>`, any
-   `test<Thing>` data fixtures) to
+   `packages/homestead-apps/<app-id>/e2e/<App>Page.ts`, written against
+   the `Driver` (`constructor(readonly driver: Driver)`, importing the type
+   from `../../../homestead-test-harness/driver/Driver`; see
+   `gift-cards/e2e/GiftCardsPage.ts`). POMs contain interactions only — no
+   assertions beyond `expect…` helpers, no `console.log`.
+3. Add seed helpers (`create<Thing>`, any `test<Thing>` data fixtures) to
    `packages/homestead-apps/<app-id>/e2e/helpers.ts`. Build them on the
    shared client via `e2eClient(token)` from
    `../../../../tests/e2e/utils/aepbase-helpers` (one more `..` if your app
    is nested under `games/`) — e.g.
-   `e2eClient(token).collection('<plural>').create(body)`, and
-   `deleteIfPresent(token, '<plural>', id)` in cleanup loops. Seeding via
-   the client is 10-100× faster than driving the UI.
+   `e2eClient(token).collection('<plural>').create(body)`. Seeding via the
+   client is 10-100× faster than driving the UI.
 4. Create the spec at
-   `packages/homestead-apps/<app-id>/e2e/<app-id>-crud.spec.ts`.
-   Each test gets its own user (see existing fixtures) and cleans its own
-   data in `beforeEach`. Import the Playwright fixture from
-   `../../../../tests/e2e/fixtures/aepbase.fixture` and your helpers/POM
-   from `./helpers` / `./<App>Page`.
-5. Playwright auto-discovers the spec via `testMatch` in
-   `tests/e2e/playwright.config.ts` — no config edit required.
-6. Smoke-run: `cd tests/e2e && npm run test -- packages/homestead-apps/<app-id>/e2e/`.
+   `packages/homestead-apps/<app-id>/vm/<app-id>-crud.vm.ts` (see
+   `gift-cards/vm/gift-card-crud.vm.ts`): `h = await bootHomestead()` and
+   `await h.loginAs(h.member)` in `beforeEach`, `await h.close()` in
+   `afterEach`. Each test starts from a fresh database, so there is no
+   cleanup.
+5. Smoke-run: `cd packages/homestead-test-harness && npx vitest run packages/homestead-apps/<app-id>/vm`.
+6. Only a flow that needs a real browser (offline, request interception,
+   canvas/media, layout) gets a Playwright spec under the app's `e2e/`
+   (`<name>.spec.ts`, using `playwrightDriver(page)` with the same POM).
 
 ### 9. Run the full gate
 
@@ -278,8 +283,8 @@ under `tests/e2e/`.
 make ci && make test
 ```
 
-Per CLAUDE.md this is mandatory before pushing. Run `make test-e2e`
-separately when data paths change.
+Per CLAUDE.md this is mandatory before pushing, along with `make test-vm`.
+Run `make test-e2e` when the app has Playwright specs.
 
 ### 10. Heads-up on schema sync
 
@@ -318,8 +323,8 @@ Before marking the task complete, verify:
       `packages/homestead-app/scripts/generate-app-icons.ts`, and the PNG
       generated with `npm run icons:apps` (in `packages/homestead-app`).
 - [ ] Vitest tests added under `__tests__/`.
-- [ ] Playwright POM + CRUD spec + `helpers.ts` added under the
-      app's `e2e/`.
+- [ ] Driver POM + `helpers.ts` under the app's `e2e/`, and a CRUD spec
+      under its `vm/` passing `make test-vm`.
 - [ ] `make ci && make test` passes locally.
 - [ ] User reminded to restart the Next.js dev server so the schema sync
       runs, with destructive-change risks called out.
