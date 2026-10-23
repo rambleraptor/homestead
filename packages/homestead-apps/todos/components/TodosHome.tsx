@@ -25,6 +25,8 @@ import {
 } from '../types';
 import { AddTodoInput } from './AddTodoInput';
 import { TodoRow } from './TodoRow';
+import { useRecentRemoteChanges } from '@rambleraptor/homestead-core/api/remoteChanges';
+import { useTodoChangeToasts } from '../hooks/useTodoChangeToasts';
 import { CategoryManager } from './CategoryManager';
 import { CollapsibleSection } from './CollapsibleSection';
 import { ListSwitcher } from './ListSwitcher';
@@ -57,6 +59,8 @@ export function TodosHome() {
   const updatePersonal = useUpdatePersonalTodo();
   const deleteProject = useDeleteProject();
   const toast = useToast();
+  const recentChanges = useRecentRemoteChanges('todo');
+  useTodoChangeToasts();
 
   const isMain = scope === MAIN_PROJECT_ID;
   // Categories only exist inside a real project list.
@@ -182,6 +186,7 @@ export function TodosHome() {
     // Shown in every scope: a project list can hold private items too, so
     // "who can see this" is live information on every row, not just on main.
     kindMarker: todo.kind,
+    remoteChange: recentChanges.get(todo.id),
   });
 
   // Active todos grouped by category (project view with categories); the

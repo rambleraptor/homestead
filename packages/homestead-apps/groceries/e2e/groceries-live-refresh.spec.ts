@@ -82,4 +82,40 @@ test.describe('Groceries — cross-device refresh', () => {
       page.getByRole('checkbox', { name: /Mark Oat milk as unchecked/i }),
     ).toBeVisible({ timeout: 5_000 });
   });
+
+  test('a change by another household member is highlighted and announced by name', async ({
+    page,
+    authenticatedPage,
+    userToken,
+    householdMember,
+  }) => {
+    const item = await e2eClient(userToken)
+      .collection<GroceryItemRecord>('groceries')
+      .create({ name: 'Milk', checked: false });
+
+    const feedConnected = page.waitForResponse(
+      (res) => res.url().includes('/api/events') && res.ok(),
+    );
+    await authenticatedPage.goto('/groceries');
+    await expect(page.getByRole('checkbox', { name: /Mark Milk as checked/i })).toBeVisible();
+    await feedConnected;
+
+    const theirs = e2eClient(householdMember.token).collection<GroceryItemRecord>('groceries');
+    await theirs.record(item.id).update({ checked: true });
+
+    const row = page.getByTestId('grocery-item').filter({ hasText: 'Milk' });
+    await expect(page.getByRole('checkbox', { name: /Mark Milk as unchecked/i })).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(row.getByTestId('remote-change-badge')).toHaveText(
+      `Just changed by ${householdMember.name}`,
+    );
+    await expect(page.getByText(`${householdMember.name} checked off Milk`)).toBeVisible();
+
+    // The highlight is brief: it clears on its own.
+    await expect(row.getByTestId('remote-change-badge')).toBeHidden({ timeout: 10_000 });
+
+    await theirs.create({ name: 'Bread', checked: false });
+    await expect(page.getByText(`${householdMember.name} added Bread`)).toBeVisible();
+  });
 });

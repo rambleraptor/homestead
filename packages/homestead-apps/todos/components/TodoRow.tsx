@@ -2,6 +2,11 @@ import { Link } from 'react-router-dom';
 import { Check, Moon, Pin, PinOff, Undo2, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
+import type { RemoteChange } from '@rambleraptor/homestead-core/api/remoteChanges';
+import {
+  RemoteChangeBadge,
+  remoteChangeClass,
+} from '@rambleraptor/homestead-core/shared/components/RemoteChange';
 import { SwipeRow, type SwipeAction } from '@rambleraptor/homestead-core/shared/gestures';
 import { TODO_KIND_RAIL_BASE, TODO_KIND_STYLE } from '../kindStyles';
 import type { Todo, TodoItem, TodoKind, TodoStatus } from '../types';
@@ -46,6 +51,8 @@ interface TodoRowProps {
    * to the groceries page).
    */
   href?: string;
+  /** Someone else just changed this todo; the row lights up briefly. */
+  remoteChange?: RemoteChange;
 }
 
 interface ActionConfig {
@@ -152,6 +159,7 @@ export function TodoRow({
   pinnedFromLabel,
   href,
   kindMarker,
+  remoteChange,
 }: TodoRowProps) {
   const actions = readOnly ? [] : actionsForVariant(variant);
   const isCancelled = todo.status === 'cancelled';
@@ -197,6 +205,7 @@ export function TodoRow({
         data-testid={`todo-row-${todo.id}`}
         className={cn(
           'group relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-pearl',
+          remoteChangeClass(remoteChange),
         )}
       >
         {kindMarker && (
@@ -228,6 +237,7 @@ export function TodoRow({
         ) : (
           <span className={titleClassName}>{titleContent}</span>
         )}
+        <RemoteChangeBadge change={remoteChange} />
         <div className="flex items-center gap-1">
           {onTogglePin && !readOnly && (
             <button

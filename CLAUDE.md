@@ -602,7 +602,11 @@ decided pre-commit via the dispatcher's `beforeDelete`) — and keeps a replay
 buffer for `Last-Event-ID` resume. The SPA (`homestead-core/api/changeFeed.ts`)
 writes each event into the resource's cache slots (`resourceEvents.ts`; lists
 register their shape via `useResourceList`) and skips its own writes by the
-`X-Homestead-Client` origin tag.
+`X-Homestead-Client` origin tag. Apps react to other people's changes through
+the hooks in `homestead-core/api/remoteChanges.ts` (`useResourceEvents`,
+`useRecentRemoteChanges`, `useChangeToasts`, `useRemoteEdits`) and the shared
+`RemoteChangeBadge` / `RemoteEditNotice` UI; events carry the writer's
+`actor_name` so no user lookup is needed.
 
 Row-level security **is** modeled and enforced: per-collection and per-record
 access is governed by the grant-based ACL system (`access-grant` records +

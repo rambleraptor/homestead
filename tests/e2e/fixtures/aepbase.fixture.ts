@@ -9,6 +9,8 @@
  *    seeding user-scoped data)
  *  - `userId` — the test user's id
  *  - `authenticatedPage` — a logged-in Playwright page
+ *  - `householdMember` — a second member ("Sam") with their own token, for
+ *    specs about seeing someone else's changes; created only when requested
  *
  * Specs talk to aepbase through token+url pairs; see
  * `utils/aepbase-helpers.ts` for the CRUD helpers callers use.
@@ -18,6 +20,7 @@ import { test as base, Page } from '@playwright/test';
 import { getAepbaseUrl, readAdminCreds } from '../config/aepbase.setup';
 import { testUsers } from './test-data';
 import { trackNetwork } from '../utils/network';
+import { createUser, deleteIfPresent } from '../utils/aepbase-helpers';
 
 /**
  * The seeded role-bearing group every fixture user joins. Boot seeds
@@ -33,6 +36,12 @@ type TestUser = {
   name: string;
 };
 
+type HouseholdMember = {
+  id: string;
+  name: string;
+  token: string;
+};
+
 type AepbaseFixtures = {
   adminToken: string;
   adminCreds: { email: string; password: string; id: string };
@@ -41,6 +50,7 @@ type AepbaseFixtures = {
   userId: string;
   authenticatedPage: Page;
   authenticatedAdminPage: Page;
+  householdMember: HouseholdMember;
 };
 
 export const test = base.extend<AepbaseFixtures>({
@@ -163,6 +173,34 @@ export const test = base.extend<AepbaseFixtures>({
     await page.waitForURL('/dashboard', { timeout: 45000 });
 
     await use(page);
+  },
+
+  /**
+   * Another person in the household, writing from their own account. Writes
+   * made with `householdMember.token` reach the test's page the way an edit on
+   * a partner's phone would — a different actor, not just a different tab.
+   */
+  householdMember: async ({ adminToken }, use) => {
+    const name = 'Sam';
+    const email = `member-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`;
+    const password = testUsers.user1.password;
+    const user = await createUser(adminToken, { email, password, display_name: name });
+
+    const res = await fetch(`${getAepbaseUrl()}/users/:login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      throw new Error(`householdMember: login failed: ${res.status} ${await res.text()}`);
+    }
+    const { token } = (await res.json()) as { token: string };
+
+    await use({ id: user.id, name, token });
+
+    await deleteIfPresent(adminToken, 'users', user.id, { force: true }).catch((e) =>
+      console.warn('Failed to cleanup household member:', e),
+    );
   },
 
   /**

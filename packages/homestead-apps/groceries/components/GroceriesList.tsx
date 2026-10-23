@@ -15,6 +15,7 @@ import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
 import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
 import { useClearCheckedItems } from '../hooks/useClearCheckedItems';
 import { useStoreCelebration } from '../hooks/useStoreCelebration';
+import { useGroceryChangeToasts } from '../hooks/useGroceryChangeToasts';
 import { GroceryList } from './GroceryList';
 import { StoreConfetti } from './StoreConfetti';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
@@ -26,6 +27,7 @@ export function GroceriesList() {
   const createMutation = useCreateGroceryItem();
   const clearCheckedItems = useClearCheckedItems();
   const toast = useToast();
+  useGroceryChangeToasts();
   // Checking an item that finishes off a whole store's list: the shared
   // celebration toast carries the message, the confetti overlay is the
   // fanfare. Watches the grouped stats, so the optimistic cache update fires

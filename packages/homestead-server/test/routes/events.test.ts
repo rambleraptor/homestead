@@ -126,7 +126,10 @@ beforeEach(async () => {
   tokens.admin = t.adminToken;
   ids.admin = t.admin.id;
   for (const who of ['alice', 'bob'] as const) {
-    const { user, token } = await seedUser(engine, { email: `${who}@example.com` });
+    const { user, token } = await seedUser(engine, {
+      email: `${who}@example.com`,
+      displayName: who === 'alice' ? 'Alice' : undefined,
+    });
     tokens[who] = token;
     ids[who] = user.id;
   }
@@ -195,6 +198,7 @@ describe('GET /api/events', () => {
       path: 'books/b1',
       id: 'b1',
       actor: `users/${ids.alice}`,
+      actor_name: 'Alice',
       origin: 'tab-7',
       record: { id: 'b1', path: 'books/b1', title: 'Dune' },
     });
