@@ -57,6 +57,9 @@ jobs:
       - name: Run server + CLI tests under Node
         run: make test-node
 
+      - name: Run VM-tier tests (SPA in happy-dom against the in-process server)
+        run: make test-vm
+
       - name: CI Summary
         if: success()
         run: |

@@ -129,6 +129,28 @@ Vitest + Testing Library. Tests live next to the code they cover, under
 `__tests__/` directories. `src/test/setup.ts` mocks the aepbase client
 globally — individual tests can override behavior via `vi.mocked(...)`.
 
+### VM tests (in-process, no browser)
+
+`make test-vm` runs `*.vm.ts` specs (under a `vm/` dir) on the **VM tier**
+(`packages/homestead-test-harness`): the real SPA mounted in happy-dom, served
+by the real server's fetch handler (`createApp()` in
+`homestead-server/src/app.ts`) in the same Vitest worker — no browser, no
+sockets. `bootHomestead()` gives each test a fresh copy of a template database
+(schema synced, admin claimed, a member user), so specs need no cleanup.
+`h.loginAs(h.member | h.admin)` installs a session pre-minted into the
+template (pass `{ via: 'form' }` to use the login form), and `goto` remounts
+the app like a page load. Page objects written against the shared `Driver`
+(`homestead-test-harness/driver/`) run on both tiers — it has a Playwright
+implementation too — and the e2e seed helpers work on both
+(`HOMESTEAD_E2E_APP_URL` points them at the VM). For speed the tier runs
+React's production build (`HOMESTEAD_VM_REACT_DEV=1` restores the development
+build), shares one module graph across spec files per worker
+(`isolate: false`), and caches the template database under
+`node_modules/.cache/homestead-vm`, keyed on the server, core and app sources
+(`HOMESTEAD_VM_NO_TEMPLATE_CACHE=1` disables it). There is no layout engine:
+visibility is computed-style only, so layout, service-worker, push, and
+download flows stay in Playwright.
+
 ### End-to-end (E2E) tests
 
 Playwright against a real aepbase instance. Located in `tests/e2e/`.
