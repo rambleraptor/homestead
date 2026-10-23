@@ -139,9 +139,16 @@ sockets. `bootHomestead()` gives each test a fresh copy of a per-worker
 template database (schema synced, admin claimed, a member user), so specs
 need no cleanup. Page objects are written against the shared `Driver`
 (`homestead-test-harness/driver/`), which has a Playwright implementation too,
-so one page object serves both tiers. There is no layout engine: visibility is
-computed-style only, so layout, service-worker, push, and download flows stay
-in Playwright.
+so one page object serves both tiers, and the e2e seed helpers work on both.
+`h.loginAs(h.member | h.admin)` installs a session pre-minted into the
+template (pass `{ via: 'form' }` to use the login form), and `goto` remounts
+the app like a page load. For speed the tier runs React's production build
+(`HOMESTEAD_VM_REACT_DEV=1` restores the development build), shares one module
+graph across spec files per worker (`isolate: false`), and caches the template
+database under `node_modules/.cache/homestead-vm`, keyed on the server, core
+and app sources (`HOMESTEAD_VM_NO_TEMPLATE_CACHE=1` disables it). There is no
+layout engine: visibility is computed-style only, so layout, service-worker,
+push, and download flows stay in Playwright.
 
 ### End-to-end (E2E) tests
 

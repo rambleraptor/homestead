@@ -16,13 +16,25 @@ import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '@rambleraptor/homestead-server/src/app';
+import { mintTokenForUser } from '@rambleraptor/homestead-server/src/bootstrap';
 import { setActiveHandler } from './fetch-shim';
 import { VM_ORIGIN } from './origin';
+import {
+  readCachedTemplate,
+  templateCacheEnabled,
+  templateCacheKey,
+  writeCachedTemplate,
+} from './template-cache';
 
 export interface VmUser {
   id: string;
   email: string;
   password: string;
+  /**
+   * A session token minted into the template, so every copy of the database
+   * already holds it — `loginAs` uses it to skip the login form.
+   */
+  token: string;
 }
 
 export interface VmTemplate {
@@ -79,19 +91,37 @@ async function buildTemplate(): Promise<VmTemplate> {
       body: JSON.stringify({ user: member.id }),
     });
 
+    const withToken = (creds: typeof ADMIN, id: string): VmUser => ({
+      ...creds,
+      id,
+      token: mintTokenForUser(app.engine.db, id).token,
+    });
+    const users = { admin: withToken(ADMIN, admin.id), member: withToken(MEMBER, member.id) };
+
     const dbPath = join(root, 'template.db');
     app.engine.db.query('VACUUM INTO ?').run(dbPath);
-    return { dbPath, admin: { ...ADMIN, id: admin.id }, member: { ...MEMBER, id: member.id } };
+    return { dbPath, ...users };
   } finally {
     setActiveHandler(null);
     app.close();
   }
 }
 
+/** The on-disk cached template when its key still matches, else a fresh build (then cached). */
+async function loadTemplate(): Promise<VmTemplate> {
+  if (!templateCacheEnabled()) return buildTemplate();
+  const key = await templateCacheKey();
+  const cached = await readCachedTemplate<Omit<VmTemplate, 'dbPath'>>(key);
+  if (cached) return cached;
+  const { dbPath, ...meta } = await buildTemplate();
+  await writeCachedTemplate(key, dbPath, meta);
+  return { dbPath, ...meta };
+}
+
 let template: Promise<VmTemplate> | null = null;
 
-/** This worker's template, built on first use. The OS reclaims its tmpdir. */
+/** This worker's template, loaded on first use. The OS reclaims a fresh build's tmpdir. */
 export function workerTemplate(): Promise<VmTemplate> {
-  template ??= buildTemplate();
+  template ??= loadTemplate();
   return template;
 }

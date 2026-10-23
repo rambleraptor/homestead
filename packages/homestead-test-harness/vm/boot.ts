@@ -11,7 +11,8 @@ import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { createApp, type HomesteadApp } from '@rambleraptor/homestead-server/src/app';
-import { authStore } from '@rambleraptor/homestead-core/api/aepbase';
+import { authStore, refreshCurrentUser } from '@rambleraptor/homestead-core/api/aepbase';
+import type { User } from '@rambleraptor/homestead-core/auth/types';
 import { queryClient } from '@rambleraptor/homestead-core/api/queryClient';
 // Side effect: install the app registry before App reads it (as main.tsx does).
 import '@/apps/registry';
@@ -34,8 +35,12 @@ export interface Harness {
   /** The template's bootstrap superuser and member (Members group) accounts. */
   admin: VmUser;
   member: VmUser;
-  /** Log in through the real login form; resolves once the app shell is up. */
-  loginAs(user: VmUser): Promise<Session>;
+  /**
+   * Sign in and land on /dashboard, as the Playwright login fixture does.
+   * By default the template's pre-minted session is installed directly;
+   * `via: 'form'` goes through the real login form instead.
+   */
+  loginAs(user: VmUser, opts?: { via?: 'session' | 'form' }): Promise<Session>;
   close(): Promise<void>;
 }
 
@@ -75,22 +80,36 @@ export async function bootHomestead(): Promise<Harness> {
     app,
     admin: template.admin,
     member: template.member,
-    async loginAs(user) {
-      await driver.getByLabel(/email/i).fill(user.email);
-      await driver.getByLabel(/password/i).fill(user.password);
-      await driver.getByRole('button', { name: /login|sign in/i }).click();
+    async loginAs(user, { via = 'session' } = {}) {
+      if (via === 'form') {
+        await driver.getByLabel(/email/i).fill(user.email);
+        await driver.getByLabel(/password/i).fill(user.password);
+        await driver.getByRole('button', { name: /login|sign in/i }).click();
+      } else {
+        // A placeholder user carrying just the id; refreshCurrentUser() swaps
+        // in the full record, as the app does after a login.
+        authStore.save(user.token, { id: user.id } as User);
+        await refreshCurrentUser();
+        await load('/dashboard');
+      }
       await driver.expectURL(/\/dashboard$/);
       await driver.expect(driver.getByTestId('app-shell')).toBeVisible();
       return { id: user.id, email: user.email, token: authStore.token };
     },
     async close() {
+      // Let the page settle first, so no query is mid-flight when the session
+      // below is cleared out from under it.
+      await driver.waitForNetworkIdle();
       root?.unmount();
-      // Module singletons outlive the test (Vitest isolates per file, not per
-      // test): drop the session and caches so the next boot starts clean.
+      // Module singletons outlive the test (and, with isolate: false, the
+      // spec file): drop the session and caches so the next boot starts clean.
       queryClient.clear();
       authStore.clear();
       window.localStorage.clear();
       document.body.innerHTML = '';
+      // Clearing the session kicks off a last refetch or two; let them land on
+      // this app rather than fail against a torn-down one.
+      await driver.waitForNetworkIdle();
       setActiveHandler(null);
       app.close();
       await rm(dataDir, { recursive: true, force: true });
