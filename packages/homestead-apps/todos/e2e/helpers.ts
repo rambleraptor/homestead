@@ -87,16 +87,6 @@ export async function listPersonalTodos(
   return personalTodos(token, userId).listAll();
 }
 
-export async function deleteAllPersonalTodos(token: string, userId: string) {
-  const items = await listPersonalTodos(token, userId);
-  for (const item of items) {
-    await personalTodos(token, userId)
-      .record(item.id)
-      .delete()
-      .catch(() => undefined);
-  }
-}
-
 export interface ProjectRecord {
   id: string;
   name: string;
@@ -115,14 +105,6 @@ export async function createProject(
 
 export async function listProjects(token: string): Promise<ProjectRecord[]> {
   return e2eClient(token).collection<ProjectRecord>('projects').listAll();
-}
-
-export async function deleteAllProjects(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('projects').listAll();
-  for (const item of items) {
-    // Force-cascade so category children are removed with the project.
-    await deleteIfPresent(token, 'projects', item.id, { force: true });
-  }
 }
 
 export interface CategoryRecord {
@@ -205,10 +187,3 @@ export async function addTemplateCategory(
     .create({ name: data.name, position: data.position ?? 0 });
 }
 
-export async function deleteAllListTemplates(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('list-templates').listAll();
-  for (const item of items) {
-    // Force the cascade so child template-items are removed with the parent.
-    await deleteIfPresent(token, 'list-templates', item.id, { force: true });
-  }
-}

@@ -1,47 +1,44 @@
 /**
- * Todo categories E2E — per-list managed categories on project lists and
- * templates. Uses the admin session (categories live on the household `todo` /
- * `project` resources, so superuser access is fine here).
+ * Todo categories, on the VM tier — per-list managed categories on project
+ * lists and templates.
+ *
+ * A port of the Playwright categories-crud spec. Uses the admin session
+ * (categories live on the household `todo` / `project` resources, so superuser
+ * access is fine here). Each test boots from a fresh copy of the template
+ * database, so there is no cleanup to do.
  */
 
-import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { TodosPage } from './TodosPage';
-import { playwrightDriver } from '../../../homestead-test-harness/driver/pw-driver';
-import { TemplatesPage } from './TemplatesPage';
+import { afterEach, beforeEach, describe, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { TodosPage } from '../e2e/TodosPage';
+import { TemplatesPage } from '../e2e/TemplatesPage';
 import {
   addTemplateCategory,
   addTemplateItem,
   createCategory,
   createListTemplate,
   createProject,
-  deleteAllListTemplates,
-  deleteAllProjects,
-  deleteAllTodos,
-} from './helpers';
+} from '../e2e/helpers';
 
-test.describe('Todo categories', () => {
-  test.beforeEach(async ({ adminToken }) => {
-    // Todos first — a project can't be deleted while todos still reference it.
-    await deleteAllTodos(adminToken);
-    await deleteAllProjects(adminToken);
-    await deleteAllListTemplates(adminToken);
+describe('Todo categories', () => {
+  let h: Harness;
+  let adminToken: string;
+
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: adminToken } = await h.loginAs(h.admin));
   });
 
-  test.afterEach(async ({ adminToken }) => {
-    await deleteAllTodos(adminToken);
-    await deleteAllProjects(adminToken);
-    await deleteAllListTemplates(adminToken);
+  afterEach(async () => {
+    await h.close();
   });
 
-  test('groups todos by category and un-categorizes on delete', async ({
-    adminToken,
-    authenticatedAdminPage,
-  }) => {
+  test('groups todos by category and un-categorizes on delete', async () => {
     const project = await createProject(adminToken, { name: 'Party' });
     await createCategory(adminToken, project.id, { name: 'Food', position: 0 });
     await createCategory(adminToken, project.id, { name: 'Fun', position: 1 });
 
-    const todos = new TodosPage(playwrightDriver(authenticatedAdminPage));
+    const todos = new TodosPage(h.driver);
     await todos.goto();
     await todos.selectProject('Party');
 
@@ -59,10 +56,7 @@ test.describe('Todo categories', () => {
     await todos.expectRowVisible('Cake');
   });
 
-  test('instantiating a template carries its categories into the new list', async ({
-    adminToken,
-    authenticatedAdminPage,
-  }) => {
+  test('instantiating a template carries its categories into the new list', async () => {
     const template = await createListTemplate(adminToken, { name: 'Camping' });
     const gear = await addTemplateCategory(adminToken, template.id, {
       name: 'Gear',
@@ -71,12 +65,12 @@ test.describe('Todo categories', () => {
     await addTemplateItem(adminToken, template.id, 'Tent', gear.id);
     await addTemplateItem(adminToken, template.id, 'Snacks');
 
-    const templates = new TemplatesPage(authenticatedAdminPage);
+    const templates = new TemplatesPage(h.driver);
     await templates.goto();
     await templates.createListFrom('Camping');
 
     // Instantiation navigates to the new list; its category + assignment carry.
-    const todos = new TodosPage(playwrightDriver(authenticatedAdminPage));
+    const todos = new TodosPage(h.driver);
     await todos.expectCategoryGroupVisible('Gear');
     await todos.expectTodoInGroup('Gear', 'Tent');
     await todos.expectRowVisible('Snacks');

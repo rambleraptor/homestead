@@ -1,38 +1,32 @@
 /**
- * Projects within the todos app — covers create/select/delete project,
- * pin/unpin to main, and the implicit status sync (single record visible
- * from two scopes).
+ * Projects within the todos app, on the VM tier — covers create/select/delete
+ * project, pin/unpin to main, and the implicit status sync (single record
+ * visible from two scopes).
+ *
+ * A port of ../e2e/projects-crud.spec.ts (which runs as the bootstrap
+ * superuser). Each test boots from a fresh copy of the template database, so
+ * there is no cleanup to do.
  */
 
-import { expect } from '@playwright/test';
-import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { TodosPage } from './TodosPage';
-import { playwrightDriver } from '../../../homestead-test-harness/driver/pw-driver';
-import {
-  createProject,
-  createTodo,
-  deleteAllPersonalTodos,
-  deleteAllProjects,
-  deleteAllTodos,
-  listPersonalTodos,
-  listTodos,
-} from './helpers';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { TodosPage } from '../e2e/TodosPage';
+import { createProject, createTodo, listPersonalTodos, listTodos } from '../e2e/helpers';
 
-test.describe('Todos projects', () => {
+describe('Todos projects', () => {
+  let h: Harness;
   let todosPage: TodosPage;
+  let adminToken: string;
 
-  test.beforeEach(async ({ adminToken, adminCreds, authenticatedAdminPage }) => {
-    await deleteAllTodos(adminToken);
-    await deleteAllPersonalTodos(adminToken, adminCreds.id);
-    await deleteAllProjects(adminToken);
-    todosPage = new TodosPage(playwrightDriver(authenticatedAdminPage));
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: adminToken } = await h.loginAs(h.admin));
+    todosPage = new TodosPage(h.driver);
     await todosPage.goto();
   });
 
-  test.afterEach(async ({ adminToken, adminCreds }) => {
-    await deleteAllTodos(adminToken);
-    await deleteAllPersonalTodos(adminToken, adminCreds.id);
-    await deleteAllProjects(adminToken);
+  afterEach(async () => {
+    await h.close();
   });
 
   test('creates a project via the switcher and adds a todo into it', async () => {
@@ -44,10 +38,7 @@ test.describe('Todos projects', () => {
     await todosPage.expectRowAbsent('Plant tomatoes');
   });
 
-  test('adds a private todo inside a project list', async ({
-    adminToken,
-    adminCreds,
-  }) => {
+  test('adds a private todo inside a project list', async () => {
     await todosPage.createProject('Garden');
     await todosPage.addPersonalTodo('Order seeds');
 
@@ -58,7 +49,7 @@ test.describe('Todos projects', () => {
     await todosPage.expectRowAbsent('Order seeds');
 
     // Stored as a personal-todo (private to its author), filed under the list.
-    const personal = await listPersonalTodos(adminToken, adminCreds.id);
+    const personal = await listPersonalTodos(adminToken, h.admin.id);
     const seeds = personal.find((t) => t.title === 'Order seeds');
     expect(seeds?.project).toBeTruthy();
     // …and not as a shared todo everyone can read.
@@ -89,9 +80,7 @@ test.describe('Todos projects', () => {
     await todosPage.expectKindMarker('Order seeds', 'personal');
   });
 
-  test('pinning a project todo makes it visible on main with synced status', async ({
-    adminToken,
-  }) => {
+  test('pinning a project todo makes it visible on main with synced status', async () => {
     const project = await createProject(adminToken, { name: 'Garden' });
     await createTodo(adminToken, {
       title: 'Plant tomatoes',
@@ -116,9 +105,7 @@ test.describe('Todos projects', () => {
     await todosPage.expectRowAbsent('Plant tomatoes');
   });
 
-  test('unpinning removes the todo from main but keeps it in the project', async ({
-    adminToken,
-  }) => {
+  test('unpinning removes the todo from main but keeps it in the project', async () => {
     const project = await createProject(adminToken, { name: 'Garden' });
     await createTodo(adminToken, {
       title: 'Plant tomatoes',
@@ -135,9 +122,7 @@ test.describe('Todos projects', () => {
     await todosPage.expectInActive('Plant tomatoes');
   });
 
-  test('deleting a project moves its todos back to main', async ({
-    adminToken,
-  }) => {
+  test('deleting a project moves its todos back to main', async () => {
     const project = await createProject(adminToken, { name: 'Garden' });
     await createTodo(adminToken, {
       title: 'Plant tomatoes',
@@ -153,9 +138,7 @@ test.describe('Todos projects', () => {
     await todosPage.expectInActive('Plant tomatoes');
   });
 
-  test('deleting a project with the delete-todos option removes its todos', async ({
-    adminToken,
-  }) => {
+  test('deleting a project with the delete-todos option removes its todos', async () => {
     const project = await createProject(adminToken, { name: 'Garden' });
     await createTodo(adminToken, {
       title: 'Plant tomatoes',

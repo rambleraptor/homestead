@@ -1,13 +1,15 @@
 /**
- * Gift Cards bulk import E2E.
+ * Gift Cards bulk import, on the VM tier.
  *
- * Covers both callers of the same API: the standardized import page, and a
- * direct REST call of the kind the CLI makes.
+ * A port of ../e2e/gift-card-bulk-import.spec.ts. Covers both callers of the
+ * same API: the standardized import page, and a direct REST call of the kind
+ * the CLI makes. Each test boots from a fresh copy of the template database,
+ * so there is no cleanup to do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { e2eClient, postCustomMethod } from '../../../../tests/e2e/utils/aepbase-helpers';
-import { deleteAllGiftCards } from './helpers';
 
 interface GiftCardRow {
   id: string;
@@ -63,12 +65,20 @@ async function bulkImport(
   return operations.get(id);
 }
 
-test.describe('Gift Cards bulk import — API', () => {
-  test.beforeEach(async ({ userToken }) => {
-    await deleteAllGiftCards(userToken);
+describe('Gift Cards bulk import — API', () => {
+  let h: Harness;
+  let userToken: string;
+
+  beforeEach(async () => {
+    h = await bootHomestead();
+    userToken = h.member.token;
   });
 
-  test('a dry run reports rows without writing anything', async ({ userToken }) => {
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test('a dry run reports rows without writing anything', async () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(CSV),
@@ -81,7 +91,7 @@ test.describe('Gift Cards bulk import — API', () => {
     expect(await e2eClient(userToken).collection<GiftCardRow>('gift-cards').listAll()).toHaveLength(0);
   });
 
-  test('imports every valid row when selectedIndices is omitted', async ({ userToken }) => {
+  test('imports every valid row when selectedIndices is omitted', async () => {
     // The one-shot case: a CLI or script posts a file and gets everything
     // importable, with no preview round-trip.
     const operation = await bulkImport(userToken, {
@@ -100,7 +110,7 @@ test.describe('Gift Cards bulk import — API', () => {
     expect(cards.find((c) => c.merchant === 'Target')?.archived).toBe(true);
   });
 
-  test('imports only the selected rows', async ({ userToken }) => {
+  test('imports only the selected rows', async () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(CSV),
@@ -112,7 +122,7 @@ test.describe('Gift Cards bulk import — API', () => {
     expect(cards.map((c) => c.merchant).sort()).toEqual(['Amazon', 'Target']);
   });
 
-  test('skips invalid rows and imports the rest', async ({ userToken }) => {
+  test('skips invalid rows and imports the rest', async () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(MIXED_CSV),
@@ -123,9 +133,7 @@ test.describe('Gift Cards bulk import — API', () => {
     expect(await e2eClient(userToken).collection<GiftCardRow>('gift-cards').listAll()).toHaveLength(1);
   });
 
-  test('fails the operation when an invalid row is explicitly selected', async ({
-    userToken,
-  }) => {
+  test('fails the operation when an invalid row is explicitly selected', async () => {
     // Silently skipping it would report "imported 0" with no reason why.
     const operation = await bulkImport(userToken, {
       format: 'csv',
@@ -137,9 +145,7 @@ test.describe('Gift Cards bulk import — API', () => {
     expect(await e2eClient(userToken).collection<GiftCardRow>('gift-cards').listAll()).toHaveLength(0);
   });
 
-  test('rejects an unknown format up front, with no operation created', async ({
-    userToken,
-  }) => {
+  test('rejects an unknown format up front, with no operation created', async () => {
     // AEP-151: an error that stops the operation from starting is an ordinary
     // error response, not a 202 followed by a failed operation.
     const before = await e2eClient(userToken).collection<OperationRow>('operations').listAll();
@@ -152,10 +158,10 @@ test.describe('Gift Cards bulk import — API', () => {
     expect(await e2eClient(userToken).collection<OperationRow>('operations').listAll()).toHaveLength(before.length);
   });
 
-  test('advertises its formats for discovery', async ({ request }) => {
+  test('advertises its formats for discovery', async () => {
     // This is what the import page reads to build its format picker, and what
     // the CLI reads to list the verb.
-    const res = await request.get('/api/custom-methods');
+    const res = await fetch('/api/custom-methods');
     const { methods } = (await res.json()) as {
       methods: Array<{
         plural: string;
@@ -188,11 +194,11 @@ test.describe('Gift Cards bulk import — API', () => {
     expect(columns?.find((c) => c.name === 'amount')?.description).toContain('balance');
   });
 
-  test('serves a template that itself imports cleanly', async ({ request, userToken }) => {
+  test('serves a template that itself imports cleanly', async () => {
     // The old template's example rows didn't line up with its header, so anyone
     // who filled it in got a file that wouldn't import.
-    const res = await request.get('/api/bulk-import/gift-cards/template?format=csv');
-    expect(res.status()).toBe(200);
+    const res = await fetch('/api/bulk-import/gift-cards/template?format=csv');
+    expect(res.status).toBe(200);
     const template = await res.text();
 
     const operation = await bulkImport(userToken, {
@@ -205,50 +211,55 @@ test.describe('Gift Cards bulk import — API', () => {
   });
 });
 
-test.describe('Gift Cards bulk import — page', () => {
-  test.beforeEach(async ({ userToken }) => {
-    await deleteAllGiftCards(userToken);
+describe('Gift Cards bulk import — page', () => {
+  let h: Harness;
+  let userToken: string;
+
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
   });
 
-  test('previews a CSV, deselects a row, and imports the rest', async ({
-    authenticatedPage,
-    userToken,
-  }) => {
-    await authenticatedPage.goto('/gift-cards/import');
+  afterEach(async () => {
+    await h.close();
+  });
 
-    await authenticatedPage.getByTestId('bulk-import-file-input').setInputFiles({
+  test('previews a CSV, deselects a row, and imports the rest', async () => {
+    await h.driver.goto('/gift-cards/import');
+
+    await h.driver.getByTestId('bulk-import-file-input').setInputFiles({
       name: 'cards.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from(CSV),
     });
-    await authenticatedPage.getByTestId('bulk-import-preview-button').click();
+    await h.driver.getByTestId('bulk-import-preview-button').click();
 
     // The preview is the server's parse, arriving via an operation poll.
-    await expect(authenticatedPage.getByTestId('import-button')).toBeVisible();
-    await expect(authenticatedPage.getByTestId('import-button')).toContainText('Import 3');
+    await h.driver.expect(h.driver.getByTestId('import-button')).toBeVisible();
+    await h.driver.expect(h.driver.getByTestId('import-button')).toContainText('Import 3');
 
-    await authenticatedPage.getByLabel('Select Starbucks gift card').uncheck();
-    await expect(authenticatedPage.getByTestId('import-button')).toContainText('Import 2');
+    await h.driver.getByLabel('Select Starbucks gift card').uncheck();
+    await h.driver.expect(h.driver.getByTestId('import-button')).toContainText('Import 2');
 
-    await authenticatedPage.getByTestId('import-button').click();
-    await authenticatedPage.waitForURL(/\/gift-cards$/);
+    await h.driver.getByTestId('import-button').click();
+    await h.driver.waitForURL(/\/gift-cards$/);
 
     const cards = await e2eClient(userToken).collection<GiftCardRow>('gift-cards').listAll();
     expect(cards.map((c) => c.merchant).sort()).toEqual(['Amazon', 'Target']);
   });
 
-  test('shows why an invalid row cannot be imported', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/gift-cards/import');
+  test('shows why an invalid row cannot be imported', async () => {
+    await h.driver.goto('/gift-cards/import');
 
-    await authenticatedPage.getByTestId('bulk-import-file-input').setInputFiles({
+    await h.driver.getByTestId('bulk-import-file-input').setInputFiles({
       name: 'cards.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from(MIXED_CSV),
     });
-    await authenticatedPage.getByTestId('bulk-import-preview-button').click();
+    await h.driver.getByTestId('bulk-import-preview-button').click();
 
-    await expect(authenticatedPage.getByText('merchant is required')).toBeVisible();
+    await h.driver.expect(h.driver.getByText('merchant is required')).toBeVisible();
     // Only the valid row is selectable.
-    await expect(authenticatedPage.getByTestId('import-button')).toContainText('Import 1');
+    await h.driver.expect(h.driver.getByTestId('import-button')).toContainText('Import 1');
   });
 });

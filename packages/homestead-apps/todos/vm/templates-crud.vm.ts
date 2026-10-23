@@ -1,44 +1,43 @@
 /**
- * List templates within the todos app — covers managing a template and its
- * items on the dedicated page, instantiating a template into a new project
- * pre-filled with its items (from both the templates page and the project
- * switcher's "From template" picker), and the temporary nature of such a
- * list: it deletes itself once every item is checked off.
+ * List templates within the todos app, on the VM tier — covers managing a
+ * template and its items on the dedicated page, instantiating a template into
+ * a new project pre-filled with its items (from both the templates page and
+ * the project switcher's "From template" picker), and the temporary nature of
+ * such a list: it deletes itself once every item is checked off.
+ *
+ * A port of ../e2e/templates-crud.spec.ts (which runs as the bootstrap
+ * superuser). Each test boots from a fresh copy of the template database, so
+ * there is no cleanup to do.
  */
 
-import { expect } from '@playwright/test';
-import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { TodosPage } from './TodosPage';
-import { playwrightDriver } from '../../../homestead-test-harness/driver/pw-driver';
-import { TemplatesPage } from './TemplatesPage';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { TodosPage } from '../e2e/TodosPage';
+import { TemplatesPage } from '../e2e/TemplatesPage';
 import {
   addTemplateItem,
   createListTemplate,
   createProject,
   createTodo,
-  deleteAllListTemplates,
-  deleteAllProjects,
-  deleteAllTodos,
   listProjects,
   listTodos,
-} from './helpers';
+} from '../e2e/helpers';
 
-test.describe('Todos list templates', () => {
+describe('Todos list templates', () => {
+  let h: Harness;
   let todosPage: TodosPage;
   let templatesPage: TemplatesPage;
+  let adminToken: string;
 
-  test.beforeEach(async ({ adminToken, authenticatedAdminPage }) => {
-    await deleteAllTodos(adminToken);
-    await deleteAllProjects(adminToken);
-    await deleteAllListTemplates(adminToken);
-    todosPage = new TodosPage(playwrightDriver(authenticatedAdminPage));
-    templatesPage = new TemplatesPage(authenticatedAdminPage);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: adminToken } = await h.loginAs(h.admin));
+    todosPage = new TodosPage(h.driver);
+    templatesPage = new TemplatesPage(h.driver);
   });
 
-  test.afterEach(async ({ adminToken }) => {
-    await deleteAllTodos(adminToken);
-    await deleteAllProjects(adminToken);
-    await deleteAllListTemplates(adminToken);
+  afterEach(async () => {
+    await h.close();
   });
 
   test('creates a template and manages its items on the templates page', async () => {
@@ -55,9 +54,7 @@ test.describe('Todos list templates', () => {
     await templatesPage.expectItem('Camping Trip', 'Pack tent');
   });
 
-  test('instantiates a template into a new list from the templates page', async ({
-    adminToken,
-  }) => {
+  test('instantiates a template into a new list from the templates page', async () => {
     const template = await createListTemplate(adminToken, {
       name: 'Camping Trip',
     });
@@ -72,9 +69,7 @@ test.describe('Todos list templates', () => {
     await todosPage.expectInActive('Buy firewood');
   });
 
-  test('instantiates a template from the project switcher picker', async ({
-    adminToken,
-  }) => {
+  test('instantiates a template from the project switcher picker', async () => {
     const template = await createListTemplate(adminToken, {
       name: 'Weekly Chores',
     });
@@ -88,9 +83,7 @@ test.describe('Todos list templates', () => {
     await todosPage.expectInActive('Laundry');
   });
 
-  test('a list made from a template is temporary and goes away once every item is checked off', async ({
-    adminToken,
-  }) => {
+  test('a list made from a template is temporary and goes away once every item is checked off', async () => {
     const template = await createListTemplate(adminToken, {
       name: 'Packing',
     });
@@ -118,9 +111,7 @@ test.describe('Todos list templates', () => {
     await todosPage.expectTemporaryBadge(false);
   });
 
-  test('a list made by hand is not temporary and survives being finished', async ({
-    adminToken,
-  }) => {
+  test('a list made by hand is not temporary and survives being finished', async () => {
     const project = await createProject(adminToken, { name: 'Garden' });
     await createTodo(adminToken, {
       title: 'Water plants',

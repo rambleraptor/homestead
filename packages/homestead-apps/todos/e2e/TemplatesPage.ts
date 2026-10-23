@@ -1,30 +1,37 @@
 /**
  * Templates Page Object Model — the dedicated /todos/templates screen where
  * list templates and their items are managed.
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`../vm/`).
  */
 
-import { Page, expect, Locator } from '@playwright/test';
+import type { Driver, Locator } from '../../../homestead-test-harness/driver/Driver';
 
 export class TemplatesPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/todos/templates');
-    await this.page
+    await this.driver.goto('/todos/templates');
+    await this.driver
       .getByTestId('templates-add-input')
       .waitFor({ state: 'visible' });
   }
 
   private cardFor(name: string): Locator {
-    return this.page
+    return this.driver
       .locator('[data-testid^="template-card-"]')
       .filter({ hasText: name })
       .first();
   }
 
   async createTemplate(name: string) {
-    await this.page.getByTestId('templates-add-input').fill(name);
-    await this.page.getByTestId('templates-add-submit').click();
+    await this.driver.getByTestId('templates-add-input').fill(name);
+    await this.driver.getByTestId('templates-add-submit').click();
     await this.cardFor(name).waitFor({ state: 'visible' });
   }
 
@@ -32,7 +39,7 @@ export class TemplatesPage {
     const card = this.cardFor(templateName);
     await card.locator('input[placeholder="Add an item"]').fill(title);
     await card.getByRole('button', { name: 'Add item' }).click();
-    await expect(card.getByText(title, { exact: true })).toBeVisible();
+    await this.expect(card.getByText(title, { exact: true })).toBeVisible();
   }
 
   async removeItem(templateName: string, title: string) {
@@ -46,7 +53,7 @@ export class TemplatesPage {
     const card = this.cardFor(templateName);
     await card.getByPlaceholder('Add a category').fill(name);
     await card.getByRole('button', { name: 'Add category' }).click();
-    await expect(card.getByText(name, { exact: true })).toBeVisible();
+    await this.expect(card.getByText(name, { exact: true })).toBeVisible();
   }
 
   async addItemInCategory(
@@ -60,7 +67,7 @@ export class TemplatesPage {
       .selectOption({ label: categoryName });
     await card.locator('input[placeholder="Add an item"]').fill(title);
     await card.getByRole('button', { name: 'Add item' }).click();
-    await expect(card.getByText(title, { exact: true })).toBeVisible();
+    await this.expect(card.getByText(title, { exact: true })).toBeVisible();
   }
 
   async createListFrom(templateName: string) {
@@ -73,22 +80,22 @@ export class TemplatesPage {
     await this.cardFor(templateName)
       .getByRole('button', { name: `Delete template ${templateName}` })
       .click();
-    await this.page.getByRole('button', { name: 'Delete' }).click();
+    await this.driver.getByRole('button', { name: 'Delete' }).click();
   }
 
   async expectItem(templateName: string, title: string) {
-    await expect(
+    await this.expect(
       this.cardFor(templateName).getByText(title, { exact: true }),
     ).toBeVisible();
   }
 
   async expectItemAbsent(templateName: string, title: string) {
-    await expect(
+    await this.expect(
       this.cardFor(templateName).getByText(title, { exact: true }),
     ).toHaveCount(0);
   }
 
   async expectTemplateAbsent(templateName: string) {
-    await expect(this.cardFor(templateName)).toHaveCount(0);
+    await this.expect(this.cardFor(templateName)).toHaveCount(0);
   }
 }
