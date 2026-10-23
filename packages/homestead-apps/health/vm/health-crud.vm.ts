@@ -1,31 +1,40 @@
 /**
- * Health E2E Tests - Vaccine series + dose CRUD
+ * Health CRUD (vaccine series + doses), on the VM tier.
+ *
+ * A port of the Playwright spec that lived at ../e2e/health-crud.spec.ts: same
+ * page object and seed helpers, run in happy-dom against the server's
+ * in-process fetch handler. Each test boots from a fresh database, so there is
+ * no cleanup to do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { HealthPage } from './HealthPage';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { HealthPage } from '../e2e/HealthPage';
 import {
   createVaccination,
   createVaccine,
-  deleteAllVaccines,
   getVaccination,
   getVaccine,
   listVaccinations,
   testVaccinations,
   testVaccines,
-} from './helpers';
+} from '../e2e/helpers';
 
-test.describe('Health CRUD', () => {
+describe('Health CRUD', () => {
+  let h: Harness;
   let healthPage: HealthPage;
+  let userToken: string;
 
-  // Seeding happens BEFORE the single per-test navigation: each test's page
-  // navigates exactly once, after its API setup, so the UI renders the seeded
-  // state without a reload.
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    healthPage = new HealthPage(authenticatedPage);
+  // Seeding happens BEFORE the per-test navigation: each test navigates after
+  // its API setup, so the UI renders the seeded state without a reload.
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    healthPage = new HealthPage(h.driver);
+  });
 
-    // Clean up this user's own series (the private model scopes the list).
-    await deleteAllVaccines(userToken);
+  afterEach(async () => {
+    await h.close();
   });
 
   test('shows the empty state with no vaccines', async () => {
@@ -51,7 +60,7 @@ test.describe('Health CRUD', () => {
     }
   });
 
-  test('adds a dose under a vaccine', async ({ userToken }) => {
+  test('adds a dose under a vaccine', async () => {
     const vaccine = await createVaccine(userToken, testVaccines[1]);
 
     await healthPage.goto();
@@ -65,7 +74,7 @@ test.describe('Health CRUD', () => {
     expect(doses[0].provider).toBe(testVaccinations[0].provider);
   });
 
-  test('edits a vaccine series', async ({ userToken }) => {
+  test('edits a vaccine series', async () => {
     const vaccine = await createVaccine(userToken, { name: 'Hepatitis B' });
 
     await healthPage.goto();
@@ -77,7 +86,7 @@ test.describe('Health CRUD', () => {
     expect(updated.next_due).toBe('2030-01-01');
   });
 
-  test('edits a dose', async ({ userToken }) => {
+  test('edits a dose', async () => {
     const vaccine = await createVaccine(userToken, testVaccines[0]);
     const dose = await createVaccination(userToken, vaccine.id, testVaccinations[0]);
 
@@ -93,7 +102,7 @@ test.describe('Health CRUD', () => {
     expect(updated.dose).toBe('2 of 2');
   });
 
-  test('deletes a dose', async ({ userToken }) => {
+  test('deletes a dose', async () => {
     const vaccine = await createVaccine(userToken, testVaccines[0]);
     const dose = await createVaccination(userToken, vaccine.id, testVaccinations[0]);
 
@@ -105,7 +114,7 @@ test.describe('Health CRUD', () => {
     expect(await listVaccinations(userToken, vaccine.id)).toHaveLength(0);
   });
 
-  test('deletes a vaccine and cascades its doses', async ({ userToken }) => {
+  test('deletes a vaccine and cascades its doses', async () => {
     const vaccine = await createVaccine(userToken, testVaccines[0]);
     await createVaccination(userToken, vaccine.id, testVaccinations[0]);
 
@@ -117,7 +126,7 @@ test.describe('Health CRUD', () => {
     await healthPage.expectVaccineNotInList(vaccine.name);
   });
 
-  test('surfaces an overdue series in the due-soon strip', async ({ userToken }) => {
+  test('surfaces an overdue series in the due-soon strip', async () => {
     await createVaccine(userToken, {
       name: 'Hepatitis B',
       next_due: '2021-01-15', // long past — always overdue

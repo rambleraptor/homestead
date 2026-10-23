@@ -4,7 +4,7 @@
  * both specs use.
  */
 
-import { deleteIfPresent, e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
+import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 
 interface CreateHSAReceiptInput {
   merchant: string;
@@ -63,13 +63,6 @@ export async function createMultipleHSAReceipts(
     results.push(await createHSAReceipt(token, receipt));
   }
   return results;
-}
-
-export async function deleteAllHSAReceipts(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('hsa-receipts').listAll();
-  for (const item of items) {
-    await deleteIfPresent(token, 'hsa-receipts', item.id);
-  }
 }
 
 export const testHSAReceipts = [
@@ -145,15 +138,6 @@ export async function createCharitableReceipt(
   return e2eClient(token)
     .collection<CharitableReceiptRecord>('charitable-receipts')
     .create({ ...data });
-}
-
-export async function deleteAllCharitableReceipts(token: string) {
-  const items = await e2eClient(token)
-    .collection<{ id: string }>('charitable-receipts')
-    .listAll();
-  for (const item of items) {
-    await deleteIfPresent(token, 'charitable-receipts', item.id);
-  }
 }
 
 /**

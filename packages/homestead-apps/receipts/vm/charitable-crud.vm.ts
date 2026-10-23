@@ -1,27 +1,36 @@
 /**
- * Charitable tab E2E — CRUD, and the year arithmetic someone would copy onto a
- * tax return.
+ * Charitable tab, on the VM tier — CRUD, and the year arithmetic someone would
+ * copy onto a tax return.
+ *
+ * A port of the Playwright spec that lived at ../e2e/charitable-crud.spec.ts:
+ * same page object and seed helpers, run in happy-dom against the server's
+ * in-process fetch handler. Each test boots from a fresh database, so there is
+ * no cleanup to do.
  */
 
-import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
-import { CharitablePage } from './CharitablePage';
-import {
-  createCharitableReceipt,
-  deleteAllCharitableReceipts,
-  testCharitableReceipts,
-} from './helpers';
+import { afterEach, beforeEach, describe, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { CharitablePage } from '../e2e/CharitablePage';
+import { createCharitableReceipt, testCharitableReceipts } from '../e2e/helpers';
 
 /** 2025 in the fixtures: 400 less 60 received, plus 75, plus an unvalued gift. */
 const TOTAL_2025 = 415;
 const TOTAL_2024 = 90;
 
-test.describe('Charitable CRUD', () => {
+describe('Charitable CRUD', () => {
+  let h: Harness;
   let charitablePage: CharitablePage;
+  let userToken: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    charitablePage = new CharitablePage(authenticatedPage);
-    await deleteAllCharitableReceipts(userToken);
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    charitablePage = new CharitablePage(h.driver);
     await charitablePage.goto();
+  });
+
+  afterEach(async () => {
+    await h.close();
   });
 
   test('should create a donation', async () => {
@@ -49,7 +58,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDonationInList('Gala Charity', 190);
   });
 
-  test('should total a year net of benefits received', async ({ userToken }) => {
+  test('should total a year net of benefits received', async () => {
     for (const receipt of testCharitableReceipts) {
       await createCharitableReceipt(userToken, receipt);
     }
@@ -58,7 +67,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDeductibleTotal(TOTAL_2025);
   });
 
-  test('should switch years from the by-year table', async ({ userToken }) => {
+  test('should switch years from the by-year table', async () => {
     for (const receipt of testCharitableReceipts) {
       await createCharitableReceipt(userToken, receipt);
     }
@@ -74,7 +83,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDonationNotInList('City Food Bank');
   });
 
-  test('should switch years from the picker', async ({ userToken }) => {
+  test('should switch years from the picker', async () => {
     for (const receipt of testCharitableReceipts) {
       await createCharitableReceipt(userToken, receipt);
     }
@@ -84,9 +93,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDeductibleTotal(TOTAL_2024);
   });
 
-  test('should ask for a value on a gift of goods rather than counting it as zero', async ({
-    userToken,
-  }) => {
+  test('should ask for a value on a gift of goods rather than counting it as zero', async () => {
     for (const receipt of testCharitableReceipts) {
       await createCharitableReceipt(userToken, receipt);
     }
@@ -95,7 +102,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectNeedsValue('Neighborhood Shelter');
   });
 
-  test('should mark a donation as claimed', async ({ userToken }) => {
+  test('should mark a donation as claimed', async () => {
     await createCharitableReceipt(userToken, testCharitableReceipts[2]);
 
     await charitablePage.goto(2025);
@@ -105,7 +112,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDonationStatus('Public Library Fund', 'Claimed');
   });
 
-  test('should filter by status', async ({ userToken }) => {
+  test('should filter by status', async () => {
     await createCharitableReceipt(userToken, testCharitableReceipts[2]);
     await createCharitableReceipt(userToken, {
       ...testCharitableReceipts[0],
@@ -123,9 +130,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDonationNotInList('City Food Bank');
   });
 
-  test('should leave a DAF grant out of the deduction and filter by source', async ({
-    userToken,
-  }) => {
+  test('should leave a DAF grant out of the deduction and filter by source', async () => {
     await createCharitableReceipt(userToken, {
       organization: 'City Food Bank',
       donation_date: '2025-06-01',
@@ -156,7 +161,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDonationNotInList('Public Radio');
   });
 
-  test('should edit a donation', async ({ userToken }) => {
+  test('should edit a donation', async () => {
     await createCharitableReceipt(userToken, testCharitableReceipts[2]);
 
     await charitablePage.goto(2025);
@@ -166,7 +171,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDeductibleTotal(500);
   });
 
-  test('should delete a donation', async ({ userToken }) => {
+  test('should delete a donation', async () => {
     await createCharitableReceipt(userToken, testCharitableReceipts[2]);
 
     await charitablePage.goto(2025);
@@ -175,7 +180,7 @@ test.describe('Charitable CRUD', () => {
     await charitablePage.expectDonationNotInList('Public Library Fund');
   });
 
-  test('should be reachable from the medical tab', async ({ userToken }) => {
+  test('should be reachable from the medical tab', async () => {
     await createCharitableReceipt(userToken, testCharitableReceipts[2]);
 
     await charitablePage.goViaTab();

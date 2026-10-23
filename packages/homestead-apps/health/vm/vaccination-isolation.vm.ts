@@ -1,5 +1,8 @@
 /**
- * Health record isolation (engine-enforced privacy).
+ * Health record isolation (engine-enforced privacy), on the VM tier.
+ *
+ * A port of the Playwright spec that lived at
+ * ../e2e/vaccination-isolation.spec.ts, against the in-process server.
  *
  * Both `vaccine` and its `vaccination` children declare
  * `access: { model: 'private' }`, so the household role grants cover only a
@@ -10,21 +13,17 @@
  * (superusers bypass scoping, so they can't prove isolation).
  */
 
-import { expect } from '@playwright/test';
-import { test } from '../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { getAepbaseUrl } from '../../../../tests/e2e/config/aepbase.setup';
-import {
-  createUser,
-  deleteIfPresent,
-} from '../../../../tests/e2e/utils/aepbase-helpers';
+import { createUser } from '../../../../tests/e2e/utils/aepbase-helpers';
 import {
   createVaccination,
   createVaccine,
-  deleteAllVaccines,
   getVaccine,
   listVaccinations,
   listVaccines,
-} from './helpers';
+} from '../e2e/helpers';
 
 const USER_B_EMAIL = 'user-b-health@test.local';
 const USER_B_PASSWORD = 'Password123!';
@@ -41,28 +40,25 @@ async function login(email: string, password: string): Promise<string> {
   return ((await res.json()) as { token: string }).token;
 }
 
-test.describe('Health record isolation', () => {
-  let userBId: string | undefined;
+describe('Health record isolation', () => {
+  let h: Harness;
 
-  test.afterEach(async ({ adminToken, userToken }) => {
-    await deleteAllVaccines(userToken);
-    if (userBId) {
-      await deleteIfPresent(adminToken, 'users', userBId, { force: true });
-      userBId = undefined;
-    }
+  beforeEach(async () => {
+    h = await bootHomestead();
   });
 
-  test("a user cannot see or fetch another user's vaccines or doses", async ({
-    adminToken,
-    userToken,
-  }) => {
-    // userA is the fixture's regular user; create userB as a second one.
-    const userB = await createUser(adminToken, {
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test("a user cannot see or fetch another user's vaccines or doses", async () => {
+    const userToken = h.member.token;
+    // userA is the template's regular member; create userB as a second one.
+    await createUser(h.admin.token, {
       email: USER_B_EMAIL,
       password: USER_B_PASSWORD,
       display_name: 'User B',
     });
-    userBId = userB.id;
     const userBToken = await login(USER_B_EMAIL, USER_B_PASSWORD);
 
     // userA tracks a vaccine and records a dose under it.

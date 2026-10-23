@@ -3,7 +3,7 @@
  * REST API. Doses are children: `/vaccines/{id}/vaccinations/{id}`.
  */
 
-import { deleteIfPresent, e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
+import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 
 export interface VaccineRecord {
   id: string;
@@ -91,11 +91,3 @@ export async function getVaccination(
   return doses(token, vaccineId).get(id);
 }
 
-/** The private access model scopes the list to the caller, so this deletes
- *  only the calling user's own series (force-cascading their doses). */
-export async function deleteAllVaccines(token: string) {
-  const items = await listVaccines(token);
-  for (const item of items) {
-    await deleteIfPresent(token, 'vaccines', item.id, { force: true });
-  }
-}

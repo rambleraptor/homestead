@@ -1,26 +1,32 @@
 /**
- * HSA E2E Tests - CRUD Operations
+ * HSA CRUD, on the VM tier.
+ *
+ * A port of the Playwright spec that lived at ../e2e/hsa-crud.spec.ts: same
+ * page object and seed helpers, run in happy-dom against the server's
+ * in-process fetch handler. Each test boots from a fresh database, so there is
+ * no cleanup to do.
  */
 
-import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
-import { HSAPage } from './HSAPage';
-import {
-  createHSAReceipt,
-  deleteAllHSAReceipts,
-  testHSAReceipts,
-} from './helpers';
+import { HSAPage } from '../e2e/HSAPage';
+import { createHSAReceipt, testHSAReceipts } from '../e2e/helpers';
 
-test.describe('HSA CRUD', () => {
+describe('HSA CRUD', () => {
+  let h: Harness;
   let hsaPage: HSAPage;
+  let userToken: string;
 
-  test.beforeEach(async ({ authenticatedPage, userToken }) => {
-    hsaPage = new HSAPage(authenticatedPage);
-
-    // Clean up any existing HSA receipts for this test user
-    await deleteAllHSAReceipts(userToken);
-
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token: userToken } = await h.loginAs(h.member));
+    hsaPage = new HSAPage(h.driver);
     await hsaPage.goto();
+  });
+
+  afterEach(async () => {
+    await h.close();
   });
 
   test('should create a new HSA receipt', async () => {
@@ -43,9 +49,9 @@ test.describe('HSA CRUD', () => {
     }
   });
 
-  test('should calculate liquidatable cash correctly', async ({ userToken }) => {
+  test('should calculate liquidatable cash correctly', async () => {
     // Create receipts via API for faster setup
-    const storedReceipts = testHSAReceipts.filter(r => r.status === 'Stored').slice(0, 2);
+    const storedReceipts = testHSAReceipts.filter((r) => r.status === 'Stored').slice(0, 2);
     for (const receipt of storedReceipts) {
       await createHSAReceipt(userToken, receipt);
     }
@@ -57,7 +63,7 @@ test.describe('HSA CRUD', () => {
     await hsaPage.expectLiquidatableCash(expectedTotal);
   });
 
-  test('should mark receipt as reimbursed', async ({ userToken }) => {
+  test('should mark receipt as reimbursed', async () => {
     // Create a stored receipt via API
     const receiptData = testHSAReceipts[0];
     const createdReceipt = await createHSAReceipt(userToken, receiptData);
@@ -80,7 +86,7 @@ test.describe('HSA CRUD', () => {
     await hsaPage.expectReceiptStatus(receiptData.merchant, 'Reimbursed');
   });
 
-  test('should filter receipts by status', async ({ userToken }) => {
+  test('should filter receipts by status', async () => {
     // Create mix of stored and reimbursed receipts
     const storedReceipt = testHSAReceipts[0];
     const reimbursedReceipt = testHSAReceipts[3];
@@ -106,7 +112,7 @@ test.describe('HSA CRUD', () => {
     await hsaPage.expectReceiptInList(reimbursedReceipt.merchant);
   });
 
-  test('should edit a receipt', async ({ userToken }) => {
+  test('should edit a receipt', async () => {
     // Seed a receipt via API, then edit it through the UI.
     const receiptData = testHSAReceipts[0];
     const created = await createHSAReceipt(userToken, receiptData);
@@ -121,11 +127,9 @@ test.describe('HSA CRUD', () => {
     });
 
     // Verify the edits persisted in the database.
-    const updated = await e2eClient(userToken).collection<{
-      merchant: string;
-      amount: number;
-      status: string;
-    }>('hsa-receipts').get(created.id);
+    const updated = await e2eClient(userToken)
+      .collection<{ merchant: string; amount: number; status: string }>('hsa-receipts')
+      .get(created.id);
     expect(updated.merchant).toBe('Walgreens Pharmacy');
     expect(updated.amount).toBe(60.25);
     expect(updated.status).toBe('Reimbursed');
@@ -135,7 +139,7 @@ test.describe('HSA CRUD', () => {
     await hsaPage.expectReceiptNotInList(receiptData.merchant);
   });
 
-  test('should delete a receipt', async ({ userToken }) => {
+  test('should delete a receipt', async () => {
     // Create a receipt via API
     const receiptData = testHSAReceipts[0];
     await createHSAReceipt(userToken, receiptData);
@@ -152,7 +156,7 @@ test.describe('HSA CRUD', () => {
     await hsaPage.expectReceiptNotInList(receiptData.merchant);
   });
 
-  test('should update liquidatable cash when marking as reimbursed', async ({ userToken }) => {
+  test('should update liquidatable cash when marking as reimbursed', async () => {
     // Create two stored receipts
     const receipt1 = testHSAReceipts[0];
     const receipt2 = testHSAReceipts[1];
@@ -173,7 +177,7 @@ test.describe('HSA CRUD', () => {
     await hsaPage.expectLiquidatableCash(receipt2.amount);
   });
 
-  test('should display all receipt categories correctly', async ({ userToken }) => {
+  test('should display all receipt categories correctly', async () => {
     // Create one receipt for each category
     const receipts = [
       testHSAReceipts[0], // Rx

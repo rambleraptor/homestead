@@ -1,23 +1,29 @@
 /**
  * HSA Page Object Model
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`../vm/`).
  */
 
-import { Page, expect } from '@playwright/test';
-import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
+import type { Driver, Locator } from '../../../homestead-test-harness/driver/Driver';
 
 export class HSAPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/receipts');
+    await this.driver.goto('/receipts');
   }
 
   async expectToBeOnHSAPage() {
-    await expect(this.page).toHaveURL(/\/receipts/);
+    await this.driver.expectURL(/\/receipts/);
   }
 
   async clickAddReceipt() {
-    const addButton = this.page.getByTestId('add-hsa-receipt-button');
+    const addButton = this.driver.getByTestId('add-hsa-receipt-button');
     await addButton.waitFor({ state: 'visible' });
     await addButton.click();
   }
@@ -30,23 +36,23 @@ export class HSAPage {
     patient?: string;
     notes?: string;
   }) {
-    await this.page.locator('#merchant').fill(data.merchant);
-    await this.page.locator('#service_date').fill(data.service_date);
-    await this.page.locator('#amount').fill(data.amount.toString());
-    await this.page.locator('#category').selectOption(data.category);
+    await this.driver.locator('#merchant').fill(data.merchant);
+    await this.driver.locator('#service_date').fill(data.service_date);
+    await this.driver.locator('#amount').fill(data.amount.toString());
+    await this.driver.locator('#category').selectOption(data.category);
 
     if (data.patient) {
-      await this.page.locator('#patient').fill(data.patient);
+      await this.driver.locator('#patient').fill(data.patient);
     }
 
     if (data.notes) {
-      await this.page.locator('#notes').fill(data.notes);
+      await this.driver.locator('#notes').fill(data.notes);
     }
 
     // Upload a test file (required field)
     // Create a minimal valid JPEG file with proper magic bytes
-    const fileInput = this.page.locator('#receipt_file');
-    const minimalJpeg = Buffer.from([
+    const fileInput = this.driver.locator('#receipt_file');
+    const minimalJpeg = new Uint8Array([
       0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
       0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9
     ]);
@@ -58,7 +64,7 @@ export class HSAPage {
   }
 
   async submitReceiptForm() {
-    const submitButton = this.page.getByTestId('hsa-receipt-form-submit');
+    const submitButton = this.driver.getByTestId('hsa-receipt-form-submit');
     await submitButton.waitFor({ state: 'visible' });
     await submitButton.click();
     // Wait for the submit button to disappear (form closed)
@@ -77,29 +83,26 @@ export class HSAPage {
     await this.fillReceiptForm(data);
     await this.submitReceiptForm();
     // Wait for network to settle after mutation
-    await waitForNetworkIdle(this.page);
+    await this.driver.waitForNetworkIdle();
   }
 
   async expectReceiptInList(merchant: string, amount?: number) {
-    await expect(this.page.getByText(merchant).first()).toBeVisible();
+    await this.expect(this.driver.getByText(merchant).first()).toBeVisible();
 
     if (amount !== undefined) {
       const formattedAmount = `$${amount.toFixed(2)}`;
-      await expect(this.page.getByText(formattedAmount).first()).toBeVisible();
+      await this.expect(this.driver.getByText(formattedAmount).first()).toBeVisible();
     }
   }
 
   async expectReceiptNotInList(merchant: string) {
-    const merchantLocator = this.page.getByText(merchant).first();
-    await expect(merchantLocator).not.toBeVisible({ timeout: 2000 }).catch(() => {
-      // Element doesn't exist, which is fine
-    });
+    await this.expect(this.driver.getByText(merchant).first()).toBeHidden();
   }
 
   async expectLiquidatableCash(amount: number) {
     const formattedAmount = `$${amount.toFixed(2)}`;
     // The KPI card shows the total
-    await expect(this.page.getByText(formattedAmount).first()).toBeVisible();
+    await this.expect(this.driver.getByText(formattedAmount).first()).toBeVisible();
   }
 
   async editReceipt(
@@ -114,91 +117,86 @@ export class HSAPage {
       notes?: string;
     },
   ) {
-    const editButton = this.page.getByRole('button', {
+    const editButton = this.driver.getByRole('button', {
       name: new RegExp(`Edit ${merchant} receipt`, 'i'),
     });
     await editButton.waitFor({ state: 'visible' });
     await editButton.click();
 
     // The edit modal renders its own set of fields (prefixed ids).
-    const submit = this.page.getByTestId('hsa-receipt-edit-submit');
+    const submit = this.driver.getByTestId('hsa-receipt-edit-submit');
     await submit.waitFor({ state: 'visible' });
 
     if (updates.merchant !== undefined) {
-      await this.page.locator('#edit-merchant').fill(updates.merchant);
+      await this.driver.locator('#edit-merchant').fill(updates.merchant);
     }
     if (updates.service_date !== undefined) {
-      await this.page.locator('#edit-service_date').fill(updates.service_date);
+      await this.driver.locator('#edit-service_date').fill(updates.service_date);
     }
     if (updates.amount !== undefined) {
-      await this.page.locator('#edit-amount').fill(updates.amount.toString());
+      await this.driver.locator('#edit-amount').fill(updates.amount.toString());
     }
     if (updates.category !== undefined) {
-      await this.page.locator('#edit-category').selectOption(updates.category);
+      await this.driver.locator('#edit-category').selectOption(updates.category);
     }
     if (updates.status !== undefined) {
-      await this.page.locator('#edit-status').selectOption(updates.status);
+      await this.driver.locator('#edit-status').selectOption(updates.status);
     }
     if (updates.patient !== undefined) {
-      await this.page.locator('#edit-patient').fill(updates.patient);
+      await this.driver.locator('#edit-patient').fill(updates.patient);
     }
     if (updates.notes !== undefined) {
-      await this.page.locator('#edit-notes').fill(updates.notes);
+      await this.driver.locator('#edit-notes').fill(updates.notes);
     }
 
     await submit.click();
     await submit.waitFor({ state: 'hidden' });
-    await waitForNetworkIdle(this.page);
+    await this.driver.waitForNetworkIdle();
   }
 
   async markReceiptAsReimbursed(merchant: string) {
-    const markButton = this.page.getByRole('button', {
+    const markButton = this.driver.getByRole('button', {
       name: new RegExp(`Mark ${merchant}.*reimbursed`, 'i'),
     });
     await markButton.waitFor({ state: 'visible' });
     await markButton.click();
     // Wait for network to settle after mutation
-    await waitForNetworkIdle(this.page);
+    await this.driver.waitForNetworkIdle();
   }
 
   async deleteReceipt(merchant: string) {
-    const deleteButton = this.page.getByRole('button', {
+    const deleteButton = this.driver.getByRole('button', {
       name: new RegExp(`Delete ${merchant}`, 'i'),
     });
     await deleteButton.waitFor({ state: 'visible' });
     await deleteButton.click();
 
-    // Handle confirmation dialog if present
-    const confirmButton = this.page.getByRole('button', { name: /confirm|yes|delete/i });
-    const isConfirmVisible = await confirmButton.isVisible({ timeout: 1000 }).catch(() => false);
-
-    if (isConfirmVisible) {
-      await confirmButton.click();
-    }
+    // Deleting always asks for confirmation (ConfirmDialog in MedicalTab).
+    await this.driver.getByRole('button', { name: 'Delete', exact: true }).click();
 
     // Wait for network to settle after deletion
-    await waitForNetworkIdle(this.page);
+    await this.driver.waitForNetworkIdle();
   }
 
   async filterByStatus(status: 'All' | 'Stored' | 'Reimbursed') {
-    const filterSelect = this.page.locator('#status-filter');
+    const filterSelect = this.driver.locator('#status-filter');
     await filterSelect.waitFor({ state: 'visible' });
     await filterSelect.selectOption(status);
     // Wait for filter to apply
-    await waitForNetworkIdle(this.page);
+    await this.driver.waitForNetworkIdle();
   }
 
   async expectReceiptStatus(merchant: string, status: 'Stored' | 'Reimbursed') {
     // Find the row containing the merchant
-    const row = this.page.locator('tr').filter({ hasText: merchant });
-    await expect(row.getByText(status)).toBeVisible();
+    const row = this.driver.locator('tr').filter({ hasText: merchant });
+    await this.expect(row.getByText(status)).toBeVisible();
   }
 
   async expectReceiptCount(count: number) {
-    await expect(this.page.getByText(new RegExp(`Showing ${count}`)).first()).toBeVisible();
+    await this.expect(this.driver.getByText(new RegExp(`Showing ${count}`)).first()).toBeVisible();
   }
 
   async expectEmptyState() {
-    await expect(this.page.getByText(/no receipts found/i)).toBeVisible();
+    await this.expect(this.driver.getByText(/no receipts found/i)).toBeVisible();
   }
 }
