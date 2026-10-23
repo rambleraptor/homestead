@@ -6,7 +6,7 @@
  */
 
 import { getAepbaseUrl } from '../../../../tests/e2e/config/aepbase.setup';
-import { deleteIfPresent, e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
+import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 
 export interface HomeTaskRecord {
   id: string;
@@ -64,13 +64,6 @@ export async function listHomeTasks(token: string): Promise<HomeTaskRecord[]> {
 
 export async function getHomeTask(token: string, id: string): Promise<HomeTaskRecord> {
   return tasks(token).get(id);
-}
-
-/** The collection is household-wide, so this clears every task on the instance. */
-export async function deleteAllHomeTasks(token: string) {
-  for (const task of await listHomeTasks(token)) {
-    await deleteIfPresent(token, 'home-tasks', task.id);
-  }
 }
 
 // --- Devices ---------------------------------------------------------------
@@ -136,12 +129,3 @@ export async function listChargeTodos(token: string): Promise<TodoRecord[]> {
   return todos.filter((todo) => todo.title.startsWith('Charge the '));
 }
 
-/** Clears every device and every charge todo on the instance. */
-export async function deleteAllDevices(token: string) {
-  for (const device of await devices(token).listAll()) {
-    await deleteIfPresent(token, 'device-infos', device.id);
-  }
-  for (const todo of await listChargeTodos(token)) {
-    await deleteIfPresent(token, 'todos', todo.id);
-  }
-}

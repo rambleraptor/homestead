@@ -1,27 +1,36 @@
 /**
  * Dashboard Page Object Model
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`tests/vm/`).
  */
 
-import { Page, expect } from '@playwright/test';
+import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class DashboardPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/dashboard');
+    await this.driver.goto('/dashboard');
   }
 
   async expectToBeOnDashboard() {
-    await expect(this.page).toHaveURL(/\/dashboard/);
+    await this.driver.expectURL(/\/dashboard/);
   }
 
   async expectWelcomeMessage() {
-    await expect(this.page.getByText(/welcome/i).or(this.page.getByRole('heading', { level: 1 }))).toBeVisible();
+    await this.expect(
+      this.driver.getByText(/welcome/i).or(this.driver.getByRole('heading', { level: 1 })),
+    ).toBeVisible();
   }
 
   async logout() {
     // Use data-testid for reliable selection (preferred method)
-    const logoutButton = this.page.getByTestId('logout-button');
+    const logoutButton = this.driver.getByTestId('logout-button');
     // Wait for the button to be attached + visible before clicking. The
     // sidebar mounts as soon as the shell renders, but giving this an
     // explicit auto-wait makes the failure mode more legible if it
@@ -32,23 +41,23 @@ export class DashboardPage {
     // Wait for logout to redirect to the login page. The redirect is
     // driven by the AuthGuard's useEffect after auth state clears, so we
     // give it a generous budget in case dev-mode rebuilds are in flight.
-    await this.page.waitForURL(/\/login/, { timeout: 15000 });
+    await this.driver.waitForURL(/\/login/, { timeout: 15000 });
   }
 
   async navigateToApp(appName: string | RegExp) {
-    await this.page.getByRole('navigation').getByRole('link', { name: appName }).click();
+    await this.driver.getByRole('navigation').getByRole('link', { name: appName }).click();
   }
 
   get welcomePanel() {
-    return this.page.getByTestId('welcome-panel');
+    return this.driver.getByTestId('welcome-panel');
   }
 
   get adminChecklist() {
-    return this.page.getByTestId('admin-checklist');
+    return this.driver.getByTestId('admin-checklist');
   }
 
   async dismissWelcome() {
-    const dismiss = this.page.getByTestId('welcome-dismiss');
+    const dismiss = this.driver.getByTestId('welcome-dismiss');
     await dismiss.waitFor({ state: 'visible' });
     await dismiss.click();
     // The panel unmounts as soon as the setting write resolves.

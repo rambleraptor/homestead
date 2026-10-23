@@ -5,33 +5,34 @@
  * hands. Entry is three button taps per direction: level (1-7), suit,
  * then the direction itself, which commits the bid. Once all four
  * directions are entered the hand auto-saves. Bridge data is persisted
- * in `localStorage` (key `bridge:hands`), so `goto()` clears it via an
- * init script to give every test a clean slate.
+ * in `localStorage` (key `bridge:hands`); every test starts from an empty
+ * one (a fresh VM boot clears it), so there is nothing to reset here.
+ *
+ * Written against the shared `Driver`, so it runs on the VM tier (`../vm/`)
+ * and, via `playwrightDriver(page)`, in Playwright.
  */
 
-import { Page, expect } from '@playwright/test';
+import type { Driver, Locator } from '../../../../homestead-test-harness/driver/Driver';
 
 type Direction = 'north' | 'south' | 'east' | 'west';
 type Suit = 'clubs' | 'diamonds' | 'hearts' | 'spades' | 'no-trump' | 'pass';
 
-const STORAGE_KEY = 'bridge:hands';
-
 export class BridgePage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.addInitScript(
-      (key) => window.localStorage.removeItem(key),
-      STORAGE_KEY,
-    );
-    await this.page.goto('/games/bridge');
-    await this.page.getByTestId('hand-form').waitFor({ state: 'visible' });
+    await this.driver.goto('/games/bridge');
+    await this.driver.getByTestId('hand-form').waitFor({ state: 'visible' });
   }
 
   async expectToBeOnBridgePage() {
-    await expect(this.page).toHaveURL(/\/games\/bridge/);
-    await expect(
-      this.page.getByRole('heading', { name: 'Bridge' }),
+    await this.driver.expectURL(/\/games\/bridge/);
+    await this.expect(
+      this.driver.getByRole('heading', { name: 'Bridge' }),
     ).toBeVisible();
   }
 
@@ -41,20 +42,20 @@ export class BridgePage {
    */
   async enterBid(direction: Direction, level: number | undefined, suit: Suit) {
     if (suit !== 'pass' && level !== undefined) {
-      await this.page.getByTestId(`level-${level}`).click();
+      await this.driver.getByTestId(`level-${level}`).click();
     }
-    await this.page.getByTestId(`suit-${suit}`).click();
-    await this.page.getByTestId(`direction-${direction}`).click();
+    await this.driver.getByTestId(`suit-${suit}`).click();
+    await this.driver.getByTestId(`direction-${direction}`).click();
   }
 
   /** Choose which board (1-36) subsequent hands are recorded on. */
   async selectBoard(board: number) {
-    await this.page.getByTestId('board-select').selectOption(String(board));
+    await this.driver.getByTestId('board-select').selectOption(String(board));
   }
 
   /** Filter the saved-hands list to a single board via the pill row. */
   async filterByBoard(board: number) {
-    await this.page.getByTestId(`board-filter-${board}`).click();
+    await this.driver.getByTestId(`board-filter-${board}`).click();
   }
 
   /**
@@ -76,7 +77,7 @@ export class BridgePage {
   }
 
   async expectHandInList() {
-    await expect(this.page.getByTestId('hand-list')).toBeVisible();
+    await this.expect(this.driver.getByTestId('hand-list')).toBeVisible();
   }
 
   /**
@@ -84,22 +85,22 @@ export class BridgePage {
    * IDs are generated client-side, so we look the card up by position.
    */
   async expectFirstCardBid(direction: Direction, text: string) {
-    const card = this.page
+    const card = this.driver
       .locator('[data-testid^="hand-card-"]')
       .first();
-    await expect(
+    await this.expect(
       card.locator(`[data-testid$="-${direction}-bid"]`),
     ).toHaveText(text);
   }
 
   /** Assert the board label shown on the first hand card. */
   async expectFirstCardBoard(text: string) {
-    const card = this.page.locator('[data-testid^="hand-card-"]').first();
-    await expect(card.locator('[data-testid$="-board"]')).toHaveText(text);
+    const card = this.driver.locator('[data-testid^="hand-card-"]').first();
+    await this.expect(card.locator('[data-testid$="-board"]')).toHaveText(text);
   }
 
   async expectCardCount(count: number) {
-    await expect(this.page.locator('[data-testid^="hand-card-"]')).toHaveCount(
+    await this.expect(this.driver.locator('[data-testid^="hand-card-"]')).toHaveCount(
       count,
     );
   }

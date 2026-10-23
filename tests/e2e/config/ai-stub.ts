@@ -19,8 +19,19 @@
 import { createServer, type Server } from 'http';
 import type { AddressInfo } from 'net';
 
-/** Long enough to observe "running", short enough to keep tests quick. */
+/**
+ * Long enough to observe "running", short enough to keep tests quick.
+ * `AI_STUB_DELAY_MS` overrides it: the VM test tier, which polls every few
+ * milliseconds rather than at browser speed, needs far less.
+ */
 export const RESPONSE_DELAY_MS = 2500;
+
+function responseDelayMs(): number {
+  const override = Number(process.env.AI_STUB_DELAY_MS);
+  return Number.isFinite(override) && override >= 0 && process.env.AI_STUB_DELAY_MS
+    ? override
+    : RESPONSE_DELAY_MS;
+}
 
 /**
  * Document classify markers.
@@ -126,6 +137,17 @@ function responsesReply(payload: unknown) {
   };
 }
 
+/**
+ * The stub as a fetch handler: the reply for one OpenAI request, after the
+ * deliberate delay. The e2e server below serves it over HTTP; the VM test tier
+ * (packages/homestead-test-harness) serves it in-process.
+ */
+export async function aiStubFetch(req: Request): Promise<Response> {
+  const payload = payloadForBody(await req.text());
+  await new Promise((resolve) => setTimeout(resolve, responseDelayMs()));
+  return Response.json(responsesReply(payload));
+}
+
 /** Start the stub on an ephemeral port; returns its OpenAI-style base URL. */
 export async function startAiStub(): Promise<string> {
   server = createServer((req, res) => {
@@ -134,11 +156,10 @@ export async function startAiStub(): Promise<string> {
       body += chunk;
     });
     req.on('end', () => {
-      const payload = payloadForBody(body);
-      setTimeout(() => {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(responsesReply(payload)));
-      }, RESPONSE_DELAY_MS);
+      void aiStubFetch(new Request('http://ai-stub/', { method: 'POST', body })).then(async (reply) => {
+        res.writeHead(reply.status, { 'Content-Type': 'application/json' });
+        res.end(await reply.text());
+      });
     });
   });
 

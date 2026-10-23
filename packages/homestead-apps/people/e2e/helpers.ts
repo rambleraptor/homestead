@@ -87,13 +87,6 @@ export async function deleteAllAddresses(token: string) {
   }
 }
 
-export async function deleteAllPersonSharedData(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('person-shared-data').listAll();
-  for (const item of items) {
-    await deleteIfPresent(token, 'person-shared-data', item.id);
-  }
-}
-
 export const testPeople = [
   {
     name: 'John Smith',

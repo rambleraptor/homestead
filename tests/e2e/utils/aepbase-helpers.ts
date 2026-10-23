@@ -138,14 +138,6 @@ export async function setAppFlag(
   await flags.create(payload);
 }
 
-/** Delete every app-flags singleton record (resets all flags to defaults). */
-export async function resetAppFlags(token: string) {
-  const flags = e2eClient(token).collection<AppFlagsRecord>('app-flags');
-  for (const record of await flags.listAll()) {
-    await deleteIfPresent(token, 'app-flags', record.id);
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Users (superuser-only — admin CRUD over the user collection)
 // ---------------------------------------------------------------------------
@@ -189,24 +181,6 @@ export async function createUser(
     await addGroupMember(adminToken, MEMBER_GROUP_ID, user.id);
   }
   return user;
-}
-
-/**
- * Delete every user except the ids in `preserveIds`. Used by Users app
- * tests to tidy up without wiping the bootstrap superuser or the fixture-
- * owned `testUser`.
- */
-export async function deleteUsersExcept(
-  adminToken: string,
-  preserveIds: string[],
-) {
-  const users = await e2eClient(adminToken).collection<{ id: string }>('users').listAll();
-  const keep = new Set(preserveIds);
-  for (const u of users) {
-    if (keep.has(u.id)) continue;
-    // Users own child resources (notifications, preferences); force-cascade.
-    await deleteIfPresent(adminToken, 'users', u.id, { force: true });
-  }
 }
 
 // ---------------------------------------------------------------------------

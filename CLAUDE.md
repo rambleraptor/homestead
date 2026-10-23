@@ -129,47 +129,62 @@ Vitest + Testing Library. Tests live next to the code they cover, under
 `__tests__/` directories. `src/test/setup.ts` mocks the aepbase client
 globally — individual tests can override behavior via `vi.mocked(...)`.
 
-### VM tests (in-process, no browser)
+### VM tests (in-process, no browser) — the default for UI flows
 
-`make test-vm` runs `*.vm.ts` specs (under a `vm/` dir) on the **VM tier**
-(`packages/homestead-test-harness`): the real SPA mounted in happy-dom, served
-by the real server's fetch handler (`createApp()` in
-`homestead-server/src/app.ts`) in the same Vitest worker — no browser, no
-sockets. `bootHomestead()` gives each test a fresh copy of a template database
-(schema synced, admin claimed, a member user), so specs need no cleanup.
-`h.loginAs(h.member | h.admin)` installs a session pre-minted into the
-template (pass `{ via: 'form' }` to use the login form), and `goto` remounts
-the app like a page load. Page objects written against the shared `Driver`
-(`homestead-test-harness/driver/`) run on both tiers — it has a Playwright
-implementation too — and the e2e seed helpers work on both
-(`HOMESTEAD_E2E_APP_URL` points them at the VM). For speed the tier runs
-React's production build (`HOMESTEAD_VM_REACT_DEV=1` restores the development
-build), shares one module graph across spec files per worker
-(`isolate: false`), and caches the template database under
-`node_modules/.cache/homestead-vm`, keyed on the server, core and app sources
-(`HOMESTEAD_VM_NO_TEMPLATE_CACHE=1` disables it). There is no layout engine:
-visibility is computed-style only, so layout, service-worker, push, and
-download flows stay in Playwright.
+`make test-vm` runs `*.vm.ts` specs (an app's `vm/` dir; core flows under
+`tests/vm/`) on the **VM tier** (`packages/homestead-test-harness`): the real
+SPA mounted in happy-dom, served by the real server's fetch handler
+(`createApp()` in `homestead-server/src/app.ts`) in the same Vitest worker —
+no browser, no sockets. It runs the suite's ~200 UI specs in under a minute,
+so new specs for user-facing flows go here.
 
-### End-to-end (E2E) tests
+- `bootHomestead()` gives each test a fresh copy of a template database
+  (schema synced, admin claimed, a member, and a second member "Sam"), so
+  specs need no cleanup. `h.loginAs(h.member | h.admin)` installs a session
+  pre-minted into the template (`{ via: 'form' }` drives the login form);
+  `h.householdMember` writes as someone else. `close()` in `afterEach`.
+- Page objects are written against the shared `Driver`
+  (`homestead-test-harness/driver/Driver.ts`), a Playwright-shaped subset with
+  the same semantics (strict actions, retrying assertions); its Playwright
+  implementation (`playwrightDriver(page)`) lets one page object serve both
+  tiers. `driver.goto`/`reload` remount the app like a page load.
+- Seed through the e2e helpers (`e2eClient` and the per-app `helpers.ts`) —
+  `HOMESTEAD_E2E_APP_URL` points them at the VM. The e2e AI stub is served
+  in-process (with a 300ms rather than 2.5s pause), and `/api/events` streams
+  live, so change-feed specs work.
+- For speed the tier runs React's production build (`HOMESTEAD_VM_REACT_DEV=1`
+  restores the development build and its warnings), shares one module graph
+  across spec files per worker (`isolate: false`), and caches the template
+  database under `node_modules/.cache/homestead-vm`, keyed on the server,
+  core and app sources (`HOMESTEAD_VM_NO_TEMPLATE_CACHE=1` disables it).
+- There is no layout engine: visibility is computed-style only. Anything that
+  needs a real browser stays in Playwright (below).
 
-Playwright against a real aepbase instance. Located in `tests/e2e/`.
+### End-to-end (E2E) tests — only what needs a real browser
+
+Playwright against a real server, in `tests/e2e/` (specs: `tests/e2e/tests/`
+and an app's `e2e/`). Keep it to flows the VM can't run: real offline
+(`context.setOffline`), request interception (`page.route`), canvas / media /
+`createImageBitmap`, pointer geometry and layout, service workers, push,
+downloads. Today that's `offline-banner`, `groceries-offline` and
+`documents/redaction`.
 
 ```bash
 make test-e2e               # headless run
 make test-e2e-ui            # interactive UI mode
 ```
 
-E2E best practices (CRITICAL — follow these to keep the suite reliable):
+Both tiers follow the same rules:
 
 #### 1. Test isolation
-Each test gets its own user (see fixtures) and cleans its own data in
+VM tests get a fresh database per test. Playwright tests share one server, so
+each gets its own user (see fixtures) and cleans its own data in
 `beforeEach`. Don't rely on data from other tests.
 
 #### 2. Waiting
-NEVER use `page.waitForTimeout(ms)`. Use Playwright's auto-waits, explicit
-`waitFor({ state })` calls, or `expect().toBeVisible()` (which has built-in
-retries).
+NEVER sleep (`page.waitForTimeout(ms)`, `setTimeout` in a spec). Use the
+auto-waits, explicit `waitFor({ state })` calls, or `expect().toBeVisible()`
+(which retries).
 
 #### 3. Selectors (priority order)
 1. `data-testid` — stable, semantic
@@ -180,9 +195,11 @@ retries).
 Avoid CSS class selectors and positional selectors.
 
 #### 4. Page Object Model
-All e2e tests use POMs under `tests/e2e/pages/`. POMs encapsulate page
-interactions; they don't contain assertions (except helper `expect…`
-methods) or `console.log` statements.
+Specs use page objects (`tests/e2e/pages/` for core pages, an app's
+`e2e/<App>Page.ts` otherwise), written against the `Driver`. They encapsulate
+page interactions; they don't contain assertions (except helper `expect…`
+methods) or `console.log` statements, and an `expect…NotIn…` helper must
+actually fail when the thing is there.
 
 #### 5. Test data setup
 Seed via the shared client (`e2eClient` in
@@ -192,10 +209,11 @@ Seed via the shared client (`e2eClient` in
 #### 6. Adding a new app
 
 1. Add `data-testid` attrs on key buttons/forms
-2. Create a Page Object at `tests/e2e/pages/<App>Page.ts`
-3. Add aepbase helpers (`create<App>`, `deleteAll<Apps>`)
-4. Create specs at `tests/e2e/tests/<app>/<app>-crud.spec.ts`
-5. Run: `cd tests/e2e && npm run test -- tests/<app>/`
+2. Create a Page Object at `packages/homestead-apps/<app>/e2e/<App>Page.ts`
+   on the `Driver`
+3. Add seed helpers (`create<App>`) in `<app>/e2e/helpers.ts`
+4. Create specs at `packages/homestead-apps/<app>/vm/<app>-crud.vm.ts`
+5. Run: `cd packages/homestead-test-harness && npx vitest run packages/homestead-apps/<app>/vm`
 
 ## Code Quality Standards
 

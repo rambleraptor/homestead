@@ -16,6 +16,30 @@ let active: Handler | null = null;
 let installed = false;
 let inFlight = 0;
 
+export interface ShimResponse {
+  url: string;
+  method: string;
+  status: number;
+  ok: boolean;
+}
+
+type ResponseListener = (res: ShimResponse) => void;
+const responseListeners = new Set<ResponseListener>();
+
+/** Be told about every response the app sends back; returns the unsubscribe. */
+export function onResponse(listener: ResponseListener): () => void {
+  responseListeners.add(listener);
+  return () => responseListeners.delete(listener);
+}
+
+/** Extra in-process origins (stub services the server calls out to). */
+const services = new Map<string, Handler>();
+
+/** Serve `origin` (e.g. the AI stub) from `handler` instead of blocking it. */
+export function registerService(origin: string, handler: Handler): void {
+  services.set(origin, handler);
+}
+
 /** Requests the shim has handed to the app and not yet answered. */
 export function inFlightRequests(): number {
   return inFlight;
@@ -74,6 +98,8 @@ export function installFetchShim(): void {
         ? input
         : new Request(new URL(input instanceof Request ? input.url : String(input), base), init);
     const url = new URL(req.url);
+    const service = services.get(url.origin);
+    if (service) return service(req);
     if (url.origin !== VM_ORIGIN) {
       throw new TypeError(`homestead VM: blocked network request to ${req.url}`);
     }
@@ -83,7 +109,10 @@ export function installFetchShim(): void {
     const counted = !LONG_LIVED_PATHS.has(url.pathname);
     if (counted) inFlight++;
     try {
-      return abortable(await active(req), req.signal);
+      const res = await active(req);
+      const info = { url: req.url, method: req.method, status: res.status, ok: res.ok };
+      for (const listener of responseListeners) listener(info);
+      return abortable(res, req.signal);
     } finally {
       if (counted) inFlight--;
     }

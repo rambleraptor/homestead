@@ -1,21 +1,26 @@
 # Homestead End-to-End Tests
 
-Comprehensive end-to-end tests for Homestead using Playwright against a
-real aepbase backend.
+End-to-end tests for Homestead using Playwright against a real backend.
+
+> **Most UI flows run on the VM tier instead** — the real SPA in happy-dom
+> against the in-process server (`make test-vm`, specs in each app's `vm/`
+> and in `tests/vm/`; see CLAUDE.md, "VM tests"). This directory still owns
+> the shared plumbing both tiers use (page objects in `pages/`, seed helpers
+> in `utils/`, the AI stub in `config/`), and Playwright keeps only the flows
+> that need a real browser.
 
 ## Overview
 
-These tests verify the full integration of the Homestead application,
-exercising the Vite + React frontend and the homestead-server
-backend together in a real browser environment.
+These tests exercise the Vite + React frontend and the homestead-server
+backend together in a real browser, for what the VM tier can't do.
 
 ### What's Tested
 
-- **Authentication** - Login, logout, session persistence
-- **Gift Cards** - CRUD operations, merchant summaries
-- **Events** - CRUD operations, recurring events
-- **Settings** - Password changes, validation
-- **Navigation** - App navigation, routing, 404 handling
+- **Offline** - the offline banner (`tests/offline/`) and the groceries offline
+  queue (`packages/homestead-apps/groceries/e2e/`), via real
+  `context.setOffline` and request interception
+- **Redaction** - drawing redaction boxes over a real canvas
+  (`packages/homestead-apps/documents/e2e/`)
 
 ## Architecture
 
@@ -134,21 +139,11 @@ npm test
 
 ### Run Specific Test Suites
 
+Pass a path (relative to the repo root, which is Playwright's `testDir`):
+
 ```bash
-# Authentication tests only
-npm run test:auth
-
-# Gift cards tests only
-npm run test:gift-cards
-
-# Events tests only
-npm run test:events
-
-# Settings tests only
-npm run test:settings
-
-# Navigation tests only
-npm run test:navigation
+npm test -- tests/e2e/tests/offline/
+npm test -- packages/homestead-apps/groceries/e2e/
 ```
 
 ### Run in UI Mode (Interactive)

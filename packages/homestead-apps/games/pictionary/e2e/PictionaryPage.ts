@@ -2,135 +2,141 @@
  * Pictionary Page Object Model
  *
  * Encapsulates the four screens of the pictionary app: list,
- * create form, edit form, and detail.
+ * create form, edit form, and detail. Written against the shared
+ * `Driver`, so it runs on the VM tier (`../vm/`) and, via
+ * `playwrightDriver(page)`, in Playwright.
  */
 
-import { Page, expect } from '@playwright/test';
+import type { Driver, Locator } from '../../../../homestead-test-harness/driver/Driver';
 
 export class PictionaryPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/games/pictionary');
+    await this.driver.goto('/games/pictionary');
   }
 
   async gotoLeaderboard() {
-    await this.page.goto('/games/pictionary/leaderboard');
+    await this.driver.goto('/games/pictionary/leaderboard');
   }
 
   async clickLeaderboard() {
-    await this.page.getByTestId('pictionary-leaderboard-button').click();
+    await this.driver.getByTestId('pictionary-leaderboard-button').click();
   }
 
   async expectToBeOnPictionaryPage() {
-    await expect(this.page).toHaveURL(/\/games\/pictionary/);
-    await expect(
-      this.page.getByRole('heading', { name: 'Pictionary' }),
+    await this.driver.expectURL(/\/games\/pictionary/);
+    await this.expect(
+      this.driver.getByRole('heading', { name: 'Pictionary' }),
     ).toBeVisible();
   }
 
   async expectToBeOnLeaderboardPage() {
-    await expect(this.page).toHaveURL(/\/games\/pictionary\/leaderboard/);
-    await expect(
-      this.page.getByRole('heading', { name: 'Pictionary Leaderboard' }),
+    await this.driver.expectURL(/\/games\/pictionary\/leaderboard/);
+    await this.expect(
+      this.driver.getByRole('heading', { name: 'Pictionary Leaderboard' }),
     ).toBeVisible();
   }
 
   leaderboardRow(rowKey: string) {
-    return this.page.getByTestId(`pictionary-leaderboard-row-${rowKey}`);
+    return this.driver.getByTestId(`pictionary-leaderboard-row-${rowKey}`);
   }
 
   async selectLeaderboardMode(mode: 'players' | 'teams') {
-    await this.page
+    await this.driver
       .getByTestId(`pictionary-leaderboard-mode-${mode}`)
       .click();
   }
 
   async expectLeaderboardEmpty() {
-    await expect(
-      this.page.getByTestId('pictionary-leaderboard-empty'),
+    await this.expect(
+      this.driver.getByTestId('pictionary-leaderboard-empty'),
     ).toBeVisible();
   }
 
   async clickNewGame() {
-    const btn = this.page.getByTestId('new-pictionary-game-button');
+    const btn = this.driver.getByTestId('new-pictionary-game-button');
     await btn.waitFor({ state: 'visible' });
     await btn.click();
   }
 
   async fillDate(yyyyMmDd: string) {
-    await this.page.getByTestId('pictionary-date').fill(yyyyMmDd);
+    await this.driver.getByTestId('pictionary-date').fill(yyyyMmDd);
   }
 
   async fillLocation(value: string) {
-    await this.page.getByTestId('pictionary-location').fill(value);
+    await this.driver.getByTestId('pictionary-location').fill(value);
   }
 
   async fillWinningWord(value: string) {
-    await this.page.getByTestId('pictionary-winning-word').fill(value);
+    await this.driver.getByTestId('pictionary-winning-word').fill(value);
   }
 
   async fillNotes(value: string) {
-    await this.page.getByTestId('pictionary-notes').fill(value);
+    await this.driver.getByTestId('pictionary-notes').fill(value);
   }
 
   async addTeam() {
-    await this.page.getByTestId('add-team-button').click();
+    await this.driver.getByTestId('add-team-button').click();
   }
 
   async addPlayerToTeam(teamIndex: number, personId: string) {
-    await this.page
+    await this.driver
       .getByTestId(`team-${teamIndex}-player-${personId}`)
       .click();
   }
 
   async setWinner(teamIndex: number) {
-    await this.page.getByTestId(`team-${teamIndex}-winner`).click();
+    await this.driver.getByTestId(`team-${teamIndex}-winner`).click();
   }
 
   async submit() {
-    await this.page.getByTestId('pictionary-submit-button').click();
+    await this.driver.getByTestId('pictionary-submit-button').click();
   }
 
   async expectGameInList() {
-    await this.page
+    await this.driver
       .getByTestId('pictionary-game-list')
       .waitFor({ state: 'visible' });
   }
 
   async openFirstGame() {
-    const list = this.page.getByTestId('pictionary-game-list');
+    const list = this.driver.getByTestId('pictionary-game-list');
     await list.waitFor({ state: 'visible' });
     await list.locator('button[data-testid^="pictionary-game-item-"]').first().click();
   }
 
   async expectWinningTeamPlayer(playerName: string) {
-    await expect(
-      this.page.getByTestId('pictionary-winner-banner'),
+    await this.expect(
+      this.driver.getByTestId('pictionary-winner-banner'),
     ).toContainText(playerName);
   }
 
   async expectWinningWord(word: string) {
     // The winning word is rendered both in the list and the detail summary.
-    await expect(this.page.getByText(word).first()).toBeVisible();
+    await this.expect(this.driver.getByText(word).first()).toBeVisible();
   }
 
   async clickEdit() {
-    await this.page.getByTestId('pictionary-edit-button').click();
+    await this.driver.getByTestId('pictionary-edit-button').click();
   }
 
   async clickDelete() {
-    await this.page.getByTestId('pictionary-delete-button').click();
+    await this.driver.getByTestId('pictionary-delete-button').click();
   }
 
   async confirmDeleteInDialog() {
     // The shared ConfirmDialog renders a "Delete" button.
-    await this.page.getByRole('button', { name: 'Delete' }).last().click();
+    await this.driver.getByRole('button', { name: 'Delete' }).last().click();
   }
 
   async expectEmptyState() {
-    await expect(
-      this.page.getByText(/No Pictionary games yet/i),
+    await this.expect(
+      this.driver.getByText(/No Pictionary games yet/i),
     ).toBeVisible();
   }
 }

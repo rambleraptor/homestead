@@ -1,23 +1,29 @@
 /**
  * Events Page Object Model
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright suite
+ * (`playwrightDriver(page)`) and the in-process VM tier (`../vm/`).
  */
 
-import { Page, expect } from '@playwright/test';
-import { waitForNetworkIdle } from '../../../../tests/e2e/utils/network';
+import type { Driver, Locator } from '../../../homestead-test-harness/driver/Driver';
 
 export class EventsPage {
-  constructor(private page: Page) {}
+  constructor(readonly driver: Driver) {}
+
+  private expect(locator: Locator) {
+    return this.driver.expect(locator);
+  }
 
   async goto() {
-    await this.page.goto('/events');
+    await this.driver.goto('/events');
   }
 
   async expectToBeOnEventsPage() {
-    await expect(this.page).toHaveURL(/\/events/);
+    await this.driver.expectURL(/\/events/);
   }
 
   async clickAddEvent() {
-    const addButton = this.page.getByTestId('add-event-button');
+    const addButton = this.driver.getByTestId('add-event-button');
     await addButton.waitFor({ state: 'visible' });
     await addButton.click();
   }
@@ -35,42 +41,42 @@ export class EventsPage {
       weekday: '0' | '1' | '2' | '3' | '4' | '5' | '6';
     };
   }) {
-    await this.page.getByTestId('event-form-name').fill(data.name);
+    await this.driver.getByTestId('event-form-name').fill(data.name);
     const [y, m, d] = data.date.substring(0, 10).split('-');
-    await this.page.getByTestId('event-form-month').selectOption(String(Number(m)));
-    await this.page.getByTestId('event-form-day').fill(String(Number(d)));
+    await this.driver.getByTestId('event-form-month').selectOption(String(Number(m)));
+    await this.driver.getByTestId('event-form-day').fill(String(Number(d)));
     if (data.withYear) {
-      await this.page.getByTestId('event-form-year').fill(y);
+      await this.driver.getByTestId('event-form-year').fill(y);
     }
     if (data.tag !== undefined) {
       const knownTags = ['birthday', 'anniversary'];
       if (data.tag === '' || knownTags.includes(data.tag)) {
-        await this.page
+        await this.driver
           .getByTestId('event-form-tag')
           .selectOption(data.tag === '' ? '' : data.tag);
       } else {
-        await this.page
+        await this.driver
           .getByTestId('event-form-tag')
           .selectOption('__custom__');
-        await this.page
+        await this.driver
           .getByTestId('event-form-tag-custom')
           .fill(data.tag);
       }
     }
     if (data.recurrence) {
-      await this.page
+      await this.driver
         .getByTestId('event-form-recurrence')
         .selectOption('yearly-nth-weekday');
-      await this.page
+      await this.driver
         .getByTestId('event-form-recurrence-week')
         .selectOption(data.recurrence.week);
-      await this.page
+      await this.driver
         .getByTestId('event-form-recurrence-weekday')
         .selectOption(data.recurrence.weekday);
     }
     if (data.personNames && data.personNames.length > 0) {
       for (const name of data.personNames) {
-        const chip = this.page.getByRole('button', { name, exact: true });
+        const chip = this.driver.getByRole('button', { name, exact: true });
         await chip.waitFor({ state: 'visible' });
         await chip.click();
       }
@@ -78,7 +84,7 @@ export class EventsPage {
   }
 
   async submitEventForm() {
-    const submit = this.page.getByTestId('event-form-submit');
+    const submit = this.driver.getByTestId('event-form-submit');
     await submit.waitFor({ state: 'visible' });
     await submit.click();
     await submit.waitFor({ state: 'hidden' });
@@ -97,16 +103,16 @@ export class EventsPage {
     await this.clickAddEvent();
     await this.fillEventForm(data);
     await this.submitEventForm();
-    await waitForNetworkIdle(this.page);
+    await this.driver.waitForNetworkIdle();
   }
 
   async expectEventInList(name: string) {
-    await expect(this.page.getByText(name).first()).toBeVisible();
+    await this.expect(this.driver.getByText(name).first()).toBeVisible();
   }
 
   async expectEventNotInList(name: string) {
-    const locator = this.page.getByText(name).first();
-    await expect(locator)
+    const locator = this.driver.getByText(name).first();
+    await this.expect(locator)
       .not.toBeVisible({ timeout: 2000 })
       .catch(() => {
         // OK — element doesn't exist
@@ -121,23 +127,23 @@ export class EventsPage {
       tag: string;
     }>,
   ) {
-    const editButton = this.page
+    const editButton = this.driver
       .getByRole('button', { name: `Edit ${eventName}` })
       .first();
     await editButton.waitFor({ state: 'visible' });
     await editButton.click();
 
-    await this.page.getByTestId('event-form-name').waitFor({ state: 'visible' });
+    await this.driver.getByTestId('event-form-name').waitFor({ state: 'visible' });
 
     if (newData.name !== undefined) {
-      await this.page.getByTestId('event-form-name').fill(newData.name);
+      await this.driver.getByTestId('event-form-name').fill(newData.name);
     }
     if (newData.date !== undefined) {
       const [, m, d] = newData.date.substring(0, 10).split('-');
-      await this.page
+      await this.driver
         .getByTestId('event-form-month')
         .selectOption(String(Number(m)));
-      await this.page.getByTestId('event-form-day').fill(String(Number(d)));
+      await this.driver.getByTestId('event-form-day').fill(String(Number(d)));
     }
     if (newData.tag !== undefined) {
       await this.fillEventForm({
@@ -148,33 +154,31 @@ export class EventsPage {
     }
 
     await this.submitEventForm();
-    await waitForNetworkIdle(this.page);
+    await this.driver.waitForNetworkIdle();
   }
 
   async filterByName(query: string) {
-    await this.page.getByTestId('filter-text-name').fill(query);
+    await this.driver.getByTestId('filter-text-name').fill(query);
   }
 
   async toggleTagFilter(tag: string) {
-    await this.page.getByTestId(`filter-chip-tag-${tag}`).click();
+    await this.driver.getByTestId(`filter-chip-tag-${tag}`).click();
   }
 
   async deleteEvent(eventName: string) {
     await this.expectEventInList(eventName);
-    const deleteButton = this.page
+    const deleteButton = this.driver
       .getByRole('button', { name: `Delete ${eventName}` })
       .first();
     await deleteButton.waitFor({ state: 'visible' });
     await deleteButton.click();
-    const confirmButton = this.page.getByRole('button', {
+    const confirmButton = this.driver.getByRole('button', {
       name: /confirm|yes|delete/i,
     });
-    const isVisible = await confirmButton
-      .isVisible({ timeout: 1000 })
-      .catch(() => false);
+    const isVisible = await confirmButton.isVisible();
     if (isVisible) {
       await confirmButton.click();
     }
-    await waitForNetworkIdle(this.page);
+    await this.driver.waitForNetworkIdle();
   }
 }

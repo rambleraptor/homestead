@@ -3,7 +3,7 @@
  * aepbase REST API.
  */
 
-import { deleteIfPresent, e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
+import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 
 export interface EventRecord {
   id: string;
@@ -63,9 +63,3 @@ export async function listEvents(token: string): Promise<EventRecord[]> {
   return e2eClient(token).collection<EventRecord>('events').listAll();
 }
 
-export async function deleteAllEvents(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('events').listAll();
-  for (const item of items) {
-    await deleteIfPresent(token, 'events', item.id);
-  }
-}

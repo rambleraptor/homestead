@@ -91,8 +91,8 @@ Mirror the change in the app's `types.ts` (record interface +
   `parents`). For a cross-resource delete cascade, compose the standard
   hooks in a hand-written hook (see groceries' `useDeleteStore`) so each
   related write stays optimistic and offline-queued.
-- E2E seed helpers in the app's `e2e/helpers.ts` if specs touch the
-  new fields.
+- Seed helpers in the app's `e2e/helpers.ts` if specs touch the new
+  fields.
 
 ## Step 4: Verify
 
@@ -105,8 +105,10 @@ Mirror the change in the app's `types.ts` (record interface +
    invocation lists resources), or
    `curl 127.0.0.1:3000/api/aep/aep-resource-definitions/<singular>` with an
    admin token.
-4. Run the app's e2e specs if data paths changed:
-   `cd tests/e2e && npm run test -- packages/homestead-apps/<app>/e2e/`.
+4. Run the app's UI flow specs if data paths changed:
+   `cd packages/homestead-test-harness && npx vitest run packages/homestead-apps/<app>/vm`
+   (and `cd tests/e2e && npm run test -- packages/homestead-apps/<app>/e2e/`
+   if the app still has Playwright specs).
 
 ## What this skill does NOT do
 

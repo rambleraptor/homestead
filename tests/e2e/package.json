@@ -10,12 +10,6 @@
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:chromium": "playwright test --project=chromium",
-    "test:auth": "playwright test tests/e2e/tests/auth/",
-    "test:gift-cards": "playwright test packages/homestead-apps/gift-cards/e2e/",
-    "test:people": "playwright test packages/homestead-apps/people/e2e/",
-    "test:receipts": "playwright test packages/homestead-apps/receipts/e2e/",
-    "test:settings": "playwright test tests/e2e/tests/settings/",
-    "test:navigation": "playwright test tests/e2e/tests/navigation/",
     "report": "playwright show-report",
     "clean": "rm -rf test-results playwright-report aep_test_data"
   },
