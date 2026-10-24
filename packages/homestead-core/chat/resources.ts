@@ -18,6 +18,7 @@
  */
 
 import type { ResourceDefinition } from '../resources/types';
+import { MAX_ATTACHMENTS } from './attachment-limits';
 
 export const CONVERSATIONS = 'conversations';
 export const CHAT_MESSAGES = 'chat-messages';
@@ -74,6 +75,14 @@ export const chatResources: ResourceDefinition[] = [
       },
       role: { type: 'string', enum: ['user', 'assistant'], required: true },
       content: { type: 'string', description: 'The plain text of the message.' },
+      attachments: {
+        type: 'array',
+        maxItems: MAX_ATTACHMENTS,
+        items: { type: 'file' },
+        description:
+          'Files a person attached to their message — images and PDFs the assistant ' +
+          'reads alongside the text. Limits in chat/attachment-limits, checked by the chat route.',
+      },
       parts: {
         type: 'array',
         items: { type: 'object' },

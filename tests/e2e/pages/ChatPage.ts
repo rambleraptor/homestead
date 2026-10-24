@@ -11,7 +11,7 @@
  * and the in-process VM tier (`tests/vm/`).
  */
 
-import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
+import type { Driver, FilePayload, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class ChatPage {
   constructor(readonly driver: Driver) {}
@@ -33,6 +33,26 @@ export class ChatPage {
   async send(text: string) {
     await this.input.fill(text);
     await this.sendButton.click();
+  }
+
+  /** Attach files to the message being written, as the file picker would. */
+  async attach(files: FilePayload | FilePayload[]) {
+    await this.driver.getByLabel('Upload files').setInputFiles(files);
+  }
+
+  /** The files waiting in the composer. */
+  get composerAttachments(): Locator {
+    return this.driver.getByTestId('chat-composer-attachment');
+  }
+
+  /** Remove a waiting file from the composer. */
+  async removeAttachment(name: string) {
+    await this.driver.getByRole('button', { name: `Remove ${name}` }).click();
+  }
+
+  /** The files attached to messages in the transcript. */
+  get attachments(): Locator {
+    return this.driver.getByTestId('chat-attachment');
   }
 
   /** Stop the running turn. */

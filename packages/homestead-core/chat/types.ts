@@ -6,6 +6,7 @@
  */
 
 import type { UIMessage } from 'ai';
+import type { FileDescriptor } from '@rambleraptor/homestead-client';
 
 /**
  * One tool invocation, as the chat executor reports it: what ran and how it
@@ -63,4 +64,6 @@ export interface StoredChatMessage {
   parts?: HomesteadUIMessage['parts'];
   status?: 'streaming' | 'complete' | 'error' | 'cancelled';
   error?: string;
+  /** Files attached to a person's message. */
+  attachments?: FileDescriptor[];
 }

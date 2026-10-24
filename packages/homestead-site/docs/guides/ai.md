@@ -154,6 +154,16 @@ written on one device appears on the other as it lands. **Stop** ends a reply
 early and keeps what was written so far. Delete a conversation from the list;
 otherwise it's removed 60 days after its last message.
 
+You can attach **photos and PDFs** to a message: tap the paperclip, paste, or
+drop files on the box. A message can carry up to 5 files of up to 10 MB each,
+and can be just files with no text ("what's in this receipt?" works, and so
+does a photo on its own). JPEG, PNG, WebP and GIF images and PDFs are accepted
+— the assistant's models read those — and a file's type is checked from its
+contents, not its name. The assistant sees the files of your three most recent
+messages that have any; older ones are noted by name, so a long thread doesn't
+resend every photo. Attachments are stored with the message, so they're there
+on a reload or another device, and they go when the conversation does.
+
 Under the hood the assistant sees the same **one-tool-per-resource** surface
 the [MCP server](#the-tool-surface) serves by default: one tool per
 resource, with the verb — `list`, `get`, `create`, `update`, `delete`, or an
@@ -191,6 +201,12 @@ Content-Type: application/json
   the reply keeps the text written before the stop.
 - `message.id` is yours to choose, so a retried send gets `409` instead of
   sending twice.
+- To attach files, send `multipart/form-data` instead: the same JSON as a
+  `request` part, and each file as an `attachments` part. The text may then be
+  empty. A file that isn't an image or PDF is `415`, one over 10 MB is `413`,
+  and more than 5 is `400`. The files are stored on the user's message
+  (`attachments`, a list of file descriptors — see
+  [Files in lists and objects](../design/nested-files)).
 - A conversation is private to whoever started it, and is deleted 60 days
   after its last message.
 

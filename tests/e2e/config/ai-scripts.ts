@@ -46,6 +46,13 @@ export interface ChatScript {
 export const SCRIPT_EXHAUSTED_TEXT = '[ai-stub] script exhausted';
 
 /**
+ * In a step's text, replaced by what files the message carried as the model
+ * saw them: `I can see 1 image and 1 PDF.` — so a test can check that
+ * attachments reached the model, not just storage.
+ */
+export const ATTACHMENTS_PLACEHOLDER = '{attachments}';
+
+/**
  * Markers, exported so a spec names its script by constant. Kept distinctive
  * so ordinary test text can never select one by accident.
  */
@@ -61,6 +68,8 @@ export const CHAT_MARKERS = {
    * enough to cancel, interrupt, or collide with while it is still streaming.
    */
   longReply: 'e2e-chat-long-reply',
+  /** Reply with what files the message carried, as the model saw them. */
+  describeAttachments: 'e2e-chat-describe-attachments',
 } as const;
 
 /** The long reply's text, exported so a spec can check the whole of it arrived. */
@@ -95,6 +104,10 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
   {
     marker: CHAT_MARKERS.longReply,
     steps: [{ text: LONG_REPLY_TEXT }],
+  },
+  {
+    marker: CHAT_MARKERS.describeAttachments,
+    steps: [{ text: ATTACHMENTS_PLACEHOLDER }],
   },
 ];
 

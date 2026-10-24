@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { Chat, useChat } from '@ai-sdk/react';
+import type { FileUIPart } from 'ai';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useResourceEvents } from '@rambleraptor/homestead-core/api/remoteChanges';
 import { authStore } from '@rambleraptor/homestead-core/api/aepbase';
@@ -219,15 +220,15 @@ export function useConversation(conversationId: string | null, options: UseConve
   const remoteRunning = !localBusy && !awaitingStore && stored?.at(-1)?.status === 'streaming';
   const busy = localBusy || remoteRunning;
 
-  /** Send a message. Rejects if the turn could not start, or can't yet. */
+  /** Send a message, with any files. Rejects if the turn could not start, or can't yet. */
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, files: FileUIPart[] = []) => {
       const trimmed = text.trim();
-      if (!trimmed) return;
+      if (!trimmed && files.length === 0) return;
       if (isBusy(session.chat) || remoteRunning) {
         throw new Error('wait for the current reply to finish');
       }
-      await sendMessage({ text: trimmed });
+      await sendMessage(files.length > 0 ? { text: trimmed, files } : { text: trimmed });
       if (session.chat.status === 'error') throw session.chat.error;
     },
     [session, sendMessage, remoteRunning],

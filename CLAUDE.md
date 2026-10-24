@@ -355,7 +355,10 @@ SPA and apps share:
   `notifications/` — the always-installed core apps (`chat` is the AI
   assistant; its server half lives in `server/chat/`, where `turns.ts` runs a
   stored, streamed turn of a `conversation` — history in `chat-message` rows,
-  one turn at a time, cancel via `conversations/{id}:cancel`. Its SPA half is
+  one turn at a time, cancel via `conversations/{id}:cancel`; files a person
+  attaches ride on their message (`attachments`, checked in
+  `server/chat/attachments.ts`), and stored history is untrusted, so only parts
+  the runner writes reach the model. Its SPA half is
   the AI SDK's `useChat` over a stored-turn transport (`chat/api.ts`,
   `chat/hooks/useConversation.ts`), rendered with AI Elements. `notifications` owns the
   web-push inbox + subscription management; its server half lives in

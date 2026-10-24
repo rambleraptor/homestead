@@ -19,7 +19,8 @@ that:
 |---|---|
 | `conversation.tsx` | As upstream. |
 | `message.tsx` | `Message`, `MessageContent`, `MessageActions`, `MessageAction`, `MessageResponse` only (no branch UI). `MessageResponse` renders with Streamdown's core alone: no code (Shiki), math (KaTeX), Mermaid, or CJK plugins, to keep the bundle small. |
-| `prompt-input.tsx` | The text-only subset: `PromptInput` (a form), `PromptInputBody`, `PromptInputTextarea`, `PromptInputFooter`, `PromptInputTools`, `PromptInputSubmit` (status-aware, with stop). No attachments, menus, model select, or command palette yet. |
+| `prompt-input.tsx` | The subset chat uses: `PromptInput` (a form, with local file attachments — picker, paste, drop, `accept` / `maxFiles` / `maxFileSize`), `PromptInputBody`, `PromptInputTextarea`, `PromptInputHeader`, `PromptInputFooter`, `PromptInputTools`, `PromptInputButton`, `PromptInputSubmit` (status-aware, with stop), and `PromptInputActionAddAttachments` as a button rather than a menu item. No provider, menus, model select, referenced sources, screenshots, or command palette. If a send fails, its text and files go back into the composer. On send, files become data URLs read from the `File` itself (`arrayBuffer`), not by fetching the blob URL through a `FileReader`. |
+| `attachments.tsx` | As upstream, minus the hover-card preview (`AttachmentHoverCard*`). |
 | `tool.tsx` | Parameters and results render as a plain JSON `<pre>` instead of the Shiki `CodeBlock`. The card sets `border-border` itself: shadcn's base layer colors every border, and this app's CSS doesn't. |
 | `suggestion.tsx` | As upstream. |
 | `shimmer.tsx` | The sweep is a CSS animation (`animate-text-shimmer` in `globals.css`) instead of `motion`, so no animation library is needed. |

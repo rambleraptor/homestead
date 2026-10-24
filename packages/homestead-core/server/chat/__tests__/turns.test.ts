@@ -112,6 +112,36 @@ describe('stored history → the model', () => {
       { type: 'text', text: 'hi' },
     ]);
   });
+
+  it('drops parts the runner never writes — a planted file URL would be fetched', () => {
+    const ui = toUiMessages([
+      {
+        id: 'u1',
+        seq: 1,
+        role: 'user',
+        content: 'look',
+        parts: [
+          { type: 'text', text: 'look' },
+          { type: 'file', mediaType: 'image/png', url: 'http://169.254.169.254/latest' },
+        ],
+      },
+    ]);
+    expect(ui[0]!.parts).toEqual([{ type: 'text', text: 'look' }]);
+  });
+
+  it('keeps a message that is only attachments', () => {
+    const ui = toUiMessages([
+      {
+        id: 'u1',
+        seq: 1,
+        role: 'user',
+        content: '',
+        parts: [],
+        attachments: [{ id: 'f1', url: '', name: 'a.png', media_type: 'image/png', size: 1, encrypted: false }],
+      },
+    ]);
+    expect(ui.map((m) => m.id)).toEqual(['u1']);
+  });
 });
 
 describe('small rules', () => {
