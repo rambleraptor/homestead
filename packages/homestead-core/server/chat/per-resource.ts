@@ -70,7 +70,7 @@ import {
   executeCustomMethod,
   type CustomMethodBinding,
 } from './custom-methods';
-import type { SurfaceResult, ToolSurface } from './surface';
+import { writeGate, type SurfaceResult, type ToolSurface, type WriteAccess } from './surface';
 import { isRecord, toCustomMethodCall, toTypedCall } from './translate';
 
 /** The CRUD actions, in the order they appear in the enum. */
@@ -106,9 +106,9 @@ interface ResourceTool {
 
 /**
  * Build the per-resource surface over `defs`. `write` mirrors the other
- * surfaces' scope gate — but here it narrows each tool's `action` enum rather
+ * surfaces' write gate — but here it narrows each tool's `action` enum rather
  * than withholding tools, since the tool *is* the resource. A read-only
- * surface is therefore self-describing: the model sees an enum with no write
+ * resource is therefore self-describing: the model sees an enum with no write
  * actions in it instead of inferring the restriction from absent tools.
  */
 export function buildResourceTools(
@@ -117,7 +117,8 @@ export function buildResourceTools(
     write = true,
     attachments,
   }: {
-    write?: boolean;
+    /** Whether writes are offered, everywhere or per resource. */
+    write?: WriteAccess;
     /**
      * Files a write may put in a file field, by attachment id — the chat's
      * conversation. Without it (MCP), file fields stay out of the tools.
@@ -135,8 +136,10 @@ export function buildResourceTools(
 
   const tools: Record<string, ToolSpec> = {};
   const byTool = new Map<string, ResourceTool>();
+  const canWrite = writeGate(write);
 
   for (const def of defs) {
+    const writable = canWrite(def);
     const readBinding = bindings.get(`read_${snake(def.singular)}`);
     // Every def buildTools saw produces all four tools; a missing one means the
     // definition never made it in, so there is nothing to expose.
@@ -158,13 +161,13 @@ export function buildResourceTools(
       // method (possible only when one resource's plural equals another's
       // singular) — better unexposed than dispatched to the wrong place.
       if (!binding || binding.plural !== def.plural || binding.verb !== verb) continue;
-      if (!write && binding.httpMethod !== 'GET') continue;
+      if (!writable && binding.httpMethod !== 'GET') continue;
       verbs.set(verbAction(verb), { toolName, binding });
     }
 
     const actions = [
       ...READ_ACTIONS,
-      ...(write ? WRITE_ACTIONS : []),
+      ...(writable ? WRITE_ACTIONS : []),
       ...verbs.keys(),
     ];
 
@@ -174,7 +177,7 @@ export function buildResourceTools(
         parentPlurals: readBinding.parentPlurals,
         requiredFields,
         verbs,
-        write,
+        write: writable,
       }),
       inputSchema: buildInputSchema(def, {
         actions,
@@ -415,7 +418,7 @@ function describeResource(
     );
   }
   if (!opts.write) {
-    lines.push('This authorization is read-only, so no write actions are offered.');
+    lines.push('This resource is read-only for this caller, so no write actions are offered.');
   }
   if (opts.verbs.size > 0) {
     lines.push('Custom methods:');

@@ -538,7 +538,12 @@ Two server-only options shape how a resource is handled rather than stored
   walks every user for the latter — scheduled notifications use it).
 - `modelTools: { chat?, mcp? }` — set either to `false` to leave the resource
   (and its children) out of that surface's model tools
-  (`core/resources/model-tools.ts`). Not a permission.
+  (`core/resources/model-tools.ts`). Not a permission. Separately, both
+  surfaces narrow their tools per caller to what they can reach
+  (`Engine.collectionAccess`, handed to core via
+  `core/server/collection-access.ts`): unreadable collections are dropped,
+  unwritable ones offered read-only. A courtesy to the model; the engine still
+  decides each call.
 
 List filters accept `create_time` and `update_time` (UTC RFC 3339, compared as
 text) alongside a resource's own fields and `id`.

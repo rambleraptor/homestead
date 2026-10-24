@@ -34,7 +34,12 @@ import {
 import { buildCustomMethodTools, executeCustomMethod } from '@rambleraptor/homestead-core/server/chat/custom-methods';
 import { buildGenericTools } from './generic';
 import { buildResourceTools } from '@rambleraptor/homestead-core/server/chat/per-resource';
-import type { McpToolMode, ToolSurface } from '@rambleraptor/homestead-core/server/chat/surface';
+import {
+  writeGate,
+  type McpToolMode,
+  type ToolSurface,
+  type WriteAccess,
+} from '@rambleraptor/homestead-core/server/chat/surface';
 
 function ok(result: unknown): CallToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(result ?? null) }] };
@@ -47,10 +52,11 @@ function err(message: string): CallToolResult {
 /** Options controlling which tools are exposed. */
 export interface RegisterOptions {
   /**
-   * Expose the write tools (create/update/delete). When false, only the
-   * read tools and document search are registered. Defaults to true.
+   * Expose the write tools (create/update/delete): everywhere, nowhere (only
+   * the read tools and document search), or per resource — what the caller
+   * can change. Defaults to true.
    */
-  write?: boolean;
+  write?: WriteAccess;
   /**
    * Which surface to register (see `./surface`):
    *  - `resource` — one tool per resource, the verb as an `action` parameter.
@@ -105,10 +111,13 @@ export function registerHomesteadTools(
   }
 
   const { tools, bindings } = buildTools(defs);
+  const canWrite = writeGate(write);
+  const byPlural = new Map(defs.map((d) => [d.plural, d]));
 
   for (const [name, spec] of Object.entries(tools)) {
-    // Read-only authorizations get only the `read` tools; skip the writers.
-    if (!write && bindings.get(name)?.op !== 'read') continue;
+    // Read-only resources get only their `read` tool; skip the writers.
+    const binding = bindings.get(name);
+    if (binding && binding.op !== 'read' && !canWrite(binding.def)) continue;
     // buildTools always produces a z.object; the SDK accepts its raw shape as a
     // ZodRawShapeCompat and does its own JSON-Schema conversion + validation.
     const shape = (spec.inputSchema as z.ZodObject).shape;
@@ -135,7 +144,9 @@ export function registerHomesteadTools(
   for (const [name, spec] of Object.entries(custom.tools)) {
     // Custom methods have side effects unless they're declared `GET`, so they
     // count as writes for a read-only authorization.
-    if (!write && custom.bindings.get(name)?.httpMethod !== 'GET') continue;
+    const binding = custom.bindings.get(name);
+    const def = binding ? byPlural.get(binding.plural) : undefined;
+    if (binding?.httpMethod !== 'GET' && !(def && canWrite(def))) continue;
     const shape = (spec.inputSchema as z.ZodObject).shape;
     server.registerTool(
       name,
@@ -158,7 +169,7 @@ export function registerHomesteadTools(
 export function buildSurface(
   defs: ResourceDefinition[],
   mode: Exclude<McpToolMode, 'typed'>,
-  write: boolean,
+  write: WriteAccess,
 ): ToolSurface {
   return mode === 'generic'
     ? buildGenericTools(defs, { write })

@@ -281,6 +281,31 @@ describe('generic CRUD', () => {
   });
 });
 
+describe('writes gated per resource', () => {
+  const onlyTransactions = { write: (def: ResourceDefinition) => def.singular === 'transaction' };
+
+  it('keeps the write tools while any resource is writable, and marks the rest read-only', async () => {
+    const { tools, execute } = buildGenericTools(DEFS, onlyTransactions);
+    expect(tools).toHaveProperty('create_record');
+    const out = await execute('describe_resources', {}, 'tok');
+    const catalog = (out as { ok: true; result: { resources: Array<{ resource: string; read_only?: true }> } })
+      .result.resources;
+    expect(catalog.find((r) => r.resource === 'gift-cards')?.read_only).toBe(true);
+    expect(catalog.find((r) => r.resource === 'transactions')?.read_only).toBeUndefined();
+  });
+
+  it('refuses a write to a read-only resource, and its non-GET custom methods', async () => {
+    const { tools, execute } = buildGenericTools(DEFS, onlyTransactions);
+    const { calls } = stubFetch();
+    expect(
+      await execute('create_record', { resource: 'gift-cards', fields: { merchant: 'Target' } }, 'tok'),
+    ).toEqual({ ok: false, error: 'gift-cards is read-only for this caller' });
+    // gift-cards:redeem is a POST, so nothing callable is left to advertise.
+    expect(tools).not.toHaveProperty('run_custom_method');
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe('run_custom_method', () => {
   it('dispatches to the declared method with its body', async () => {
     const { execute } = buildGenericTools(DEFS);

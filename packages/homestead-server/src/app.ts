@@ -109,6 +109,16 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   // non-expiring token.
   engine.setSessionIssuer((userId) => authService.issueSession(userId));
 
+  // The model-facing tool surfaces (chat, MCP) offer only what a caller can
+  // reach. The engine decides that, so it's handed down like the vector store.
+  const { setCollectionAccessResolver } = await import(
+    '@rambleraptor/homestead-core/server/collection-access'
+  );
+  setCollectionAccessResolver(async (token) => {
+    const caller = await engine.authenticateToken(token);
+    return caller ? engine.collectionAccess(caller) : null;
+  });
+
   // Wire the post-commit resource-sync dispatcher. Built from the aggregated
   // app- and config-declared syncs, the engine's db, and the same shared
   // OperationStore the cron scheduler uses (so sync firings appear as operations

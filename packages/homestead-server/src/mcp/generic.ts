@@ -61,7 +61,12 @@ import {
   customMethodToolName,
   executeCustomMethod,
 } from '@rambleraptor/homestead-core/server/chat/custom-methods';
-import type { SurfaceResult, ToolSurface } from '@rambleraptor/homestead-core/server/chat/surface';
+import {
+  writeGate,
+  type SurfaceResult,
+  type ToolSurface,
+  type WriteAccess,
+} from '@rambleraptor/homestead-core/server/chat/surface';
 import { toCustomMethodCall, toTypedCall } from '@rambleraptor/homestead-core/server/chat/translate';
 
 export const DESCRIBE_TOOL = 'describe_resources';
@@ -82,6 +87,8 @@ interface CatalogEntry {
   parent_ids?: string[];
   /** Verbs callable through `run_custom_method`. */
   custom_methods?: string[];
+  /** Set when the caller can read the resource but not change it. */
+  read_only?: true;
 }
 
 /** Describe a single field for `describe_resources`, in its authoring shape. */
@@ -137,13 +144,16 @@ const PARENT_IDS_PARAM = z
 
 /**
  * Build the generic surface over `defs`. `write` mirrors the typed surface's
- * scope gate: when false, only `describe_resources`, `read_records`, and `GET`
- * custom methods are exposed.
+ * write gate: with no writable resource, only `describe_resources`,
+ * `read_records`, and `GET` custom methods are exposed; otherwise the write
+ * tools refuse the resources the catalog marks `read_only`.
  */
 export function buildGenericTools(
   defs: ResourceDefinition[],
-  { write = true }: { write?: boolean } = {},
+  { write = true }: { write?: WriteAccess } = {},
 ): ToolSurface {
+  const canWrite = writeGate(write);
+  const anyWritable = defs.some(canWrite);
   const { tools: typed, bindings } = buildTools(defs);
   const custom = buildCustomMethodTools(defs);
   const bySingular = new Map(defs.map((d) => [d.singular, d]));
@@ -171,6 +181,7 @@ export function buildGenericTools(
       ...(def.description ? { description: def.description } : {}),
       ...(parentIds.length > 0 ? { parent_ids: parentIds } : {}),
       ...(verbs.length > 0 ? { custom_methods: verbs } : {}),
+      ...(canWrite(def) ? {} : { read_only: true as const }),
     };
   });
 
@@ -206,7 +217,7 @@ export function buildGenericTools(
     },
   };
 
-  if (write) {
+  if (anyWritable) {
     tools[CREATE_TOOL] = {
       description: 'Create one record.',
       inputSchema: z.object({
@@ -237,9 +248,10 @@ export function buildGenericTools(
   // Custom methods collapse into one tool the same way CRUD does. Exposed only
   // when there is something to call, and — like the typed surface — a read-only
   // authorization gets only the `GET` ones.
-  const callableMethods = [...custom.bindings.values()].filter(
-    (b) => write || b.httpMethod === 'GET',
-  );
+  const callableMethods = [...custom.bindings.values()].filter((b) => {
+    const def = byPlural.get(b.plural);
+    return b.httpMethod === 'GET' || (def !== undefined && canWrite(def));
+  });
   if (callableMethods.length > 0) {
     const available = callableMethods.map((b) => `${b.plural}:${b.verb}`).sort();
     tools[CUSTOM_METHOD_TOOL] = {
@@ -297,6 +309,7 @@ export function buildGenericTools(
         custom_methods: Object.entries(def.customMethods ?? {}).map(([verb, method]) =>
           describeCustomMethod(verb, method),
         ),
+        ...(canWrite(def) ? {} : { read_only: true }),
       },
     };
   }
@@ -350,7 +363,7 @@ export function buildGenericTools(
     if (!binding || binding.plural !== def.plural || binding.verb !== verb) {
       return { ok: false, error: `custom method ${plural}:${verb} is not exposed` };
     }
-    if (!write && binding.httpMethod !== 'GET') {
+    if (!canWrite(def) && binding.httpMethod !== 'GET') {
       return { ok: false, error: `${plural}:${verb} needs write access` };
     }
 
@@ -375,9 +388,13 @@ export function buildGenericTools(
 
     const op = CRUD_OP[name];
     if (!op) return { ok: false, error: `unknown tool "${name}"` };
-    if (!write && op !== 'read') return { ok: false, error: `${name} needs write access` };
+    if (!anyWritable && op !== 'read') return { ok: false, error: `${name} needs write access` };
 
     const plural = typeof args.resource === 'string' ? args.resource : '';
+    const def = byPlural.get(plural);
+    if (def && op !== 'read' && !canWrite(def)) {
+      return { ok: false, error: `${plural} is read-only for this caller` };
+    }
     const translated = typedArgs(plural, op, args);
     if ('error' in translated) return { ok: false, error: translated.error };
 

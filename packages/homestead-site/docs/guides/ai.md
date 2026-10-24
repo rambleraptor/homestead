@@ -142,7 +142,8 @@ grocery list", "what events are coming up?". It's always installed; find it in
 the top navigation.
 
 Chat works with **any** app you've added, with no per-app setup. It acts
-with **your** permissions, confirms before deleting, and shows you which
+with **your** permissions — it's only offered the apps you can use, and only
+the changes you're allowed to make — confirms before deleting, and shows you which
 actions it took — each tool call is a card you can open to see what it sent and
 what came back. Replies stream in as they're written, and render as Markdown.
 
@@ -217,6 +218,12 @@ Content-Type: application/json
 - A conversation is private to whoever started it, and is deleted 60 days
   after its last message.
 
+- The tools are built for each person, from what they can reach: a collection
+  they can't read is left out (with everything nested under it), and one they
+  can read but not change offers only `list` and `get` — so the model never
+  spends a turn on a call that could only be refused. The engine still decides
+  every call. MCP does the same.
+
 A resource can be left out of the assistant's tools, or out of MCP's, with
 `modelTools` on its definition — see
 [Hiding a Resource from AI Tools](./resources#hiding-a-resource-from-ai-tools).
@@ -239,7 +246,9 @@ Homestead ships a **built-in [MCP](https://modelcontextprotocol.io) server** at
 plus the app-declared AEP-136 custom methods (the `POST /<plural>:<verb>`
 endpoints declared in `customMethods`), plus document search when embeddings
 are configured — the same tools the built-in [Chat](#chat-with-your-data)
-runs on. Every action runs with the signed-in user's own permissions.
+runs on. Every action runs with the signed-in user's own permissions, and the
+tool list is cut to match: collections the caller can't read aren't offered,
+and ones they can't change are offered read-only.
 
 **Enable it.** MCP clients sign in through Homestead's OAuth authorization
 server, so turn that on in `homestead.config.ts` and restart:

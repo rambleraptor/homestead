@@ -49,12 +49,12 @@ function subjectOf(caller: User): FilterSubject {
 const TOKEN_SENTINEL_USER = '';
 
 /** The grants a PAT itself carries: only those addressed to this token id. */
-function tokenGrantsFor(grants: Grant[], patId: string): Grant[] {
+export function tokenGrantsFor(grants: Grant[], patId: string): Grant[] {
   return grants.filter((g) => g.subject.type === 'token' && g.subject.id === patId);
 }
 
 /** Token-side principals: the token is the sole principal (see TOKEN_SENTINEL_USER). */
-function tokenPrincipals(patId: string): Principals {
+export function tokenPrincipals(patId: string): Principals {
   return { userId: TOKEN_SENTINEL_USER, groupIds: new Set(), tokenId: patId };
 }
 
@@ -193,7 +193,7 @@ function applyCredentialCeiling(
  * a scope that actually withholds write narrows anything, which is also what
  * keeps ordinary logins off the grant-gathering path below.
  */
-function cappedByScope(caller: User, verb: Verb): boolean {
+export function cappedByScope(caller: User, verb: Verb): boolean {
   if (!caller.oauth) return false;
   if (verb === 'read') return false;
   return !scopeAllowsWrite(caller.oauth.scope);
