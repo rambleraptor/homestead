@@ -361,35 +361,16 @@ Tests sometimes pass, sometimes fail:
 
 ## CI/CD Integration
 
-Tests are designed to run in GitHub Actions. See `.github/workflows/e2e-tests.yml` for the CI configuration.
-
-### Running in CI
-
-```yaml
-- name: Run E2E Tests
-  run: cd tests/e2e && npm test
-```
-
-CI automatically:
-- Installs dependencies
-- Builds the aepbase binary
-- Starts frontend dev server
-- Starts the aepbase test instance
-- Runs all tests
-- Uploads failure artifacts (screenshots, videos, traces)
+The `E2E (Playwright)` job in `.github/workflows/ci.yml` runs this suite on
+every PR and push to `main`, alongside the unit, server and VM jobs. It
+restores the Playwright browser cache (keyed on `package-lock.json`), runs
+`npx playwright test` here (global setup boots homestead-server under Bun),
+and uploads `playwright-report/` when a test fails.
 
 ## Performance
 
-### Test Execution Time
-
-Typical test run times:
-- Auth tests: ~10-15 seconds
-- Gift cards tests: ~20-30 seconds
-- Events tests: ~15-20 seconds
-- Settings tests: ~10-15 seconds
-- Navigation tests: ~10-15 seconds
-
-**Total: ~2-3 minutes for full suite**
+Only the flows that need a real browser live here (see CLAUDE.md); the rest
+are VM-tier specs. The suite takes about 30 seconds.
 
 ### Optimization Tips
 

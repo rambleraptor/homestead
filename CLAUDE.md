@@ -125,8 +125,9 @@ separately when you've changed anything data-adjacent.
 
 ### Frontend unit/integration tests
 
-Vitest + Testing Library. Tests live next to the code they cover, under
-`__tests__/` directories. `src/test/setup.ts` mocks the aepbase client
+Vitest + Testing Library in happy-dom (with the VM tier's browser-behavior
+patches from `homestead-test-harness/vm/happy-dom-fixes.ts`). Tests live next
+to the code they cover, under `__tests__/` directories. `src/test/setup.ts` mocks the aepbase client
 globally — individual tests can override behavior via `vi.mocked(...)`.
 
 ### VM tests (in-process, no browser) — the default for UI flows

@@ -8,6 +8,10 @@ import '@testing-library/jest-dom';
 import { afterEach, vi, beforeAll, afterAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { initializeAppRegistry } from '@rambleraptor/homestead-core/apps/registry';
+import { applyHappyDomFixes } from '@rambleraptor/homestead-test-harness/vm/happy-dom-fixes';
+
+// The same browser-behavior patches the VM tier applies to its window.
+applyHappyDomFixes(window as unknown as Parameters<typeof applyHappyDomFixes>[0]);
 
 // Bootstrap the app registry with an empty operator list. The
 // always-installed core apps (settings/users/superuser) are enough
@@ -18,7 +22,7 @@ import { initializeAppRegistry } from '@rambleraptor/homestead-core/apps/registr
 // calls take effect, freezing the wrong module bindings.
 initializeAppRegistry([]);
 
-// matchMedia stub for jsdom
+// matchMedia stub, a vi.fn so tests can override it
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
