@@ -14,10 +14,18 @@
  *  - a request carrying the {@link DOC_MARKERS}.fail marker gets a
  *    schema-violating object back, which makes the real handler throw and the
  *    operation fail for real.
+ *
+ * **Chat.** A request whose latest user message carries a chat script's marker
+ * (`./ai-scripts.ts`) is answered from that script instead: tool calls the
+ * agent loop runs, then text. Both of the provider's modes are spoken — a JSON
+ * reply for `generateText`, and the Responses event stream for `streamText`
+ * (`"stream": true`), whose text arrives a word at a time,
+ * {@link chunkDelayMs} apart, so a test can watch it land.
  */
 
 import { createServer, type Server } from 'http';
 import type { AddressInfo } from 'net';
+import { SCRIPT_EXHAUSTED_TEXT, scriptFor, type ScriptStep } from './ai-scripts';
 
 /**
  * Long enough to observe "running", short enough to keep tests quick.
@@ -137,13 +145,173 @@ function responsesReply(payload: unknown) {
   };
 }
 
+// ─────────────────────────────── scripted chat ───────────────────────────────
+
 /**
- * The stub as a fetch handler: the reply for one OpenAI request, after the
- * deliberate delay. The e2e server below serves it over HTTP; the VM test tier
- * (packages/homestead-test-harness) serves it in-process.
+ * Pause between streamed chunks. Short by default — long enough that text
+ * visibly arrives in pieces, short enough not to slow a suite.
+ * `AI_STUB_CHUNK_DELAY_MS` overrides it.
+ */
+export function chunkDelayMs(): number {
+  const override = Number(process.env.AI_STUB_CHUNK_DELAY_MS);
+  return process.env.AI_STUB_CHUNK_DELAY_MS && Number.isFinite(override) && override >= 0
+    ? override
+    : 20;
+}
+
+/** One item of a Responses API request's `input`. */
+type InputItem = {
+  role?: string;
+  type?: string;
+  content?: string | Array<{ type?: string; text?: string }>;
+};
+
+/** The text of an input item's content, however the provider shaped it. */
+function textOf(item: InputItem): string {
+  if (typeof item.content === 'string') return item.content;
+  return (item.content ?? []).map((part) => part.text ?? '').join(' ');
+}
+
+/**
+ * The scripted step this request asks for, or null when it isn't a chat
+ * request carrying a script's marker. See `./ai-scripts.ts` for the rule.
+ */
+export function scriptedStep(body: unknown): ScriptStep | null {
+  const input = (body as { input?: unknown })?.input;
+  if (!Array.isArray(input)) return null;
+  const items = input as InputItem[];
+
+  let lastUser = -1;
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i]?.role === 'user') {
+      lastUser = i;
+      break;
+    }
+  }
+  if (lastUser < 0) return null;
+  const script = scriptFor(textOf(items[lastUser]!));
+  if (!script) return null;
+
+  const round = items.slice(lastUser + 1).filter((item) => item.type === 'function_call_output').length;
+  return script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT };
+}
+
+/** Stable ids for a step's output items, so a reply is reproducible. */
+function callId(index: number): string {
+  return `call_stub_${index}`;
+}
+
+/** The step as a non-streaming Responses reply (what `generateText` reads). */
+function scriptedReply(step: ScriptStep) {
+  const output: unknown[] = (step.toolCalls ?? []).map((call, i) => ({
+    type: 'function_call',
+    id: `fc_stub_${i}`,
+    call_id: callId(i),
+    name: call.name,
+    arguments: JSON.stringify(call.args),
+    status: 'completed',
+  }));
+  if (step.text !== undefined) {
+    output.push({
+      type: 'message',
+      role: 'assistant',
+      id: 'msg-stub',
+      status: 'completed',
+      content: [{ type: 'output_text', text: step.text, annotations: [] }],
+    });
+  }
+  return {
+    id: 'resp-stub',
+    created_at: 0,
+    model: 'stub-model',
+    status: 'completed',
+    output,
+    usage: { input_tokens: 1, output_tokens: 1 },
+  };
+}
+
+/**
+ * The step as the Responses event stream (what `streamText` reads): tool calls
+ * as added → arguments → done items, then the text a word at a time, then
+ * `response.completed`. Only the events the provider parses are sent.
+ */
+function scriptedStream(step: ScriptStep): Response {
+  const encoder = new TextEncoder();
+  const delay = chunkDelayMs();
+  const events: unknown[] = [
+    { type: 'response.created', response: { id: 'resp-stub', created_at: 0, model: 'stub-model' } },
+  ];
+
+  let index = 0;
+  for (const [i, call] of (step.toolCalls ?? []).entries()) {
+    const item = { type: 'function_call', id: `fc_stub_${i}`, call_id: callId(i), name: call.name };
+    const args = JSON.stringify(call.args);
+    events.push(
+      { type: 'response.output_item.added', output_index: index, item: { ...item, arguments: '' } },
+      { type: 'response.function_call_arguments.delta', item_id: item.id, output_index: index, delta: args },
+      {
+        type: 'response.output_item.done',
+        output_index: index,
+        item: { ...item, arguments: args, status: 'completed' },
+      },
+    );
+    index++;
+  }
+
+  if (step.text !== undefined) {
+    const message = { type: 'message', id: 'msg-stub' };
+    events.push({ type: 'response.output_item.added', output_index: index, item: message });
+    // A word at a time, keeping the spaces, so the joined deltas equal the text.
+    for (const word of step.text.match(/\S+\s*|\s+/g) ?? []) {
+      events.push({ type: 'response.output_text.delta', item_id: message.id, delta: word });
+    }
+    events.push({ type: 'response.output_item.done', output_index: index, item: message });
+  }
+
+  events.push({
+    type: 'response.completed',
+    response: { usage: { input_tokens: 1, output_tokens: 1 } },
+  });
+
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      for (const [n, event] of events.entries()) {
+        if (n > 0 && delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      }
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
+  return new Response(body, {
+    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+  });
+}
+
+/**
+ * The stub as a fetch handler: the reply for one OpenAI request. A scripted
+ * chat turn is answered at once (streamed when asked to be); anything else is a
+ * document request, answered after the deliberate delay. The e2e server below
+ * serves it over HTTP; the VM test tier (packages/homestead-test-harness)
+ * serves it in-process.
  */
 export async function aiStubFetch(req: Request): Promise<Response> {
-  const payload = payloadForBody(await req.text());
+  const text = await req.text();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    parsed = undefined;
+  }
+
+  const step = scriptedStep(parsed);
+  if (step) {
+    return (parsed as { stream?: boolean }).stream === true
+      ? scriptedStream(step)
+      : Response.json(scriptedReply(step));
+  }
+
+  const payload = payloadForBody(text);
   await new Promise((resolve) => setTimeout(resolve, responseDelayMs()));
   return Response.json(responsesReply(payload));
 }
@@ -157,8 +325,19 @@ export async function startAiStub(): Promise<string> {
     });
     req.on('end', () => {
       void aiStubFetch(new Request('http://ai-stub/', { method: 'POST', body })).then(async (reply) => {
-        res.writeHead(reply.status, { 'Content-Type': 'application/json' });
-        res.end(await reply.text());
+        res.writeHead(reply.status, {
+          'Content-Type': reply.headers.get('content-type') ?? 'application/json',
+        });
+        // Pipe chunk by chunk so a streamed reply reaches the client as it is
+        // produced, not all at once at the end.
+        const reader = reply.body?.getReader();
+        if (!reader) return res.end();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
       });
     });
   });

@@ -8,6 +8,12 @@ End-to-end tests for Homestead using Playwright against a real backend.
 > the shared plumbing both tiers use (page objects in `pages/`, seed helpers
 > in `utils/`, the AI stub in `config/`), and Playwright keeps only the flows
 > that need a real browser.
+>
+> The AI stub (`config/ai-stub.ts`) answers documents:classify from fixed
+> payloads, and chat from **scripts** (`config/ai-scripts.ts`): a message
+> carrying a script's marker gets its tool calls, then its reply, streamed or
+> not. Scripts are static so both tiers (and the stub's own process under
+> Playwright) see the same table.
 
 ## Overview
 

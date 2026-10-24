@@ -69,6 +69,8 @@ export default defineConfig({
       // The stub's 2.5s "observe it running" pause is sized for a browser; the
       // VM polls every few ms, so a fraction of it still catches the spinner.
       AI_STUB_DELAY_MS: '300',
+      // Streamed chat text still arrives in pieces, just faster than in a browser.
+      AI_STUB_CHUNK_DELAY_MS: '5',
       // Server-side helpers read this at import time; point them at the VM.
       AEPBASE_URL: `${VM_ORIGIN}/api/aep`,
       // Point the e2e seed helpers (tests/e2e/utils) at the VM too.

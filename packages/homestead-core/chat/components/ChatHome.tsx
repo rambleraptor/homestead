@@ -43,6 +43,7 @@ function ToolMarker({ call }: { call: ChatToolCall }) {
     <Marker
       className={call.ok ? undefined : 'text-destructive'}
       title={call.ok ? undefined : call.error}
+      data-testid="chat-tool-call"
     >
       <MarkerIcon>
         <Wrench />
