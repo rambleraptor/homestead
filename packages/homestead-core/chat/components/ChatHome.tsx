@@ -16,8 +16,10 @@ import {
 import { Message, MessageContent } from '@rambleraptor/homestead-core/shared/components/ai-elements/message';
 import {
   PromptInput,
+  PromptInputActionAddAttachments,
   PromptInputBody,
   PromptInputFooter,
+  PromptInputHeader,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
@@ -30,7 +32,10 @@ import {
 import { useConversation } from '../hooks/useConversation';
 import { useConversations } from '../hooks/useConversations';
 import type { HomesteadUIMessage } from '../types';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
+import { ATTACHMENT_TYPES, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS } from '../attachment-limits';
 import { ChatMessage } from './ChatMessage';
+import { ComposerAttachments } from './ComposerAttachments';
 import { ConversationList } from './ConversationList';
 
 /** Starter prompts, each shown only when the app it needs is installed. */
@@ -40,6 +45,13 @@ const STARTERS: { text: string; app: string }[] = [
   { text: 'Which gift cards still have a balance?', app: 'gift-cards' },
   { text: 'What birthdays are coming up?', app: 'events' },
 ];
+
+/** What the composer says when it turns a file away. */
+const ATTACHMENT_ERRORS = {
+  accept: 'Only photos (JPEG, PNG, WebP, GIF) and PDFs can be attached.',
+  max_file_size: `Files can be at most ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB each.`,
+  max_files: `A message can carry at most ${MAX_ATTACHMENTS} files.`,
+} as const;
 
 /** Whether the reply text is already arriving, so no "thinking" row is needed. */
 function isAnswering(last: HomesteadUIMessage | undefined): boolean {
@@ -68,6 +80,7 @@ function NotConfigured() {
 export function ChatHome({ params }: AppRouteProps) {
   const conversationId = params?.id || null;
   const navigate = useNavigate();
+  const toast = useToast();
   const onCreated = useCallback(
     (id: string) => navigate(`/chat/${id}`, { replace: true }),
     [navigate],
@@ -141,6 +154,7 @@ export function ChatHome({ params }: AppRouteProps) {
                   messages.map((message, i) => (
                     <ChatMessage
                       key={message.id}
+                      conversationId={conversationId}
                       message={message}
                       stored={chat.storedById.get(message.id)}
                       streaming={busy && i === messages.length - 1 && message.role === 'assistant'}
@@ -173,7 +187,17 @@ export function ChatHome({ params }: AppRouteProps) {
                 ))}
               </Suggestions>
             )}
-            <PromptInput onSubmit={({ text }) => chat.send(text)}>
+            <PromptInput
+              onSubmit={({ text, files }) => chat.send(text, files)}
+              accept={ATTACHMENT_TYPES.join(',')}
+              multiple
+              maxFiles={MAX_ATTACHMENTS}
+              maxFileSize={MAX_ATTACHMENT_BYTES}
+              onError={(err) => toast.error(ATTACHMENT_ERRORS[err.code])}
+            >
+              <PromptInputHeader className="empty:hidden">
+                <ComposerAttachments />
+              </PromptInputHeader>
               <PromptInputBody>
                 <PromptInputTextarea
                   placeholder="Message the assistant…"
@@ -188,7 +212,13 @@ export function ChatHome({ params }: AppRouteProps) {
                 />
               </PromptInputBody>
               <PromptInputFooter>
-                <PromptInputTools />
+                <PromptInputTools>
+                  <PromptInputActionAddAttachments
+                    label="Attach photos or PDFs"
+                    disabled={missing}
+                    data-testid="chat-attach"
+                  />
+                </PromptInputTools>
                 <PromptInputSubmit
                   status={chat.remoteRunning ? 'streaming' : status}
                   onStop={chat.canStop ? () => void chat.stop() : undefined}

@@ -2,7 +2,8 @@
  * Chat backend: `POST /api/chat`.
  *
  * `{ conversation_id?, message: { id, text } }` runs one stored, streamed turn
- * of a conversation (`./turns`). This module holds what a turn is built from:
+ * of a conversation (`./turns`) — as JSON, or as multipart with the message's
+ * files attached (`./attachments`). This module holds what a turn is built from:
  * the system prompt and the tool set.
  *
  * The tools are the per-resource surface (`./per-resource`): one tool per
@@ -23,6 +24,7 @@ import { isAiConfigured } from '../ai/config';
 import { tool, type ToolSet } from '../ai/generate';
 import { buildResourceTools, resourceInstructions } from './per-resource';
 import { handleTurn } from './turns';
+import { MAX_TURN_REQUEST_BYTES } from './attachments';
 import { makeSearchTool, SEARCH_TOOL_NAME } from './search-tool';
 
 export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): string {
@@ -116,18 +118,61 @@ export async function handleChat(request: Request): Promise<Response> {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json(
-      { error: { code: 400, message: 'request body must be JSON' } },
-      { status: 400 },
-    );
-  }
+  const parsed = await readTurnRequest(request);
+  if (parsed instanceof Response) return parsed;
 
   // Same definition union the schema sync applies, so the model sees every
   // collection that exists in aepbase — less any a definition hides from chat.
   const defs = visibleToModel([...BUILTIN_RESOURCE_DEFS, ...getAllResourceDefs()], 'chat');
-  return handleTurn(auth, body, defs);
+  return handleTurn(auth, parsed.body, defs, parsed.uploads);
+}
+
+function badRequest(status: number, message: string): Response {
+  return Response.json({ error: { code: status, message } }, { status });
+}
+
+/**
+ * A turn request: JSON, or — with files attached — multipart, carrying the
+ * same JSON as a `request` part and each file as an `attachments` part.
+ */
+async function readTurnRequest(
+  request: Request,
+): Promise<{ body: unknown; uploads: File[] } | Response> {
+  const type = (request.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
+  if (type !== 'multipart/form-data') {
+    try {
+      return { body: await request.json(), uploads: [] };
+    } catch {
+      return badRequest(400, 'request body must be JSON');
+    }
+  }
+
+  // Refuse an oversized upload before reading it into memory.
+  const length = Number(request.headers.get('content-length') ?? '0');
+  if (length > MAX_TURN_REQUEST_BYTES) {
+    return badRequest(413, `a message with its files may be at most ${MAX_TURN_REQUEST_BYTES} bytes`);
+  }
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return badRequest(400, 'invalid multipart body');
+  }
+  const json = form.get('request');
+  if (typeof json !== 'string') return badRequest(400, 'a multipart turn needs a "request" JSON part');
+  let body: unknown;
+  try {
+    body = JSON.parse(json);
+  } catch {
+    return badRequest(400, 'the "request" part must be JSON');
+  }
+  const uploads: File[] = [];
+  for (const [name, value] of form.entries()) {
+    if (name === 'request') continue;
+    if (name !== 'attachments' || typeof value === 'string') {
+      return badRequest(400, `unexpected part "${name}": files go in "attachments" parts`);
+    }
+    uploads.push(value);
+  }
+  return { body, uploads };
 }

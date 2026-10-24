@@ -1,5 +1,5 @@
 import { CopyIcon } from 'lucide-react';
-import { isStaticToolUIPart, type ToolUIPart } from 'ai';
+import { isStaticToolUIPart, type FileUIPart, type ToolUIPart } from 'ai';
 import {
   Message,
   MessageAction,
@@ -16,6 +16,7 @@ import {
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/tool';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
+import { MessageAttachments } from './MessageAttachments';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
 
 /**
@@ -61,6 +62,8 @@ function ToolCall({ part }: { part: ToolUIPart }) {
 }
 
 export interface ChatMessageProps {
+  /** The conversation it belongs to, once it has one. */
+  conversationId: string | null;
   message: HomesteadUIMessage;
   /** The stored record behind it, once storage has it. */
   stored?: StoredChatMessage;
@@ -68,7 +71,7 @@ export interface ChatMessageProps {
   streaming: boolean;
 }
 
-export function ChatMessage({ message, stored, streaming }: ChatMessageProps) {
+export function ChatMessage({ conversationId, message, stored, streaming }: ChatMessageProps) {
   const toast = useToast();
   const isUser = message.role === 'user';
   const text = messageText(message);
@@ -83,7 +86,15 @@ export function ChatMessage({ message, stored, streaming }: ChatMessageProps) {
 
   return (
     <Message from={message.role} data-testid={`chat-message-${message.role}`}>
-      <MessageContent>
+      {isUser && (
+        <MessageAttachments
+          conversationId={conversationId}
+          messageId={message.id}
+          stored={stored?.attachments}
+          local={message.parts.filter((p): p is FileUIPart => p.type === 'file')}
+        />
+      )}
+      <MessageContent className={isUser && !text ? 'hidden' : undefined}>
         {message.parts.map((part, i) => {
           if (part.type === 'text') {
             return isUser ? (

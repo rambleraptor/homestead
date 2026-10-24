@@ -169,6 +169,63 @@ describe('Chat', () => {
     await chat.expectSettled(CHAT_MARKERS.longReply);
   });
 
+  describe('attachments', () => {
+    const png = {
+      name: 'beach.png',
+      mimeType: 'image/png',
+      buffer: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]),
+    };
+    const pdf = { name: 'tickets.pdf', mimeType: 'application/pdf', buffer: new TextEncoder().encode('%PDF-1.7 x') };
+
+    test('photos and PDFs go with the message, reach the assistant, and stay after a reload', async () => {
+      const d = h.driver;
+      const chat = new ChatPage(d);
+      await chat.goto();
+      await chat.attach([png, pdf]);
+      await d.expect(chat.composerAttachments).toHaveCount(2);
+
+      await chat.send(`What are these? ${CHAT_MARKERS.describeAttachments}`);
+      await d.expect(chat.messages).toContainText('I can see 1 image and 1 PDF.');
+      await d.expect(chat.composerAttachments).toHaveCount(0);
+      await d.expect(chat.attachments).toHaveCount(2);
+      await chat.expectSettled(/What are these/);
+
+      await d.reload();
+      await d.expect(chat.attachments).toHaveCount(2);
+      await d.expect(chat.attachments.first()).toHaveAttribute('title', 'beach.png');
+    });
+
+    test('a message can be only a photo', async () => {
+      const d = h.driver;
+      const chat = new ChatPage(d);
+      await chat.goto();
+      await chat.attach(png);
+      await chat.sendButton.click();
+
+      await d.expect(chat.attachments).toHaveCount(1);
+      await d.expect(chat.assistantMessages).toHaveCount(1);
+      await chat.expectSettled('beach.png');
+    });
+
+    test('a file can be taken back out before sending', async () => {
+      const chat = new ChatPage(h.driver);
+      await chat.goto();
+      await chat.attach([png, pdf]);
+      await chat.removeAttachment('beach.png');
+      await h.driver.expect(chat.composerAttachments).toHaveCount(1);
+      await h.driver.expect(chat.composerAttachments.first()).toContainText('tickets.pdf');
+    });
+
+    test('a file the assistant cannot read is turned away with a reason', async () => {
+      const d = h.driver;
+      const chat = new ChatPage(d);
+      await chat.goto();
+      await chat.attach({ name: 'notes.txt', mimeType: 'text/plain', buffer: new TextEncoder().encode('hi') });
+      await d.expect(d.getByText('Only photos (JPEG, PNG, WebP, GIF) and PDFs can be attached.')).toBeVisible();
+      await d.expect(chat.composerAttachments).toHaveCount(0);
+    });
+  });
+
   test('a starter prompt sends itself', async () => {
     const d = h.driver;
     const chat = new ChatPage(d);

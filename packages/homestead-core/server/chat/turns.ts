@@ -26,7 +26,7 @@
  */
 
 import { convertToModelMessages, type UIMessage } from 'ai';
-import type { CollectionRef } from '@rambleraptor/homestead-client';
+import type { CollectionRef, FileDescriptor } from '@rambleraptor/homestead-client';
 import { HomesteadError } from '@rambleraptor/homestead-client';
 import type { AuthResult } from '../aepbase';
 import { serverClient } from '../client';
@@ -36,6 +36,7 @@ import { CHAT_MESSAGES, CONVERSATIONS } from '../../chat/resources';
 import type { ChatTurnRequest } from '../../chat/types';
 import type { ResourceDefinition } from '../../resources/types';
 import { buildChatToolSet, buildSystemPrompt } from './handler';
+import { attachmentsTitle, checkAttachments, withAttachments } from './attachments';
 
 /** Max rounds of tool execution per turn before forcing a text answer. */
 const MAX_TOOL_ROUNDS = 10;
@@ -68,6 +69,7 @@ interface StoredMessage {
   content?: string;
   parts?: UIMessage['parts'];
   status?: string;
+  attachments?: FileDescriptor[];
 }
 
 // ─────────────────────────────── the registry ───────────────────────────────
@@ -182,24 +184,39 @@ function isMeaningful(part: UIMessage['parts'][number]): boolean {
 }
 
 /**
+ * Whether a stored part is one the turn runner writes: text, reasoning, step
+ * markers, tool calls. Anyone who can write a conversation can write its
+ * messages through the API, so stored parts are untrusted — and a `file` part
+ * carrying a URL would have the AI SDK fetch it from the server. Files reach
+ * the model only from stored attachments (`./attachments`).
+ */
+function isRunnerPart(part: UIMessage['parts'][number]): boolean {
+  return (
+    part.type === 'text' ||
+    part.type === 'reasoning' ||
+    part.type === 'step-start' ||
+    part.type.startsWith('tool-')
+  );
+}
+
+/**
  * Stored messages as UI messages, oldest first, for `convertToModelMessages`.
  * A message with no parts falls back to its plain content; one with nothing to
  * say at all — an assistant message that failed before its first step — is
- * left out rather than handed to the model as an empty turn.
+ * left out rather than handed to the model as an empty turn. A message that is
+ * only attachments stays: they're added by `withAttachments`.
  */
 export function toUiMessages(stored: readonly StoredMessage[]): UIMessage[] {
   return stored
-    .map((m): UIMessage => ({
-      id: m.id,
-      role: m.role,
-      parts:
-        m.parts && m.parts.length > 0
-          ? m.parts
-          : m.content
-            ? [{ type: 'text', text: m.content }]
-            : [],
-    }))
-    .filter((m) => m.parts.some(isMeaningful));
+    .map((m): UIMessage => {
+      const parts = (m.parts ?? []).filter(isRunnerPart);
+      return {
+        id: m.id,
+        role: m.role,
+        parts: parts.length > 0 ? parts : m.content ? [{ type: 'text', text: m.content }] : [],
+      };
+    })
+    .filter((m, i) => m.parts.some(isMeaningful) || (stored[i]!.attachments?.length ?? 0) > 0);
 }
 
 /** A title from the first message: its first line, trimmed to a short length. */
@@ -220,7 +237,8 @@ function engineFailure(err: unknown): Response {
   throw err;
 }
 
-function isValidRequest(body: unknown): body is ChatTurnRequest {
+/** A well-formed request. The text may be empty only when files come with it. */
+function isValidRequest(body: unknown, hasAttachments: boolean): body is ChatTurnRequest {
   if (typeof body !== 'object' || body === null) return false;
   const { conversation_id, message } = body as Record<string, unknown>;
   if (conversation_id !== undefined && (typeof conversation_id !== 'string' || !conversation_id)) {
@@ -232,7 +250,7 @@ function isValidRequest(body: unknown): body is ChatTurnRequest {
     typeof id === 'string' &&
     id.length > 0 &&
     typeof text === 'string' &&
-    text.trim() !== '' &&
+    (text.trim() !== '' || hasAttachments) &&
     text.length <= MAX_MESSAGE_CHARS
   );
 }
@@ -241,20 +259,26 @@ const now = () => new Date().toISOString();
 
 /**
  * Run one turn of a stored conversation and stream it back. `defs` is the
- * resource union the chat tools are built over (already filtered for chat).
+ * resource union the chat tools are built over (already filtered for chat);
+ * `uploads` are the files attached to the message, if any.
  */
 export async function handleTurn(
   auth: AuthResult,
   body: unknown,
   defs: ResourceDefinition[],
+  uploads: File[] = [],
 ): Promise<Response> {
-  if (!isValidRequest(body)) {
+  if (!isValidRequest(body, uploads.length > 0)) {
     return problem(
       400,
       'expected { conversation_id?, message: { id, text } } with a non-empty id, and text ' +
-        `of 1–${MAX_MESSAGE_CHARS} characters`,
+        `of 1–${MAX_MESSAGE_CHARS} characters (it may be empty when files are attached)`,
     );
   }
+  // Checked before anything is created, so a bad file leaves nothing behind.
+  const checked = await checkAttachments(uploads);
+  if (!checked.ok) return problem(checked.status, checked.message);
+  const attachments = checked.files;
   const { message } = body;
   const hs = serverClient(auth.token);
   const conversations = hs.collection<ConversationRecord>(CONVERSATIONS);
@@ -265,7 +289,7 @@ export async function handleTurn(
     conversation = body.conversation_id
       ? await conversations.get(body.conversation_id)
       : await conversations.create({
-          title: titleFrom(message.text),
+          title: titleFrom(message.text) || titleFrom(attachmentsTitle(attachments)),
           status: 'idle',
           last_message_at: now(),
           created_by: auth.user.id,
@@ -306,18 +330,17 @@ export async function handleTurn(
   try {
     history = await messages.listAll({ orderBy: 'seq' });
     const seq = (history.at(-1)?.seq ?? 0) + 1;
-    const userMessage: StoredMessage = {
-      id: message.id,
+    const userBody = {
       seq,
-      role: 'user',
+      role: 'user' as const,
       content: message.text,
-      parts: [{ type: 'text', text: message.text }],
+      parts: message.text.trim() ? [{ type: 'text' as const, text: message.text }] : [],
       status: 'complete',
+      // Files ride on the message itself (the client encodes them as uploads).
+      ...(attachments.length > 0 ? { attachments } : {}),
     };
-    const { id: userId, ...userBody } = userMessage;
     // A retried send reuses its id, so it lands here as a 409 — not a duplicate.
-    await messages.create(userBody, { id: userId });
-    history.push(userMessage);
+    history.push(await messages.create(userBody, { id: message.id }));
     await messages.create(
       { seq: seq + 1, role: 'assistant', content: '', parts: [], status: 'streaming' },
       { id: assistantId },
@@ -331,7 +354,12 @@ export async function handleTurn(
   // 4. The model's context, rebuilt from storage.
   let modelMessages;
   try {
-    modelMessages = await convertToModelMessages(toUiMessages(history.slice(-HISTORY_LIMIT)));
+    const recent = history.slice(-HISTORY_LIMIT);
+    const ui = await withAttachments(toUiMessages(recent), recent, async (messageId, file) => {
+      const blob = await messages.record(messageId).download(file);
+      return new Uint8Array(await blob.arrayBuffer());
+    });
+    modelMessages = await convertToModelMessages(ui);
   } catch (err) {
     await finish({ status: 'error', error: `could not rebuild the conversation: ${String(err)}` });
     return problem(500, 'could not rebuild the conversation history');

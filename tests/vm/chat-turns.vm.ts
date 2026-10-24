@@ -268,3 +268,108 @@ describe('a conversation is its starter’s alone', () => {
     expect(await conversations(sam).listAll()).toEqual([]);
   });
 });
+
+describe('attachments', () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+  const PDF = new TextEncoder().encode('%PDF-1.7 tickets');
+
+  /** A turn with files: the JSON request plus `attachments` parts. */
+  function sendWithFiles(
+    text: string,
+    files: Array<[name: string, bytes: Uint8Array<ArrayBuffer>, type?: string]>,
+    opts: { conversationId?: string; id?: string; extra?: [string, Blob] } = {},
+  ): Promise<Response> {
+    const form = new FormData();
+    form.append(
+      'request',
+      JSON.stringify({
+        ...(opts.conversationId ? { conversation_id: opts.conversationId } : {}),
+        message: { id: opts.id ?? nextId(), text },
+      }),
+    );
+    for (const [name, bytes, type] of files) {
+      form.append('attachments', new Blob([bytes], { type: type ?? '' }), name);
+    }
+    if (opts.extra) form.append(opts.extra[0], opts.extra[1], 'x');
+    return fetch(`${APP}/api/chat`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+  }
+
+  const replyText = (stream: Array<Record<string, unknown>>) =>
+    stream.filter((e) => e.type === 'text-delta').map((e) => e.delta).join('');
+
+  test('files reach the model and are stored on the message', async () => {
+    const res = await sendWithFiles(`What are these? ${CHAT_MARKERS.describeAttachments}`, [
+      ['beach.png', PNG, 'image/png'],
+      ['tickets.pdf', PDF, 'application/pdf'],
+    ]);
+    expect(res.status).toBe(200);
+    const conversationId = res.headers.get('x-conversation-id')!;
+    expect(replyText(await events(res))).toBe('I can see 1 image and 1 PDF.');
+
+    const [user] = await ordered(conversationId);
+    const attachments = (user as unknown as { attachments: Array<Record<string, unknown>> }).attachments;
+    expect(attachments.map((a) => [a.name, a.media_type])).toEqual([
+      ['beach.png', 'image/png'],
+      ['tickets.pdf', 'application/pdf'],
+    ]);
+  });
+
+  test('a message may be only files; the conversation is titled by them', async () => {
+    const res = await sendWithFiles('', [['receipt.png', PNG]]);
+    expect(res.status).toBe(200);
+    const conversationId = res.headers.get('x-conversation-id')!;
+    await events(res);
+    expect((await conversations().get(conversationId)).title).toBe('receipt.png');
+  });
+
+  test("a file that isn't an image or PDF is refused, whatever it claims to be", async () => {
+    const fake = new TextEncoder().encode('<html><script>alert(1)</script></html>');
+    const res = await sendWithFiles('hi', [['photo.png', fake, 'image/png']]);
+    expect(res.status).toBe(415);
+    expect((await res.json()).error.message).toMatch(/isn't an image/);
+    // Refused before anything was created.
+    expect(await conversations().listAll()).toEqual([]);
+  });
+
+  test('too many files, or a stray part, is a 400', async () => {
+    const six = Array.from({ length: 6 }, (_, i) => [`${i}.png`, PNG] as [string, Uint8Array<ArrayBuffer>]);
+    expect((await sendWithFiles('hi', six)).status).toBe(400);
+    const stray = await sendWithFiles('hi', [], { extra: ['photo', new Blob([PNG])] });
+    expect(stray.status).toBe(400);
+  });
+});
+
+describe('stored history is untrusted', () => {
+  test('a file part written straight into a message never reaches the model', async () => {
+    const first = await send(token, `Hi ${CHAT_MARKERS.hello}`);
+    const conversationId = first.headers.get('x-conversation-id')!;
+    await events(first);
+    await eventually(() => conversations().get(conversationId), (c) => c.status === 'idle');
+
+    // Anyone who can write the conversation can write its messages directly.
+    // A file part with a URL would have the server fetch it.
+    await messagesOf(conversationId).create(
+      {
+        seq: 3,
+        role: 'user',
+        content: 'planted',
+        parts: [{ type: 'file', mediaType: 'image/png', url: 'http://169.254.169.254/latest/meta-data' }],
+        status: 'complete',
+      },
+      { id: 'planted' },
+    );
+
+    const next = await send(token, `What did you see? ${CHAT_MARKERS.describeAttachments}`, { conversationId });
+    expect(next.status).toBe(200);
+    await events(next);
+    // Had the planted URL been fetched (it can't be reached here), the turn
+    // would have failed; `toUiMessages` drops the part (see turns.test.ts).
+    const stored = await ordered(conversationId);
+    const reply = stored.at(-1)!;
+    expect(reply.status).toBe('complete');
+  });
+});

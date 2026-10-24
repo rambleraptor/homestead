@@ -25,7 +25,7 @@
 
 import { createServer, type Server } from 'http';
 import type { AddressInfo } from 'net';
-import { SCRIPT_EXHAUSTED_TEXT, scriptFor, type ScriptStep } from './ai-scripts';
+import { ATTACHMENTS_PLACEHOLDER, SCRIPT_EXHAUSTED_TEXT, scriptFor, type ScriptStep } from './ai-scripts';
 
 /**
  * Long enough to observe "running", short enough to keep tests quick.
@@ -166,6 +166,19 @@ type InputItem = {
   content?: string | Array<{ type?: string; text?: string }>;
 };
 
+/**
+ * What files a user message carried, as the model would see them: images as
+ * `input_image` parts, PDFs as `input_file`. Fills a script's
+ * {@link ATTACHMENTS_PLACEHOLDER}, so a test can check what reached the model.
+ */
+function attachmentSummary(item: InputItem): string {
+  const parts = Array.isArray(item.content) ? item.content : [];
+  const images = parts.filter((p) => p.type === 'input_image').length;
+  const pdfs = parts.filter((p) => p.type === 'input_file').length;
+  const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+  return `I can see ${plural(images, 'image')} and ${plural(pdfs, 'PDF')}.`;
+}
+
 /** The text of an input item's content, however the provider shaped it. */
 function textOf(item: InputItem): string {
   if (typeof item.content === 'string') return item.content;
@@ -193,7 +206,11 @@ export function scriptedStep(body: unknown): ScriptStep | null {
   if (!script) return null;
 
   const round = items.slice(lastUser + 1).filter((item) => item.type === 'function_call_output').length;
-  return script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT };
+  const step = script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT };
+  if (step.text?.includes(ATTACHMENTS_PLACEHOLDER)) {
+    return { ...step, text: step.text.replace(ATTACHMENTS_PLACEHOLDER, attachmentSummary(items[lastUser]!)) };
+  }
+  return step;
 }
 
 /** Stable ids for a step's output items, so a reply is reproducible. */
