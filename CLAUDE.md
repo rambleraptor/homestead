@@ -153,6 +153,11 @@ so new specs for user-facing flows go here.
   `HOMESTEAD_E2E_APP_URL` points them at the VM. The e2e AI stub is served
   in-process (with a 300ms rather than 2.5s pause), and `/api/events` streams
   live, so change-feed specs work.
+- Chat specs drive the real assistant against **scripted turns**: a message
+  carrying a marker from `tests/e2e/config/ai-scripts.ts` gets that script's
+  tool calls (run for real against the server) and then its reply, as a JSON
+  reply or a word-by-word stream. Add a script there and name it by its
+  `CHAT_MARKERS` constant; `tests/e2e/pages/ChatPage.ts` is the page object.
 - For speed the tier runs React's production build (`HOMESTEAD_VM_REACT_DEV=1`
   restores the development build and its warnings), shares one module graph
   across spec files per worker (`isolate: false`), and caches the template
