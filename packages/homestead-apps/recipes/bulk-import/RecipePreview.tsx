@@ -73,7 +73,7 @@ export function RecipePreview({
               {facts.length > 0 && (
                 <p className="text-muted-foreground text-sm">{facts.join(' · ')}</p>
               )}
-              <RecipeTags tags={recipe.tags} variant="inline" max={3} className="mt-1 block" />
+              <RecipeTags tags={recipe.tags} variant="inline" max={3} className="mt-1" />
             </div>
             <div className="flex-shrink-0">
               {isValid ? (
