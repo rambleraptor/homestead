@@ -67,6 +67,34 @@ export function validateResourceDefinition(def: ResourceDefinition): void {
   }
   validateFields(def.fields, '', fail);
   validateAccess(def, fail);
+  validateRetention(def, fail);
+}
+
+/**
+ * Check a `retention` declaration. A mistake here deletes data on a schedule,
+ * so every ambiguity fails the boot rather than guessing.
+ */
+function validateRetention(
+  def: ResourceDefinition,
+  fail: (message: string) => never,
+): void {
+  const retention = def.retention;
+  if (!retention) return;
+  if (!Number.isInteger(retention.days) || retention.days < 1) {
+    fail(`retention.days must be a positive integer (got ${String(retention.days)})`);
+  }
+  if ((def.parents ?? []).length > 0) {
+    // A child is deleted with its parent; sweeping it independently would need
+    // a walk over every parent (and, under `user`, every user).
+    fail('retention is only valid on a top-level resource — a child goes when its parent does');
+  }
+  if (retention.field !== undefined) {
+    const field = def.fields[retention.field];
+    if (!field) fail(`retention.field "${retention.field}" is not a declared field`);
+    if (field.type !== 'string' || field.format !== 'date-time') {
+      fail(`retention.field "${retention.field}" must be a string field with format "date-time"`);
+    }
+  }
 }
 
 /**

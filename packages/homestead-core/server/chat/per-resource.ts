@@ -115,7 +115,11 @@ export function buildResourceTools(
   defs: ResourceDefinition[],
   { write = true }: { write?: boolean } = {},
 ): ToolSurface {
-  const { tools: typed, bindings } = buildTools(defs);
+  // Reference hints name this surface's tools: one per resource, listed with
+  // its `list` action — not the typed surface's `read_<singular>`.
+  const { tools: typed, bindings } = buildTools(defs, {
+    findHint: (target) => `use the ${snake(target.plural)} tool's "list" action to find one`,
+  });
   const custom = buildCustomMethodTools(defs);
 
   const tools: Record<string, ToolSpec> = {};

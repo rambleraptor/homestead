@@ -510,6 +510,20 @@ no-ops when everything is in sync.
 The e2e suite boots the same server, so e2e and runtime schema stay in
 sync by construction.
 
+Two server-only options shape how a resource is handled rather than stored
+(neither reaches the engine):
+
+- `retention: { days, field? }` — a daily core cron (`resource-retention`, on
+  the Operations app) deletes rows older than the window, with their children,
+  through the normal API (`core/resources/retention.ts`). Top-level resources
+  only.
+- `modelTools: { chat?, mcp? }` — set either to `false` to leave the resource
+  (and its children) out of that surface's model tools
+  (`core/resources/model-tools.ts`). Not a permission.
+
+List filters accept `create_time` and `update_time` (UTC RFC 3339, compared as
+text) alongside a resource's own fields and `id`.
+
 ### Adding a new resource
 
 1. Add a new entry in the relevant app's `resources.ts` (or in

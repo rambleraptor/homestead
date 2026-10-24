@@ -16,6 +16,7 @@ import { authenticate, type AuthedUser } from '../aepbase';
 import { getAllResourceDefs } from '../../apps/registry';
 import { BUILTIN_RESOURCE_DEFS } from '../../resources/builtins';
 import type { ResourceDefinition } from '../../resources/types';
+import { visibleToModel } from '../../resources/model-tools';
 import { logger } from '../../utils/logger';
 import type {
   ChatMessage,
@@ -158,9 +159,9 @@ export async function handleChat(request: Request): Promise<Response> {
     return badRequest('the last message must be from the user');
   }
 
-  // Same definition union the schema sync applies, so the model sees
-  // every collection that exists in aepbase.
-  const defs = [...BUILTIN_RESOURCE_DEFS, ...getAllResourceDefs()];
+  // Same definition union the schema sync applies, so the model sees every
+  // collection that exists in aepbase — less any a definition hides from chat.
+  const defs = visibleToModel([...BUILTIN_RESOURCE_DEFS, ...getAllResourceDefs()], 'chat');
   const toolCalls: ChatToolCall[] = [];
   const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token, (call) =>
     toolCalls.push(call),

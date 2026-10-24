@@ -148,6 +148,27 @@ describe('the per-resource tool surface', () => {
   });
 });
 
+describe('reference hints', () => {
+  it('name this surface’s tool for the target, not the typed read_<x>', () => {
+    const person: ResourceDefinition = {
+      singular: 'person',
+      plural: 'people',
+      fields: { name: { type: 'string' } },
+    };
+    const game: ResourceDefinition = {
+      singular: 'game',
+      plural: 'games',
+      fields: { host: { type: 'string', reference: { resource: 'person' } } },
+    };
+    const { tools } = buildResourceTools([person, game]);
+    const fields = shapeOf(tools.games.inputSchema).fields as z.ZodOptional<z.ZodObject>;
+    const host = fields.unwrap().shape.host as z.ZodOptional<z.ZodTypeAny>;
+    const description = host.unwrap().description ?? host.description ?? '';
+    expect(description).toContain('use the people tool\'s "list" action to find one');
+    expect(description).not.toContain('read_person');
+  });
+});
+
 describe('a read-only authorization', () => {
   it('keeps every tool but narrows the action enum, so the limit is visible', () => {
     const { tools } = buildResourceTools(DEFS, { write: false });

@@ -14,8 +14,11 @@
  * Comprehension macros (`exists`/`all`) are not supported.
  *
  * `id` is filterable (it's the real primary-key column on every resource
- * table), which is what makes `id in [...]` selection work. The other standard
- * fields (`path`, `create_time`, `update_time`) stay non-filterable.
+ * table), which is what makes `id in [...]` selection work. So are
+ * `create_time` and `update_time`: real columns on every table, stored as
+ * second-precision UTC RFC 3339 strings (`2026-10-24T17:35:55Z`), so comparing
+ * them as text compares them as instants — `update_time > "2026-10-17T00:00:00Z"`.
+ * `path` stays non-filterable.
  *
  * `has(<field>)` is CEL's presence macro: true when the field is set (column
  * non-null), and for a repeated field only when it is also non-empty.
@@ -151,9 +154,13 @@ export function compileFilter(
       Object.keys(schema.properties ?? {}).filter((n) => !STANDARD_FIELDS.has(n)),
     );
     // `id` is the primary-key column on every resource table, so it's safe to
-    // filter on (unlike `path`/timestamps, which stay excluded). This is what
-    // makes `id in [...]` record selection expressible as a filter.
+    // filter on (unlike `path`, which stays excluded). This is what makes
+    // `id in [...]` record selection expressible as a filter.
     fields.add('id');
+    // The engine-managed timestamps are real columns too, written in one fixed
+    // format (`nowRFC3339`), so a text comparison is a time comparison.
+    fields.add('create_time');
+    fields.add('update_time');
     // Union paths (`metadata.doc_type`) resolve to the derived column the DDL
     // generated for them, so a filter seeks an index instead of scanning.
     const derived = new Map(

@@ -11,8 +11,7 @@
  *
  * Lists the full collection and filters in memory — mirroring
  * `sweepStaleOperations` — rather than pushing predicates down as a server-side
- * filter. (`create_time` isn't filterable anyway: it's one of aepbase's
- * STANDARD_FIELDS, which the engine excludes from its filter grammar.)
+ * filter.
  *
  * Server-only: lives under `crons/`, so vite stubs it out of the browser
  * bundle. Runs headless with a short-lived admin token from the scheduler.

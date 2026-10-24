@@ -34,6 +34,17 @@ export const operationsApp: AppConfig = {
       runOnStart: true,
       load: () => import('./crons/cleanup-operations'),
     },
+    {
+      // Delete rows past the retention window their resource declares
+      // (`ResourceDefinition.retention`). Hosted here because Operations ships
+      // in the always-installed Superuser subtree, so the sweep runs on every
+      // instance, and each firing is itself an operation with a log.
+      id: 'resource-retention',
+      title: 'Delete records past their retention window',
+      dailyAtHour: 3,
+      runOnStart: true,
+      load: () => import('./crons/retention-sweep'),
+    },
   ],
   web: {
     icon: () => import('lucide-react').then((m) => m.Activity),
