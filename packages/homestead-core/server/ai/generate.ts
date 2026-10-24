@@ -21,6 +21,7 @@ import {
   generateObject,
   NoObjectGeneratedError,
   stepCountIs,
+  streamText,
   type JSONValue,
   type ModelMessage,
   type StepResult,
@@ -155,6 +156,24 @@ export async function aiRunAgent<TOOLS extends ToolSet>(opts: {
     stopWhen: stepCountIs(opts.maxRounds),
   });
   return { text, steps };
+}
+
+/**
+ * Stream a tool-calling agentic turn on the configured model: `streamText`
+ * with the model filled in and the round limit expressed as `maxRounds`, like
+ * {@link aiRunAgent}. Every other option (callbacks, `abortSignal`, …) passes
+ * straight through, and the result is the SDK's own, so a caller can turn it
+ * into a UI message stream.
+ */
+export function aiStreamAgent(
+  opts: Omit<Parameters<typeof streamText>[0], 'model' | 'stopWhen'> & { maxRounds: number },
+): ReturnType<typeof streamText> {
+  const { maxRounds, ...rest } = opts;
+  return streamText({
+    ...rest,
+    model: getAiModel(),
+    stopWhen: stepCountIs(maxRounds),
+  } as Parameters<typeof streamText>[0]);
 }
 
 /**

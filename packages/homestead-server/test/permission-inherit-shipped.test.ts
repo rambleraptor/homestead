@@ -40,6 +40,7 @@ const BASE = 'http://localhost:8090';
 const APP_CONFIG_MODULES = [
   '@rambleraptor/homestead-core/notifications/app.config',
   '@rambleraptor/homestead-core/operations/app.config',
+  '@rambleraptor/homestead-core/chat/app.config',
   ...[
     'credit-cards',
     'documents',
@@ -234,7 +235,15 @@ describe('every shipped child resource follows its governing ancestor', () => {
   test('the audit covers the children it should', () => {
     // A guard against the audit silently covering nothing.
     expect(INHERITING_CHILDREN).toEqual(
-      expect.arrayContaining(['transaction', 'perk', 'redemption', 'log', 'vaccination', 'run']),
+      expect.arrayContaining([
+        'transaction',
+        'perk',
+        'redemption',
+        'log',
+        'vaccination',
+        'run',
+        'chat-message',
+      ]),
     );
   });
 

@@ -5,16 +5,19 @@
  * configured AI provider, with one tool per registered aepbase resource (the
  * verb — list/get/create/update/delete or an app's `:custom-method` — is the
  * tool's `action` parameter; see `core/server/chat/per-resource.ts`).
- * The backend lives in `core/server/chat/` behind `POST /api/chat`;
- * conversations are ephemeral (client state only).
+ * The backend lives in `core/server/chat/` behind `POST /api/chat`.
+ * Conversations are stored (`./resources`) and run server-side, streamed back
+ * to the client (`core/server/chat/turns.ts`).
  */
 
 import type { AppConfig } from '../apps/types';
+import { chatResources } from './resources';
 
 export const chatApp: AppConfig = {
   id: 'chat',
   name: 'Chat',
   description: 'Ask the household assistant to look up or change your data',
+  resources: chatResources,
   web: {
     icon: () => import('lucide-react').then((m) => m.MessageCircle),
     basePath: '/chat',

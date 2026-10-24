@@ -143,8 +143,9 @@ the top navigation.
 
 Chat works with **any** app you've added, with no per-app setup. It acts
 with **your** permissions, confirms before deleting, and shows you which
-actions it took. Conversations are not stored — each one lives only in the
-open tab.
+actions it took. The Chat screen doesn't keep conversations yet — each one
+lives only in the open tab — but the server already can (see
+[Stored conversations](#stored-conversations) below).
 
 Under the hood the assistant sees the same **one-tool-per-resource** surface
 the [MCP server](#the-tool-surface) serves by default: one tool per
@@ -155,6 +156,33 @@ app's `:custom-method` such as `:process-image` or `:classify` — as the tool's
 a dump of the whole collection. Filters can use every record's `create_time`
 and `update_time` too, so "what changed since Friday" works on any
 resource.
+
+### Stored conversations
+
+`POST /api/chat` also runs a **stored, streamed** turn. Send only the new
+message; the server keeps the history:
+
+```http
+POST /api/chat
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "conversation_id": "…", "message": { "id": "<your id>", "text": "Add milk" } }
+```
+
+- Leave out `conversation_id` to start a new conversation; its id comes back in
+  the `X-Conversation-Id` header and the stream's first event.
+- The reply is the [AI SDK's UI message stream](https://ai-sdk.dev) — text as
+  it's written, and each tool call with its result.
+- The turn runs to the end on the server even if you disconnect, and is saved
+  as it goes: a `conversation` with its `chat-message`s, readable like any
+  other resource (and by MCP clients — the assistant itself doesn't see them).
+- One turn at a time per conversation: a second send while one runs gets
+  `409`. Stop a running turn with `POST /api/aep/conversations/{id}:cancel`.
+- `message.id` is yours to choose, so a retried send gets `409` instead of
+  sending twice.
+- A conversation is private to whoever started it, and is deleted 60 days
+  after its last message.
 
 A resource can be left out of the assistant's tools, or out of MCP's, with
 `modelTools` on its definition — see

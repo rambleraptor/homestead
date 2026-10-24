@@ -1,6 +1,7 @@
 import type { Http } from './http';
 import { errorFromResponse } from './errors';
 import type {
+  CreateOptions,
   DeleteOptions,
   ListOptions,
   Page,
@@ -26,7 +27,8 @@ export interface CollectionRef<T> {
    * Create a record. Pass a plain object, a `FormData`, or an object containing
    * `Blob`/`File` fields (auto-assembled into multipart for file uploads).
    */
-  create(body: RecordBody | FormData): Promise<T>;
+  /** Create a record; `options.id` chooses its id where the resource allows it. */
+  create(body: RecordBody | FormData, options?: CreateOptions): Promise<T>;
   /** A handle to a single record in this collection (need not exist yet). */
   record(id: string): RecordRef<T>;
   /**
@@ -122,8 +124,12 @@ export class CollectionRefImpl<T> implements CollectionRef<T> {
     return this.http.request<T>(`${this.path}/${encodeURIComponent(id)}`);
   }
 
-  create(body: RecordBody | FormData): Promise<T> {
-    return this.http.request<T>(this.path, { method: 'POST', body: encodeBody(body) });
+  create(body: RecordBody | FormData, options: CreateOptions = {}): Promise<T> {
+    return this.http.request<T>(this.path, {
+      method: 'POST',
+      body: encodeBody(body),
+      query: options.id ? { id: options.id } : undefined,
+    });
   }
 
   record(id: string): RecordRef<T> {

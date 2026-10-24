@@ -43,6 +43,7 @@ export type {
   Page,
   ListOptions,
   PageOptions,
+  CreateOptions,
   DeleteOptions,
   RecordBody,
   MaybePromise,

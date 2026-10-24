@@ -353,7 +353,9 @@ SPA and apps share:
 - `apps/` — registry, the `AppConfig`/`AppFlagDef` contract types
 - `dashboard/`, `settings/`, `superuser/`, `users/`, `chat/`,
   `notifications/` — the always-installed core apps (`chat` is the AI
-  assistant; its server half lives in `server/chat/`. `notifications` owns the
+  assistant; its server half lives in `server/chat/`, where `turns.ts` runs a
+  stored, streamed turn of a `conversation` — history in `chat-message` rows,
+  one turn at a time, cancel via `conversations/{id}:cancel`. `notifications` owns the
   web-push inbox + subscription management; its server half lives in
   `server/notifications.ts`)
 - `layout/`, `shared/`, `resources/`, `app-flags/`, `user-settings/` —
