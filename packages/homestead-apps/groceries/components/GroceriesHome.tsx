@@ -5,7 +5,7 @@
  */
 
 import { useMemo, useState, useRef } from 'react';
-import { Plus, Loader2, CheckCircle2, Image as ImageIcon, ListRestart, Store as StoreIcon, Bell } from 'lucide-react';
+import { Plus, CheckCircle2 } from 'lucide-react';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
 import { useStores } from '../hooks/useStores';
 import { useCreateGroceryItem } from '../hooks/useCreateGroceryItem';
@@ -13,10 +13,12 @@ import { useDeleteAllGroceries } from '../hooks/useDeleteAllGroceries';
 import { GroceriesList } from './GroceriesList';
 import { ImageUploadDialog } from './ImageUploadDialog';
 import { StoreManagement } from './StoreManagement';
+import { GroceriesActionsMenu } from './GroceriesActionsMenu';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import { useAppFlag } from '@rambleraptor/homestead-core/settings';
 
@@ -34,6 +36,7 @@ export function GroceriesHome() {
   const createMutation = useCreateGroceryItem();
   const deleteAllMutation = useDeleteAllGroceries();
   const notifyMutation = useSendGroceryNotification();
+  const toast = useToast();
   const { isOffline } = useOnlineStatus();
   const { value: defaultStore = '' } = useAppFlag<string>(
     'groceries',
@@ -81,9 +84,12 @@ export function GroceriesHome() {
     }
   };
 
+  // The menu closes as soon as Notify is tapped, so the result has to be
+  // reported somewhere else: a toast, like every other outcome on the page.
   const handleNotify = async () => {
     try {
       await notifyMutation.mutateAsync();
+      toast.success('Household notified');
     } catch (err) {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
@@ -120,64 +126,31 @@ export function GroceriesHome() {
       </span>
     );
 
-  const offlineDisabledTitle = isOffline ? 'Available when online' : undefined;
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Grocery List"
         subtitle={subtitle}
+        // One small button needs no row of its own: keep it beside the title
+        // on every width instead of the header's default stack-on-mobile.
+        className="flex-row items-start justify-between gap-4"
         actions={
-          <>
-            <button
-              onClick={() => setShowStoreManagement(!showStoreManagement)}
-              data-testid="manage-stores-button"
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
-            >
-              <StoreIcon className="w-5 h-5" />
-              Stores
-            </button>
-            <button
-              onClick={handleNotify}
-              disabled={notifyMutation.isPending || isOffline}
-              title={offlineDisabledTitle}
-              data-testid="notify-grocery-button"
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {notifyMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Bell className="w-5 h-5" />
-              )}
-              {notifyMutation.isPending ? 'Sending...' : 'Notify'}
-            </button>
-            <button
-              onClick={() => setShowImageUpload(true)}
-              disabled={isBulkUpdating || isOffline}
-              title={offlineDisabledTitle}
-              data-testid="upload-grocery-list-button"
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ImageIcon className="w-5 h-5" aria-hidden="true" />
-              Upload List
-            </button>
-            {stats.totalItems > 0 && (
-              <button
-                onClick={handleNewList}
-                disabled={isBulkUpdating || isOffline}
-                title={offlineDisabledTitle}
-                data-testid="new-grocery-list-button"
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium font-body transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ListRestart className="w-5 h-5" />
-                New List
-              </button>
-            )}
-          </>
+          <GroceriesActionsMenu
+            onManageStores={() => setShowStoreManagement(!showStoreManagement)}
+            onNotify={handleNotify}
+            onUploadList={() => setShowImageUpload(true)}
+            onNewList={handleNewList}
+            hasItems={stats.totalItems > 0}
+            isNotifying={notifyMutation.isPending}
+            isBulkUpdating={isBulkUpdating}
+            isOffline={isOffline}
+          />
         }
       />
 
-      {showStoreManagement && <StoreManagement />}
+      {showStoreManagement && (
+        <StoreManagement onClose={() => setShowStoreManagement(false)} />
+      )}
 
       <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
         <div className="flex gap-2">
@@ -211,10 +184,10 @@ export function GroceriesHome() {
             onClick={handleQuickAdd}
             disabled={isSubmitting || !itemName.trim()}
             data-testid="quick-add-button"
-            className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Add item"
+            className="flex items-center justify-center px-3 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">Add</span>
+            <Plus className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
       </div>

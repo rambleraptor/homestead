@@ -70,9 +70,12 @@ test.describe('Groceries — offline support', () => {
     // Offline badge becomes visible.
     await expect(page.getByTestId('groceries-offline-badge')).toBeVisible();
 
-    // Online-only buttons disable.
+    // Online-only actions disable (they live behind the ⋯ menu).
+    await page.getByTestId('groceries-menu-button').click();
     await expect(page.getByTestId('notify-grocery-button')).toBeDisabled();
     await expect(page.getByTestId('upload-grocery-list-button')).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('groceries-menu')).toBeHidden();
 
     // Add three items via the UI.
     const addItem = async (name: string) => {
