@@ -571,6 +571,24 @@ export type ResourceAccess =
       privateValue: string;
     };
 
+/**
+ * How long a resource's rows are kept. A daily core cron
+ * (`resource-retention`, on the Operations app) deletes every row older than
+ * the window — with its child subtree — through the normal API, so reference
+ * rules and the change feed apply as for any delete. See `./retention`.
+ */
+export interface ResourceRetention {
+  /** Keep a row this many days, measured from {@link field}. A positive integer. */
+  days: number;
+  /**
+   * A declared `date-time` field to measure from — e.g. a conversation's
+   * `last_message_at` — holding UTC ISO 8601 strings (what `toISOString()`
+   * writes). A row whose field is unset falls back to `update_time`. Omit to
+   * measure from `update_time`, the engine-managed time of the last write.
+   */
+  field?: string;
+}
+
 export interface ResourceDefinition {
   /** Kebab-case singular form, e.g. `gift-card`. Globally unique. */
   singular: string;
@@ -638,6 +656,27 @@ export interface ResourceDefinition {
    * `core/resources/bulk-export/types.ts`.
    */
   bulkExport?: BulkExportDef<any>;
+  /**
+   * Delete rows past an age (see {@link ResourceRetention}). Top-level
+   * resources only: a child goes when its parent does. Server-only — never
+   * sent to the engine (the schema-sync wire payload is an explicit
+   * whitelist). Validated at boot by `validateResourceDefinition`.
+   */
+  retention?: ResourceRetention;
+  /**
+   * Which model-facing tool surfaces offer this resource. Both default to
+   * `true`; set one to `false` to hide the resource there:
+   *
+   *  - `chat` — the built-in assistant's tools (`POST /api/chat`)
+   *  - `mcp`  — every `/api/mcp` surface, its catalog, and its document search
+   *
+   * Hiding a resource hides its descendants too, since they can't be addressed
+   * without it. This is **not** a permission: the REST API, the CLI, and bulk
+   * export are unaffected, and anything a model could reach it can still reach
+   * the same way a person can. It only decides what a model is handed. See
+   * `./model-tools`.
+   */
+  modelTools?: { chat?: boolean; mcp?: boolean };
   /**
    * Row-scoping model (see {@link ResourceAccess}). Omit for `shared`.
    * Validated at boot by `validateResourceDefinition`.

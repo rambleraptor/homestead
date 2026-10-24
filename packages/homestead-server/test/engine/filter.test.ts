@@ -67,9 +67,20 @@ describe('compileFilter', () => {
 
   test('rejects unknown fields (no injection through identifiers)', () => {
     expect(() => compileFilter('password == "x"', schema)).toThrow(/invalid filter/);
-    // `path` and the timestamps stay non-filterable...
+    // `path` stays non-filterable...
     expect(() => compileFilter('path == "x"', schema)).toThrow(/invalid filter/);
-    expect(() => compileFilter('create_time == "x"', schema)).toThrow(/invalid filter/);
+  });
+
+  test('the engine-managed timestamps are filterable', () => {
+    const f = compileFilter('update_time > "2026-10-17T00:00:00Z"', schema);
+    expect(f.sql).toBe('update_time > ?');
+    expect(f.params).toEqual(['2026-10-17T00:00:00Z']);
+    const g = compileFilter(
+      'create_time >= "2026-01-01T00:00:00Z" && create_time < "2026-02-01T00:00:00Z" && in_print == true',
+      schema,
+    );
+    expect(g.sql).toBe('create_time >= ? AND create_time < ? AND in_print = ?');
+    expect(() => compileFilter('has(update_time)', schema)).not.toThrow();
   });
 
   test('id is filterable (it is the primary-key column)', () => {

@@ -17,6 +17,8 @@ new and patches anything that changed.
 - [Enums](#enums)
 - [File Fields](#file-fields)
 - [Parent / Child Resources](#parent-child-resources)
+- [Retention](#retention)
+- [Hiding a Resource from AI Tools](#hiding-a-resource-from-ai-tools)
 - [Wiring It Up](#wiring-it-up)
 - [Adding or Changing a Resource](#adding-or-changing-a-resource)
 - [Rules](#rules)
@@ -148,6 +150,68 @@ That's almost always what you want. For the rare child whose rows must be
 governed on their own, opt out with `independent_access: true`; its rows are
 then authorized by their own owner and grants, like a top-level resource's.
 See [Parent access inheritance](../design/parent-access-inheritance).
+
+---
+
+## Retention
+
+Some records only matter for a while — an old chat, a finished job. Give the
+resource a `retention` window and Homestead deletes rows once they're older
+than it:
+
+```ts
+{
+  singular: 'conversation',
+  plural: 'conversations',
+  retention: { days: 60, field: 'last_message_at' },
+  fields: {
+    last_message_at: { type: 'string', format: 'date-time' },
+  },
+}
+```
+
+- **`days`** is how long to keep a row. **`field`** is what to measure from:
+  a declared `date-time` field holding UTC ISO strings. Leave it out to
+  measure from `update_time`, the time of the row's last write. A row whose
+  field is empty falls back to `update_time`.
+- A sweep runs **daily at 3am** (server time), and once at boot. Each run is
+  an entry in **Superuser → Operations**, with a log of what it removed.
+- Deleting goes through the normal API, so it behaves like any delete: the
+  row's **children go with it**, change events reach open tabs, and a row
+  another record points at with `onDelete: 'restrict'` is **kept** and noted
+  in the log rather than forced.
+- A run deletes at most 500 rows per resource, so a big backlog clears over a
+  few days.
+- Only **top-level** resources take `retention` — a child goes when its
+  parent does. The boot check refuses a bad window, a child, or a `field`
+  that isn't a declared `date-time`.
+
+Adding `retention` to a resource that already has data deletes the old rows
+on the next sweep. Treat it like any change that touches real data.
+
+---
+
+## Hiding a Resource from AI Tools
+
+Every resource shows up as a tool for the built-in assistant (Chat) and for
+MCP clients. To leave one out of either, say so:
+
+```ts
+{
+  singular: 'conversation',
+  plural: 'conversations',
+  modelTools: { chat: false }, // the assistant doesn't see its own transcripts
+  // ...
+}
+```
+
+`chat: false` hides it from the assistant; `mcp: false` hides it from every
+MCP tool surface, MCP's resource catalog, and document search. Both default
+to `true`. Hiding a resource hides its children too.
+
+This is **not** a permission. The REST API, the CLI, and bulk export still
+reach the resource exactly as before, under the caller's own access. It only
+decides what a model is handed as tools.
 
 ---
 

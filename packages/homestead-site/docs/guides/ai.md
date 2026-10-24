@@ -152,7 +152,13 @@ resource, with the verb — `list`, `get`, `create`, `update`, `delete`, or an
 app's `:custom-method` such as `:process-image` or `:classify` — as the tool's
 `action`. A `list` can be narrowed and sorted on the server (`filter`,
 `order_by`, `limit`), so "what's due this week" is one small read rather than
-a dump of the whole collection.
+a dump of the whole collection. Filters can use every record's `create_time`
+and `update_time` too, so "what changed since Friday" works on any
+resource.
+
+A resource can be left out of the assistant's tools, or out of MCP's, with
+`modelTools` on its definition — see
+[Hiding a Resource from AI Tools](./resources#hiding-a-resource-from-ai-tools).
 
 ### Enable Chat
 

@@ -85,8 +85,9 @@ export const FILTER_SYNTAX =
   ' and parentheses; `has(<field>)` is true when the field is set; `<field> in ["a", "b"]`' +
   ' matches any listed value; `"x" in <array_field>` tests array membership. String values' +
   ' are double-quoted; date-times are ISO 8601 strings and compare as text, so' +
-  ' `due_date < "2026-11-01"` works. Fields are the resource\'s own field names plus `id`' +
-  ' (not create_time/update_time).';
+  ' `due_date < "2026-11-01"` works. Fields are the resource\'s own field names plus `id`,' +
+  ' `create_time`, and `update_time` (UTC, e.g. `update_time > "2026-10-17T00:00:00Z"` for' +
+  ' "changed this week").';
 
 /** The `order_by` grammar (`engine/order.ts`), stated once for the model. */
 export const ORDER_BY_SYNTAX =
@@ -154,20 +155,29 @@ interface ConvertedProperty {
 }
 
 /**
+ * For a reference target that has tools on this surface, how to find one of
+ * its records — e.g. `use read_person to find one`. Returns undefined for a
+ * target with no tools (the built-in `user`, or a resource the surface hides),
+ * where the hint stops at the resource name.
+ */
+type FindHint = (singular: string) => string | undefined;
+
+/** The typed surface's hint: its read tool is `read_<singular>`. */
+export const typedFindHint = (target: ResourceDefinition): string =>
+  `use read_${snake(target.singular)} to find one`;
+
+/**
  * Guidance appended to a reference field's description so the model knows the
- * id belongs to another resource — and, when that resource has its own generated
- * tools, which read tool finds one. `readable` holds the singulars that produce
- * CRUD tools (i.e. declared resources); a built-in target like `user` has no
- * tool, so the hint stops at the resource name.
+ * id belongs to another resource — and, when that resource has tools on this
+ * surface, how to find one.
  */
 function referenceNote(
   reference: NonNullable<FieldDef['reference']>,
-  readable: ReadonlySet<string>,
+  findHint: FindHint,
 ): string {
   const base = `id of a ${reference.resource} record`;
-  return readable.has(reference.resource)
-    ? `${base} (use read_${snake(reference.resource)} to find one)`
-    : base;
+  const hint = findHint(reference.resource);
+  return hint ? `${base} (${hint})` : base;
 }
 
 /**
@@ -176,7 +186,7 @@ function referenceNote(
  */
 function fieldToZod(
   prop: FieldDef,
-  readable: ReadonlySet<string>,
+  findHint: FindHint,
 ): ConvertedProperty | null {
   if (prop.type === 'file') return null;
 
@@ -191,7 +201,7 @@ function fieldToZod(
       }
       let note = description;
       if (prop.reference) {
-        const ref = referenceNote(prop.reference, readable);
+        const ref = referenceNote(prop.reference, findHint);
         note = note ? `${note} — ${ref}` : ref;
       } else if (prop.format === 'date-time') {
         note = `${description ? `${description} ` : ''}(ISO 8601 date-time)`;
@@ -205,7 +215,7 @@ function fieldToZod(
     case 'boolean':
       return { schema: described(z.boolean(), description), jsonString: false };
     case 'array': {
-      const items = prop.items ? fieldToZod(prop.items, readable) : null;
+      const items = prop.items ? fieldToZod(prop.items, findHint) : null;
       if (!items) return null;
       return { schema: described(z.array(items.schema), description), jsonString: false };
     }
@@ -223,7 +233,7 @@ function fieldToZod(
       }
       const shape: Record<string, z.ZodTypeAny> = {};
       for (const [key, value] of entries) {
-        const converted = fieldToZod(value, readable);
+        const converted = fieldToZod(value, findHint);
         if (!converted) continue;
         shape[key] = value.required ? converted.schema : converted.schema.optional();
       }
@@ -281,12 +291,20 @@ export function resolveParentChain(
 /**
  * Build the chat tools + execution bindings for a set of resource
  * definitions: one create/read/update/delete tool each.
+ *
+ * `findHint` words a reference field's "how to find one" for the surface that
+ * will actually serve these schemas — `read_person` on the typed surface, the
+ * `people` tool on the per-resource one. Only targets in `defs` get a hint.
  */
-export function buildTools(defs: ResourceDefinition[]): BuiltTools {
+export function buildTools(
+  defs: ResourceDefinition[],
+  { findHint = typedFindHint }: { findHint?: (target: ResourceDefinition) => string } = {},
+): BuiltTools {
   const bySingular = indexBySingular(defs);
-  // Singulars that get their own CRUD tools — used to decide whether a
-  // reference field's description can point the model at a `read_<x>` tool.
-  const readable = new Set(bySingular.keys());
+  const hintFor: FindHint = (singular) => {
+    const target = bySingular.get(singular);
+    return target ? findHint(target) : undefined;
+  };
 
   const tools: Record<string, ToolSpec> = {};
   const bindings = new Map<string, ToolBinding>();
@@ -310,7 +328,7 @@ export function buildTools(defs: ResourceDefinition[]): BuiltTools {
     for (const [key, prop] of Object.entries(def.fields)) {
       // Deprecated fields are on their way out — don't offer them to the model.
       if (prop.deprecated) continue;
-      const converted = fieldToZod(prop, readable);
+      const converted = fieldToZod(prop, hintFor);
       if (!converted) continue;
       fieldSchemas[key] = converted.schema;
       bodyFields.add(key);
