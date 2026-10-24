@@ -231,3 +231,45 @@ describe('aep-lib-ts consumer round-trip', () => {
     expect(notification.createMethod?.supportsUserSettableCreate).toBe(false);
   });
 });
+
+describe('files below the top level in the generated doc', () => {
+  test('read as descriptors, and :download takes a file id', async () => {
+    // A fresh engine so the frozen-baseline resource set above is untouched.
+    const t2 = await makeEngine();
+    await defineResource(t2, {
+      singular: 'scrapbook',
+      plural: 'scrapbooks',
+      user_settable_create: true,
+      schema: {
+        type: 'object',
+        properties: {
+          cover: { type: 'binary', 'x-aepbase-file-field': true },
+          attachments: { type: 'array', items: { type: 'binary', 'x-aepbase-file-field': true } },
+          profile: {
+            type: 'object',
+            properties: { avatar: { type: 'binary', 'x-aepbase-file-field': true } },
+          },
+        },
+      },
+    });
+    const doc2 = await (await call(t2.engine, 'GET', '/openapi.json')).json();
+    const props = doc2.components.schemas['scrapbook'].properties;
+
+    // The top-level file field keeps its original shape.
+    expect(props.cover).toMatchObject({ type: 'binary', 'x-aepbase-file-field': true });
+    for (const file of [props.attachments.items, props.profile.properties.avatar]) {
+      expect(file.type).toBe('object');
+      expect(file['x-aepbase-file-field']).toBe(true);
+      expect(Object.keys(file.properties)).toEqual(['id', 'url', 'name', 'media_type', 'size', 'encrypted']);
+    }
+
+    const body =
+      doc2.paths['/scrapbooks/{scrapbook_id}:download'].post.requestBody.content['application/json'].schema;
+    expect(Object.keys(body.properties)).toEqual(['field', 'file']);
+    expect(body.required).toBeUndefined();
+
+    // aep-lib-ts still derives the resource.
+    const client = await APIClient.fromOpenAPI(doc2, 'http://localhost:8090');
+    expect(Object.keys(client.resources())).toContain('scrapbook');
+  });
+});

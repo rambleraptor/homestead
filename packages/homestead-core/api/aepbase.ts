@@ -21,6 +21,12 @@
 
 import { isNativeHomestead, nativeRequest, revokeNativeDeviceOnLogout } from '../mobile/bridge';
 import { takeOAuthReturnUrl } from '../auth/oauthReturn';
+import {
+  downloadBody,
+  encodeBody,
+  type DownloadTarget,
+  type FileDescriptor,
+} from '@rambleraptor/homestead-client';
 import { CLIENT_ID_HEADER, getClientId } from './clientId';
 import { fetchOrNetworkError } from './connectivity';
 import type { OAuthSession, User, UserType } from '../auth/types';
@@ -362,6 +368,8 @@ function itemPath(plural: string, id: string, parent?: ParentPath): string {
 /** Alternating [plural, id, plural, id, ...] segments naming the parent chain. */
 export type ParentPath = string[];
 
+export type { DownloadTarget, FileDescriptor };
+
 // ----------------------------------------------------------------------------
 // CRUD
 // ----------------------------------------------------------------------------
@@ -437,7 +445,9 @@ export async function create<T>(
 ): Promise<T> {
   return await request<T>(collectionPath(plural, options.parent), {
     method: 'POST',
-    body,
+    // A File anywhere in the body (a list of files, a file inside an object)
+    // turns it into multipart with upload placeholders — see `encodeBody`.
+    body: encodeBody(body),
     query: options.id ? { id: options.id } : undefined,
   });
 }
@@ -456,10 +466,11 @@ export async function update<T>(
   body: Record<string, unknown> | FormData,
   options: ItemOptions = {},
 ): Promise<T> {
+  const encoded = encodeBody(body);
   return await request<T>(itemPath(plural, id, options.parent), {
     method: 'PATCH',
-    body,
-    mergePatch: !(body instanceof FormData),
+    body: encoded,
+    mergePatch: !(encoded instanceof FormData),
   });
 }
 
@@ -475,8 +486,11 @@ export async function remove(
 }
 
 /**
- * Fetch the bytes of a file-field property via aepbase's auto-registered
- * `:download` custom method. Returns a Blob.
+ * Fetch a file's bytes via aepbase's auto-registered `:download` custom
+ * method: a top-level file field by name, or a file below the top level (in a
+ * list, inside an object) by id or by the descriptor the record holds for it.
+ * Returns a Blob. The response is always `application/octet-stream`; the real
+ * type of a file below the top level is its descriptor's `media_type`.
  *
  * The download URL aepbase echoes back in the field on read (e.g.
  * `front_image: "http://.../gift-cards/{id}:download?field=front_image"`)
@@ -487,7 +501,7 @@ export async function remove(
 export async function download(
   plural: string,
   id: string,
-  field: string,
+  target: DownloadTarget,
   options: ItemOptions = {},
 ): Promise<Blob> {
   await ensureFreshToken();
@@ -499,7 +513,7 @@ export async function download(
   const res = await fetchOrNetworkError(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ field }),
+    body: JSON.stringify(downloadBody(target)),
   });
   if (!res.ok) {
     let message = `HTTP ${res.status}`;

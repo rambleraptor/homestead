@@ -3,6 +3,7 @@ import { errorFromResponse } from './errors';
 import type {
   CreateOptions,
   DeleteOptions,
+  DownloadTarget,
   ListOptions,
   Page,
   PageOptions,
@@ -50,8 +51,11 @@ export interface RecordRef<T> {
   delete(options?: DeleteOptions): Promise<void>;
   /** A child collection nested under this record. */
   collection<C>(plural: string): CollectionRef<C>;
-  /** Download a file-field's bytes via the `:download` custom method. */
-  download(field: string): Promise<Blob>;
+  /**
+   * Download a file's bytes via the `:download` custom method: a top-level
+   * file field by name, or a file below the top level by id (or its descriptor).
+   */
+  download(target: DownloadTarget): Promise<Blob>;
   /**
    * Invoke an AEP-136 item-target custom method
    * (`POST /<plural>/<id>:<verb>`), sending `X-User-Id` for the gateway.
@@ -67,23 +71,51 @@ interface ListEnvelope<T> {
 
 const DEFAULT_PAGE_SIZE = 100;
 
+function containsBlob(value: unknown): boolean {
+  if (value instanceof Blob) return true;
+  if (Array.isArray(value)) return value.some(containsBlob);
+  if (value && typeof value === 'object') return Object.values(value).some(containsBlob);
+  return false;
+}
+
 /**
- * If `body` carries any `Blob`/`File` field, assemble it into `FormData`
- * (scalars stringified, nested objects JSON-encoded) so callers never
- * hand-build multipart for a simple upload. Otherwise pass the object through.
+ * If `body` carries a `Blob`/`File` anywhere, assemble it into `FormData` so
+ * callers never hand-build multipart. A top-level Blob is the part for that
+ * file field. A Blob deeper in (a list of files, a file inside an object)
+ * becomes an `{"$upload": "<part>"}` placeholder in its field's JSON, with its
+ * bytes in that part. Scalars are stringified, other objects JSON-encoded. A
+ * body with no Blob passes through as JSON.
  */
-function encodeBody(body: RecordBody | FormData): RecordBody | FormData {
+export function encodeBody(body: RecordBody | FormData): RecordBody | FormData {
   if (body instanceof FormData) return body;
-  const hasFile = Object.values(body).some((v) => v instanceof Blob);
-  if (!hasFile) return body;
+  if (!containsBlob(body)) return body;
   const form = new FormData();
+  let next = 0;
+  const lift = (value: unknown): unknown => {
+    if (value instanceof Blob) {
+      const part = `$upload-${next++}`;
+      form.append(part, value);
+      return { $upload: part };
+    }
+    if (Array.isArray(value)) return value.map(lift);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, lift(v)]));
+    }
+    return value;
+  };
   for (const [key, value] of Object.entries(body)) {
     if (value === undefined || value === null) continue;
     if (value instanceof Blob) form.append(key, value);
-    else if (typeof value === 'object') form.append(key, JSON.stringify(value));
+    else if (typeof value === 'object') form.append(key, JSON.stringify(lift(value)));
     else form.append(key, String(value));
   }
   return form;
+}
+
+/** The `:download` request body for a {@link DownloadTarget}. */
+export function downloadBody(target: DownloadTarget): { field: string } | { file: string } {
+  if (typeof target === 'string') return { field: target };
+  return { file: 'file' in target ? target.file : target.id };
 }
 
 export class CollectionRefImpl<T> implements CollectionRef<T> {
@@ -176,10 +208,10 @@ export class RecordRefImpl<T> implements RecordRef<T> {
     return new CollectionRefImpl<C>(this.http, `${this.path}/${plural}`);
   }
 
-  async download(field: string): Promise<Blob> {
+  async download(target: DownloadTarget): Promise<Blob> {
     const res = await this.http.raw(`${this.path}:download`, {
       method: 'POST',
-      body: { field },
+      body: downloadBody(target),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');

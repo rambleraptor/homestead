@@ -17,9 +17,16 @@ import type { BulkExportDef } from './bulk-export/types';
 // ----------------------------------------------------------------------------
 
 /**
- * Field types apps may declare. `file` marks an uploaded-file field; the
- * translator turns it into aepbase's `binary` + `x-aepbase-file-field`
- * wire encoding (`binary` itself is not declarable).
+ * Field types apps may declare. `file` marks an uploaded file; the translator
+ * turns it into aepbase's `binary` + `x-aepbase-file-field` wire encoding
+ * (`binary` itself is not declarable).
+ *
+ * A file may sit at the top level of a resource (one file per field, the
+ * original form) or anywhere inside one: as an array's `items` for a list of
+ * files, or as a property of an `object` (including objects inside arrays).
+ * Files below the top level are stored by id and read back as file
+ * descriptors — see `docs/design/nested-files.md`. They may not sit inside
+ * tagged-union `variants`, and `ai` options stay top-level only.
  */
 export type FieldType =
   | 'string'
@@ -250,7 +257,8 @@ export interface FieldDef {
   variants?: Record<string, Record<string, FieldDef>>;
   /**
    * AI processing for a `file` field: extract its text and/or embed it for
-   * semantic search. Only valid on `type: 'file'`. See {@link FileAiOptions}.
+   * semantic search. Only valid on a top-level `type: 'file'`. See
+   * {@link FileAiOptions}.
    */
   ai?: FileAiOptions;
 }

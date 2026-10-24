@@ -138,6 +138,32 @@ describe('buildTools', () => {
     expect(create.safeParse({ merchant: 'M', amount: 5 }).success).toBe(true);
   });
 
+  it('leaves out files below the top level, and any list that holds one', () => {
+    const scrapbook: ResourceDefinition = {
+      singular: 'scrapbook',
+      plural: 'scrapbooks',
+      fields: {
+        title: { type: 'string', required: true },
+        attachments: { type: 'array', items: { type: 'file' } },
+        profile: {
+          type: 'object',
+          properties: { bio: { type: 'string' }, avatar: { type: 'file' } },
+        },
+        // Replaced whole on update: a model that can't keep the scans would drop them.
+        pages: {
+          type: 'array',
+          items: { type: 'object', properties: { caption: { type: 'string' }, scan: { type: 'file' } } },
+        },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+    };
+    const { tools } = buildTools([scrapbook]);
+    expect(keysFor(tools, 'create_scrapbook').sort()).toEqual(['profile', 'tags', 'title']);
+    const create = schemaFor(tools, 'create_scrapbook');
+    // The object stays, without its file.
+    expect(create.safeParse({ title: 't', profile: { bio: 'hi' } }).success).toBe(true);
+  });
+
   it('omits deprecated fields from the create and update tools', () => {
     const withDeprecated: ResourceDefinition = {
       singular: 'widget',

@@ -388,7 +388,7 @@ export async function routeDynamic(
       if (match.verb === '') {
         return errorResponse(405, 'POST is not allowed on individual resources; use PATCH to update');
       }
-      if (match.verb === 'download' && r.fileFields.size > 0) {
+      if (match.verb === 'download' && (r.fileFields.size > 0 || r.nestedFileFields.size > 0)) {
         enforce('read', match.id, recordPath);
         return handleDownload(reg, match, req);
       }

@@ -118,6 +118,52 @@ Homestead stores the file on disk and exposes a download method for it.
 Your create/update calls send file fields as `FormData`; everything else
 goes as JSON.
 
+### Lists of files, and files inside objects
+
+A file can also sit below the top level — as a list, inside an object, or in a
+list of objects:
+
+```ts
+fields: {
+  attachments: { type: 'array', items: { type: 'file' }, maxItems: 5 },
+  profile: { type: 'object', properties: { avatar: { type: 'file' }, bio: { type: 'string' } } },
+  pages: {
+    type: 'array',
+    items: { type: 'object', properties: { scan: { type: 'file' }, caption: { type: 'string' } } },
+  },
+}
+```
+
+Each of these files reads back as a descriptor —
+`{ id, url, name, media_type, size, encrypted }` — rather than a URL. Download
+one with its id:
+
+```ts
+const blob = await aepbase.download('scrapbooks', id, { file: record.attachments[0].id });
+```
+
+or render it with `useFileUrl(plural, id, descriptor)`. `media_type` comes from
+the file's own bytes for PDFs and common image formats, so you can trust it;
+for anything else it's what the uploader claimed.
+
+To write, put `File`s where they go and call `create` / `update` as usual — the
+client turns them into multipart for you:
+
+```ts
+await aepbase.create('scrapbooks', {
+  title: 'Trip',
+  attachments: [photo, ticket],
+  pages: [{ caption: 'front', scan: frontScan }],
+});
+```
+
+On an update, an object merges (patching `profile.bio` keeps the avatar), but a
+list is replaced whole. To keep a file in a list you're rewriting, send
+`{ $file: '<id>' }` in its place; a file the record no longer references is
+deleted. Files can't sit inside tagged-union `variants`, and `ai` options are
+for top-level files only. The design is in
+[Files in lists and objects](../design/nested-files).
+
 ---
 
 ## Parent / Child Resources

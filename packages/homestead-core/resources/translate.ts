@@ -5,7 +5,9 @@
  * clear error instead of an aepbase 400.
  *
  * Translation rules:
- *   - `type: 'file'`        → `type: 'binary'` + `'x-aepbase-file-field': true`
+ *   - `type: 'file'`        → `type: 'binary'` + `'x-aepbase-file-field': true`,
+ *                             at any depth (top level, array items, object
+ *                             properties)
  *   - per-field `required`  → collected into the schema-level `required` array
  *   - `enum`                → appended to the wire `description` as
  *                             `one of: a, b` (aepbase strips JSON-schema enum)
@@ -66,6 +68,7 @@ export function validateResourceDefinition(def: ResourceDefinition): void {
     }
   }
   validateFields(def.fields, '', fail);
+  validateFilePlacement(def.fields, fail);
   validateAccess(def, fail);
   validateRetention(def, fail);
 }
@@ -407,6 +410,33 @@ function validateConstraintKeywords(
       fail(`field "${path}" pattern is not a valid regular expression`);
     }
   }
+}
+
+/**
+ * Where files may sit. Anywhere in the field tree except inside tagged-union
+ * variants (whose fields are flattened into shared columns), and `ai` options
+ * only on a top-level file — the index pipeline works per record and field.
+ */
+function validateFilePlacement(
+  fields: Record<string, FieldDef>,
+  fail: (message: string) => never,
+): void {
+  const walk = (field: FieldDef, path: string, topLevel: boolean, inVariant: boolean): void => {
+    if (field.type === 'file') {
+      if (inVariant) fail(`field "${path}" is a file inside a tagged-union variant, which isn't supported`);
+      if (field.ai && !topLevel) fail(`field "${path}" declares ai options, which only a top-level file may`);
+    }
+    if (field.items) walk(field.items, `${path}[]`, false, inVariant);
+    for (const [name, sub] of Object.entries(field.properties ?? {})) {
+      walk(sub, `${path}.${name}`, false, inVariant);
+    }
+    for (const [variant, vfields] of Object.entries(field.variants ?? {})) {
+      for (const [name, sub] of Object.entries(vfields)) {
+        walk(sub, `${path}.${variant}.${name}`, false, true);
+      }
+    }
+  };
+  for (const [name, field] of Object.entries(fields)) walk(field, name, true, false);
 }
 
 /**

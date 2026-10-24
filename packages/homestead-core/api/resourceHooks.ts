@@ -18,8 +18,9 @@ import {
   type UseQueryOptions,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { aepbase, type ParentPath } from './aepbase';
+import { aepbase, type FileDescriptor, type ParentPath } from './aepbase';
 import { logger } from '../utils/logger';
+import { isConfirmedMediaType } from '../resources/media-type';
 import { queryKeys } from './queryClient';
 import { registerListShape } from './resourceEvents';
 import {
@@ -238,6 +239,59 @@ export function useFileFieldUrl(
   }, [plural, id, field, filename, type]);
 
   return id && filename ? url : null;
+}
+
+/**
+ * Resolve a file below a record's top level (in a list, inside an object) to a
+ * blob URL, from the descriptor the record holds for it. Like
+ * {@link useFileFieldUrl}, but the descriptor already carries the file's id
+ * and media type, so an image or PDF renders inline with nothing more to pass.
+ * Returns null until the bytes resolve, and when `file` is absent.
+ */
+export function useFileUrl(
+  plural: string,
+  id: string | null | undefined,
+  file: FileDescriptor | null | undefined,
+  options: { parent?: ParentPath } = {},
+): string | null {
+  const { parent } = options;
+  const [url, setUrl] = useState<string | null>(null);
+  const fileId = file?.id;
+  const mediaType = file?.media_type;
+
+  useEffect(() => {
+    if (!id || !fileId) {
+      setUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let createdUrl: string | null = null;
+
+    aepbase
+      .download(plural, id, { file: fileId }, { parent })
+      .then((blob) => {
+        if (cancelled) return;
+        // Relabel only to a type confirmed from the bytes; a claimed one
+        // (`text/html`, `image/svg+xml`) would run as script in a new tab.
+        const typed =
+          mediaType && isConfirmedMediaType(mediaType) ? blob.slice(0, blob.size, mediaType) : blob;
+        createdUrl = URL.createObjectURL(typed);
+        setUrl(createdUrl);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        logger.error('Failed to download file', error, { plural, id, file: fileId });
+      });
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+    // `parent` is a fresh array each render; key the effect on the primitives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plural, id, fileId, mediaType]);
+
+  return id && fileId ? url : null;
 }
 
 /** Newest-first comparator for records carrying aepbase's `create_time`. */
