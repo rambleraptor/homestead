@@ -355,11 +355,16 @@ SPA and apps share:
   `notifications/` — the always-installed core apps (`chat` is the AI
   assistant; its server half lives in `server/chat/`, where `turns.ts` runs a
   stored, streamed turn of a `conversation` — history in `chat-message` rows,
-  one turn at a time, cancel via `conversations/{id}:cancel`. `notifications` owns the
+  one turn at a time, cancel via `conversations/{id}:cancel`. Its SPA half is
+  the AI SDK's `useChat` over a stored-turn transport (`chat/api.ts`,
+  `chat/hooks/useConversation.ts`), rendered with AI Elements. `notifications` owns the
   web-push inbox + subscription management; its server half lives in
   `server/notifications.ts`)
 - `layout/`, `shared/`, `resources/`, `app-flags/`, `user-settings/` —
-  shared chrome, components, and schema/sync plumbing
+  shared chrome, components, and schema/sync plumbing. `shared/components/ui/`
+  holds vendored shadcn primitives and `shared/components/ai-elements/` the
+  vendored AI Elements chat components (Apache-2.0; its README lists what was
+  changed from upstream — diff against it rather than overwriting)
 
 ### Feature apps package (`packages/homestead-apps/`)
 

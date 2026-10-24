@@ -33,6 +33,7 @@ import { serverClient } from '../client';
 import { aiStreamAgent } from '../ai/generate';
 import { logger } from '../../utils/logger';
 import { CHAT_MESSAGES, CONVERSATIONS } from '../../chat/resources';
+import type { ChatTurnRequest } from '../../chat/types';
 import type { ResourceDefinition } from '../../resources/types';
 import { buildChatToolSet, buildSystemPrompt } from './handler';
 
@@ -53,11 +54,6 @@ const TITLE_CHARS = 60;
 
 /** The longest message a person can send in one turn. */
 export const MAX_MESSAGE_CHARS = 20_000;
-
-export interface TurnRequest {
-  conversation_id?: string;
-  message: { id: string; text: string };
-}
 
 interface ConversationRecord {
   id: string;
@@ -224,7 +220,7 @@ function engineFailure(err: unknown): Response {
   throw err;
 }
 
-function isValidRequest(body: unknown): body is TurnRequest {
+function isValidRequest(body: unknown): body is ChatTurnRequest {
   if (typeof body !== 'object' || body === null) return false;
   const { conversation_id, message } = body as Record<string, unknown>;
   if (conversation_id !== undefined && (typeof conversation_id !== 'string' || !conversation_id)) {
@@ -342,8 +338,13 @@ export async function handleTurn(
   }
 
   // 5. Stream the model, writing the assistant message at each step boundary.
-  const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token, () => {});
+  const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token);
   const parts: UIMessage['parts'] = [];
+  // The reply text of the step in flight. Steps are stored when they end, so
+  // without this a stopped turn would lose the words the reader already saw.
+  let stepText = '';
+  const partsSoFar = (): UIMessage['parts'] =>
+    stepText ? [...parts, { type: 'text', text: stepText, state: 'done' }] : parts;
   let result: ReturnType<typeof aiStreamAgent>;
   try {
     result = aiStreamAgent({
@@ -352,7 +353,11 @@ export async function handleTurn(
       tools: toolSet,
       maxRounds: MAX_TOOL_ROUNDS,
       abortSignal: controller.signal,
+      onChunk: ({ chunk }: { chunk: { type: string; text?: string } }) => {
+        if (chunk.type === 'text-delta') stepText += chunk.text ?? '';
+      },
       onStepEnd: async (step: { content: readonly StepContent[] }) => {
+        stepText = '';
         parts.push(...partsFromStep(step.content));
         try {
           await messages.record(assistantId).update({ parts, content: textOfParts(parts) });
@@ -378,7 +383,8 @@ export async function handleTurn(
         });
       },
       onAbort: async () => {
-        await finish({ status: 'cancelled', parts, content: textOfParts(parts) });
+        const kept = partsSoFar();
+        await finish({ status: 'cancelled', parts: kept, content: textOfParts(kept) });
       },
     } as Parameters<typeof aiStreamAgent>[0]);
   } catch (err) {
@@ -393,8 +399,11 @@ export async function handleTurn(
 
   // 6. The UI message stream, carrying the conversation and message ids so a
   //    client that started a new conversation learns where it lives.
+  //    The streamed message takes the stored assistant message's id, so the
+  //    client's copy and the stored one are the same message.
   return result.toUIMessageStreamResponse({
     headers: { 'X-Conversation-Id': conversationId },
+    generateMessageId: () => assistantId,
     messageMetadata: ({ part }: { part: { type: string } }) =>
       part.type === 'start' ? { conversationId, messageId: assistantId } : undefined,
   });

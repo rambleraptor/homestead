@@ -191,7 +191,7 @@ function registerSearchTool(
   defs: ResourceDefinition[],
   token: string,
 ): void {
-  const search = makeSearchTool({ defs, token, record: () => {} });
+  const search = makeSearchTool({ defs, token });
   if (!search) return;
   const shape = (search.inputSchema as z.ZodObject).shape;
   const description =

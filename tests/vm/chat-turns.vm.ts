@@ -3,9 +3,9 @@
  * VM tier: the real `/api/chat` handler, the real engine and tools, the AI stub
  * answering from scripts (tests/e2e/config/ai-scripts.ts) in streaming mode.
  *
- * These drive the endpoint directly rather than through the SPA — the SPA moves
- * to stored turns in a later change — and check what landed in storage, which
- * is what every device (and the next turn) reads back.
+ * These drive the endpoint directly rather than through the SPA (that's
+ * `chat.vm.ts`) and check what landed in storage, which is what every device
+ * (and the next turn) reads back.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -98,7 +98,14 @@ describe('a stored turn', () => {
     expect(conversationId).toBeTruthy();
 
     const stream = await events(res);
-    expect(stream[0]).toMatchObject({ type: 'start', messageMetadata: { conversationId } });
+    // The streamed message is the stored one: same id, so a client's copy and
+    // a later reload agree.
+    const [userRecord] = await ordered(conversationId);
+    expect(stream[0]).toMatchObject({
+      type: 'start',
+      messageId: `${userRecord!.id}-reply`,
+      messageMetadata: { conversationId, messageId: `${userRecord!.id}-reply` },
+    });
     expect(stream.some((e) => e.type === 'tool-output-available')).toBe(true);
     const text = stream.filter((e) => e.type === 'text-delta').map((e) => e.delta).join('');
     expect(text).toBe('Added milk to the grocery list.');
@@ -162,13 +169,18 @@ describe('a stored turn', () => {
     expect(await ordered(conversationId)).toHaveLength(2);
   });
 
-  test('a malformed request is a 400', async () => {
-    const res = await fetch(`${APP}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ message: { id: '', text: 'x' } }),
-    });
-    expect(res.status).toBe(400);
+  test('a malformed request is a 400, the retired whole-transcript shape included', async () => {
+    for (const body of [
+      { message: { id: '', text: 'x' } },
+      { messages: [{ role: 'user', content: 'hi' }] },
+    ]) {
+      const res = await fetch(`${APP}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      expect(res.status).toBe(400);
+    }
   });
 });
 
@@ -191,7 +203,11 @@ describe('one turn at a time, and stopping one', () => {
     const running = await send(token, CHAT_MARKERS.longReply);
     const conversationId = running.headers.get('x-conversation-id')!;
     const reader = running.body!.getReader();
-    await reader.read(); // the turn is under way
+    // Under way, and some of the reply already shown.
+    const decoder = new TextDecoder();
+    for (let seen = ''; !seen.includes('"text-delta"'); ) {
+      seen += decoder.decode((await reader.read()).value);
+    }
 
     const cancel = await fetch(`${APP}/api/aep/conversations/${conversationId}:cancel`, {
       method: 'POST',
@@ -205,7 +221,10 @@ describe('one turn at a time, and stopping one', () => {
       () => ordered(conversationId),
       (ms) => ms[1]?.status === 'cancelled',
     );
+    // What had streamed is kept — the reader saw it — and the rest never came.
+    expect(assistant!.content!.length).toBeGreaterThan(0);
     expect(assistant!.content!.length).toBeLessThan(LONG_REPLY_TEXT.length);
+    expect(LONG_REPLY_TEXT.startsWith(assistant!.content!)).toBe(true);
     await eventually(() => conversations().get(conversationId), (c) => c.status === 'idle');
 
     // Nothing left to stop: not an error.

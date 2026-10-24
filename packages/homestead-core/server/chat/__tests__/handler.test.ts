@@ -1,13 +1,11 @@
 /**
  * The chat turn's tool set: the per-resource surface (one tool per resource,
- * custom methods in the action enum) plus document search when configured,
- * with every outcome recorded in order for the transcript.
+ * custom methods in the action enum) plus document search when configured.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { z } from 'zod';
 import { buildChatToolSet } from '../handler';
-import type { ChatToolCall } from '../../../chat/types';
 import type { ResourceDefinition } from '../../../resources/types';
 
 vi.mock('../../ai/config', () => ({
@@ -57,7 +55,7 @@ const run = (tool: { execute?: unknown }, args: unknown) =>
 
 describe('buildChatToolSet', () => {
   it('hands the model one tool per resource, with custom methods in the action enum', () => {
-    const { toolSet, hasDocSearch } = buildChatToolSet([GIFT_CARD, TRANSACTION], 'tok', () => {});
+    const { toolSet, hasDocSearch } = buildChatToolSet([GIFT_CARD, TRANSACTION], 'tok');
     expect(Object.keys(toolSet).sort()).toEqual(['gift_cards', 'transactions']);
     expect(hasDocSearch).toBe(false);
 
@@ -76,9 +74,8 @@ describe('buildChatToolSet', () => {
     );
   });
 
-  it('records each outcome, in order, with the action the model chose', async () => {
-    const recorded: ChatToolCall[] = [];
-    const { toolSet } = buildChatToolSet([GIFT_CARD], 'tok', (c) => recorded.push(c));
+  it('runs the action the model chose under the caller token, and returns failures as errors', async () => {
+    const { toolSet } = buildChatToolSet([GIFT_CARD], 'tok');
 
     const calls = stubFetch('{"results":[{"id":"gc1"}]}');
     const ok = await run(toolSet.gift_cards, {
@@ -101,25 +98,10 @@ describe('buildChatToolSet', () => {
     const bad = await run(toolSet.gift_cards, { action: 'update', id: 'gc1' });
     expect(bad).toEqual({ error: expect.stringMatching(/needs at least one field/) });
     expect(calls).toHaveLength(1);
-
-    expect(recorded).toEqual([
-      {
-        tool: 'gift_cards',
-        args: { action: 'list', filter: 'balance > 0', order_by: '-balance', limit: 1 },
-        ok: true,
-        result: { records: [{ id: 'gc1' }], count: 1, truncated: false },
-      },
-      {
-        tool: 'gift_cards',
-        args: { action: 'update', id: 'gc1' },
-        ok: false,
-        error: expect.stringMatching(/needs at least one field/),
-      },
-    ]);
   });
 
   it('dispatches a custom method through the gateway under the caller token', async () => {
-    const { toolSet } = buildChatToolSet([GIFT_CARD], 'tok', () => {});
+    const { toolSet } = buildChatToolSet([GIFT_CARD], 'tok');
     const calls = stubFetch('{"balance":0}');
     const out = await run(toolSet.gift_cards, {
       action: ':redeem',
