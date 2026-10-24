@@ -25,19 +25,10 @@ export const operationsApp: AppConfig = {
   resources: operationsResources,
   crons: [
     {
-      // Prune finished operations so the collection stays bounded. Runs once
-      // on boot (restarts are common — config edits restart the server) and
-      // daily thereafter; the retention window lives in the handler.
-      id: 'operations-cleanup',
-      title: 'Delete finished operations older than 3 days',
-      intervalSeconds: 24 * 60 * 60,
-      runOnStart: true,
-      load: () => import('./crons/cleanup-operations'),
-    },
-    {
       // Delete rows past the retention window their resource declares
-      // (`ResourceDefinition.retention`). Hosted here because Operations ships
-      // in the always-installed Superuser subtree, so the sweep runs on every
+      // (`ResourceDefinition.retention`) — including finished operations, see
+      // `./resources`. Hosted here because Operations ships in the
+      // always-installed Superuser subtree, so the sweep runs on every
       // instance, and each firing is itself an operation with a log.
       id: 'resource-retention',
       title: 'Delete records past their retention window',

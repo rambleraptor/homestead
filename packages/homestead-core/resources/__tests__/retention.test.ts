@@ -14,6 +14,8 @@ import {
 } from '../retention';
 import type { ResourceDefinition } from '../types';
 import { operationsApp } from '../../operations/app.config';
+import { operationsResources } from '../../operations/resources';
+import { notificationsResources } from '../../notifications/resources';
 
 const thread = (overrides: Partial<ResourceDefinition> = {}): ResourceDefinition => ({
   singular: 'thread',
@@ -40,10 +42,28 @@ describe('retention boot validation', () => {
     );
   });
 
-  it('rejects a child resource — it goes when its parent does', () => {
+  it('rejects a child of an ordinary parent — it goes when its parent does', () => {
     expect(() => validateResourceDefinition(thread({ parents: ['board'] }))).toThrow(
-      /top-level resource/,
+      /top-level or user-parented/,
     );
+  });
+
+  it('accepts a resource parented directly under user — the sweep walks every user', () => {
+    expect(() => validateResourceDefinition(thread({ parents: ['user'] }))).not.toThrow();
+  });
+
+  it('accepts the engine timestamps as the field, and a where condition', () => {
+    expect(() =>
+      validateResourceDefinition(
+        thread({ retention: { days: 3, field: 'create_time', where: 'done == true' } }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejects a blank where — omit it to sweep every row', () => {
+    expect(() =>
+      validateResourceDefinition(thread({ retention: { days: 3, where: '  ' } })),
+    ).toThrow(/non-empty filter/);
   });
 
   it('rejects a field that is missing or not a date-time', () => {
@@ -70,6 +90,13 @@ describe('retention helpers', () => {
     );
   });
 
+  it('needs no fallback on an engine timestamp, and ANDs in a where', () => {
+    const cutoff = '2026-08-25T03:00:00Z';
+    expect(retentionFilter({ days: 3, field: 'create_time', where: 'done == true' }, cutoff)).toBe(
+      '(done == true) && (create_time < "2026-08-25T03:00:00Z")',
+    );
+  });
+
   it('judges a row by its field when set, else by update_time', () => {
     const cutoff = '2026-08-25T03:00:00Z';
     const r = { days: 60, field: 'last_at' };
@@ -80,13 +107,34 @@ describe('retention helpers', () => {
     expect(isExpired({}, r, cutoff)).toBe(false);
   });
 
-  it('sweeps only top-level resources that declare a window', () => {
-    const defs = [thread(), thread({ singular: 'plain', plural: 'plains', retention: undefined })];
-    expect(retainedResources(defs).map((d) => d.singular)).toEqual(['thread']);
+  it('sweeps top-level and user-parented resources that declare a window', () => {
+    const defs = [
+      thread(),
+      thread({ singular: 'plain', plural: 'plains', retention: undefined }),
+      thread({ singular: 'mine', plural: 'mines', parents: ['user'] }),
+      thread({ singular: 'nested', plural: 'nesteds', parents: ['board'] }),
+    ];
+    expect(retainedResources(defs).map((d) => d.singular)).toEqual(['thread', 'mine']);
+  });
+
+  it('is how scheduled notifications are cleaned up — an app’s rows only', () => {
+    const def = notificationsResources.find((d) => d.singular === 'scheduled-notification')!;
+    expect(def.retention).toEqual({ days: 30, field: 'send_at', where: 'has(source_app)' });
+    expect(() => validateResourceDefinition(def)).not.toThrow();
   });
 
   it('is scheduled daily on the always-installed Operations app', () => {
     const hook = operationsApp.crons?.find((c) => c.id === 'resource-retention');
     expect(hook).toMatchObject({ dailyAtHour: 3, runOnStart: true });
+  });
+
+  it('is how operations are cleaned up — no hand-rolled cron of their own', () => {
+    expect(operationsResources[0]?.retention).toEqual({
+      days: 3,
+      field: 'create_time',
+      where: 'done == true',
+    });
+    expect(operationsApp.crons?.map((c) => c.id)).toEqual(['resource-retention']);
+    expect(() => validateResourceDefinition(operationsResources[0]!)).not.toThrow();
   });
 });

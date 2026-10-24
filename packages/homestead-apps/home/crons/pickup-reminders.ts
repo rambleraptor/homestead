@@ -60,12 +60,6 @@ export const PICKUP_KEY_PREFIX = 'pickup:';
  */
 export const HORIZON_DAYS = 8;
 
-/**
- * How long a delivered pickup reminder is kept. Shorter than the 30-day default:
- * these arrive weekly, and last month's bin night is of no interest to anyone.
- */
-export const PRUNE_AFTER_DAYS = 14;
-
 /** "Trash", "Trash and Recycling", "Trash, Recycling and Compost". */
 export function joinStreams(labels: readonly string[]): string {
   if (labels.length === 0) return '';
@@ -157,14 +151,13 @@ const handler: CronHandler = async ({ token, firedAt, log }) => {
 
   const outcome = await reconcileScheduled(token, HOME_REMINDER_TYPE, planned, {
     now,
-    pruneAfterDays: PRUNE_AFTER_DAYS,
     // The Home app has a second producer (upkeep reminders) writing under the
     // same `source_app`; without this each run would withdraw the other's rows.
     keyPrefix: PICKUP_KEY_PREFIX,
   });
 
   await log(
-    `optedIn=${optedIn.length} days=${days} planned=${planned.length} created=${outcome.created} updated=${outcome.updated} unchanged=${outcome.unchanged} settled=${outcome.settled} withdrawn=${outcome.withdrawn} pruned=${outcome.pruned}`,
+    `optedIn=${optedIn.length} days=${days} planned=${planned.length} created=${outcome.created} updated=${outcome.updated} unchanged=${outcome.unchanged} settled=${outcome.settled} withdrawn=${outcome.withdrawn}`,
   );
   return { optedIn: optedIn.length, days, planned: planned.length, ...outcome };
 };

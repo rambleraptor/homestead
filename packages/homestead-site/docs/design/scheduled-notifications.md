@@ -213,7 +213,7 @@ export function reconcileScheduled(
   token: string,
   sourceApp: string,
   planned: PlannedNotification[],
-  opts: { now: Date; pruneAfterDays?: number },
+  opts: { now: Date; keyPrefix?: string },
 ): Promise<ReconcileResult>;
 
 export interface PlannedNotification {
@@ -240,14 +240,17 @@ export interface PlannedNotification {
 | Key in plan, row is `scheduled` and content or `send_at` drifted | patch |
 | Key in plan, row is `sent` / `canceled` / `missed` / `failed` | leave alone |
 | Key not in plan, row is `scheduled` with a future `send_at` | delete (withdrawn) |
-| Any row whose `send_at` is in the past by more than `pruneAfterDays` | delete (pruned) |
+| Any row whose `send_at` has passed | leave alone |
 
 Two invariants hold this together:
 
-1. **Only past rows are pruned.** A plan only ever contains future keys, so a
-   canceled row can never be resurrected while its moment is still ahead. (The
-   current `reconcileReminders` prunes on `pruneAfterDays` alone, which is fine
-   only because it has no cancel state to lose.)
+1. **Only past rows are ever deleted for age, and not by the reconcile.** A plan
+   only ever contains future keys, so a canceled row can never be resurrected
+   while its moment is still ahead. Old rows are swept by platform retention:
+   `scheduled-notification` declares `retention: { days: 30, field: 'send_at',
+   where: 'has(source_app)' }`, so an app's rows go 30 days after their moment
+   and a row a person scheduled is never swept. (This replaced a per-app
+   `pruneAfterDays` the reconcile used to apply.)
 2. **A moved date is a new `source_key` when a re-announce is wanted.**
    Patching `send_at` on an unsent row moves the delivery. Once sent, reconcile
    won't touch it — so a producer that wants "the event moved, tell them again"
@@ -287,7 +290,7 @@ Scheduled                                    [+ Remind me]
   front instead of in a doc comment. To change it for good, change the thing
   behind it: the event's reminder setting, the pickup opt-in.
 - A row a person made gets **Edit** and **Cancel**.
-- Sent/canceled rows collapse behind a disclosure, until prune sweeps them.
+- Sent/canceled rows collapse behind a disclosure, until retention sweeps them.
 
 Hooks mirror the existing ones (`useScheduledNotifications`,
 `useScheduleNotification`, `useCancelScheduledNotification`), written against
@@ -386,7 +389,7 @@ usability win.
 
 **PATCH `status: 'canceled'`.** Not a delete, for one reason: a delete of an
 app-scheduled row comes back on the next reconcile. The row is its own
-tombstone, and §3.1's prune-only-the-past rule guarantees the tombstone
+tombstone, and §3.1's sweep-only-the-past rule guarantees the tombstone
 outlives the plan entry it's suppressing.
 
 Deleting is still allowed (it's an ordinary resource), and for a row a person

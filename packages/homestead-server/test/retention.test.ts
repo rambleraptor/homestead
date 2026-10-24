@@ -10,7 +10,9 @@ import { bearerToken, createHomesteadClient } from '@rambleraptor/homestead-clie
 import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
 import { toWireSchema } from '@rambleraptor/homestead-core/resources/translate';
 import { sweepRetention } from '@rambleraptor/homestead-core/resources/retention';
-import { call, defineResource, makeEngine, type TestEngine } from './engine/helpers';
+import { operationsResources } from '@rambleraptor/homestead-core/operations/resources';
+import { notificationsResources } from '@rambleraptor/homestead-core/notifications/resources';
+import { call, defineResource, makeEngine, seedUser, type TestEngine } from './engine/helpers';
 
 const FIRED_AT = '2026-10-24T03:00:00Z';
 const OLD = '2026-08-01T00:00:00Z'; // ~84 days before FIRED_AT
@@ -176,6 +178,161 @@ describe('sweepRetention', () => {
     const third = await sweepRetention({ client: client(), defs: DEFS, firedAt: FIRED_AT, cap: 2 });
     expect(third[0]).toMatchObject({ deleted: 1, capped: false });
     expect(await ids('/memos')).toEqual([]);
+  });
+
+  test('a where condition limits which rows are ever eligible', async () => {
+    const job: ResourceDefinition = {
+      singular: 'job',
+      plural: 'jobs',
+      user_settable_create: true,
+      retention: { days: 30, field: 'create_time', where: 'done == true' },
+      fields: { done: { type: 'boolean' } },
+    };
+    await defineResource(
+      t,
+      { singular: 'job', plural: 'jobs', user_settable_create: true, schema: toWireSchema(job.fields, 'job') },
+      'job',
+    );
+    for (const [id, done, created] of [
+      ['finished-old', true, OLD],
+      ['running-old', false, OLD],
+      ['finished-fresh', true, FRESH],
+    ] as const) {
+      await create(`/jobs?id=${id}`, { done });
+      // Measured from creation, so a recent write doesn't keep a row.
+      t.engine.db
+        .query('UPDATE jobs SET create_time = ?, update_time = ? WHERE id = ?')
+        .run(created, FRESH, id);
+    }
+    const [result] = await sweepRetention({ client: client(), defs: [job], firedAt: FIRED_AT });
+    expect(result).toMatchObject({ deleted: 1, failed: 0 });
+    expect(await ids('/jobs')).toEqual(['finished-fresh', 'running-old']);
+  });
+
+  test('a where the engine rejects deletes nothing, and says so', async () => {
+    await create('/memos?id=old');
+    stamp('memos', 'old', OLD);
+    const broken = { ...MEMO, retention: { days: 30, where: 'no_such_field == 1' } };
+    const logs: string[] = [];
+    const [result] = await sweepRetention({
+      client: client(),
+      defs: [broken],
+      firedAt: FIRED_AT,
+      log: (m) => {
+        logs.push(m);
+      },
+    });
+    expect(result).toMatchObject({ deleted: 0, failed: 1 });
+    expect(await ids('/memos')).toEqual(['old']);
+    expect(logs.some((l) => l.includes('could not list expired rows'))).toBe(true);
+  });
+
+  test('operations: finished ones go three days after creation; running ones never do', async () => {
+    const [op] = operationsResources;
+    await defineResource(
+      t,
+      { singular: op!.singular, plural: op!.plural, user_settable_create: true, schema: toWireSchema(op!.fields, op!.singular) },
+      op!.singular,
+    );
+    const fourDaysAgo = '2026-10-20T03:00:00Z';
+    const twoDaysAgo = '2026-10-22T03:00:00Z';
+    for (const [id, done, created] of [
+      ['done-4d', true, fourDaysAgo],
+      ['done-2d', true, twoDaysAgo],
+      ['running-4d', false, fourDaysAgo],
+      ['running-ancient', false, OLD],
+    ] as const) {
+      await create(`/operations?id=${id}`, { done });
+      t.engine.db.query('UPDATE operations SET create_time = ? WHERE id = ?').run(created, id);
+    }
+    const [result] = await sweepRetention({ client: client(), defs: operationsResources, firedAt: FIRED_AT });
+    expect(result).toMatchObject({ resource: 'operations', deleted: 1, failed: 0 });
+    expect(await ids('/operations')).toEqual(['done-2d', 'running-4d', 'running-ancient']);
+  });
+
+  test('sweeps a user-parented resource in every user’s subtree', async () => {
+    const alice = await seedUser(t.engine, { email: 'alice@example.com' });
+    const bob = await seedUser(t.engine, { email: 'bob@example.com' });
+    const diary: ResourceDefinition = {
+      singular: 'diary-entry',
+      plural: 'diary-entries',
+      parents: ['user'],
+      user_settable_create: true,
+      retention: { days: 30 },
+      fields: { text: { type: 'string' } },
+    };
+    await defineResource(
+      t,
+      {
+        singular: diary.singular,
+        plural: diary.plural,
+        parents: ['user'],
+        user_settable_create: true,
+        schema: toWireSchema(diary.fields, diary.singular),
+      },
+      diary.singular,
+    );
+    for (const [user, id, updated] of [
+      [alice.user.id, 'a-old', OLD],
+      [alice.user.id, 'a-fresh', FRESH],
+      [bob.user.id, 'b-old', OLD],
+    ] as const) {
+      await create(`/users/${user}/diary-entries?id=${id}`);
+      t.engine.db.query('UPDATE diary_entries SET update_time = ? WHERE id = ?').run(updated, id);
+    }
+
+    const logs: string[] = [];
+    const [result] = await sweepRetention({
+      client: client(),
+      defs: [diary],
+      firedAt: FIRED_AT,
+      log: (m) => {
+        logs.push(m);
+      },
+    });
+    expect(result).toMatchObject({ resource: 'diary-entries', deleted: 2, failed: 0 });
+    expect(await ids(`/users/${alice.user.id}/diary-entries`)).toEqual(['a-fresh']);
+    expect(await ids(`/users/${bob.user.id}/diary-entries`)).toEqual([]);
+  });
+
+  test('scheduled notifications: an app’s rows go 30 days after their moment; a person’s stay', async () => {
+    const alice = await seedUser(t.engine, { email: 'alice@example.com' });
+    for (const def of notificationsResources) {
+      await defineResource(
+        t,
+        {
+          singular: def.singular,
+          plural: def.plural,
+          parents: def.parents ?? [],
+          user_settable_create: true,
+          schema: toWireSchema(def.fields, def.singular),
+        },
+        def.singular,
+      );
+    }
+    const base = `/users/${alice.user.id}/scheduled-notifications`;
+    const row = (send_at: string, source_app?: string) => ({
+      title: 't',
+      message: 'm',
+      send_at,
+      status: 'sent',
+      ...(source_app ? { source_app, source_key: `k-${send_at}` } : {}),
+    });
+    await create(`${base}?id=app-old`, row(OLD, 'home')); // ~84 days past
+    await create(`${base}?id=app-recent`, row('2026-10-10T00:00:00Z', 'events')); // 14 days past
+    await create(`${base}?id=app-future`, row('2026-11-01T00:00:00Z', 'events'));
+    await create(`${base}?id=mine-old`, row(OLD)); // a person scheduled it
+
+    const results = await sweepRetention({
+      client: client(),
+      defs: notificationsResources,
+      firedAt: FIRED_AT,
+    });
+    expect(results.find((r) => r.resource === 'scheduled-notifications')).toMatchObject({
+      deleted: 1,
+      failed: 0,
+    });
+    expect(await ids(base)).toEqual(['app-future', 'app-recent', 'mine-old']);
   });
 
   test('never touches a resource without a retention window', async () => {

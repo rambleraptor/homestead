@@ -77,12 +77,6 @@ export interface ReconcileOptions {
   /** The firing's clock. */
   now: Date;
   /**
-   * How long a delivered (or cancelled) row is kept before being swept.
-   * Default 30. Only rows whose `send_at` is already past are ever pruned —
-   * see {@link reconcileScheduled}.
-   */
-  pruneAfterDays?: number;
-  /**
    * Narrow the reconcile to rows whose `source_key` starts with this string.
    *
    * `source_app` is the default scope, which is exactly right while an app has
@@ -108,11 +102,7 @@ export interface ReconcileResult {
   withdrawn: number;
   /** Rows left alone because they had already been delivered or cancelled. */
   settled: number;
-  /** Long-past rows swept. */
-  pruned: number;
 }
-
-const DAY_MS = 86_400_000;
 
 /**
  * Normalize an instant to UTC ISO-8601.
@@ -217,14 +207,17 @@ function matches(stored: ScheduledNotification, plan: PlannedNotification): bool
  * | in plan, row is `scheduled` and drifted                  | patch     |
  * | in plan, row is `sent`/`canceled`/`missed`/`failed`      | leave     |
  * | not in plan, row is `scheduled` with a future `send_at`  | withdraw  |
- * | any row whose `send_at` is long past                     | prune     |
+ * | any row whose `send_at` has passed                       | leave     |
  *
  * Two invariants hold this together.
  *
- * **Only past rows are pruned.** A plan only ever contains future keys, so a
- * cancelled row can never be resurrected while its moment is still ahead: by
- * the time prune removes it, its key is out of the horizon. Sweeping on age
- * alone would let "no, not this week's bin night" come back.
+ * **Past rows are not this function's to delete.** A row whose moment has
+ * passed is the record of what was announced. Old ones are swept by the
+ * platform retention cron (`scheduled-notification`'s `retention` declaration:
+ * an app's rows, 30 days after `send_at`). That is safe for the same reason a
+ * cancelled row can be its own tombstone: a plan only ever contains future
+ * keys, so by the time a row is swept its key is out of every horizon and
+ * nothing will recreate it.
  *
  * **A moved date is a patch, not a re-announce.** Patching an unsent row's
  * `send_at` moves the delivery; once sent, the row is settled and reconcile
@@ -236,7 +229,7 @@ export async function reconcileScheduled(
   token: string,
   sourceApp: string,
   planned: readonly PlannedNotification[],
-  { now, pruneAfterDays = 30, keyPrefix }: ReconcileOptions,
+  { now, keyPrefix }: ReconcileOptions,
 ): Promise<ReconcileResult> {
   const byUser = new Map<string, PlannedNotification[]>();
   for (const plan of planned) {
@@ -261,14 +254,12 @@ export async function reconcileScheduled(
     unchanged: 0,
     withdrawn: 0,
     settled: 0,
-    pruned: 0,
   };
 
   // Existing rows live per user, so the sweep has to visit every user — not
   // only the ones in this plan, or withdrawing the last row for someone who
   // just opted out would never happen.
   const users = await serverClient(token).collection<{ id: string }>('users').listAll();
-  const pruneBefore = now.getTime() - pruneAfterDays * DAY_MS;
 
   for (const user of users) {
     const rows = collectionFor(token, user.id);
@@ -308,11 +299,6 @@ export async function reconcileScheduled(
     for (const row of existing) {
       const at = new Date(row.send_at).getTime();
       if (Number.isNaN(at)) continue;
-      if (at < pruneBefore) {
-        await rows.record(row.id).delete();
-        result.pruned++;
-        continue;
-      }
       // Only the future is reconciled: a row whose moment has passed is the
       // record of what was announced, whatever the plan says now.
       if (at <= now.getTime()) continue;

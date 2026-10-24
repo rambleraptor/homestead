@@ -261,7 +261,7 @@ describe('events materializer', () => {
     expect(h.writes.deleted).toEqual([written]);
   });
 
-  test('a notification whose moment has passed is left alone, then swept', async () => {
+  test('a notification whose moment has passed is left alone (retention sweeps it later)', async () => {
     h.state.queue = {
       u1: [
         {
@@ -276,11 +276,12 @@ describe('events materializer', () => {
     };
 
     const first = await handler(ctx());
-    expect(first).toMatchObject({ withdrawn: 0, pruned: 0 });
+    expect(first).toMatchObject({ withdrawn: 0 });
 
+    // However old, deleting it is platform retention's job, not this cron's.
     h.state.queue.u1[0].send_at = new Date(2026, 3, 1, 9).toISOString();
-    const later = await handler(ctx());
-    expect(later).toMatchObject({ pruned: 1 });
+    await handler(ctx());
+    expect(h.writes.deleted).toHaveLength(0);
   });
 
   test('a notification someone scheduled themselves is never touched', async () => {
@@ -305,7 +306,7 @@ describe('events materializer', () => {
 
     const result = await handler(ctx());
 
-    expect(result).toMatchObject({ withdrawn: 0, pruned: 0, updated: 0 });
+    expect(result).toMatchObject({ withdrawn: 0, updated: 0 });
     expect(h.writes.deleted).toHaveLength(0);
   });
 

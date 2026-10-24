@@ -252,7 +252,7 @@ for (const day of upcoming) {
   );
 }
 
-await reconcileScheduled(ctx.token, 'home', planned, { now, pruneAfterDays: 14 });
+await reconcileScheduled(ctx.token, 'home', planned, { now });
 ```
 
 The contract is `sourceKey`: an app-unique, stable string identifying *what the
@@ -267,8 +267,12 @@ Two rules the reconcile follows that are worth knowing:
 - **A row already sent, cancelled, missed or failed is never rewritten.**
   Cancelling is a status rather than a delete precisely so your next run can't
   resurrect what someone turned off.
-- **Only rows whose moment has already passed are pruned.** A plan only contains
-  future keys, so a cancelled row always outlives the plan entry suppressing it.
+- **Past rows are left alone.** Once a row's moment has passed it is the record
+  of what was announced, and the reconcile never deletes it. Old ones are
+  cleaned up by the platform: an app's scheduled notifications are deleted 30
+  days after their `send_at` (the `retention` declaration on
+  `scheduled-notification`), so your cron needs no cleanup of its own. A row a
+  person scheduled is never swept.
 
 With nobody opted in, pass an empty plan rather than skipping the call — the
 reconcile is what withdraws the rows written for whoever just opted out.

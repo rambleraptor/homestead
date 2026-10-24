@@ -141,6 +141,11 @@ export const notificationsResources: ResourceDefinition[] = [
       'A notification queued for delivery to this user at a future instant.',
     user_settable_create: true,
     parents: ['user'],
+    // An app's rows are swept 30 days after their moment passed. Only past
+    // rows: a plan holds only future keys, so a cancelled row (its own
+    // tombstone) can't be resurrected once it is gone. A row a person
+    // scheduled (`source_app` unset) is theirs to keep or delete.
+    retention: { days: 30, field: 'send_at', where: 'has(source_app)' },
     fields: {
       // What gets delivered — mirrors `notification`, because that is what this
       // becomes.

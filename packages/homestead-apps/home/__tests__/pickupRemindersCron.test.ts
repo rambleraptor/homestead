@@ -261,11 +261,11 @@ describe('pickup reminders', () => {
 
     const result = await handler(ctx());
 
-    expect(result).toMatchObject({ withdrawn: 0, pruned: 0 });
+    expect(result).toMatchObject({ withdrawn: 0 });
     expect(h.writes.deleted).toHaveLength(0);
   });
 
-  test('a long-past bin night is swept', async () => {
+  test('a long-past bin night is left for platform retention', async () => {
     h.state.queue = {
       u1: [
         {
@@ -279,8 +279,8 @@ describe('pickup reminders', () => {
       ],
     };
 
-    const result = await handler(ctx());
+    await handler(ctx());
 
-    expect(result).toMatchObject({ pruned: 1 });
+    expect(h.writes.deleted).toHaveLength(0);
   });
 });

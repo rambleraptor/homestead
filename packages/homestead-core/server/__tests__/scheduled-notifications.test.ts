@@ -5,8 +5,8 @@
  * is tested here is the part they all depend on and none of them can see — the
  * two invariants that keep a reconcile from fighting the person it's for:
  *
- *  - only *past* rows are pruned, so a cancelled row outlives the plan entry
- *    it's suppressing;
+ *  - a past row is never deleted here (platform retention sweeps old ones), so
+ *    a cancelled row outlives the plan entry it's suppressing;
  *  - a row that has already been delivered or cancelled is never rewritten.
  */
 
@@ -185,7 +185,7 @@ describe('reconcileScheduled', () => {
 
     const result = await reconcileScheduled('t', 'home', [], { now: NOW });
 
-    expect(result).toMatchObject({ withdrawn: 0, pruned: 0 });
+    expect(result).toMatchObject({ withdrawn: 0 });
     expect(h.writes.deleted).toHaveLength(0);
   });
 
@@ -196,7 +196,7 @@ describe('reconcileScheduled', () => {
 
     const result = await reconcileScheduled('t', 'home', [], { now: NOW });
 
-    expect(result).toMatchObject({ withdrawn: 0, pruned: 0 });
+    expect(result).toMatchObject({ withdrawn: 0 });
   });
 
   // The invariant that makes cancelling an app's notification actually stick.
@@ -234,7 +234,7 @@ describe('reconcileScheduled', () => {
     expect(h.state.queue.u1[0].title).toBe('stale title');
   });
 
-  test('only past rows are pruned — a cancelled future row survives its plan', async () => {
+  test('a cancelled future row survives its plan — it is the tombstone', async () => {
     h.state.queue = {
       u1: [
         {
@@ -247,19 +247,15 @@ describe('reconcileScheduled', () => {
       ],
     };
 
-    // Aggressive sweep: everything is "older" than a zero-day retention.
-    const result = await reconcileScheduled('t', 'home', [plan()], {
-      now: NOW,
-      pruneAfterDays: 0,
-    });
+    const result = await reconcileScheduled('t', 'home', [plan()], { now: NOW });
 
-    // Pruning on age alone would delete this and the plan would recreate it —
-    // "no, not this week" would come back every night.
-    expect(result).toMatchObject({ pruned: 0, created: 0 });
+    // Deleting it would let the plan recreate it — "no, not this week" would
+    // come back every night.
+    expect(result).toMatchObject({ settled: 1, created: 0, withdrawn: 0 });
     expect(h.state.queue.u1).toHaveLength(1);
   });
 
-  test('a long-past row is swept whatever its status', async () => {
+  test('a long-past row is left for platform retention, not deleted here', async () => {
     h.state.queue = {
       u1: [
         {
@@ -274,7 +270,9 @@ describe('reconcileScheduled', () => {
 
     const result = await reconcileScheduled('t', 'home', [], { now: NOW });
 
-    expect(result).toMatchObject({ pruned: 1 });
+    expect(result).toMatchObject({ withdrawn: 0 });
+    expect(h.writes.deleted).toHaveLength(0);
+    expect(h.state.queue.u1).toHaveLength(1);
   });
 
   test('every user is visited, not only those in the plan', async () => {
