@@ -49,6 +49,7 @@ function createMetaTables(db: Database): void {
     `ALTER TABLE _aep_resource_definitions ADD COLUMN file_fields_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE _aep_resource_definitions ADD COLUMN user_settable_create INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE _aep_resource_definitions ADD COLUMN superuser_write INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE _aep_resource_definitions ADD COLUMN independent_access INTEGER NOT NULL DEFAULT 0`,
   ]) {
     try {
       db.run(alter);

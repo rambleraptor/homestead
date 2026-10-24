@@ -112,8 +112,11 @@ homestead resources access-grant create \
     --capability read
 ```
 
-Bob can now open that one gift card — and only that one. To stop sharing,
-delete the rule:
+Bob can now open that one gift card — and only that one. Sharing a record
+shares **everything under it** too: Bob also sees that card's transactions, and
+a share of a credit card covers its perks and their redemptions. A read share
+lets him look; a `write` share lets him add, change, and remove them as well.
+To stop sharing, delete the rule:
 
 ```bash
 homestead resources access-grant list          # find the rule's id
@@ -122,6 +125,10 @@ homestead resources access-grant delete <id>
 
 You can share a record you **own** or **manage** even without being an admin —
 that's how sharing your own things works.
+
+You can't share a child record on its own — a single transaction, say. Its
+access always comes from the record above it, so the request is refused with a
+message naming what to share instead.
 
 ---
 
@@ -179,6 +186,9 @@ A few rules of thumb make the whole system predictable:
   can be blocked by a deny.)
 - **A deny always wins.** If any rule denies access, access is denied, no matter
   how many grants say otherwise.
+- **What's under a record follows the record.** Whoever can reach a gift card
+  can reach its transactions; a deny on the card hides them too. The same rule
+  is why your notifications are yours alone: they live under your account.
 - **Nothing is shared until you say so.** A new account has no access; you grant
   it by giving them a role, and widen from there.
 - **Rules apply everywhere.** Enforcement is on the server, so it covers the

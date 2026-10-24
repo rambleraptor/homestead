@@ -132,6 +132,7 @@ export async function seedOpenHousehold(t: TestEngine): Promise<void> {
         plural: def.plural,
         parents: def.parents ?? [],
         superuser_write: def.superuser_write ?? false,
+        independent_access: def.independent_access ?? false,
         schema: toWireSchema(def.fields, def.singular),
       },
       def.singular,

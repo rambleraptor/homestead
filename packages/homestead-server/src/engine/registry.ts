@@ -42,6 +42,12 @@ export interface RegisteredResource {
   userSettableId: boolean;
   /** Only superusers may create/update/delete records of this resource. */
   superuserWrite: boolean;
+  /**
+   * Opted out of parent access inheritance: rows are authorized on their own
+   * owner and grants. False (the default) means a parented resource's access
+   * comes from its governing ancestor — see `./inherit`.
+   */
+  independentAccess: boolean;
   /** Built-in resources (user) have no _aep_resource_definitions row. */
   builtin: boolean;
   /**
@@ -114,6 +120,7 @@ export class Registry {
       examples: {},
       userSettableId: false,
       superuserWrite: false,
+      independentAccess: false,
       builtin: true,
       patternElems: [USER_PLURAL, `{${paramName(USER_SINGULAR)}}`],
     });
@@ -209,6 +216,7 @@ export class Registry {
       examples: def.examples ?? {},
       userSettableId: def.user_settable_create ?? false,
       superuserWrite: def.superuser_write ?? false,
+      independentAccess: def.independent_access ?? false,
       builtin: false,
       patternElems: this.buildPatternElems({
         singular: def.singular,
@@ -335,6 +343,7 @@ export class Registry {
 
     r.schema = withStandardFields(def.schema, r.singleton);
     r.superuserWrite = def.superuser_write ?? false;
+    r.independentAccess = def.independent_access ?? false;
     if (def.description) r.description = def.description;
     if (def.examples && Object.keys(def.examples).length > 0) r.examples = def.examples;
     // Enums and file fields are replaced wholesale on update.

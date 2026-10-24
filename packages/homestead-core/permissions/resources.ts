@@ -85,6 +85,9 @@ export const PERMISSION_RESOURCE_DEFS: ResourceDefinition[] = [
       "A user's membership in a group. Every member receives the group's role.",
     parents: ['group'],
     superuser_write: true,
+    // The permission model governs itself (manage-on-target, §15.3); a
+    // membership's access must not follow its group's.
+    independent_access: true,
     fields: {
       user: { type: 'string', reference: { resource: 'user' }, required: true },
     },

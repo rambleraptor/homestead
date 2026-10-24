@@ -25,13 +25,18 @@ import {
   enforceGrantWrite,
   credentialVisibilityClause,
   enforceCredentialCeiling,
+  enforceInheritedAccess,
   enforceRecordAccess,
+  inheritedListClause,
   listVisibilityClause,
   validateGrantFilter,
+  validateGrantInheritance,
   type EnforceContext,
   type GrantTargetSpec,
+  type InheritedTarget,
 } from './enforce';
 import { sanitizeTableName } from './db';
+import { governorFor } from './inherit';
 import { createLogger } from '../log';
 import type { RegisteredResource, Registry } from './registry';
 import type { User } from './types';
@@ -166,8 +171,52 @@ export function authorizeRecordRead(
       ? { recordId: match.id, recordPath: buildResourcePath(r, match.parentIds, match.id) }
       : {}),
   };
-  if (match.parentIds.user_id !== undefined) enforceCredentialCeiling(ctx, reg.db, opts);
-  else enforceRecordAccess(ctx, reg.db, opts);
+  const access = accessPathFor(reg, match);
+  if (access.kind === 'user-subtree') enforceCredentialCeiling(ctx, reg.db, opts);
+  else if (access.kind === 'inherited') {
+    enforceInheritedAccess(ctx, reg.db, {
+      caller,
+      verb: 'read',
+      governor: access.governor,
+      intermediates: access.intermediates,
+      child: opts,
+    });
+  } else enforceRecordAccess(ctx, reg.db, opts);
+}
+
+/**
+ * Which rule governs a request's access (see `./inherit`):
+ *
+ *  - `user-subtree` — the path runs through a user (`users/{id}/…`). The root
+ *    of every inheritance chain: `checkUserScope` decides by path, and only the
+ *    credential ceiling is added. Users are not grant-governed, so the subtree
+ *    keeps exactly the rule it always had.
+ *  - `inherited` — a parented resource that does not opt out. Its governing
+ *    ancestor's record decides (`enforceInheritedAccess`).
+ *  - `own` — a top-level or `independent_access` resource, authorized on its
+ *    own rows and grants.
+ */
+type AccessPath =
+  | { kind: 'user-subtree' }
+  | { kind: 'inherited'; governor: InheritedTarget; intermediates: InheritedTarget[] }
+  | { kind: 'own' };
+
+function accessPathFor(reg: Registry, match: RouteMatch): AccessPath {
+  if (match.parentIds.user_id !== undefined) return { kind: 'user-subtree' };
+  const governor = governorFor(reg, match.resource, match.parentIds);
+  if (!governor) return { kind: 'own' };
+  const target = (a: { resource: RegisteredResource; id: string; path: string }): InheritedTarget => ({
+    resourceType: a.resource.singular,
+    plural: a.resource.plural,
+    schema: a.resource.schema,
+    recordId: a.id,
+    recordPath: a.path,
+  });
+  return {
+    kind: 'inherited',
+    governor: target(governor),
+    intermediates: governor.intermediates.map(target),
+  };
 }
 
 /**
@@ -219,6 +268,7 @@ export async function routeDynamic(
   // (where checkUserScope is a no-op). The blanket open grant must not be able
   // to widen access to another user's subtree.
   checkUserScope(match, caller);
+  const access = accessPathFor(reg, match);
 
   // Grant enforcement governs shared, top-level collections. Children of `user`
   // are governed by checkUserScope (subtree ownership by path) instead: a record
@@ -232,8 +282,12 @@ export async function routeDynamic(
   // record's owner, so it still applies inside the subtree. Skipping it there
   // let a read-scoped token write its owner's user-parented records — including
   // minting itself a broader token.
-  const userScoped = match.parentIds.user_id !== undefined;
-  const enforceGrants = enforcing && !userScoped;
+  //
+  // Every other parented resource inherits (see `./inherit`): the governing
+  // ancestor's record decides, which generalizes the user rule to parents that
+  // *are* grant-governed. Only top-level and `independent_access` resources run
+  // the owner-side grant pass on their own rows.
+  const enforceGrants = enforcing && access.kind === 'own';
 
   // `access-grant` governs its own writes by the manage-on-target rule (§15.3)
   // rather than the generic resolve/superuser_write path. `enforceGrantWrite`
@@ -257,7 +311,15 @@ export async function routeDynamic(
     };
     // enforceRecordAccess runs the owner-side pass *and* the credential ceiling;
     // where the owner-side pass is skipped, the ceiling still has to run.
-    if (enforceGrants) enforceRecordAccess(ctx, reg.db, opts);
+    if (access.kind === 'inherited') {
+      enforceInheritedAccess(ctx, reg.db, {
+        caller,
+        verb,
+        governor: access.governor,
+        intermediates: access.intermediates,
+        child: opts,
+      });
+    } else if (enforceGrants) enforceRecordAccess(ctx, reg.db, opts);
     else enforceCredentialCeiling(ctx, reg.db, opts);
   };
 
@@ -287,11 +349,18 @@ export async function routeDynamic(
         plural: r.plural,
         schema: r.schema,
       };
-      const visibility = enforceGrants
-        ? listVisibilityClause(ctx, listOpts)
-        : enforcing
-          ? credentialVisibilityClause(ctx, listOpts)
-          : null;
+      const visibility = !enforcing
+        ? null
+        : access.kind === 'inherited'
+          ? inheritedListClause(ctx, reg.db, {
+              caller,
+              governor: access.governor,
+              intermediates: access.intermediates,
+              child: listOpts,
+            })
+          : enforceGrants
+            ? listVisibilityClause(ctx, listOpts)
+            : credentialVisibilityClause(ctx, listOpts);
       return handleList(reg, match, req, visibility);
     }
     return methodNotAllowed();
@@ -363,6 +432,7 @@ async function routeGrant(
       const { bodyText, target, filter } = await readGrantTarget(req);
       enforceGrantWrite(ctx, reg, reg.db, caller, target);
       validateGrantFilter(reg, target, filter);
+      validateGrantInheritance(reg, target);
       return handleCreate(reg, match, remakeJsonRequest(req, bodyText), caller);
     }
     return methodNotAllowed();
@@ -378,12 +448,14 @@ async function routeGrant(
       const { bodyText, target, filter } = await readGrantTarget(req, storedGrantTarget(reg, r.plural, path));
       enforceGrantWrite(ctx, reg, reg.db, caller, target);
       validateGrantFilter(reg, target, filter);
+      validateGrantInheritance(reg, target);
       return handleUpdate(reg, match, remakeJsonRequest(req, bodyText));
     }
     case 'PUT': {
       const { bodyText, target, filter } = await readGrantTarget(req, storedGrantTarget(reg, r.plural, path));
       enforceGrantWrite(ctx, reg, reg.db, caller, target);
       validateGrantFilter(reg, target, filter);
+      validateGrantInheritance(reg, target);
       return handleApply(reg, match, remakeJsonRequest(req, bodyText), caller);
     }
     case 'DELETE':
@@ -425,6 +497,7 @@ async function readGrantTarget(
       resource_type: pick('resource_type', base.resource_type),
       resource_id: pick('resource_id', base.resource_id),
       subject_type: pick('subject_type', base.subject_type),
+      effect: pick('effect', base.effect),
     },
     filter: typeof body.filter === 'string' ? (body.filter as string) : undefined,
   };
@@ -434,7 +507,7 @@ function storedGrantTarget(reg: Registry, plural: string, path: string): GrantTa
   try {
     const row = reg.db
       .query(
-        `SELECT subject_type, target_scope, target_app, resource_type, resource_id FROM ${sanitizeTableName(plural)} WHERE path = ?`,
+        `SELECT subject_type, target_scope, target_app, resource_type, resource_id, effect FROM ${sanitizeTableName(plural)} WHERE path = ?`,
       )
       .get(path) as Record<string, string | null> | null;
     if (!row) return {};
@@ -444,6 +517,7 @@ function storedGrantTarget(reg: Registry, plural: string, path: string): GrantTa
       resource_type: row.resource_type ?? undefined,
       resource_id: row.resource_id ?? undefined,
       subject_type: row.subject_type ?? undefined,
+      effect: row.effect ?? undefined,
     };
   } catch {
     return {};

@@ -658,6 +658,14 @@ be shared with a user or group via a record-scope grant; the generic
 `ShareRecordDialog` / `ShareButton`
 (`packages/homestead-core/permissions/components/`) are the reusable UI for it.
 
+Child resources **inherit their parent's access** by default
+(`homestead-server/src/engine/inherit.ts`): a record is reachable by whoever may
+reach its governing ancestor — read to see it, write to add, change, or remove
+it — so sharing a gift card shares its transactions. The user subtree is the
+root case (only that user and superusers). Denies on the child type or any
+ancestor still narrow; a resource opts out with `independent_access: true`. See
+[`docs/design/parent-access-inheritance.md`](packages/homestead-site/docs/design/parent-access-inheritance.md).
+
 ### App flags
 
 The `app-flags` resource is generated dynamically from declared

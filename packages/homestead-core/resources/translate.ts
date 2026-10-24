@@ -81,8 +81,21 @@ function validateAccess(
   def: ResourceDefinition,
   fail: (message: string) => never,
 ): void {
+  const parents = def.parents ?? [];
+  if (def.independent_access) {
+    if (parents.length === 0) {
+      fail('independent_access needs a parent — a top-level resource is already independent');
+    }
+    if (parents.includes('user')) {
+      // The user subtree is scoped by path (`checkUserScope`), never by grants,
+      // so there is no independent rule for it to opt into.
+      fail('independent_access is not valid on a user-parented resource');
+    }
+  }
+
   const access = def.access;
   if (!access || access.model !== 'per-record') return;
+
 
   const { field, sharedValue, privateValue } = access;
   if (sharedValue === privateValue) {
@@ -127,6 +140,14 @@ function validateAccess(
     // A user-parented resource is scoped by path — `checkUserScope` governs it
     // and the router never consults a grant, so the filter would be inert.
     fail(`access model "per-record" is not valid on a user-parented resource`);
+  }
+  if (parents.length > 0 && !def.independent_access) {
+    // An inheriting child's rows are authorized through its parent; the engine
+    // never consults its own row grants, so the discriminator would be inert.
+    fail(
+      'access model "per-record" is not valid on a child that inherits its ' +
+        "parent's access — set independent_access, or declare it on the parent",
+    );
   }
 }
 
