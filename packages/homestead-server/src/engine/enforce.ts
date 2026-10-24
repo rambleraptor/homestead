@@ -19,6 +19,7 @@ import { TYPE_SUPERUSER, type Schema, type User } from './types';
 import type { PermissionStore } from './permission-store';
 import { scopeAllowsWrite } from '../auth/scopes';
 import type { Registry } from './registry';
+import { governingResource } from './inherit';
 import {
   computeVisibility,
   resolve,
@@ -275,6 +276,195 @@ function recordMatchesFilter(
   }
 }
 
+// ───────────────────── parent access inheritance ─────────────────────
+
+/**
+ * One side of an inherited request — the governing ancestor record, or the
+ * child being addressed. `recordPath` is absent for a child create or list.
+ */
+export interface InheritedTarget {
+  resourceType: string;
+  plural: string;
+  schema: Schema;
+  recordId?: string;
+  recordPath?: string;
+}
+
+/** The `AccessRequest` + row-filter evaluator for one side of an inherited request. */
+function requestFor(
+  ctx: EnforceContext,
+  db: Database,
+  caller: User,
+  verb: Verb,
+  target: InheritedTarget,
+): { request: AccessRequest; filterEval: FilterEval } {
+  return {
+    request: {
+      verb,
+      resourceType: target.resourceType,
+      appId: ctx.appIdFor(target.plural),
+      recordId: target.recordId,
+      recordOwner: target.recordPath ? ownerOf(db, target.plural, target.recordPath) : undefined,
+    },
+    // Same create rule as enforceRecordAccess: with no row yet, a filtered
+    // grant describes rows you may see and change, not whether you may add one.
+    filterEval: (filter) =>
+      target.recordPath
+        ? recordMatchesFilter(db, target.plural, target.recordPath, filter, target.schema, subjectOf(caller))
+        : true,
+  };
+}
+
+/** True when a deny among `grants` blocks `request` — allows are ignored. */
+function deniedBy(
+  request: AccessRequest,
+  principals: Principals,
+  grants: Grant[],
+  filterEval: FilterEval,
+): boolean {
+  const denies = grants.filter((g) => g.effect === 'deny');
+  if (denies.length === 0) return false;
+  return resolve({ isSuperuser: false }, request, principals, denies, filterEval).reason === 'denied';
+}
+
+/**
+ * Authorize a single-record request, or a create, on a resource that inherits
+ * its access (see `./inherit`). Throws 403 when denied.
+ *
+ *  1. **The governing ancestor decides.** The caller needs `verb` on the
+ *     ancestor record — read to see a child, write to add, change, or remove
+ *     one. The child row's own `_owner` and allow grants play no part, so a
+ *     record someone else added under your parent is yours to see.
+ *  2. **Denies still apply on the way down.** A role that allows gift cards
+ *     but denies transactions keeps denying transactions: inheritance only ever
+ *     sources *allows* from the ancestor. The same holds for every inheriting
+ *     ancestor in between — a deny on one perk hides its redemptions.
+ *  3. **The credential ceiling still applies.** A read-only OAuth scope caps
+ *     verbs as anywhere else. A PAT passes when its own grants allow the verb on
+ *     *either* the ancestor or the child type — so a token scoped to one
+ *     collection keeps working, and a token shared on one record reaches that
+ *     record's children.
+ */
+export function enforceInheritedAccess(
+  ctx: EnforceContext,
+  db: Database,
+  opts: {
+    caller: User | null;
+    verb: Verb;
+    governor: InheritedTarget;
+    intermediates?: InheritedTarget[];
+    child: InheritedTarget;
+  },
+): void {
+  const { caller, verb } = opts;
+  if (!caller) return; // no auth context (unit tests); auth middleware enforces presence
+
+  const denied = (): never => {
+    throw new HttpError(403, 'you do not have access to this resource');
+  };
+  const gathered = ctx.store.gatherFor(caller.id);
+  const { principals, grants } = gathered;
+  const isSuperuser = caller.type === TYPE_SUPERUSER;
+  const gov = requestFor(ctx, db, caller, verb, opts.governor);
+  const child = requestFor(ctx, db, caller, verb, opts.child);
+  // Everything beneath the governor whose denies apply: the inheriting
+  // ancestors in between, then the addressed child itself.
+  const beneath = [
+    ...(opts.intermediates ?? []).map((a) => requestFor(ctx, db, caller, verb, a)),
+    child,
+  ];
+
+  if (!resolve({ isSuperuser }, gov.request, principals, grants, gov.filterEval).allow) denied();
+  if (!isSuperuser && beneath.some((b) => deniedBy(b.request, principals, grants, b.filterEval))) {
+    denied();
+  }
+
+  if (cappedByScope(caller, verb)) {
+    throw new HttpError(403, 'this token is not scoped for that action');
+  }
+  if (caller.pat) {
+    const tPrincipals = tokenPrincipals(caller.pat.id);
+    const tGrants = tokenGrantsFor(grants, caller.pat.id);
+    const viaGovernor = resolve({ isSuperuser: false }, gov.request, tPrincipals, tGrants, gov.filterEval).allow;
+    const viaChild = resolve({ isSuperuser: false }, child.request, tPrincipals, tGrants, child.filterEval).allow;
+    const tokenDenied = beneath.some((b) => deniedBy(b.request, tPrincipals, tGrants, b.filterEval));
+    if ((!viaGovernor && !viaChild) || tokenDenied) {
+      throw new HttpError(403, 'this token is not scoped for that action');
+    }
+  }
+}
+
+/**
+ * Authorize a LIST of an inheriting resource and return its WHERE fragment, or
+ * `null` for no restriction. A child list is always under one concrete parent,
+ * so this is one authorization of the governing ancestor (403 when the caller
+ * can't read it — the same answer a user subtree gives), a 403 as well when a
+ * deny covers an ancestor in between, and then row narrowing for what the
+ * ancestors can't speak to: denies on the child type, and a PAT that reaches
+ * the child type but not this ancestor.
+ */
+export function inheritedListClause(
+  ctx: EnforceContext,
+  db: Database,
+  opts: {
+    caller: User | null;
+    governor: InheritedTarget;
+    intermediates?: InheritedTarget[];
+    child: InheritedTarget;
+  },
+): { sql: string; params: (string | number)[] } | null {
+  const { caller } = opts;
+  if (!caller) return null;
+
+  const gathered = ctx.store.gatherFor(caller.id);
+  const { principals, grants } = gathered;
+  const isSuperuser = caller.type === TYPE_SUPERUSER;
+  const gov = requestFor(ctx, db, caller, 'read', opts.governor);
+  const between = (opts.intermediates ?? []).map((a) => requestFor(ctx, db, caller, 'read', a));
+  const forbidden = (): never => {
+    throw new HttpError(403, 'you do not have access to this resource');
+  };
+  if (!resolve({ isSuperuser }, gov.request, principals, grants, gov.filterEval).allow) forbidden();
+  if (!isSuperuser && between.some((b) => deniedBy(b.request, principals, grants, b.filterEval))) {
+    forbidden();
+  }
+
+  const target = { resourceType: opts.child.resourceType, appId: ctx.appIdFor(opts.child.plural) };
+  // Child-type denies as a row clause: the ancestor already allowed the whole
+  // list, so stand in a broad allow and let computeVisibility subtract denies.
+  const asAllowed = (gs: Grant[], subject: Grant['subject']): Grant[] => [
+    { subject, capability: 'read', effect: 'allow', target: { scope: 'collection', resource_type: opts.child.resourceType } },
+    ...gs.filter((g) => g.effect === 'deny'),
+  ];
+  const ownerClause = isSuperuser
+    ? null
+    : visibilityToSql(
+        computeVisibility(target, principals, asAllowed(grants, { type: 'everyone' })),
+        caller.id,
+        opts.child.schema,
+        subjectOf(caller),
+      );
+
+  if (!caller.pat) return ownerClause;
+
+  // Token side: reading the ancestor through the token lets it see every child
+  // (minus the token's own denies); otherwise it sees what its grants on the
+  // child type allow, exactly as for an independent collection.
+  const tPrincipals = tokenPrincipals(caller.pat.id);
+  const tGrants = tokenGrantsFor(grants, caller.pat.id);
+  if (between.some((b) => deniedBy(b.request, tPrincipals, tGrants, b.filterEval))) {
+    throw new HttpError(403, 'this token is not scoped for that action');
+  }
+  const tokenReadsGovernor = resolve({ isSuperuser: false }, gov.request, tPrincipals, tGrants, gov.filterEval).allow;
+  const tokenVisibility = computeVisibility(
+    target,
+    tPrincipals,
+    tokenReadsGovernor ? asAllowed(tGrants, { type: 'token', id: caller.pat.id }) : tGrants,
+  );
+  const tokenClause = visibilityToSql(tokenVisibility, TOKEN_SENTINEL_USER, opts.child.schema, subjectOf(caller));
+  return intersectClauses(ownerClause, tokenClause);
+}
+
 /**
  * Compute the LIST visibility clause for the current caller, or `null` for no
  * restriction. A superuser (break-glass) and a caller with no restrictions both
@@ -468,6 +658,8 @@ export interface GrantTargetSpec {
   resource_id?: string;
   /** The grant's subject kind, carried here only so the write rule can gate it. */
   subject_type?: string;
+  /** `allow` (the default when unset) or `deny`. */
+  effect?: string;
 }
 
 function ownerOfById(db: Database, plural: string, id: string): string | null {
@@ -588,6 +780,27 @@ export function validateGrantFilter(
     const message = error instanceof Error ? error.message : String(error);
     throw new HttpError(400, `invalid grant filter: ${message}`);
   }
+}
+
+/**
+ * Refuse a record-scope **allow** grant on a resource that inherits its access
+ * (see `./inherit`). Its rows are reachable by whoever may reach the governing
+ * ancestor, so an allow on one child row would never be consulted — accepting it
+ * would tell the sharer something happened when nothing did. The error names
+ * the ancestor to share instead. A record-scope *deny* stays valid: denies on
+ * the child type narrow what the ancestor allows.
+ */
+export function validateGrantInheritance(reg: Registry, target: GrantTargetSpec): void {
+  if (target.scope !== 'record' || (target.effect ?? 'allow') === 'deny') return;
+  const resource = target.resource_type ? reg.get(target.resource_type) : undefined;
+  if (!resource) return;
+  const governor = governingResource(reg, resource);
+  if (!governor) return;
+  throw new HttpError(
+    400,
+    `${resource.plural} inherit their access from their parent ${governor.singular}; ` +
+      `share the ${governor.singular} instead`,
+  );
 }
 
 /**

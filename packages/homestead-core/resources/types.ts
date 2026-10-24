@@ -591,8 +591,23 @@ export interface ResourceDefinition {
    * Singulars of parent resources. The runner topologically sorts by
    * this so parents apply before children. `'user'` is treated as a
    * built-in root (provided by aepbase's EnableUsers).
+   *
+   * A parented resource **inherits its access** from its parent: a record is
+   * reachable by whoever may reach the parent record (read to see it, write to
+   * add, change, or remove it), so sharing a gift card shares its transactions.
+   * Under `user` that is the familiar rule — only that user (and superusers).
+   * Opt out with {@link independent_access}. See
+   * `packages/homestead-site/docs/design/parent-access-inheritance.md`.
    */
   parents?: string[];
+  /**
+   * Opt a parented resource out of access inheritance: authorize its rows on
+   * their own owner and grants, as a top-level resource is. For a child whose
+   * rows are governed independently of the parent (e.g. `group-membership`,
+   * part of the self-governing permission model). Invalid without a parent,
+   * and under `user`, whose subtree is always scoped by path.
+   */
+  independent_access?: boolean;
   /**
    * The resource's fields, keyed by snake_case field name. Translated
    * to the JSON-schema wire format (`ResourceSchema`) by the schema
@@ -626,6 +641,12 @@ export interface ResourceDefinition {
   /**
    * Row-scoping model (see {@link ResourceAccess}). Omit for `shared`.
    * Validated at boot by `validateResourceDefinition`.
+   *
+   * On a child that inherits its access (see {@link parents}) the engine never
+   * consults its own row grants, so `access` only shapes the household grant
+   * seeded for the client-side `can()` mirror (which drives app visibility).
+   * `per-record` is therefore invalid there: its discriminator would decide
+   * nothing.
    */
   access?: ResourceAccess;
 }

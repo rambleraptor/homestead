@@ -162,3 +162,48 @@ describe('immutable on the wire', () => {
     expect(wire.properties.name?.['x-aepbase-immutable']).toBeUndefined();
   });
 });
+
+describe('parent access inheritance', () => {
+  const plain = (overrides: Partial<ResourceDefinition> = {}): ResourceDefinition => ({
+    singular: 'thing',
+    plural: 'things',
+    fields: { name: { type: 'string', required: true } },
+    ...overrides,
+  });
+
+  it('accepts independent_access on a child of an ordinary parent', () => {
+    expect(() =>
+      validateResourceDefinition(plain({ parents: ['box'], independent_access: true })),
+    ).not.toThrow();
+  });
+
+  it('rejects independent_access without a parent', () => {
+    expect(() => validateResourceDefinition(plain({ independent_access: true }))).toThrow(
+      /needs a parent/,
+    );
+  });
+
+  it('rejects independent_access under user, whose subtree is scoped by path', () => {
+    expect(() =>
+      validateResourceDefinition(plain({ parents: ['user'], independent_access: true })),
+    ).toThrow(/not valid on a user-parented resource/);
+  });
+
+  it('rejects per-record on an inheriting child — its discriminator would decide nothing', () => {
+    expect(() => validateResourceDefinition(def({ parents: ['box'] }))).toThrow(
+      /inherits its parent's access/,
+    );
+  });
+
+  it('accepts per-record on a child that opts out of inheritance', () => {
+    expect(() =>
+      validateResourceDefinition(def({ parents: ['box'], independent_access: true })),
+    ).not.toThrow();
+  });
+
+  it('accepts shared and private on an inheriting child (they only shape the seeded grant)', () => {
+    expect(() =>
+      validateResourceDefinition(plain({ parents: ['box'], access: { model: 'private' } })),
+    ).not.toThrow();
+  });
+});

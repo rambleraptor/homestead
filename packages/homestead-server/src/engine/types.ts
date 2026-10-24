@@ -80,6 +80,12 @@ export interface ResourceDefinition {
   user_settable_create?: boolean;
   /** Only superusers may create/update/delete records of this resource. */
   superuser_write?: boolean;
+  /**
+   * Opt a child resource out of parent access inheritance: authorize its rows
+   * on their own owner and grants instead of on its governing ancestor's (see
+   * `engine/inherit.ts`). Meaningless without a non-`user` parent.
+   */
+  independent_access?: boolean;
   create_time?: string;
   update_time?: string;
 }

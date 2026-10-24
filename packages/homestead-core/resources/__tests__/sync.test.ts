@@ -115,6 +115,51 @@ describe('syncResourceDefinitions', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('PATCHes independent_access on and back off when the declaration changes', async () => {
+    const childWire = {
+      singular: 'child',
+      plural: 'children',
+      user_settable_create: true,
+      parents: ['parent'],
+      schema: { type: 'object', properties: { value: { type: 'string' } } },
+    };
+    // Answer by URL: the list, each stored definition, and any PATCH.
+    const run = async (stored: Record<string, unknown>, def: ResourceDefinition) => {
+      fetchMock.mockReset();
+      fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') return new Response('{}', { status: 200 });
+        if (url.includes('?max_page_size')) {
+          return new Response(JSON.stringify({ results: [{ id: 'parent' }, { id: 'child' }] }));
+        }
+        return new Response(JSON.stringify(url.endsWith('/child') ? stored : PARENT_WIRE));
+      });
+      return syncResourceDefinitions({
+        aepbaseUrl: BASE,
+        token: TOKEN,
+        defs: [PARENT, def],
+        logger: SILENT_LOGGER,
+      });
+    };
+    const patchBody = () => {
+      const call = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+      return JSON.parse(call![1].body as string) as Record<string, unknown>;
+    };
+
+    // Opting out: the engine still inherits, so the sync turns the flag on.
+    const optOut = await run(childWire, { ...CHILD, independent_access: true });
+    expect(optOut.updated).toEqual(['child']);
+    expect(patchBody().independent_access).toBe(true);
+
+    // Dropping the opt-out sends an explicit false, so inheritance comes back.
+    const optIn = await run({ ...childWire, independent_access: true }, CHILD);
+    expect(optIn.updated).toEqual(['child']);
+    expect(patchBody().independent_access).toBe(false);
+
+    // In step either way: no PATCH.
+    const steady = await run(childWire, CHILD);
+    expect(steady.unchanged).toEqual(['parent', 'child']);
+  });
+
   it('PATCHes when the schema has drifted', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(

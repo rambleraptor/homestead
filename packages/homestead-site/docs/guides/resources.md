@@ -139,6 +139,16 @@ A child lives at a nested URL — `/gift-cards/{id}/transactions/{id}` — and
 the parent id is carried in the path, **not** stored as a field. Homestead
 creates parents before children automatically.
 
+A child **inherits its access from its parent**: whoever can read a gift card
+can read its transactions, and whoever can change the card can add, change, and
+remove them. Sharing the card shares them; a deny on the card hides them. Under
+`user` this is the familiar rule — only that user (and superusers).
+
+That's almost always what you want. For the rare child whose rows must be
+governed on their own, opt out with `independent_access: true`; its rows are
+then authorized by their own owner and grants, like a top-level resource's.
+See [Parent access inheritance](../design/parent-access-inheritance).
+
 ---
 
 ## Wiring It Up

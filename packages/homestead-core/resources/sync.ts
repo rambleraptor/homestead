@@ -59,6 +59,7 @@ interface AepResourceDefinitionResponse {
   description?: string;
   user_settable_create?: boolean;
   superuser_write?: boolean;
+  independent_access?: boolean;
   parents?: string[];
   schema?: unknown;
 }
@@ -237,6 +238,9 @@ async function patchDefinition(
     description: def.description,
     user_settable_create: def.user_settable_create,
     superuser_write: def.superuser_write,
+    // Sent explicitly (not left undefined) so dropping the opt-out from a
+    // definition turns inheritance back on instead of leaving it stale.
+    independent_access: def.independent_access ?? false,
     parents: def.parents,
     schema,
   };
@@ -276,6 +280,7 @@ function wireDefinition(
     description: def.description,
     user_settable_create: def.user_settable_create,
     superuser_write: def.superuser_write,
+    independent_access: def.independent_access ?? false,
     parents: def.parents,
     schema,
   };
@@ -292,6 +297,7 @@ function definitionsMatch(
     (existing.user_settable_create ?? false) ===
       (desired.user_settable_create ?? false) &&
     (existing.superuser_write ?? false) === (desired.superuser_write ?? false) &&
+    (existing.independent_access ?? false) === (desired.independent_access ?? false) &&
     jsonEqual(existing.parents ?? [], desired.parents ?? [])
   );
 }
