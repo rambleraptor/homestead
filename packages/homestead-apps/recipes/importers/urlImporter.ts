@@ -181,15 +181,16 @@ export function mapSteps(recipe: RecipeObject): string[] {
   return steps;
 }
 
-/** Dedupe tags case-insensitively while keeping the first spelling seen. */
+/**
+ * Tags from the page's category and cuisine, deduped case-insensitively while
+ * keeping the first spelling seen. `keywords` is left out on purpose: sites
+ * fill it with SEO terms ("easy weeknight dinner", the title again, every
+ * ingredient), which buried the useful tags under a dozen noisy ones.
+ */
 export function mapTags(recipe: RecipeObject): string[] | undefined {
   const seen = new Set<string>();
   const tags: string[] = [];
-  for (const raw of [
-    ...(recipe.category ?? []),
-    ...(recipe.cuisine ?? []),
-    ...(recipe.keywords ?? []),
-  ]) {
+  for (const raw of [...(recipe.category ?? []), ...(recipe.cuisine ?? [])]) {
     const tag = absent(raw);
     if (!tag) continue;
     const key = tag.toLowerCase();
