@@ -569,7 +569,7 @@ date, a deadline, or a failure nobody is told about.
   each firing). Today a failing cron is visible only if a superuser happens to
   open `/superuser/operations`. A daily "3 operations failed since yesterday"
   reminder to superusers needs **no new data at all** — the ledger is already
-  there, and `operations-cleanup` already proves the scan is cheap.
+  there, and the retention sweep over `operations` already proves the scan is cheap.
 
   One caveat worth writing down: this reminder can't report its own scheduler
   failing. It degrades to silence in exactly the case you most want to hear

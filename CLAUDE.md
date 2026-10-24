@@ -513,10 +513,11 @@ sync by construction.
 Two server-only options shape how a resource is handled rather than stored
 (neither reaches the engine):
 
-- `retention: { days, field? }` — a daily core cron (`resource-retention`, on
-  the Operations app) deletes rows older than the window, with their children,
-  through the normal API (`core/resources/retention.ts`). Top-level resources
-  only.
+- `retention: { days, field?, where? }` — a daily core cron
+  (`resource-retention`, on the Operations app) deletes rows older than the
+  window, with their children, through the normal API
+  (`core/resources/retention.ts`). `where` limits eligible rows (operations
+  use `done == true`). Top-level resources only.
 - `modelTools: { chat?, mcp? }` — set either to `false` to leave the resource
   (and its children) out of that surface's model tools
   (`core/resources/model-tools.ts`). Not a permission.
@@ -706,6 +707,11 @@ reading/writing a single flag from any component.
 2. **Follow the modular architecture** — don't create monolithic
    components. App hooks own their data access.
 3. **Respect existing patterns** — review similar code before implementing.
+   **Build on platform features rather than reimplementing them.** If an app
+   needs something a platform feature already does (retention, access
+   inheritance, the change feed, references' `onDelete`, …), declare it on the
+   resource; if the feature falls just short, extend the feature rather than
+   writing a one-off cron, hook, or helper beside it.
 4. **Use the aepbase wrapper** (`@rambleraptor/homestead-core/api/aepbase`)
    for client-side data access, and the shared client
    (`serverClient(token)` from `@rambleraptor/homestead-core/server/client`)

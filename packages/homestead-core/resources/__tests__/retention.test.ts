@@ -14,6 +14,7 @@ import {
 } from '../retention';
 import type { ResourceDefinition } from '../types';
 import { operationsApp } from '../../operations/app.config';
+import { operationsResources } from '../../operations/resources';
 
 const thread = (overrides: Partial<ResourceDefinition> = {}): ResourceDefinition => ({
   singular: 'thread',
@@ -46,6 +47,20 @@ describe('retention boot validation', () => {
     );
   });
 
+  it('accepts the engine timestamps as the field, and a where condition', () => {
+    expect(() =>
+      validateResourceDefinition(
+        thread({ retention: { days: 3, field: 'create_time', where: 'done == true' } }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejects a blank where — omit it to sweep every row', () => {
+    expect(() =>
+      validateResourceDefinition(thread({ retention: { days: 3, where: '  ' } })),
+    ).toThrow(/non-empty filter/);
+  });
+
   it('rejects a field that is missing or not a date-time', () => {
     expect(() =>
       validateResourceDefinition(thread({ retention: { days: 1, field: 'nope' } })),
@@ -70,6 +85,13 @@ describe('retention helpers', () => {
     );
   });
 
+  it('needs no fallback on an engine timestamp, and ANDs in a where', () => {
+    const cutoff = '2026-08-25T03:00:00Z';
+    expect(retentionFilter({ days: 3, field: 'create_time', where: 'done == true' }, cutoff)).toBe(
+      '(done == true) && (create_time < "2026-08-25T03:00:00Z")',
+    );
+  });
+
   it('judges a row by its field when set, else by update_time', () => {
     const cutoff = '2026-08-25T03:00:00Z';
     const r = { days: 60, field: 'last_at' };
@@ -88,5 +110,15 @@ describe('retention helpers', () => {
   it('is scheduled daily on the always-installed Operations app', () => {
     const hook = operationsApp.crons?.find((c) => c.id === 'resource-retention');
     expect(hook).toMatchObject({ dailyAtHour: 3, runOnStart: true });
+  });
+
+  it('is how operations are cleaned up — no hand-rolled cron of their own', () => {
+    expect(operationsResources[0]?.retention).toEqual({
+      days: 3,
+      field: 'create_time',
+      where: 'done == true',
+    });
+    expect(operationsApp.crons?.map((c) => c.id)).toEqual(['resource-retention']);
+    expect(() => validateResourceDefinition(operationsResources[0]!)).not.toThrow();
   });
 });

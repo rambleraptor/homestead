@@ -22,6 +22,10 @@ export const operationsResources: ResourceDefinition[] = [
     description:
       'An AEP-151 long-running operation tracking an async custom method.',
     user_settable_create: true,
+    // Finished operations are kept three days from creation, then swept by the
+    // platform retention cron. `done == true` keeps a still-running operation
+    // however old — rescuing those is `sweepStaleOperations`' job at boot.
+    retention: { days: 3, field: 'create_time', where: 'done == true' },
     fields: {
       // `path` + `create_time`/`update_time` are engine-managed (AEP-151 `path`).
       done: { type: 'boolean', default: false, required: true },

@@ -581,12 +581,20 @@ export interface ResourceRetention {
   /** Keep a row this many days, measured from {@link field}. A positive integer. */
   days: number;
   /**
-   * A declared `date-time` field to measure from — e.g. a conversation's
-   * `last_message_at` — holding UTC ISO 8601 strings (what `toISOString()`
-   * writes). A row whose field is unset falls back to `update_time`. Omit to
-   * measure from `update_time`, the engine-managed time of the last write.
+   * What to measure from. Omit for `update_time`, the engine-managed time of
+   * the last write. `create_time` measures from creation. Or name a declared
+   * `date-time` field — e.g. a conversation's `last_message_at` — holding UTC
+   * ISO 8601 strings (what `toISOString()` writes); a row whose field is unset
+   * falls back to `update_time`.
    */
   field?: string;
+  /**
+   * Only rows matching this list filter are ever swept — e.g. `done == true`,
+   * so a still-running operation is never deleted however old. Same grammar as
+   * a list's `filter`. A filter the engine rejects deletes nothing: the sweep
+   * reports the failure in its operation log.
+   */
+  where?: string;
 }
 
 export interface ResourceDefinition {
