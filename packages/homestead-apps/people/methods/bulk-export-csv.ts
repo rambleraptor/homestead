@@ -5,7 +5,7 @@
  *
  * This is the inverse of `./bulk-import-csv.ts`. The importer's saver writes a
  * person plus an address (in a sibling resource, linked through
- * `person-shared-data`) plus a partner link; the exporter's source walks that
+ * `person-shared-data`) plus a partner relationship; the exporter's source walks that
  * same graph backwards and flattens each person into one row. Because both sides
  * share {@link personCsvSchema}'s column list, a file exported here re-imports
  * cleanly.
@@ -17,7 +17,9 @@ import type {
   BulkExportContext,
 } from '@rambleraptor/homestead-core/resources/bulk-export/types';
 import { serverClient } from '@rambleraptor/homestead-core/server/client';
-import { ADDRESSES, PEOPLE, PERSON_SHARED_DATA } from '../resources';
+import { ADDRESSES, PEOPLE, PERSON_RELATIONSHIPS, PERSON_SHARED_DATA } from '../resources';
+import type { PersonRelationship } from '../types';
+import { relativesFor } from '../utils/relationships';
 import { personCsvSchema, type PersonCsvData } from './bulk-import-csv';
 
 /** Columns, in the import template's order — so export ⇄ import round-trips. */
@@ -45,8 +47,9 @@ interface SharedDataRecord {
 
 /**
  * Flatten every person into a row: their name, the address hanging off their
- * shared-data record, and their partner's name. One list per collection, joined
- * in memory — the same three collections the importer wrote.
+ * shared-data record, and their partner's name (from their partner
+ * relationship). One list per collection, joined in memory — the same
+ * collections the importer wrote.
  */
 export const source: BulkExportSource<PersonCsvData> = async ({
   ctx,
@@ -61,13 +64,14 @@ export const source: BulkExportSource<PersonCsvData> = async ({
   // `people` is the rows to output (filtered — a selection arrives as an
   // `id in [...]` filter). `allPeople` is fetched unfiltered purely to resolve
   // partner names, since a selected person's partner may be outside the filter.
-  const [people, allPeople, shared, addresses] = await Promise.all([
+  const [people, allPeople, shared, addresses, relationships] = await Promise.all([
     hs.collection<PersonRecord>(PEOPLE).listAll(filter ? { filter } : undefined),
     filter
       ? hs.collection<PersonRecord>(PEOPLE).listAll()
       : Promise.resolve(null),
     hs.collection<SharedDataRecord>(PERSON_SHARED_DATA).listAll(),
     hs.collection<AddressRecord>(ADDRESSES).listAll(),
+    hs.collection<PersonRelationship>(PERSON_RELATIONSHIPS).listAll(),
   ]);
 
   const addressById = new Map(addresses.map((a) => [a.id, a]));
@@ -120,24 +124,13 @@ export const source: BulkExportSource<PersonCsvData> = async ({
     });
   }
 
-  return withAddress.map(({ person, links, address }) => {
-    const partnerLink = links.find(
-      (l) => l.person_a && l.person_b && (l.person_a === person.id || l.person_b === person.id),
-    );
-    const partnerId = partnerLink
-      ? partnerLink.person_a === person.id
-        ? partnerLink.person_b
-        : partnerLink.person_a
-      : undefined;
-
-    return {
-      name: person.name,
-      address: address?.line1 || undefined,
-      wifi_network: address?.wifi_network || undefined,
-      wifi_password: address?.wifi_password || undefined,
-      partner_name: partnerId ? nameById.get(partnerId) : undefined,
-    };
-  });
+  return withAddress.map(({ person, address }) => ({
+    name: person.name,
+    address: address?.line1 || undefined,
+    wifi_network: address?.wifi_network || undefined,
+    wifi_password: address?.wifi_password || undefined,
+    partner_name: relativesFor(person.id, relationships, nameById).partner?.name,
+  }));
 };
 
 export default createCsvSerializer<PersonCsvData>(columns);

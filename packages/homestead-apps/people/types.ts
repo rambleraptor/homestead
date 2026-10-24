@@ -27,13 +27,37 @@ export interface PersonSharedData {
   updated: string;
 }
 
-// Person — addresses come from shared_data; partner is hydrated client-side.
+export type RelationshipKind = 'partner' | 'parent' | 'sibling';
+
+// A family link. For kind=parent, person_a is the parent of person_b; partner
+// and sibling rows store the lower id as person_a. Ids may arrive as bare ids
+// or `people/{id}` paths (the chat tools write either).
+export interface PersonRelationship {
+  id: string;
+  person_a: string;
+  person_b: string;
+  kind: RelationshipKind;
+  created_by?: string;
+}
+
+export interface RelatedPerson {
+  id: string;
+  name: string;
+  // A sibling derived from a shared parent rather than a stored sibling row.
+  inferred?: boolean;
+}
+
+// Person — addresses come from shared_data; relatives come from
+// person-relationships. Both are hydrated client-side.
 export interface Person {
   id: string;
   name: string;
   aliases: string[]; // Alternate names (maiden name, nickname); can be empty
   addresses: Address[]; // Array of addresses (can be empty)
-  partner?: Person; // Partner info if exists
+  partner?: RelatedPerson;
+  parents: RelatedPerson[];
+  children: RelatedPerson[];
+  siblings: RelatedPerson[];
   created_by: string;
   created: string;
   updated: string;
@@ -57,6 +81,9 @@ export interface PersonFormData {
   aliases: string[]; // Alternate names (maiden name, nickname)
   addresses: AddressFormData[]; // Array of addresses
   partner_id?: string; // Used in form to select partner
+  parent_ids?: string[];
+  child_ids?: string[];
+  sibling_ids?: string[]; // Stored sibling links only, not inferred ones
 }
 
 export interface PeopleStats {

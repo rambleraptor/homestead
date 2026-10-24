@@ -116,6 +116,35 @@ export class PeoplePage {
     await this.submitPersonForm();
   }
 
+  /** Open a person's edit form from their card in the list. */
+  async openEditForm(personName: string) {
+    await this.expectPersonInList(personName);
+    const editButton = this.driver.getByRole('button', { name: `Edit ${personName}` }).first();
+    await editButton.click();
+    await this.driver.locator('#name').waitFor({ state: 'visible' });
+  }
+
+  /** Pick a partner in the open person form. */
+  async selectPartner(partnerName: string) {
+    await this.driver.getByTestId('person-partner-select').selectOption({ label: partnerName });
+  }
+
+  /** The person's card in the list names this partner. */
+  async expectPartnerOnCard(person: { id: string }, partnerName: string) {
+    await this.expect(this.driver.getByTestId(`person-partner-${person.id}`)).toHaveText(partnerName);
+  }
+
+  /** Add someone to the Parents / Children / Siblings picker in the open form. */
+  async addRelative(
+    group: 'parents' | 'children' | 'siblings',
+    relative: { id: string; name: string },
+  ) {
+    const input = this.driver.getByTestId(`person-${group}-input`);
+    await input.click();
+    await input.fill(relative.name);
+    await this.driver.getByTestId(`person-${group}-option-${relative.id}`).click();
+  }
+
   async deletePerson(personName: string) {
     await this.expectPersonInList(personName);
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BulkExportContext } from '@rambleraptor/homestead-core/resources/bulk-export/types';
 
-// The source reads three collections through the server client; stub it so the
+// The source reads four collections through the server client; stub it so the
 // test drives the join off seeded in-memory data rather than the engine.
 const collections: Record<string, unknown[]> = {
   people: [
@@ -14,6 +14,11 @@ const collections: Record<string, unknown[]> = {
   ],
   'person-shared-data': [
     { id: 's1', person_a: 'p1', person_b: 'p2', address_id: 'a1' },
+  ],
+  // Partner comes from the relationship row; a sibling link is not a partner.
+  'person-relationships': [
+    { id: 'r1', person_a: 'p1', person_b: 'p2', kind: 'partner' },
+    { id: 'r2', person_a: 'p1', person_b: 'p3', kind: 'sibling' },
   ],
 };
 

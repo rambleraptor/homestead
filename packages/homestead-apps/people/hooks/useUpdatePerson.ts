@@ -14,6 +14,9 @@ import {
   setPartner,
   removePartner,
 } from '../utils/sharedDataSync';
+import { listRelationships, syncRelationships } from '../utils/relationshipSync';
+import { personIdOf } from '../utils/relationships';
+import { relativesFromForm } from './useCreatePerson';
 
 interface UpdatePersonData {
   id: string;
@@ -28,38 +31,38 @@ interface PersonRecord {
   update_time?: string;
 }
 
+async function currentPartnerId(id: string): Promise<string | undefined> {
+  const rows = await listRelationships();
+  const row = rows.find(
+    (r) =>
+      r.kind === 'partner' &&
+      (personIdOf(r.person_a) === id || personIdOf(r.person_b) === id),
+  );
+  if (!row) return undefined;
+  const a = personIdOf(row.person_a);
+  return a === id ? personIdOf(row.person_b) : a;
+}
+
 export function useUpdatePerson() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, data }: UpdatePersonData) => {
       const oldSharedData = await findSharedDataForPerson(id);
-      const oldPartnerId = oldSharedData
-        ? oldSharedData.person_a === id
-          ? oldSharedData.person_b
-          : oldSharedData.person_a
-        : undefined;
+      const oldPartnerId = await currentPartnerId(id);
 
       const personRecord = await aepbase.update<PersonRecord>(PEOPLE, id, {
         name: data.name,
         aliases: data.aliases,
       });
 
+      // Choosing a partner in the form still merges the two address records,
+      // and removing one splits them. Partnership itself is the relationship row.
       const newPartnerId = data.partner_id || undefined;
-      const partnerChanged = (oldPartnerId || undefined) !== newPartnerId;
-
-      if (partnerChanged) {
-        if (oldPartnerId && !newPartnerId) {
-          await removePartner(id, oldPartnerId);
-        } else if (!oldPartnerId && newPartnerId) {
-          await setPartner(id, newPartnerId, {
-            addresses: data.addresses,
-          });
-        } else if (oldPartnerId && newPartnerId && oldPartnerId !== newPartnerId) {
-          await removePartner(id, oldPartnerId);
-          await setPartner(id, newPartnerId, {
-            addresses: data.addresses,
-          });
+      if (oldPartnerId !== newPartnerId) {
+        if (oldPartnerId) await removePartner(id, oldPartnerId);
+        if (newPartnerId) {
+          await setPartner(id, newPartnerId, { addresses: data.addresses });
         }
       } else if (oldSharedData) {
         await updateSharedData(oldSharedData.id, {
@@ -72,23 +75,13 @@ export function useUpdatePerson() {
         });
       }
 
-      return { personRecord, oldPartnerId, newPartnerId };
+      await syncRelationships(id, relativesFromForm(data));
+
+      return personRecord;
     },
-    onSuccess: (result, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.app('people').list() });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.app('people').detail(variables.id),
-      });
-      if (result.newPartnerId) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.app('people').detail(result.newPartnerId),
-        });
-      }
-      if (result.oldPartnerId && result.oldPartnerId !== result.newPartnerId) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.app('people').detail(result.oldPartnerId),
-        });
-      }
+    onSuccess: () => {
+      // Relatives show on the other side too, so every person's view is stale.
+      queryClient.invalidateQueries({ queryKey: queryKeys.app('people').all() });
     },
   });
 }

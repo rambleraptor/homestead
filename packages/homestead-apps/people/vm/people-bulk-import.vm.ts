@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { e2eClient, listOrEmpty } from '../../../../tests/e2e/utils/aepbase-helpers';
 import { PeoplePage } from '../e2e/PeoplePage';
-import { getPersonSharedData, testBulkImportCSV } from '../e2e/helpers';
+import { getPersonSharedData, listRelationships, testBulkImportCSV } from '../e2e/helpers';
 
 interface PersonRow {
   id: string;
@@ -137,6 +137,11 @@ describe('People Bulk Import', () => {
     expect(mikeSharedData).toBeDefined();
     expect(sarahSharedData).toBeDefined();
     expect(mikeSharedData?.id).toBe(sarahSharedData?.id);
+
+    // And the pairing is recorded as one partner relationship
+    const partnerRows = (await listRelationships(userToken)).filter((r) => r.kind === 'partner');
+    expect(partnerRows).toHaveLength(1);
+    expect([partnerRows[0].person_a, partnerRows[0].person_b].sort()).toEqual([mike!.id, sarah!.id].sort());
   });
 
   test('should import people with WiFi information', async () => {

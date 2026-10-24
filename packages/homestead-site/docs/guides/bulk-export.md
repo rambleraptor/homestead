@@ -182,7 +182,7 @@ export const source: BulkExportSource<PersonRow> = async ({ ctx, filter }) => {
 A source receives the whole request at once, so it can do the cross-collection
 joins the default can't. **People** is the reason: a person's address lives in a
 sibling `address` record linked through `person-shared-data`, and their partner
-is another person — so exporting "names and addresses" means walking that graph
+is another person linked by a `person-relationship` row — so exporting "names and addresses" means walking that graph
 backwards. That's exactly the inverse of what the people *importer's* saver
 writes.
 

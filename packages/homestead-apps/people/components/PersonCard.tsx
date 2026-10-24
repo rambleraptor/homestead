@@ -85,7 +85,10 @@ export function PersonCard({
                 </Link>
               </h3>
               {partner && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div
+                  className="flex items-center gap-1 text-xs text-gray-500"
+                  data-testid={`person-partner-${person.id}`}
+                >
                   <Users className="w-3 h-3" aria-label="Partner icon" />
                   <span>{partner.name}</span>
                 </div>

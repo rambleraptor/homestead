@@ -1,20 +1,30 @@
 /**
- * Person form. Markup is unchanged; state/validation/submission run through the
- * shared `useSchemaForm` engine. `partner_id` and `addresses` aren't fields on
- * the person resource (partner + address live in sibling collections), so they
- * are managed as extra fields and passed straight through in `buildPayload`.
+ * Person form. State/validation/submission run through the shared
+ * `useSchemaForm` engine. `partner_id`, the relative lists and `addresses`
+ * aren't fields on the person resource (relatives and addresses live in sibling
+ * collections), so they are managed as extra fields and passed straight through
+ * in `buildPayload`.
  */
 
 import { useSchemaForm } from '@rambleraptor/homestead-core/shared/forms';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import { TagInput } from '@rambleraptor/homestead-core/shared/components/TagInput';
+import { ReferenceField } from '@rambleraptor/homestead-core/shared/components/ReferenceField';
+import { useFavorites } from '@rambleraptor/homestead-core/shared/favorites';
 import type { Person, PersonFormData, AddressFormData } from '../types';
 import { usePeople } from '../hooks/usePeople';
-import { peopleResources } from '../resources';
+import { PEOPLE, peopleResources } from '../resources';
+import { personIdOf } from '../utils/relationships';
 import { AddressesInput } from './AddressesInput';
 
 const personDef = peopleResources.find((r) => r.singular === 'person')!;
+
+// The relative pickers hold `people/{id}` paths (ReferenceField's shape); the
+// form data carries bare ids.
+const toPaths = (people: { id: string }[]) => people.map((p) => `${PEOPLE}/${p.id}`);
+const toIds = (paths: unknown, selfId?: string) =>
+  ((paths as string[]) ?? []).map(personIdOf).filter((id) => id !== selfId);
 
 interface PersonFormProps {
   initialData?: Person;
@@ -30,6 +40,7 @@ export function PersonForm({
   isSubmitting,
 }: PersonFormProps) {
   const { data: people = [] } = usePeople();
+  const favorites = useFavorites('person');
 
   const initialAddresses: AddressFormData[] =
     initialData?.addresses?.map((addr) => ({
@@ -51,18 +62,27 @@ export function PersonForm({
       aliases: initialData?.aliases || [],
       addresses: initialAddresses,
       partner_id: initialData?.partner?.id || '',
+      parent_ids: toPaths(initialData?.parents ?? []),
+      child_ids: toPaths(initialData?.children ?? []),
+      sibling_ids: toPaths((initialData?.siblings ?? []).filter((s) => !s.inferred)),
     },
     onSubmit,
     fields: { name: { id: 'name' }, aliases: { id: 'aliases' } },
     extraFields: {
       addresses: { type: 'array' },
       partner_id: { type: 'string' },
+      parent_ids: { type: 'array' },
+      child_ids: { type: 'array' },
+      sibling_ids: { type: 'array' },
     },
     buildPayload: (v) => ({
       name: v.name as string,
       aliases: v.aliases as string[],
       addresses: v.addresses as AddressFormData[],
       partner_id: v.partner_id as string,
+      parent_ids: toIds(v.parent_ids, initialData?.id),
+      child_ids: toIds(v.child_ids, initialData?.id),
+      sibling_ids: toIds(v.sibling_ids, initialData?.id),
     }),
   });
 
@@ -111,6 +131,7 @@ export function PersonForm({
         </label>
         <select
           id="partner"
+          data-testid="person-partner-select"
           value={partnerId}
           onChange={(e) => form.setValue('partner_id', e.target.value)}
           className="w-full rounded-md border border-gray-300 px-3 py-2"
@@ -125,6 +146,34 @@ export function PersonForm({
         <p className="text-sm text-gray-500 mt-1">
           Partners share an address. Track birthdays and anniversaries in
           the Events app.
+        </p>
+      </div>
+
+      {/* Family */}
+      <div className="space-y-4">
+        {(
+          [
+            ['parent_ids', 'parents', 'Parents'],
+            ['child_ids', 'children', 'Children'],
+            ['sibling_ids', 'siblings', 'Siblings'],
+          ] as const
+        ).map(([field, group, label]) => (
+          <ReferenceField
+            key={field}
+            id={field}
+            testId={`person-${group}`}
+            label={label}
+            collection={PEOPLE}
+            multiple
+            value={(form.values[field] as string[]) ?? []}
+            onChange={(next) => form.setValue(field, next)}
+            favoriteIds={favorites.favoriteIds}
+            onToggleFavorite={favorites.toggle}
+            error={form.errors[field]}
+          />
+        ))}
+        <p className="text-sm text-gray-500">
+          People who share a parent show as siblings automatically.
         </p>
       </div>
 

@@ -2,33 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { ADDRESSES, PEOPLE } from '../resources';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import type { Person, Address } from '../types';
+import type { Address } from '../types';
 import { findSharedDataForPerson } from '../utils/sharedDataSync';
-
-interface PersonRecord {
-  id: string;
-  name: string;
-  aliases?: string[];
-  created_by?: string;
-  create_time?: string;
-  update_time?: string;
-}
-
-function toPerson(
-  record: PersonRecord,
-  addresses: Address[],
-  partner?: Person,
-): Person {
-  return {
-    ...record,
-    aliases: record.aliases ?? [],
-    created: record.create_time || '',
-    updated: record.update_time || '',
-    created_by: record.created_by || '',
-    addresses,
-    partner,
-  };
-}
+import { listRelationships } from '../utils/relationshipSync';
+import { relativesFor } from '../utils/relationships';
+import { toPerson, type PersonRecord } from './usePeople';
 
 export function usePersonById(id: string) {
   return useQuery({
@@ -51,16 +29,14 @@ export function usePersonById(id: string) {
         }
       }
 
-      let partner: Person | undefined;
-      const partnerId = sharedData
-        ? sharedData.person_a === id ? sharedData.person_b : sharedData.person_a
-        : undefined;
-      if (partnerId) {
-        const partnerRecord = await aepbase.get<PersonRecord>(PEOPLE, partnerId);
-        partner = toPerson(partnerRecord, addresses);
-      }
+      // Relatives are named from the whole people list (household-sized).
+      const [relationships, people] = await Promise.all([
+        listRelationships(),
+        aepbase.list<PersonRecord>(PEOPLE),
+      ]);
+      const nameById = new Map(people.map((p) => [p.id, p.name]));
 
-      return toPerson(record, addresses, partner);
+      return toPerson(record, addresses, relativesFor(id, relationships, nameById));
     },
     enabled: !!id,
   });

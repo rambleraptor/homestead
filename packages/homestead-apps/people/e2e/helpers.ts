@@ -1,6 +1,7 @@
 /**
- * People E2E helpers — seed people, addresses, and the linking
- * `person-shared-data` records via the aepbase REST API.
+ * People E2E helpers — seed people, addresses, the linking
+ * `person-shared-data` records, and `person-relationship` rows via the aepbase
+ * REST API.
  */
 
 import { deleteIfPresent, e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
@@ -71,6 +72,25 @@ export async function getPersonSharedData(token: string, personId: string) {
     }>('person-shared-data')
     .listAll();
   return all.find((s) => s.person_a === personId || s.person_b === personId) || null;
+}
+
+export interface RelationshipRecord {
+  id: string;
+  kind: 'partner' | 'parent' | 'sibling';
+  person_a: string;
+  person_b: string;
+}
+
+/** Seed a relationship. For `parent`, person_a is the parent of person_b. */
+export async function createRelationship(
+  token: string,
+  data: Omit<RelationshipRecord, 'id'>,
+): Promise<RelationshipRecord> {
+  return e2eClient(token).collection<RelationshipRecord>('person-relationships').create(data);
+}
+
+export async function listRelationships(token: string): Promise<RelationshipRecord[]> {
+  return e2eClient(token).collection<RelationshipRecord>('person-relationships').listAll();
 }
 
 export async function deleteAllPeople(token: string) {

@@ -1,7 +1,7 @@
 /**
  * People App Configuration
  *
- * App for managing contact information, partners, and addresses.
+ * App for managing contact information, family relationships, and addresses.
  * Yearly-recurring events (birthdays, anniversaries, …) live in the
  * Events app.
  */
@@ -14,6 +14,15 @@ export const peopleApp: AppConfig = {
   name: 'People',
   description: 'Manage contact information and important dates for people you know',
   resources: peopleResources,
+  // Partnership moved from person-shared-data's person_b to partner
+  // relationship rows. One-shot and idempotent.
+  migrations: [
+    {
+      id: 'people-backfill-partner-relationships',
+      title: 'Copy partners into person relationships',
+      load: () => import('./migrations/backfill-partner-relationships'),
+    },
+  ],
   userSettings: {
     map_provider: {
       type: 'enum',
