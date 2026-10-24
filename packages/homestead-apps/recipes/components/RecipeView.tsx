@@ -27,6 +27,7 @@ import { RecipeForm } from './RecipeForm';
 import { RecipeImage } from './RecipeImage';
 import { RecipeIngredients } from './RecipeIngredients';
 import { RecipeSteps } from './RecipeSteps';
+import { RecipeTags } from './RecipeTags';
 import { isWakeLockSupported, useWakeLock } from '../hooks/useWakeLock';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
@@ -160,7 +161,9 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
   const ingredients = recipe.parsed_ingredients ?? [];
   const steps = recipe.steps ?? [];
   const sourceHref = toHref(recipe.source_pointer);
-  const hasMeta = Boolean(recipe.prep_time || recipe.cook_time || recipe.servings);
+  const hasMeta = Boolean(
+    recipe.prep_time || recipe.cook_time || recipe.servings || recipe.tags?.length,
+  );
 
   const handleAddToGroceries = () => {
     const { added, skipped } = addIngredients(ingredients);
@@ -265,7 +268,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
       {hasMeta && (
         <div
           data-testid="recipe-view-meta"
-          className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-brand-slate"
+          className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-brand-slate"
         >
           {recipe.prep_time && (
             <span className="inline-flex items-center gap-1.5">
@@ -288,19 +291,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
               <span className="font-medium text-brand-navy">{recipe.servings}</span>
             </span>
           )}
-        </div>
-      )}
-
-      {recipe.tags && recipe.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {recipe.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-block px-2.5 py-1 text-xs rounded-full bg-bg-pearl text-brand-slate"
-            >
-              {tag}
-            </span>
-          ))}
+          <RecipeTags tags={recipe.tags} />
         </div>
       )}
 

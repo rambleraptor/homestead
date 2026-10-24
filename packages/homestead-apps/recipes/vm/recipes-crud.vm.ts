@@ -59,6 +59,7 @@ describe('Recipes CRUD', () => {
     expect(created).toBeDefined();
     expect(created?.parsed_ingredients).toHaveLength(recipe.parsed_ingredients.length);
     expect(created?.parsed_ingredients[0].item).toBe(recipe.parsed_ingredients[0].item);
+    expect(created?.tags).toEqual(recipe.tags);
   });
 
   test('edits an existing recipe', async () => {

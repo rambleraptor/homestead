@@ -10,6 +10,7 @@ import { AlertCircle, ChefHat, CheckCircle2, XCircle } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
 import type { ItemPreviewProps } from '@rambleraptor/homestead-core/shared/bulk-import';
+import { RecipeTags } from '../components/RecipeTags';
 // Type-only: the parser itself is server-only and stubbed out of this bundle.
 import type { RecipeImportData } from '../methods/recipe-import-adapter';
 
@@ -72,18 +73,7 @@ export function RecipePreview({
               {facts.length > 0 && (
                 <p className="text-muted-foreground text-sm">{facts.join(' · ')}</p>
               )}
-              {recipe.tags && recipe.tags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {recipe.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <RecipeTags tags={recipe.tags} variant="inline" max={3} className="mt-1 block" />
             </div>
             <div className="flex-shrink-0">
               {isValid ? (

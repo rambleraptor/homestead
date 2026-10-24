@@ -2,10 +2,10 @@
  * Recipe Form Component
  *
  * Create/edit form for recipes. The markup is unchanged — an inline editable
- * ingredient list, a text-edited steps/tags experience, and a bespoke photo
+ * ingredient list, text-edited steps, a chip tag input, and a bespoke photo
  * input — but state, validation, and submission now run through the shared
- * `useSchemaForm` engine. `steps`/`tags` are edited as free text via extra
- * fields and split in `buildPayload`; the "title + ≥1 ingredient" rule is
+ * `useSchemaForm` engine. `steps` is edited as free text via an extra field
+ * and split in `buildPayload`; the "title + ≥1 ingredient" rule is
  * expressed as cross-field validation, so the submit button reflects it and
  * `onSubmit` never fires while the form is invalid.
  */
@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { useSchemaForm } from '@rambleraptor/homestead-core/shared/forms';
+import { TagInput } from '@rambleraptor/homestead-core/shared/components/TagInput';
 import { splitSteps } from '../importers/textImporter';
 import { RecipeImage } from './RecipeImage';
 import { recipesResources } from '../resources';
@@ -66,7 +67,7 @@ export function RecipeForm({
       ? initialData.parsed_ingredients.map(normalizeIngredient)
       : [emptyIngredient()],
     steps_text: (initialData?.steps ?? []).join('\n\n'),
-    tags_text: (initialData?.tags ?? []).join(', '),
+    tags: initialData?.tags ?? [],
     image: null as File | null,
   };
 
@@ -82,14 +83,12 @@ export function RecipeForm({
       servings: { id: 'servings' },
       method: { id: 'method' },
       steps_text: { id: 'steps' },
-      tags_text: { id: 'tags' },
-      // Schema array fields are driven by the text extras above, not rendered.
+      tags: { id: 'tags' },
+      // Driven by the `steps_text` extra above, not rendered.
       steps: { hidden: true },
-      tags: { hidden: true },
     },
     extraFields: {
       steps_text: { type: 'string' },
-      tags_text: { type: 'string' },
     },
     // The photo aside, a recipe needs a title and at least one named ingredient.
     validate: (values) =>
@@ -107,8 +106,9 @@ export function RecipeForm({
           raw: ing.raw.trim() || `${ing.qty} ${ing.unit} ${ing.item}`.trim(),
         }))
         .filter((ing) => ing.item.length > 0);
-      const tags = String(values.tags_text ?? '')
-        .split(',')
+      // A pasted "a, b, c" lands as one chip; split it like the old text box did.
+      const tags = ((values.tags as string[]) ?? [])
+        .flatMap((t) => t.split(','))
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
       const steps = splitSteps(String(values.steps_text ?? ''));
@@ -414,13 +414,15 @@ export function RecipeForm({
 
       <div>
         <label htmlFor="tags" className="block text-sm font-medium text-brand-navy mb-1">
-          Tags (comma-separated)
+          Tags
         </label>
-        <input
-          {...form.register('tags_text')}
-          type="text"
+        <TagInput
+          id="tags"
+          value={(form.values.tags as string[]) ?? []}
+          onChange={(tags) => form.setValue('tags', tags)}
+          disabled={busy}
           placeholder="vegetarian, dinner, pasta"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+          testId="recipe-tags-input"
         />
       </div>
 

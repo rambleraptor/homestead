@@ -65,7 +65,11 @@ export class RecipesPage {
       await this.driver.locator('#method').fill(data.method);
     }
     if (data.tags && data.tags.length > 0) {
-      await this.driver.locator('#tags').fill(data.tags.join(', '));
+      const tagInput = this.driver.locator('#tags');
+      for (const tag of data.tags) {
+        await tagInput.fill(tag);
+        await tagInput.press('Enter');
+      }
     }
   }
 

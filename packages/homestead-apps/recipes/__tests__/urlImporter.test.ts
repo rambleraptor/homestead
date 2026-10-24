@@ -95,7 +95,7 @@ describe('importRecipeFromHtml', () => {
     expect(data!.parsed_ingredients.map((i) => i.raw)).toEqual(FULL.recipeIngredient);
   });
 
-  it('merges category, cuisine and keywords into tags without duplicates', async () => {
+  it('takes tags from category and cuisine, not keywords', async () => {
     const { data } = await importRecipeFromHtml(
       page({ ...FULL, keywords: 'bacon, Appetizer' }),
       URL,
@@ -103,7 +103,7 @@ describe('importRecipeFromHtml', () => {
     const tags = data!.tags!;
     expect(tags).toContain('Appetizer');
     expect(tags).toContain('American');
-    expect(tags).toContain('bacon');
+    expect(tags).not.toContain('bacon');
     expect(tags.filter((t) => t.toLowerCase() === 'appetizer')).toHaveLength(1);
   });
 
