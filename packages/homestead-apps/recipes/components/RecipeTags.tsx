@@ -30,10 +30,11 @@ export function RecipeTags({ tags, variant = 'chips', max, className }: RecipeTa
       <span
         data-testid="recipe-tags"
         title={hidden > 0 ? tags.join(', ') : undefined}
-        className={cn('min-w-0 truncate text-sm text-text-muted', className)}
+        className={cn('flex min-w-0 gap-1.5 text-sm text-text-muted', className)}
       >
-        {shown.join(' · ')}
-        {hidden > 0 && <span className="ml-1.5">+{hidden}</span>}
+        <span className="truncate">{shown.join(' · ')}</span>
+        {/* Outside the truncating span so a long tag can't clip the count. */}
+        {hidden > 0 && <span className="shrink-0">+{hidden}</span>}
       </span>
     );
   }

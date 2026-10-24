@@ -83,18 +83,20 @@ export function RecipesList({ recipes, onEdit, onDelete }: RecipesListProps) {
               </div>
             </div>
 
-            {(recipe.cook_time || (recipe.tags && recipe.tags.length > 0)) && (
-              <div className="mt-3 flex items-center gap-3 min-w-0 text-sm">
-                {recipe.cook_time && (
-                  <span className="inline-flex items-center gap-1.5 shrink-0 text-brand-slate">
-                    <Clock className="w-4 h-4 text-text-muted" />
-                    <span className="text-text-muted">Cook:</span>
-                    <span className="font-medium text-brand-navy">{recipe.cook_time}</span>
-                  </span>
-                )}
-                <RecipeTags tags={recipe.tags} variant="inline" max={3} />
-              </div>
+            {recipe.cook_time && (
+              <p className="text-sm text-brand-slate mt-3 inline-flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-text-muted" />
+                <span className="text-text-muted">Cook:</span>
+                <span className="font-medium text-brand-navy">{recipe.cook_time}</span>
+              </p>
             )}
+
+            <RecipeTags
+              tags={recipe.tags}
+              variant="inline"
+              max={3}
+              className={recipe.cook_time ? 'mt-1' : 'mt-3'}
+            />
           </div>
         </li>
       ))}

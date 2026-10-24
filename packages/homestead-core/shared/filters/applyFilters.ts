@@ -133,3 +133,27 @@ export function deriveEnumOptions<T>(
   }
   return Array.from(seen).sort();
 }
+
+/**
+ * Like `deriveEnumOptions`, but with how many items carry each value, most
+ * used first (ties alphabetical). Long, user-grown option lists (tags) are
+ * only browsable when the common values come first.
+ */
+export function deriveEnumOptionCounts<T>(
+  items: T[],
+  decl: AppFilterDecl,
+): Array<{ value: string; count: number }> {
+  const path = decl.field ?? decl.key;
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const raw = getByPath(item, path);
+    const values = Array.isArray(raw) ? raw : [raw];
+    // Count each value once per item, even if an array repeats it.
+    for (const v of new Set(values)) {
+      if (typeof v === 'string' && v) counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+  }
+  return Array.from(counts, ([value, count]) => ({ value, count })).sort(
+    (a, b) => b.count - a.count || a.value.localeCompare(b.value),
+  );
+}

@@ -14,7 +14,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { applyFilters, deriveEnumOptions } from './applyFilters';
+import { applyFilters, deriveEnumOptionCounts, deriveEnumOptions } from './applyFilters';
 import type { AppFilterDecl } from './types';
 
 interface FiltersContextValue<T = unknown> {
@@ -124,5 +124,14 @@ export function useEnumOptions(key: string): string[] {
     const decl = decls.find((d) => d.key === key);
     if (!decl) return [];
     return deriveEnumOptions(items, decl);
+  }, [decls, items, key]);
+}
+
+export function useEnumOptionCounts(key: string): Array<{ value: string; count: number }> {
+  const { decls, items } = useFiltersContext();
+  return useMemo(() => {
+    const decl = decls.find((d) => d.key === key);
+    if (!decl) return [];
+    return deriveEnumOptionCounts(items, decl);
   }, [decls, items, key]);
 }
