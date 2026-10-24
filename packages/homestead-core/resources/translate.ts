@@ -88,14 +88,20 @@ function validateRetention(
     // a walk over every parent (and, under `user`, every user).
     fail('retention is only valid on a top-level resource — a child goes when its parent does');
   }
-  if (retention.field !== undefined) {
+  if (retention.field !== undefined && !ENGINE_TIMESTAMPS.has(retention.field)) {
     const field = def.fields[retention.field];
     if (!field) fail(`retention.field "${retention.field}" is not a declared field`);
     if (field.type !== 'string' || field.format !== 'date-time') {
       fail(`retention.field "${retention.field}" must be a string field with format "date-time"`);
     }
   }
+  if (retention.where !== undefined && retention.where.trim() === '') {
+    fail('retention.where must be a non-empty filter (omit it to sweep every row)');
+  }
 }
+
+/** Engine-managed timestamps every resource has; valid as `retention.field`. */
+const ENGINE_TIMESTAMPS = new Set(['create_time', 'update_time']);
 
 /**
  * Check a `per-record` access declaration against the fields it names.

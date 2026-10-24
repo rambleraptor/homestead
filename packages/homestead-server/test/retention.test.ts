@@ -10,6 +10,7 @@ import { bearerToken, createHomesteadClient } from '@rambleraptor/homestead-clie
 import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
 import { toWireSchema } from '@rambleraptor/homestead-core/resources/translate';
 import { sweepRetention } from '@rambleraptor/homestead-core/resources/retention';
+import { operationsResources } from '@rambleraptor/homestead-core/operations/resources';
 import { call, defineResource, makeEngine, type TestEngine } from './engine/helpers';
 
 const FIRED_AT = '2026-10-24T03:00:00Z';
@@ -176,6 +177,76 @@ describe('sweepRetention', () => {
     const third = await sweepRetention({ client: client(), defs: DEFS, firedAt: FIRED_AT, cap: 2 });
     expect(third[0]).toMatchObject({ deleted: 1, capped: false });
     expect(await ids('/memos')).toEqual([]);
+  });
+
+  test('a where condition limits which rows are ever eligible', async () => {
+    const job: ResourceDefinition = {
+      singular: 'job',
+      plural: 'jobs',
+      user_settable_create: true,
+      retention: { days: 30, field: 'create_time', where: 'done == true' },
+      fields: { done: { type: 'boolean' } },
+    };
+    await defineResource(
+      t,
+      { singular: 'job', plural: 'jobs', user_settable_create: true, schema: toWireSchema(job.fields, 'job') },
+      'job',
+    );
+    for (const [id, done, created] of [
+      ['finished-old', true, OLD],
+      ['running-old', false, OLD],
+      ['finished-fresh', true, FRESH],
+    ] as const) {
+      await create(`/jobs?id=${id}`, { done });
+      // Measured from creation, so a recent write doesn't keep a row.
+      t.engine.db
+        .query('UPDATE jobs SET create_time = ?, update_time = ? WHERE id = ?')
+        .run(created, FRESH, id);
+    }
+    const [result] = await sweepRetention({ client: client(), defs: [job], firedAt: FIRED_AT });
+    expect(result).toMatchObject({ deleted: 1, failed: 0 });
+    expect(await ids('/jobs')).toEqual(['finished-fresh', 'running-old']);
+  });
+
+  test('a where the engine rejects deletes nothing, and says so', async () => {
+    await create('/memos?id=old');
+    stamp('memos', 'old', OLD);
+    const broken = { ...MEMO, retention: { days: 30, where: 'no_such_field == 1' } };
+    const logs: string[] = [];
+    const [result] = await sweepRetention({
+      client: client(),
+      defs: [broken],
+      firedAt: FIRED_AT,
+      log: (m) => {
+        logs.push(m);
+      },
+    });
+    expect(result).toMatchObject({ deleted: 0, failed: 1 });
+    expect(await ids('/memos')).toEqual(['old']);
+    expect(logs.some((l) => l.includes('could not list expired rows'))).toBe(true);
+  });
+
+  test('operations: finished ones go three days after creation; running ones never do', async () => {
+    const [op] = operationsResources;
+    await defineResource(
+      t,
+      { singular: op!.singular, plural: op!.plural, user_settable_create: true, schema: toWireSchema(op!.fields, op!.singular) },
+      op!.singular,
+    );
+    const fourDaysAgo = '2026-10-20T03:00:00Z';
+    const twoDaysAgo = '2026-10-22T03:00:00Z';
+    for (const [id, done, created] of [
+      ['done-4d', true, fourDaysAgo],
+      ['done-2d', true, twoDaysAgo],
+      ['running-4d', false, fourDaysAgo],
+      ['running-ancient', false, OLD],
+    ] as const) {
+      await create(`/operations?id=${id}`, { done });
+      t.engine.db.query('UPDATE operations SET create_time = ? WHERE id = ?').run(created, id);
+    }
+    const [result] = await sweepRetention({ client: client(), defs: operationsResources, firedAt: FIRED_AT });
+    expect(result).toMatchObject({ resource: 'operations', deleted: 1, failed: 0 });
+    expect(await ids('/operations')).toEqual(['done-2d', 'running-4d', 'running-ancient']);
   });
 
   test('never touches a resource without a retention window', async () => {

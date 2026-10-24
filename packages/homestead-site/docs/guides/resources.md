@@ -171,9 +171,17 @@ than it:
 ```
 
 - **`days`** is how long to keep a row. **`field`** is what to measure from:
-  a declared `date-time` field holding UTC ISO strings. Leave it out to
-  measure from `update_time`, the time of the row's last write. A row whose
-  field is empty falls back to `update_time`.
+  leave it out for `update_time` (the row's last write), use `create_time`
+  for its creation, or name a declared `date-time` field holding UTC ISO
+  strings. A row whose named field is empty falls back to `update_time`.
+- **`where`** limits which rows are ever eligible, in the same syntax as a
+  list `filter`. Operations use it so only finished ones are swept:
+
+  ```ts
+  retention: { days: 3, field: 'create_time', where: 'done == true' },
+  ```
+
+  A `where` the server can't parse deletes nothing; the run's log says why.
 - A sweep runs **daily at 3am** (server time), and once at boot. Each run is
   an entry in **Superuser → Operations**, with a log of what it removed.
 - Deleting goes through the normal API, so it behaves like any delete: the

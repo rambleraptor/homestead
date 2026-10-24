@@ -1,7 +1,8 @@
 /**
  * Retention: delete a resource's rows once they pass an age.
  *
- * A resource declares `retention: { days, field? }` (see `ResourceRetention`).
+ * A resource declares `retention: { days, field?, where? }` (see
+ * `ResourceRetention`).
  * Once a day the `resource-retention` cron (on the always-installed Operations
  * app) calls {@link sweepRetention}, which for each such resource lists the
  * expired rows with a server-side time filter and deletes each one — with its
@@ -37,20 +38,29 @@ export function retentionCutoff(firedAt: string, days: number): string {
   return new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
+/** Engine-managed timestamps: set on every row, so they never need a fallback. */
+const ENGINE_TIMESTAMPS = new Set(['create_time', 'update_time']);
+
 /**
- * The server-side filter selecting candidate rows. With a named field it is a
- * superset — `field < cutoff || update_time < cutoff` — because a row whose
- * field is unset falls back to `update_time`, and the filter grammar can't say
- * "is unset". {@link isExpired} makes the exact call on each candidate.
+ * The server-side filter selecting candidate rows. On an engine timestamp it is
+ * exact. On a declared field it is a superset — `field < cutoff || update_time
+ * < cutoff` — because a row whose field is unset falls back to `update_time`,
+ * and the filter grammar can't say "is unset"; {@link isExpired} makes the
+ * exact call on each candidate. A `where` narrows either form.
  */
 export function retentionFilter(retention: ResourceRetention, cutoff: string): string {
   const quoted = JSON.stringify(cutoff);
-  return retention.field
-    ? `${retention.field} < ${quoted} || update_time < ${quoted}`
-    : `update_time < ${quoted}`;
+  const field = retention.field ?? 'update_time';
+  const age = ENGINE_TIMESTAMPS.has(field)
+    ? `${field} < ${quoted}`
+    : `${field} < ${quoted} || update_time < ${quoted}`;
+  return retention.where ? `(${retention.where}) && (${age})` : age;
 }
 
-/** Whether one row is past its window: its field when set, else `update_time`. */
+/**
+ * Whether one row is past its window: its field when set, else `update_time`.
+ * (`where` is the server's call — the filter already applied it.)
+ */
 export function isExpired(
   record: Record<string, unknown>,
   retention: ResourceRetention,
