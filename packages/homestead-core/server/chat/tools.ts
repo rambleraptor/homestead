@@ -71,6 +71,72 @@ export interface BuiltTools {
 
 /** aepbase's built-in root resource (EnableUsers); never declared in code. */
 const USER_ROOT = 'user';
+
+/** Cap on records a single list call returns to the model (context safety). */
+export const LIST_CAP = 100;
+
+/**
+ * The engine's list-filter grammar (`engine/filter.ts`), stated once for the
+ * model. Used verbatim as the typed `filter` param's description and in the
+ * derived surfaces' instructions, so every surface teaches the same syntax.
+ */
+export const FILTER_SYNTAX =
+  'Syntax: `<field> <op> <value>` with ops == != < <= > >=, combined with && and ||' +
+  ' and parentheses; `has(<field>)` is true when the field is set; `<field> in ["a", "b"]`' +
+  ' matches any listed value; `"x" in <array_field>` tests array membership. String values' +
+  ' are double-quoted; date-times are ISO 8601 strings and compare as text, so' +
+  ' `due_date < "2026-11-01"` works. Fields are the resource\'s own field names plus `id`' +
+  ' (not create_time/update_time).';
+
+/** The `order_by` grammar (`engine/order.ts`), stated once for the model. */
+export const ORDER_BY_SYNTAX =
+  'Comma-separated field names, `-field` for descending, e.g. `-create_time` or' +
+  ' `due_date, title`. `create_time` and `update_time` are orderable.';
+
+/** Param names a list (a read without `id`) accepts, on every surface. */
+export const LIST_PARAMS = ['filter', 'order_by', 'limit'] as const;
+export type ListParam = (typeof LIST_PARAMS)[number];
+
+/**
+ * Zod shape for the list params. `brief` descriptions point at the surface's
+ * instructions instead of restating the grammar — the per-resource surface
+ * emits this shape once per resource, so the grammar is stated once in its
+ * instructions rather than ~40 times.
+ */
+export function listParamShape({ brief = false } = {}): Record<ListParam, z.ZodTypeAny> {
+  return {
+    filter: z
+      .string()
+      .describe(
+        'Only list records matching this expression.' +
+          (brief ? ' Syntax is in the instructions.' : ` ${FILTER_SYNTAX}`),
+      )
+      .optional(),
+    order_by: z
+      .string()
+      .describe(
+        'Sort order.' + (brief ? ' Syntax is in the instructions.' : ` ${ORDER_BY_SYNTAX}`),
+      )
+      .optional(),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(LIST_CAP)
+      .describe(
+        `Max records to return (1–${LIST_CAP}, default ${LIST_CAP}). The result says when` +
+          ' more matched, so narrow the filter or sort so the ones you need come first.',
+      )
+      .optional(),
+  };
+}
+
+/** The list params present in `args`, for a derived surface to pass through. */
+export function pickListParams(args: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of LIST_PARAMS) if (args[key] !== undefined) out[key] = args[key];
+  return out;
+}
 const USER_ROOT_PLURAL = 'users';
 
 /** Tool names are snake_case, so kebab-case resource names lose their hyphens. */
@@ -293,13 +359,17 @@ export function buildTools(defs: ResourceDefinition[]): BuiltTools {
       {
         op: 'read',
         spec: {
-          description: `Read ${def.plural}.${about}${nesting}`,
+          description:
+            `Read ${def.plural}.${about}${nesting}` +
+            ' Pass an id for one record; omit it to list, optionally narrowed with' +
+            ' filter, sorted with order_by, and capped with limit.',
           inputSchema: z.object({
             ...parentShape,
             id: z
               .string()
-              .describe(`id of the ${def.singular} record. Omit to list all records.`)
+              .describe(`id of the ${def.singular} record. Omit to list records.`)
               .optional(),
+            ...listParamShape(),
           }),
         },
       },

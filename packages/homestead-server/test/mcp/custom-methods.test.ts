@@ -12,7 +12,7 @@ import {
   buildCustomMethodTools,
   executeCustomMethod,
   type CustomMethodBinding,
-} from '../../src/mcp/custom-methods';
+} from '@rambleraptor/homestead-core/server/chat/custom-methods';
 
 const noop = async () => ({ default: async () => new Response('{}') });
 

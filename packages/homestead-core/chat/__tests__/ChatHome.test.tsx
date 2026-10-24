@@ -30,8 +30,9 @@ describe('ChatHome', () => {
           role: 'assistant',
           content: 'Done! Added milk.',
           toolCalls: [
-            { tool: 'create_grocery_item', ok: true },
-            { tool: 'read_todo', ok: false, error: 'boom' },
+            { tool: 'groceries', args: { action: 'create', fields: { name: 'milk' } }, ok: true },
+            { tool: 'todos', args: { action: 'list' }, ok: false, error: 'boom' },
+            { tool: 'search_documents', args: { query: 'tax' }, ok: true },
           ],
         },
       ],
@@ -40,8 +41,16 @@ describe('ChatHome', () => {
     render(<ChatHome />);
     expect(screen.getByText('add milk to groceries')).toBeInTheDocument();
     expect(screen.getByText('Done! Added milk.')).toBeInTheDocument();
-    expect(screen.getByText('create_grocery_item')).toBeInTheDocument();
-    expect(screen.getByText('read_todo')).toBeInTheDocument();
+    expect(screen.getByText('groceries')).toBeInTheDocument();
+    expect(screen.getByText('todos')).toBeInTheDocument();
+    // The verb rides on the marker next to the resource it touched.
+    expect(screen.getAllByTestId('chat-tool-action').map((el) => el.textContent)).toEqual([
+      'create',
+      'list',
+    ]);
+    expect(screen.getByText(/boom/)).toBeInTheDocument();
+    // A tool without an action (document search) shows just its name.
+    expect(screen.getByText('search_documents')).toBeInTheDocument();
     expect(screen.getByTestId('chat-pending')).toBeInTheDocument();
   });
 });

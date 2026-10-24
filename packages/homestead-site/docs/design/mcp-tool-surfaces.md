@@ -251,21 +251,35 @@ moves to a shared module and both surfaces call it.
 
 ## 5. Module layout
 
+The surface is shared with the AI chat (`POST /api/chat`), which runs its
+model on it too, so the surface and everything it depends on live in
+`homestead-core` next to the typed tool builder — `homestead-server` imports
+from core, never the reverse:
+
 ```
+packages/homestead-core/server/chat/
+├── tools.ts                buildTools (typed CRUD tools) + the list params every
+│                           surface shares (filter / order_by / limit, their
+│                           grammar, LIST_CAP)
+├── execute.ts              executeToolCall; a list is one engine page sized by
+│                           `limit`, filtered and ordered server-side
+├── surface.ts              ToolSurface + SurfaceResult contract
+├── translate.ts            call → typed-call translation both derived surfaces
+│                           share (toTypedCall carries the list params)
+├── custom-methods.ts       one tool per AEP-136 custom method + executor
+├── per-resource.ts         buildResourceTools(defs, { write }): ToolSurface
+└── handler.ts              the chat turn: buildChatToolSet over the per-resource
+                            surface (+ document search)
+
 packages/homestead-server/src/mcp/
-├── surface.ts       (new)  ToolSurface + SurfaceResult contract, shared by
-│                           generic and per-resource; register.ts registers
-│                           any surface through it
-├── translate.ts     (new)  extracted from generic.ts: typedArgs(), describeField(),
-│                           issueMessage(), isRecord() — the call→typed-call
-│                           translation both non-typed surfaces share
-├── per-resource.ts  (new)  buildResourceTools(defs, { write }): ToolSurface
-├── generic.ts       (slim) keeps its six tools + catalog; drops the translation
-│                           helpers now in translate.ts
-├── custom-methods.ts       unchanged
-└── register.ts             gains one branch; registerGenericTools becomes
-                            registerSurface(server, surface, token)
+├── generic.ts              six resource-parameterized tools + catalog
+└── register.ts             registers typed directly, or either derived surface
+                            through registerSurface(server, surface, token)
 ```
+
+Originally (as planned below) all of this sat under `homestead-server/src/mcp/`;
+it moved to core when chat adopted the surface, since core cannot import from
+the server package.
 
 `registerGenericTools` and the new registration are byte-for-byte the same loop
 over `{ tools, execute }`, so collapsing them into `registerSurface` removes the
@@ -459,3 +473,28 @@ Keep all three; the cost is one branch.
    `:verb(field: type, …)` is compact for the ~2 verbs a resource has today. A
    resource with a dozen verbs would want them behind a `describe` action
    instead. Not worth solving until something approaches it.
+
+## 12. Adopted by Chat
+
+The built-in chat (`core/server/chat/handler.ts`) originally ran its model on
+the typed surface — ~167 tools, with every resource's field set emitted twice
+and no way to reach a custom method. It now hands the model the per-resource
+surface, so Chat and an MCP client see the same ~41 tools and the same
+`:verb` custom methods, and the surface's `instructions` double as the
+"Tools" section of Chat's system prompt.
+
+Two things changed on every surface to make a model's reads cheap:
+
+- **`list` takes `filter`, `order_by`, and `limit`.** They pass straight to
+  the engine (`GET /<plural>?filter=…&order_by=…&max_page_size=…`), which
+  rejects a bad expression with a 400 the model can correct. The grammar is
+  stated once — in the typed `filter` param's description, and once in each
+  derived surface's instructions — not once per resource.
+- **A list is one page, not the whole collection.** `limit` is the page size
+  (default and max 100). The result is `{ records, count, truncated }`, with a
+  `note` when the engine had more, so the model learns to narrow rather than
+  page.
+
+On the SPA side the chat transcript's tool markers show the resource and the
+action (`gift_cards · create`), and the hook refetches app data after a
+`create`/`update`/`delete` or any `:verb` call.

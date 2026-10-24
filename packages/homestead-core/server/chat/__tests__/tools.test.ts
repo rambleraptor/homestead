@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { z } from 'zod';
-import { buildTools } from '../tools';
+import { buildTools, listParamShape } from '../tools';
 import type { ResourceDefinition } from '../../../resources/types';
 
 const giftCard: ResourceDefinition = {
@@ -345,5 +345,49 @@ describe('buildTools', () => {
         new_amount: 1,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('list params on the read tool', () => {
+  const { tools } = buildTools([giftCard, transaction]);
+  const readSchema = tools.read_gift_card.inputSchema as z.ZodObject;
+
+  it('accepts filter, order_by and limit alongside the optional id', () => {
+    const parsed = readSchema.parse({
+      filter: 'merchant == "Target" && amount > 10',
+      order_by: '-amount',
+      limit: 5,
+    });
+    expect(parsed).toEqual({
+      filter: 'merchant == "Target" && amount > 10',
+      order_by: '-amount',
+      limit: 5,
+    });
+    expect(readSchema.parse({})).toEqual({});
+  });
+
+  it('bounds limit to 1–100 integers', () => {
+    expect(readSchema.safeParse({ limit: 0 }).success).toBe(false);
+    expect(readSchema.safeParse({ limit: 101 }).success).toBe(false);
+    expect(readSchema.safeParse({ limit: 2.5 }).success).toBe(false);
+    expect(readSchema.safeParse({ limit: 100 }).success).toBe(true);
+  });
+
+  it('keeps the list params off the write tools', () => {
+    for (const name of ['create_gift_card', 'update_gift_card', 'delete_gift_card']) {
+      const shape = (tools[name].inputSchema as z.ZodObject).shape;
+      expect(Object.keys(shape)).not.toContain('filter');
+      expect(Object.keys(shape)).not.toContain('limit');
+    }
+  });
+
+  it('teaches the grammar once, in the typed param description', () => {
+    // The params are `.optional()`, so the description sits on the inner schema.
+    const describe = (schema: z.ZodTypeAny) =>
+      (schema as z.ZodOptional<z.ZodTypeAny>).unwrap().description ?? '';
+    expect(describe(readSchema.shape.filter)).toContain('has(<field>)');
+    expect(describe(readSchema.shape.order_by)).toContain('-field');
+    expect(describe(listParamShape({ brief: true }).filter)).not.toContain('has(<field>)');
+    expect(describe(listParamShape({ brief: true }).filter)).toContain('instructions');
   });
 });

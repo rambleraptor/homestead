@@ -48,6 +48,11 @@ export interface Page<T> {
 export interface ListOptions {
   /** aepbase list filter string (see the engine's minimal filter grammar). */
   filter?: string;
+  /**
+   * AEP-132 `order_by`: comma-separated field names, `-field` for descending
+   * (e.g. `-create_time, title`). Unset lists in id order.
+   */
+  orderBy?: string;
   /** Per-page size hint. The server may cap it. Defaults to 100. */
   pageSize?: number;
 }

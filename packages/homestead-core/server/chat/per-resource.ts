@@ -1,13 +1,17 @@
 /**
- * The per-resource MCP tool surface: **one tool per resource**, with the verb
- * as an `action` parameter.
+ * The per-resource tool surface: **one tool per resource**, with the verb as an
+ * `action` parameter. It is what the AI chat (`./handler`) hands its model, and
+ * one of the three surfaces `/api/mcp` can serve
+ * (`homestead-server/src/mcp/register.ts`).
  *
- * The typed surface in `./register` fans out on *verb × resource* — four tools
+ * The typed surface (`buildTools` in `./tools`, registered directly by the MCP
+ * route) fans out on *verb × resource* — four tools
  * per resource plus one per custom method, ~167 on a stock instance. But the
  * verb axis is the one that carries almost no information (`delete_gift_card`
  * and `delete_recipe` differ only in a name), while the expensive axis — the
  * field set — gets emitted *twice* per resource, since `create_x` and
- * `update_x` both enumerate every field. `./generic` fixes the count by
+ * `update_x` both enumerate every field. The generic surface
+ * (`homestead-server/src/mcp/generic.ts`) fixes the count by
  * collapsing to six tools, but pays for it by making the record body an
  * untyped `Record<string, unknown>`.
  *
@@ -20,7 +24,8 @@
  * both axes, and unlike `generic` the model can see what a field *is* at the
  * moment it composes the call.
  *
- * Three details carry the design (see `docs/design/mcp-tool-surfaces.md`):
+ * Three details carry the design (see
+ * `packages/homestead-site/docs/design/mcp-tool-surfaces.md`):
  *
  *  1. **Custom methods join the `action` enum in AEP's `:verb` notation** —
  *     `:classify`, `:process-image`. Beyond reading like the API it stands for,
@@ -45,16 +50,20 @@ import { z } from 'zod';
 import type {
   ResourceCustomMethod,
   ResourceDefinition,
-} from '@rambleraptor/homestead-core/resources/types';
+} from '../../resources/types';
 import {
   buildTools,
+  FILTER_SYNTAX,
+  listParamShape,
+  ORDER_BY_SYNTAX,
   parentIdParam,
+  pickListParams,
   snake,
   type CrudOp,
   type ToolBinding,
   type ToolSpec,
-} from '@rambleraptor/homestead-core/server/chat/tools';
-import { executeToolCall } from '@rambleraptor/homestead-core/server/chat/execute';
+} from './tools';
+import { executeToolCall } from './execute';
 import {
   buildCustomMethodTools,
   customMethodToolName,
@@ -228,8 +237,15 @@ export function buildResourceTools(
       toolName,
       binding,
       typed[toolName].inputSchema as z.ZodObject,
-      // `list` is `read` without an id; `get` is `read` with one.
-      { id: action === 'list' ? undefined : id, fields: args.fields, parentIds: parentIds.ids },
+      // `list` is `read` without an id; `get` is `read` with one. Only a
+      // list carries filter / order_by / limit — on any other action they
+      // are meaningless, so they are dropped rather than validated.
+      {
+        id: action === 'list' ? undefined : id,
+        fields: args.fields,
+        parentIds: parentIds.ids,
+        list: action === 'list' ? pickListParams(args) : undefined,
+      },
     );
     if ('error' in call) return { ok: false, error: call.error };
 
@@ -293,6 +309,10 @@ function buildInputSchema(
         ' custom methods that act on one record; omit for list and create.',
     )
     .optional();
+
+  // List options, `list` only. Brief descriptions: the grammar is stated once
+  // in the surface instructions rather than once per resource.
+  Object.assign(shape, listParamShape({ brief: true }));
 
   if (opts.bodyFields.length > 0) {
     const fields: Record<string, z.ZodTypeAny> = {};
@@ -360,7 +380,7 @@ function describeResource(
   // schema serves them all.
   const crud = opts.actions.filter((a) => !a.startsWith(':'));
   const signature: Record<string, string> = {
-    list: 'list',
+    list: 'list(filter?, order_by?, limit?)',
     get: 'get(id)',
     create: 'create(fields)',
     update: 'update(id, fields)',
@@ -409,6 +429,12 @@ export function resourceInstructions(): string {
     'An action written `:like-this` is an app-specific custom method; the tool description' +
       ' says what each one needs. Nested resources take their ancestor ids as `<parent>_id`' +
       ' params, required for every action.',
+    '',
+    'A `list` can be narrowed and sorted server-side, which is cheaper than reading a whole' +
+      ' collection: pass `filter`, `order_by`, and `limit` (default and max 100; the result' +
+      ' says when more matched).',
+    `- filter: ${FILTER_SYNTAX}`,
+    `- order_by: ${ORDER_BY_SYNTAX}`,
   ].join('\n');
 }
 

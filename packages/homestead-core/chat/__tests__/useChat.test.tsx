@@ -45,7 +45,7 @@ describe('useChat', () => {
     fetchMock.mockResolvedValueOnce(
       okResponse({
         reply: 'Done!',
-        toolCalls: [{ tool: 'create_todo', args: {}, ok: true }],
+        toolCalls: [{ tool: 'personal_todos', args: { action: 'create' }, ok: true }],
       }),
     );
 
@@ -70,11 +70,40 @@ describe('useChat', () => {
       {
         role: 'assistant',
         content: 'Done!',
-        toolCalls: [{ tool: 'create_todo', args: {}, ok: true }],
+        toolCalls: [{ tool: 'personal_todos', args: { action: 'create' }, ok: true }],
       },
     ]);
     expect(result.current.pending).toBe(false);
     expect(result.current.error).toBeNull();
+  });
+
+  it('refetches app data after a write action or custom method, not after a read', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(() => useChat(), { wrapper });
+
+    const sendWith = async (toolCalls: unknown[]) => {
+      fetchMock.mockResolvedValueOnce(okResponse({ reply: 'ok', toolCalls }));
+      await act(() => result.current.send('go'));
+    };
+
+    await sendWith([{ tool: 'todos', args: { action: 'list', filter: 'done == false' }, ok: true }]);
+    await sendWith([{ tool: 'search_documents', args: { query: 'tax' }, ok: true }]);
+    expect(invalidate).not.toHaveBeenCalled();
+
+    await sendWith([{ tool: 'todos', args: { action: 'update', id: 't1' }, ok: true }]);
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['app'] });
+
+    await sendWith([{ tool: 'groceries', args: { action: ':process-image' }, ok: true }]);
+    expect(invalidate).toHaveBeenCalledTimes(2);
+
+    // A failed write changed nothing, so there is nothing to refetch.
+    await sendWith([{ tool: 'todos', args: { action: 'delete', id: 't1' }, ok: false, error: 'x' }]);
+    expect(invalidate).toHaveBeenCalledTimes(2);
   });
 
   it('strips display-only toolCalls from the outgoing transcript', async () => {

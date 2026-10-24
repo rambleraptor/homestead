@@ -30,11 +30,15 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@rambleraptor/homestead-core/shared/components/ui/message-scroller';
-import { useChat, type UiChatMessage } from '../hooks/useChat';
+import { toolAction, useChat, type UiChatMessage } from '../hooks/useChat';
 import type { ChatToolCall } from '../types';
 
-/** A tool the assistant invoked, shown as a status marker in the transcript. */
+/**
+ * A tool the assistant invoked, shown as a status marker in the transcript:
+ * the resource it touched and, when the call carried one, the action.
+ */
 function ToolMarker({ call }: { call: ChatToolCall }) {
+  const action = toolAction(call);
   return (
     <Marker
       className={call.ok ? undefined : 'text-destructive'}
@@ -45,6 +49,14 @@ function ToolMarker({ call }: { call: ChatToolCall }) {
       </MarkerIcon>
       <MarkerContent>
         {call.ok ? 'Used' : 'Failed'} <span className="font-medium">{call.tool}</span>
+        {action ? (
+          <>
+            {' · '}
+            <span className="font-medium" data-testid="chat-tool-action">
+              {action}
+            </span>
+          </>
+        ) : null}
         {!call.ok && call.error ? ` — ${call.error}` : null}
       </MarkerContent>
       {call.ok ? (

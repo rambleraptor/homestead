@@ -146,6 +146,14 @@ with **your** permissions, confirms before deleting, and shows you which
 actions it took. Conversations are not stored — each one lives only in the
 open tab.
 
+Under the hood the assistant sees the same **one-tool-per-resource** surface
+the [MCP server](#the-tool-surface) serves by default: one tool per
+resource, with the verb — `list`, `get`, `create`, `update`, `delete`, or an
+app's `:custom-method` such as `:process-image` or `:classify` — as the tool's
+`action`. A `list` can be narrowed and sorted on the server (`filter`,
+`order_by`, `limit`), so "what's due this week" is one small read rather than
+a dump of the whole collection.
+
 ### Enable Chat
 
 Chat runs on whichever model you [configure as your AI
@@ -162,9 +170,9 @@ configured and the rest of Homestead works as normal.
 Homestead ships a **built-in [MCP](https://modelcontextprotocol.io) server** at
 `/api/mcp` — no separate process. It exposes every resource in the instance,
 plus the app-declared AEP-136 custom methods (the `POST /<plural>:<verb>`
-endpoints declared in `customMethods`, which Chat has no equivalent of), plus
-document search when embeddings are configured. Every action runs with the
-signed-in user's own permissions.
+endpoints declared in `customMethods`), plus document search when embeddings
+are configured — the same tools the built-in [Chat](#chat-with-your-data)
+runs on. Every action runs with the signed-in user's own permissions.
 
 **Enable it.** MCP clients sign in through Homestead's OAuth authorization
 server, so turn that on in `homestead.config.ts` and restart:

@@ -6,17 +6,14 @@
  * self-correct.
  */
 
-import type { HomesteadClient } from '@rambleraptor/homestead-client';
+import type { HomesteadClient, ListOptions } from '@rambleraptor/homestead-client';
 import { collectionAt, serverClient } from '../client';
 import type { ChatToolCall } from '../../chat/types';
 import { referenceId } from '../../resources/references';
-import { parentIdParam, type ToolBinding } from './tools';
+import { LIST_CAP, parentIdParam, type ToolBinding } from './tools';
 
 /** Alternating `[plural, id, plural, id, ...]` segments naming a parent chain. */
 type ParentPath = string[];
-
-/** Cap on records returned to the model from a list call (context safety). */
-const LIST_CAP = 100;
 
 /** A provider-agnostic tool call: the tool name plus its parsed arguments. */
 export interface ToolCall {
@@ -26,6 +23,22 @@ export interface ToolCall {
 
 function stringArg(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+/**
+ * The list options a read-without-id carries: `filter` and `order_by` pass
+ * straight to the engine (which rejects a bad one with a 400 the model can act
+ * on), and `limit` becomes the page size, clamped to {@link LIST_CAP} however
+ * it arrived — the Zod schema bounds it on the typed surface, but a derived
+ * surface may hand the executor an untyped value.
+ */
+function listOptions(args: Record<string, unknown>): ListOptions {
+  const limit = args.limit;
+  const pageSize =
+    typeof limit === 'number' && Number.isFinite(limit)
+      ? Math.min(LIST_CAP, Math.max(1, Math.floor(limit)))
+      : LIST_CAP;
+  return { filter: stringArg(args.filter), orderBy: stringArg(args.order_by), pageSize };
 }
 
 function buildParentPath(
@@ -127,15 +140,25 @@ export async function executeToolCall(
         if (id) {
           return { ...base, ok: true, result: await records.get(id) };
         }
-        const all = await records.listAll();
-        const result =
-          all.length > LIST_CAP
+        // One page, sized by `limit`: the engine does the filtering and
+        // sorting, so a narrow question costs one small read instead of the
+        // whole collection. A next-page token means more matched than fit.
+        const opts = listOptions(args);
+        const page = await records.page(opts);
+        const truncated = page.nextPageToken !== undefined;
+        const result = {
+          records: page.records,
+          count: page.records.length,
+          truncated,
+          ...(truncated
             ? {
-                records: all.slice(0, LIST_CAP),
-                total: all.length,
-                truncated: true,
+                note:
+                  `More than ${opts.pageSize} records matched; only the first ${opts.pageSize}` +
+                  ' are shown. Narrow with "filter" or sort with "order_by" so the ones you' +
+                  ' need come first.',
               }
-            : { records: all, total: all.length };
+            : {}),
+        };
         return { ...base, ok: true, result };
       }
       case 'update': {

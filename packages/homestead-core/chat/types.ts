@@ -16,7 +16,11 @@ export interface ChatMessage {
  * the UI so the user can see what was read or changed.
  */
 export interface ChatToolCall {
-  /** Tool name, e.g. `create_gift_card`. */
+  /**
+   * Tool name. One tool per resource, named for it (`gift_cards`); the verb
+   * is `args.action` (`list`, `get`, `create`, `update`, `delete`, or a
+   * `:verb` custom method). The semantic search tool is the one exception.
+   */
   tool: string;
   args: Record<string, unknown>;
   ok: boolean;

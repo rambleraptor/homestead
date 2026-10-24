@@ -1,8 +1,11 @@
 /**
- * Chat backend: `POST /api/chat` (mounted by the sidecar).
+ * Chat backend: `POST /api/chat`.
  *
- * Runs a chat turn through the unified AI API with one CRUD tool per
- * registered aepbase resource. The configured provider/model comes from
+ * Runs a chat turn through the unified AI API over the per-resource tool
+ * surface (`./per-resource`): one tool per registered aepbase resource, the
+ * verb as an `action` parameter, with each app's AEP-136 custom methods in the
+ * same enum — the surface `/api/mcp` serves by default, so chat and an MCP
+ * client see the same tools. The configured provider/model comes from
  * homestead.config.ts. Tool calls execute against aepbase with the caller's
  * own token, so they can only do what the user could do directly.
  * Conversations are ephemeral — the client sends the full transcript each turn
@@ -12,6 +15,7 @@
 import { authenticate, type AuthedUser } from '../aepbase';
 import { getAllResourceDefs } from '../../apps/registry';
 import { BUILTIN_RESOURCE_DEFS } from '../../resources/builtins';
+import type { ResourceDefinition } from '../../resources/types';
 import { logger } from '../../utils/logger';
 import type {
   ChatMessage,
@@ -20,8 +24,7 @@ import type {
 } from '../../chat/types';
 import { isAiConfigured } from '../ai/config';
 import { aiRunAgent, tool, type ModelMessage, type ToolSet } from '../ai/generate';
-import { buildTools } from './tools';
-import { executeToolCall } from './execute';
+import { buildResourceTools, resourceInstructions } from './per-resource';
 import { makeSearchTool, SEARCH_TOOL_NAME } from './search-tool';
 
 /** Max rounds of tool execution per turn before forcing a text answer. */
@@ -38,17 +41,24 @@ function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): string {
       (user.display_name ? `, name "${user.display_name}"` : '') +
       '.',
     '',
+    'Tools:',
+    resourceInstructions(),
+    '',
     'Guidelines:',
     `- When a tool takes a "user_id" parameter (notifications, preferences,`,
     `  and other user-scoped data), use the signed-in user's id above. You`,
     '  can only act on data the signed-in user can access.',
-    '- Todos come in two kinds: personal (private to one user; tools named',
-    '  "*_personal_todo", user-scoped via user_id) and family (shared with the',
-    '  whole household; tools named "*_todo"). When a member asks to add or list',
-    "  todos without saying which, default to PERSONAL for the signed-in user.",
-    '  Use the family todo tools only when they say it is shared/family/household.',
-    '- Record ids are server-assigned. When you are not sure of an id, read',
-    '  (list) the collection first instead of guessing.',
+    '- Todos come in two kinds: personal (private to one user; the',
+    '  "personal_todos" tool, user-scoped via user_id) and family (shared with',
+    '  the whole household; the "todos" tool). When a member asks to add or',
+    '  list todos without saying which, default to PERSONAL for the signed-in',
+    '  user. Use the family todos tool only when they say it is shared/family/',
+    '  household.',
+    '- Record ids are server-assigned. When you are not sure of an id, list',
+    '  the collection (with a filter when you can) instead of guessing.',
+    '- Prefer a filtered, sorted, limited list over reading a whole',
+    '  collection: "due this week" is a filter on the due-date field, "the',
+    '  latest five" is order_by with a limit.',
     ...(hasDocSearch
       ? [
           `- To answer questions about the contents of uploaded files, use the`,
@@ -71,6 +81,48 @@ function isValidMessage(m: unknown): m is ChatMessage {
   if (typeof m !== 'object' || m === null) return false;
   const { role, content } = m as Record<string, unknown>;
   return (role === 'user' || role === 'assistant') && typeof content === 'string';
+}
+
+/**
+ * The tool set one chat turn runs with: the per-resource surface over `defs`,
+ * each tool executing under `token`, plus the semantic document search when
+ * embeddings are configured. Every outcome is reported through `record` in
+ * invocation order — the SDK calls each tool's `execute` and loops, so
+ * recording here (vs. reading the final step) keeps the turn's `toolCalls`
+ * ordered and complete even across several calls per step.
+ *
+ * Exported for tests; `handleChat` is the only runtime caller.
+ */
+export function buildChatToolSet(
+  defs: ResourceDefinition[],
+  token: string,
+  record: (call: ChatToolCall) => void,
+): { toolSet: ToolSet; hasDocSearch: boolean } {
+  const surface = buildResourceTools(defs);
+  const toolSet: ToolSet = {};
+  for (const [name, spec] of Object.entries(surface.tools)) {
+    toolSet[name] = tool({
+      description: spec.description,
+      inputSchema: spec.inputSchema,
+      execute: async (rawArgs: unknown) => {
+        const args = (rawArgs ?? {}) as Record<string, unknown>;
+        const out = await surface.execute(name, args, token);
+        record(
+          out.ok
+            ? { tool: name, args, ok: true, result: out.result }
+            : { tool: name, args, ok: false, error: out.error },
+        );
+        return out.ok ? { result: out.result ?? null } : { error: out.error };
+      },
+    });
+  }
+
+  // Semantic search over embedded file fields. Auto-registered only when some
+  // resource embeds a file field and embedding is configured; null otherwise.
+  const searchTool = makeSearchTool({ defs, token, record });
+  if (searchTool) toolSet[SEARCH_TOOL_NAME] = searchTool;
+
+  return { toolSet, hasDocSearch: searchTool !== null };
 }
 
 export async function handleChat(request: Request): Promise<Response> {
@@ -109,38 +161,10 @@ export async function handleChat(request: Request): Promise<Response> {
   // Same definition union the schema sync applies, so the model sees
   // every collection that exists in aepbase.
   const defs = [...BUILTIN_RESOURCE_DEFS, ...getAllResourceDefs()];
-  const { tools, bindings } = buildTools(defs);
-
-  // Capture every tool outcome in invocation order. The SDK calls each tool's
-  // `execute`, feeds its return back to the model, and loops; pushing here (vs.
-  // reading the final step record) keeps the reported `toolCalls` ordered and
-  // complete even across multiple tool calls per step.
   const toolCalls: ChatToolCall[] = [];
-  const toolSet: ToolSet = {};
-  for (const [name, spec] of Object.entries(tools)) {
-    toolSet[name] = tool({
-      description: spec.description,
-      inputSchema: spec.inputSchema,
-      execute: async (args: unknown) => {
-        const outcome = await executeToolCall(
-          { name, args: args as Record<string, unknown> },
-          bindings,
-          auth.token,
-        );
-        toolCalls.push(outcome);
-        return outcome.ok ? { result: outcome.result ?? null } : { error: outcome.error };
-      },
-    });
-  }
-
-  // Semantic search over embedded file fields. Auto-registered only when some
-  // resource embeds a file field and embedding is configured; null otherwise.
-  const searchTool = makeSearchTool({
-    defs,
-    token: auth.token,
-    record: (call) => toolCalls.push(call),
-  });
-  if (searchTool) toolSet[SEARCH_TOOL_NAME] = searchTool;
+  const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token, (call) =>
+    toolCalls.push(call),
+  );
 
   const modelMessages: ModelMessage[] = messages.map((m) => ({
     role: m.role,
@@ -149,7 +173,7 @@ export async function handleChat(request: Request): Promise<Response> {
 
   try {
     const { text } = await aiRunAgent({
-      system: buildSystemPrompt(auth.user, searchTool !== null),
+      system: buildSystemPrompt(auth.user, hasDocSearch),
       messages: modelMessages,
       tools: toolSet,
       maxRounds: MAX_TOOL_ROUNDS,

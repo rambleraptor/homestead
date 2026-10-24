@@ -97,6 +97,7 @@ export class CollectionRefImpl<T> implements CollectionRef<T> {
         max_page_size: options.pageSize ?? DEFAULT_PAGE_SIZE,
         page_token: options.pageToken,
         filter: options.filter,
+        order_by: options.orderBy,
       },
     });
     return { records: env.results ?? [], nextPageToken: env.next_page_token || undefined };
