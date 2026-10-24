@@ -1,8 +1,10 @@
-// Address type. PB-shape stays here so existing helpers compile; the
-// aepbase code path hydrates the same field names.
-export interface Address {
+// A home shared by a group of people. `members` holds person ids (bare ids
+// or `people/{id}` paths — the chat tools write either).
+export interface Household {
   id: string;
-  line1: string;
+  name: string;
+  members: string[];
+  line1?: string;
   line2?: string;
   city?: string;
   state?: string;
@@ -10,21 +12,20 @@ export interface Address {
   country?: string;
   wifi_network?: string;
   wifi_password?: string;
-  shared_data_id?: string; // Optional link to person_shared_data for additional addresses
-  created_by: string;
-  created: string;
-  updated: string;
+  created_by?: string;
 }
 
-// Internal type for shared data (not exposed to UI)
-export interface PersonSharedData {
-  id: string;
-  person_a: string;
-  person_b?: string;
-  address_id?: string; // Primary address ID (single)
-  created_by: string;
-  created: string;
-  updated: string;
+export interface HouseholdFormData {
+  name: string;
+  members: string[]; // Bare person ids
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  wifi_network?: string;
+  wifi_password?: string;
 }
 
 export type RelationshipKind = 'partner' | 'parent' | 'sibling';
@@ -47,13 +48,13 @@ export interface RelatedPerson {
   inferred?: boolean;
 }
 
-// Person — addresses come from shared_data; relatives come from
-// person-relationships. Both are hydrated client-side.
+// Person — households and relatives are hydrated client-side from the
+// households and person-relationships collections.
 export interface Person {
   id: string;
   name: string;
   aliases: string[]; // Alternate names (maiden name, nickname); can be empty
-  addresses: Address[]; // Array of addresses (can be empty)
+  households: Household[]; // Can be empty
   partner?: RelatedPerson;
   parents: RelatedPerson[];
   children: RelatedPerson[];
@@ -63,23 +64,12 @@ export interface Person {
   updated: string;
 }
 
-// Form data for address input (can be new or existing)
-export interface AddressFormData {
-  id?: string; // If editing existing address
-  line1: string;
-  line2?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-  wifi_network?: string;
-  wifi_password?: string;
-}
-
 export interface PersonFormData {
   name: string;
   aliases: string[]; // Alternate names (maiden name, nickname)
-  addresses: AddressFormData[]; // Array of addresses
+  household_ids?: string[]; // Bare household ids
+  // "New household" shortcut: created with this person as a member.
+  new_household?: Omit<HouseholdFormData, 'members'>;
   partner_id?: string; // Used in form to select partner
   parent_ids?: string[];
   child_ids?: string[];

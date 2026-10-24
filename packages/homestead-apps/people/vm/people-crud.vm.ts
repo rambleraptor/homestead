@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 import { PeoplePage } from '../e2e/PeoplePage';
-import { createPerson, getPersonSharedData, testPeople } from '../e2e/helpers';
+import { createPerson, getHouseholdsForPerson, testPeople } from '../e2e/helpers';
 
 describe('People CRUD', () => {
   let h: Harness;
@@ -39,6 +39,12 @@ describe('People CRUD', () => {
     await peoplePage.createPerson(personData);
 
     await peoplePage.expectPersonInList(personData.name);
+
+    // The address went into a new household named after the person.
+    const people = await e2eClient(userToken).collection<{ id: string; name: string }>('people').listAll();
+    const john = people.find((p) => p.name === 'John Doe')!;
+    const households = await getHouseholdsForPerson(userToken, john.id);
+    expect(households.map((x) => [x.name, x.line1])).toEqual([['John Doe', personData.address]]);
   });
 
   test('should edit an existing person', async () => {
@@ -52,21 +58,15 @@ describe('People CRUD', () => {
 
     await peoplePage.editPerson('Original Name', {
       name: 'Updated Name',
-      address: '456 New Ave',
     });
 
     // Check person record
     const updated = await e2eClient(userToken).collection<{ name: string }>('people').get(created.id);
     expect(updated.name).toBe('Updated Name');
 
-    // Check shared data and address
-    const sharedData = await getPersonSharedData(userToken, created.id);
-    if (sharedData?.address_id) {
-      const address = await e2eClient(userToken).collection<{ line1: string }>('addresses').get(sharedData.address_id);
-      expect(address.line1).toBe('456 New Ave');
-    } else {
-      throw new Error('Expected shared data with address_id');
-    }
+    // Editing the person keeps them in their household
+    const households = await getHouseholdsForPerson(userToken, created.id);
+    expect(households.map((x) => x.line1)).toEqual(['123 Old St']);
 
     await peoplePage.expectPersonInList('Updated Name');
     await peoplePage.expectPersonNotInList('Original Name');

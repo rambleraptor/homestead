@@ -28,6 +28,7 @@ export class PeoplePage {
     await addButton.click();
   }
 
+  /** Fill the person form. An `address` goes into a new household. */
   async fillPersonForm(data: {
     name: string;
     address?: string;
@@ -35,21 +36,28 @@ export class PeoplePage {
     await this.driver.locator('#name').fill(data.name);
 
     if (data.address) {
-      // Check if there's already an address input visible
-      const firstAddressInput = this.driver.locator('#address-0-line1');
-      const isAddressInputVisible = await firstAddressInput.isVisible();
-
-      if (!isAddressInputVisible) {
-        // Click "Add Address" button to create the first address
-        const addAddressButton = this.driver.getByRole('button', { name: /add address/i });
-        await addAddressButton.waitFor({ state: 'visible' });
-        await addAddressButton.click();
-        await this.driver.waitForNetworkIdle();
-      }
-
-      // Fill in the first address line1 field
-      await this.driver.locator('#address-0-line1').fill(data.address);
+      await this.startNewHousehold();
+      await this.driver.locator('#new-household-line1').fill(data.address);
     }
+  }
+
+  /** Open the person form's "New household" shortcut (name prefilled). */
+  async startNewHousehold() {
+    await this.driver.getByTestId('new-household-button').click();
+    await this.driver.getByTestId('new-household').waitFor({ state: 'visible' });
+  }
+
+  /** Add an existing household in the open person form's picker. */
+  async addHousehold(household: { id: string; name: string }) {
+    const input = this.driver.getByTestId('person-households-input');
+    await input.click();
+    await input.fill(household.name);
+    await this.driver.getByTestId(`person-households-option-${household.id}`).click();
+  }
+
+  /** Remove a household chip from the open person form's picker. */
+  async removeHousehold(household: { id: string }) {
+    await this.driver.getByTestId(`person-households-remove-${household.id}`).click();
   }
 
   async submitPersonForm() {
@@ -82,35 +90,11 @@ export class PeoplePage {
 
   async editPerson(personName: string, newData: Partial<{
     name: string;
-    address: string;
   }>) {
-    await this.expectPersonInList(personName);
-
-    const editButton = this.driver.getByRole('button', { name: `Edit ${personName}` }).first();
-    await editButton.waitFor({ state: 'visible' });
-    await editButton.click();
-
-    await this.driver.locator('#name').waitFor({ state: 'visible' });
+    await this.openEditForm(personName);
 
     if (newData.name) {
       await this.driver.locator('#name').fill(newData.name);
-    }
-    if (newData.address) {
-      // Check if there's already an address input visible
-      const firstAddressInput = this.driver.locator('#address-0-line1');
-      const isAddressInputVisible = await firstAddressInput.isVisible();
-
-      if (!isAddressInputVisible) {
-        // Click "Add Address" button to create the first address
-        const addAddressButton = this.driver.getByRole('button', { name: /add address/i });
-        await addAddressButton.waitFor({ state: 'visible' });
-        await addAddressButton.click();
-        await this.driver.waitForNetworkIdle();
-      }
-
-      // Clear and fill the first address line1 field
-      await this.driver.locator('#address-0-line1').clear();
-      await this.driver.locator('#address-0-line1').fill(newData.address);
     }
 
     await this.submitPersonForm();
@@ -219,46 +203,13 @@ export class PeoplePage {
     await this.expect(this.driver.getByText(`WiFi: ${wifiNetwork}`, { exact: false })).toBeVisible({ timeout: 5000 });
   }
 
-  // Multiple Address Methods
-
-  async addSecondAddress(addressLine: string) {
-    // Click "Add Address" button
-    const addAddressButton = this.driver.getByTestId('add-address-button');
-    await addAddressButton.waitFor({ state: 'visible' });
-    await addAddressButton.click();
-
-    // Fill in the second address (index 1)
-    const secondAddressInput = this.driver.locator('#address-1-line1');
-    await secondAddressInput.waitFor({ state: 'visible' });
-    await secondAddressInput.fill(addressLine);
+  /** The person's card lists a household showing this text (name, address or WiFi). */
+  async expectHouseholdOnCard(person: { id: string }, text: string) {
+    await this.expect(this.driver.getByTestId(`person-card-households-${person.id}`)).toContainText(text);
   }
 
-  async removeAddress(index: number) {
-    const removeButton = this.driver.getByTestId(`remove-address-${index}-button`);
-    await removeButton.waitFor({ state: 'visible' });
-    await removeButton.click();
+  async expectNoHouseholdOnCard(person: { id: string }) {
+    await this.expect(this.driver.getByTestId(`person-card-households-${person.id}`)).toHaveCount(0);
   }
-
-  async expectAddressValue(index: number, value: string) {
-    const addressInput = this.driver.locator(`#address-${index}-line1`);
-    await this.expect(addressInput).toHaveValue(value);
-  }
-
-  async expectAddressCount(count: number) {
-    if (count === 0) {
-      // Check for empty state message
-      await this.expect(this.driver.getByText('No addresses added')).toBeVisible();
-    } else {
-      // Check that the right number of address inputs exist
-      for (let i = 0; i < count; i++) {
-        await this.expect(this.driver.locator(`#address-${i}-line1`)).toBeVisible();
-      }
-
-      // Verify that the next address doesn't exist
-      const nextAddress = this.driver.locator(`#address-${count}-line1`);
-      await this.expect(nextAddress).not.toBeVisible({ timeout: 1000 }).catch(() => {});
-    }
-  }
-
 }
 

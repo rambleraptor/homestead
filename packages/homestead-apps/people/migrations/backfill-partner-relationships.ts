@@ -16,8 +16,16 @@
 import type { MigrationHandler } from '@rambleraptor/homestead-core/apps/migrations';
 import { serverClient } from '@rambleraptor/homestead-core/server/client';
 import { PERSON_RELATIONSHIPS, PERSON_SHARED_DATA } from '../resources';
-import type { PersonRelationship, PersonSharedData } from '../types';
+import type { PersonRelationship } from '../types';
 import { canonicalLink, linkKey } from '../utils/relationships';
+
+/** The legacy `person-shared-data` row (the resource is being retired). */
+interface PersonSharedData {
+  id: string;
+  person_a: string;
+  person_b?: string;
+  created_by?: string;
+}
 
 const migrate: MigrationHandler = async ({ token, log }) => {
   const hs = serverClient(token);

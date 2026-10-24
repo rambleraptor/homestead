@@ -16,7 +16,9 @@ export function useDeletePerson() {
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.app('people').list() });
+      // The engine drops the person from their households and relationships,
+      // so every cached view in the app is stale.
+      queryClient.invalidateQueries({ queryKey: queryKeys.app('people').all() });
     },
   });
 }

@@ -1,7 +1,7 @@
 /**
  * People App Configuration
  *
- * App for managing contact information, family relationships, and addresses.
+ * App for managing contact information, family relationships, and households.
  * Yearly-recurring events (birthdays, anniversaries, …) live in the
  * Events app.
  */
@@ -21,6 +21,13 @@ export const peopleApp: AppConfig = {
       id: 'people-backfill-partner-relationships',
       title: 'Copy partners into person relationships',
       load: () => import('./migrations/backfill-partner-relationships'),
+    },
+    // Addresses moved from person-shared-data + address to households.
+    // One-shot and idempotent; the legacy rows are left for a later drop.
+    {
+      id: 'people-backfill-households',
+      title: 'Turn shared addresses into households',
+      load: () => import('./migrations/backfill-households'),
     },
   ],
   userSettings: {
@@ -48,10 +55,14 @@ export const peopleApp: AppConfig = {
         component: () => import('./bulk-import').then((m) => m.PeopleBulkImport),
       },
       {
+        path: 'households',
+        component: () => import('./components/HouseholdsHome').then((m) => m.HouseholdsHome),
+      },
+      {
         path: 'export',
         component: () => import('./bulk-export').then((m) => m.PeopleBulkExport),
       },
-      // After the static `import`/`export` paths so they aren't captured as a person id.
+      // After the static paths so they aren't captured as a person id.
       {
         path: ':id',
         component: () =>

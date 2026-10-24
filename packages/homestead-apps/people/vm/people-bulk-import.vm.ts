@@ -8,20 +8,20 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
-import { e2eClient, listOrEmpty } from '../../../../tests/e2e/utils/aepbase-helpers';
+import { listOrEmpty } from '../../../../tests/e2e/utils/aepbase-helpers';
 import { PeoplePage } from '../e2e/PeoplePage';
-import { getPersonSharedData, listRelationships, testBulkImportCSV } from '../e2e/helpers';
+import {
+  createHousehold,
+  createPerson,
+  getHouseholdsForPerson,
+  listHouseholds,
+  listRelationships,
+  testBulkImportCSV,
+} from '../e2e/helpers';
 
 interface PersonRow {
   id: string;
   name: string;
-}
-
-interface AddressRow {
-  id: string;
-  line1: string;
-  wifi_network?: string;
-  wifi_password?: string;
 }
 
 describe('People Bulk Import', () => {
@@ -91,15 +91,13 @@ describe('People Bulk Import', () => {
     const john = people.find((p) => p.name === 'John Smith');
     expect(john).toBeDefined();
 
-    const sharedData = await getPersonSharedData(userToken, john!.id);
-    expect(sharedData).toBeDefined();
-    expect(sharedData?.address_id).toBeDefined();
-
-    if (sharedData?.address_id) {
-      const address = await e2eClient(userToken).collection<AddressRow>('addresses').get(sharedData.address_id);
-      expect(address.line1).toContain('123 Main St');
-      expect(address.wifi_network).toBe('HomeNetwork');
-    }
+    // John and Jane share an address, so they share one household
+    const households = await listHouseholds(userToken);
+    expect(households).toHaveLength(1);
+    expect(households[0].name).toBe('John Smith & Jane Smith');
+    expect(households[0].line1).toContain('123 Main St');
+    expect(households[0].wifi_network).toBe('HomeNetwork');
+    expect(households[0].members).toContain(john!.id);
   });
 
   test('should import people with partner relationships', async () => {
@@ -130,13 +128,11 @@ describe('People Bulk Import', () => {
     expect(mike).toBeDefined();
     expect(sarah).toBeDefined();
 
-    // Check that they share the same shared_data record
-    const mikeSharedData = await getPersonSharedData(userToken, mike!.id);
-    const sarahSharedData = await getPersonSharedData(userToken, sarah!.id);
-
-    expect(mikeSharedData).toBeDefined();
-    expect(sarahSharedData).toBeDefined();
-    expect(mikeSharedData?.id).toBe(sarahSharedData?.id);
+    // Same address, so one shared household
+    const mikeHouseholds = await getHouseholdsForPerson(userToken, mike!.id);
+    const sarahHouseholds = await getHouseholdsForPerson(userToken, sarah!.id);
+    expect(mikeHouseholds).toHaveLength(1);
+    expect(sarahHouseholds.map((x) => x.id)).toEqual([mikeHouseholds[0].id]);
 
     // And the pairing is recorded as one partner relationship
     const partnerRows = (await listRelationships(userToken)).filter((r) => r.kind === 'partner');
@@ -164,14 +160,12 @@ describe('People Bulk Import', () => {
     const people = await listOrEmpty<PersonRow>(userToken, 'people');
     const david = people.find((p) => p.name === 'David Lee');
 
-    const sharedData = await getPersonSharedData(userToken, david!.id);
-    expect(sharedData?.address_id).toBeDefined();
-
-    if (sharedData?.address_id) {
-      const address = await e2eClient(userToken).collection<AddressRow>('addresses').get(sharedData.address_id);
-      expect(address.wifi_network).toBe('OfficeWiFi');
-      expect(address.wifi_password).toBe('secure123');
-    }
+    // Different addresses, so separate households
+    const davidHouseholds = await getHouseholdsForPerson(userToken, david!.id);
+    expect(davidHouseholds).toHaveLength(1);
+    expect(davidHouseholds[0].wifi_network).toBe('OfficeWiFi');
+    expect(davidHouseholds[0].wifi_password).toBe('secure123');
+    expect(await listHouseholds(userToken)).toHaveLength(2);
   });
 
   test('should handle mixed valid and invalid rows', async () => {
@@ -208,5 +202,27 @@ describe('People Bulk Import', () => {
 
     // Verify error messages are shown somewhere on the page
     await h.driver.expect(h.driver.getByText(/name.*required/i)).toBeVisible();
+  });
+
+  test('a partner with no address joins their existing partner\'s household', async () => {
+    const existing = await createPerson(userToken, { name: 'Pat Existing' });
+    const home = await createHousehold(userToken, {
+      name: 'Pat home',
+      members: [existing.id],
+      line1: '7 Existing Rd',
+    });
+
+    await peoplePage.gotoBulkImport();
+    await peoplePage.uploadCSVContent(`name,address,partner_name
+Robin New,,Pat Existing`);
+    await h.driver.expect(h.driver.getByTestId('import-button')).toBeEnabled({ timeout: 5000 });
+    await h.driver.getByTestId('import-button').click();
+    await h.driver.waitForURL(/\/people$/);
+    await peoplePage.expectPersonInList('Robin New');
+
+    const robin = (await listOrEmpty<PersonRow>(userToken, 'people')).find((p) => p.name === 'Robin New');
+    const robinHouseholds = await getHouseholdsForPerson(userToken, robin!.id);
+    expect(robinHouseholds.map((x) => x.id)).toEqual([home.id]);
+    expect(await listHouseholds(userToken)).toHaveLength(1);
   });
 });

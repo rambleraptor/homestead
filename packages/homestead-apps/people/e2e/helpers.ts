@@ -1,19 +1,15 @@
 /**
- * People E2E helpers — seed people, addresses, the linking
- * `person-shared-data` records, and `person-relationship` rows via the aepbase
- * REST API.
+ * People E2E helpers — seed people, households and `person-relationship`
+ * rows via the aepbase REST API.
  */
 
 import { deleteIfPresent, e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 
 interface CreatePersonInput {
   name: string;
+  /** Puts the person in a new household (named after them) at this address. */
   address?: string;
-  /**
-   * Required when `address` is set — the address resource has
-   * `created_by` in its `required` list per the canonical schema.
-   * Pass the test user's id from the `userId` fixture.
-   */
+  /** Recorded as the household's `created_by` when `address` is set. */
   createdByUserId?: string;
 }
 
@@ -22,33 +18,52 @@ export interface PersonRecord {
   name: string;
 }
 
+export interface HouseholdRecord {
+  id: string;
+  name: string;
+  members?: string[];
+  line1?: string;
+  wifi_network?: string;
+  wifi_password?: string;
+  created_by?: string;
+}
+
 export async function createPerson(
   token: string,
   data: CreatePersonInput,
 ): Promise<PersonRecord> {
-  const hs = e2eClient(token);
-  const person = await hs.collection<PersonRecord>('people').create({
+  const person = await e2eClient(token).collection<PersonRecord>('people').create({
     name: data.name,
   });
 
   if (data.address) {
-    if (!data.createdByUserId) {
-      throw new Error(
-        'createPerson: createdByUserId is required when `address` is set',
-      );
-    }
-    const address = await hs.collection<{ id: string }>('addresses').create({
+    await createHousehold(token, {
+      name: data.name,
+      members: [person.id],
       line1: data.address,
-      created_by: `users/${data.createdByUserId}`,
-    });
-    await hs.collection('person-shared-data').create({
-      person_a: person.id,
-      person_b: undefined,
-      address_id: address.id,
+      created_by: data.createdByUserId ? `users/${data.createdByUserId}` : undefined,
     });
   }
 
   return person;
+}
+
+export async function createHousehold(
+  token: string,
+  data: Omit<HouseholdRecord, 'id'>,
+): Promise<HouseholdRecord> {
+  return e2eClient(token).collection<HouseholdRecord>('households').create(data);
+}
+
+export async function listHouseholds(token: string): Promise<HouseholdRecord[]> {
+  return e2eClient(token).collection<HouseholdRecord>('households').listAll();
+}
+
+/** The households a person belongs to (members may be stored as ids or paths). */
+export async function getHouseholdsForPerson(token: string, personId: string) {
+  return (await listHouseholds(token)).filter((h) =>
+    (h.members ?? []).some((m) => m === personId || m === `people/${personId}`),
+  );
 }
 
 export async function createMultiplePeople(
@@ -60,18 +75,6 @@ export async function createMultiplePeople(
     results.push(await createPerson(token, person));
   }
   return results;
-}
-
-export async function getPersonSharedData(token: string, personId: string) {
-  const all = await e2eClient(token)
-    .collection<{
-      id: string;
-      person_a: string;
-      person_b?: string;
-      address_id?: string;
-    }>('person-shared-data')
-    .listAll();
-  return all.find((s) => s.person_a === personId || s.person_b === personId) || null;
 }
 
 export interface RelationshipRecord {
@@ -97,13 +100,6 @@ export async function deleteAllPeople(token: string) {
   const items = await e2eClient(token).collection<{ id: string }>('people').listAll();
   for (const item of items) {
     await deleteIfPresent(token, 'people', item.id);
-  }
-}
-
-export async function deleteAllAddresses(token: string) {
-  const items = await e2eClient(token).collection<{ id: string }>('addresses').listAll();
-  for (const item of items) {
-    await deleteIfPresent(token, 'addresses', item.id);
   }
 }
 

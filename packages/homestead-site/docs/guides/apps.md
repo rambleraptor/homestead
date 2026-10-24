@@ -25,7 +25,7 @@ edit it any time.
 
 ## Relationships
 
-- [**People**](https://github.com/rambleraptor/homestead/tree/main/packages/homestead-apps/people) — contact details and the dates worth remembering for people in your life.
+- [**People**](https://github.com/rambleraptor/homestead/tree/main/packages/homestead-apps/people) — contact details, family relationships, shared households (address and WiFi), and the dates worth remembering for people in your life.
 - [**Events**](https://github.com/rambleraptor/homestead/tree/main/packages/homestead-apps/events) — the recurring dates — birthdays, anniversaries — that come around each year.
 - [**Games**](https://github.com/rambleraptor/homestead/tree/main/packages/homestead-apps/games) — score-keeping for the games you play, from mini golf to Pictionary to bridge.
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BulkExportContext } from '@rambleraptor/homestead-core/resources/bulk-export/types';
 
-// The source reads four collections through the server client; stub it so the
+// The source reads three collections through the server client; stub it so the
 // test drives the join off seeded in-memory data rather than the engine.
 const collections: Record<string, unknown[]> = {
   people: [
@@ -9,11 +9,18 @@ const collections: Record<string, unknown[]> = {
     { id: 'p2', name: 'John Doe' },
     { id: 'p3', name: 'Peter Jones' },
   ],
-  addresses: [
-    { id: 'a1', line1: '123 Main St', wifi_network: 'HomeWiFi', wifi_password: 'pw' },
-  ],
-  'person-shared-data': [
-    { id: 's1', person_a: 'p1', person_b: 'p2', address_id: 'a1' },
+  // Jane + John share a household; "Zed's cabin" sorts after "Doe home", so
+  // it isn't the one Jane's row exports.
+  households: [
+    {
+      id: 'h1',
+      name: 'Doe home',
+      members: ['p1', 'people/p2'],
+      line1: '123 Main St',
+      wifi_network: 'HomeWiFi',
+      wifi_password: 'pw',
+    },
+    { id: 'h2', name: "Zed's cabin", members: ['p1'], line1: '9 Lake Rd' },
   ],
   // Partner comes from the relationship row; a sibling link is not a partner.
   'person-relationships': [
@@ -56,7 +63,7 @@ describe('people export source', () => {
     const rows = await source({ ctx, options: { combine_households: true } });
     expect(rows).toEqual([
       {
-        // Jane + John share address a1 → a single household row.
+        // Jane + John share household h1 → a single household row.
         name: 'Jane Doe & John Doe',
         address: '123 Main St',
         wifi_network: 'HomeWiFi',
@@ -117,7 +124,7 @@ describe('people export source', () => {
         partner_name: 'John Doe',
       },
       {
-        // Shares the same address record and is the other half of the couple.
+        // Same household, and the other half of the couple.
         name: 'John Doe',
         address: '123 Main St',
         wifi_network: 'HomeWiFi',
@@ -125,7 +132,7 @@ describe('people export source', () => {
         partner_name: 'Jane Doe',
       },
       {
-        // No shared-data record: address and partner come back undefined.
+        // No household: address and partner come back undefined.
         name: 'Peter Jones',
         address: undefined,
         wifi_network: undefined,

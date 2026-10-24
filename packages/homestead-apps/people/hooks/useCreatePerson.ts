@@ -7,8 +7,8 @@ import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { PEOPLE } from '../resources';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { PersonFormData } from '../types';
-import { createSharedData, setPartner } from '../utils/sharedDataSync';
 import { syncRelationships } from '../utils/relationshipSync';
+import { createHousehold, syncPersonHouseholds } from '../utils/householdSync';
 
 interface PersonRecord {
   id: string;
@@ -27,6 +27,19 @@ export function relativesFromForm(data: PersonFormData) {
   };
 }
 
+/**
+ * Join the households picked in the form, plus a new one when the form's
+ * "New household" shortcut was filled in.
+ */
+export async function applyHouseholds(personId: string, data: PersonFormData) {
+  const householdIds = [...(data.household_ids ?? [])];
+  if (data.new_household?.name.trim()) {
+    const created = await createHousehold({ ...data.new_household, members: [personId] });
+    householdIds.push(created.id);
+  }
+  await syncPersonHouseholds(personId, householdIds);
+}
+
 export function useCreatePerson() {
   const queryClient = useQueryClient();
 
@@ -39,17 +52,7 @@ export function useCreatePerson() {
         created_by: userId ? `users/${userId}` : undefined,
       });
 
-      if (data.partner_id) {
-        await setPartner(personRecord.id, data.partner_id, {
-          addresses: data.addresses,
-        });
-      } else if (data.addresses.length > 0) {
-        await createSharedData({
-          personId: personRecord.id,
-          addresses: data.addresses,
-        });
-      }
-
+      await applyHouseholds(personRecord.id, data);
       await syncRelationships(personRecord.id, relativesFromForm(data));
 
       return personRecord;

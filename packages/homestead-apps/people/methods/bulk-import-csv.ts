@@ -5,7 +5,8 @@
  *
  * People is the reason {@link BulkImportSaver} takes every selected item at
  * once rather than row by row: `partner_name` can name someone created later in
- * the same file, so partners can't be resolved until every person exists.
+ * the same file, and rows sharing an address share one household, so neither
+ * can be resolved until every person exists.
  */
 
 import {
@@ -21,9 +22,10 @@ import type {
   ParsedItem,
 } from '@rambleraptor/homestead-core/resources/bulk-import/types';
 import { serverClient } from '@rambleraptor/homestead-core/server/client';
-import { ADDRESSES, PEOPLE, PERSON_RELATIONSHIPS, PERSON_SHARED_DATA } from '../resources';
-import type { PersonRelationship } from '../types';
+import { HOUSEHOLDS, PEOPLE, PERSON_RELATIONSHIPS } from '../resources';
+import type { Household, PersonRelationship } from '../types';
 import { canonicalLink, linkKey } from '../utils/relationships';
+import { householdNameFor, householdsFor, memberIds } from '../utils/households';
 
 /** A person as it comes from a CSV — flat, one row per person. */
 export interface PersonCsvData {
@@ -87,31 +89,30 @@ interface PersonRecord {
   name: string;
 }
 
-interface SharedDataRecord {
-  id: string;
-  person_a: string;
-  person_b?: string;
-  address_id?: string;
+interface Created {
+  record: PersonRecord;
+  data: PersonCsvData;
 }
 
 /**
- * Create each person (with their address, if any), then link partners by name.
+ * Create each person, link partners by name, then group everyone into
+ * households.
+ *
+ * Rows with the same address (or, with no address, the same WiFi network) share
+ * one household. A partner with no address of their own joins their partner's
+ * household — a new one from this file, or an existing person's.
  *
  * Partner resolution is best-effort: an unmatched or failed partner link leaves
- * the person imported and is reported as a warning-shaped failure entry rather
- * than rolling anything back. Someone whose partner is a typo still belongs in
- * the household.
+ * the person imported rather than rolling anything back. Someone whose partner
+ * is a typo still belongs in the household.
  */
 export const save: BulkImportSaver<PersonCsvData> = async ({ items, ctx }) => {
-  const created: Array<{ record: PersonRecord; partnerName?: string }> = [];
+  const created: Created[] = [];
   const failed: BulkImportSaveResult['failed'] = [];
 
   for (const item of items) {
     try {
-      created.push({
-        record: await createPerson(item, ctx),
-        partnerName: item.data.partner_name,
-      });
+      created.push({ record: await createPerson(item, ctx), data: item.data });
     } catch (error) {
       failed.push({
         index: item.index,
@@ -120,7 +121,8 @@ export const save: BulkImportSaver<PersonCsvData> = async ({ items, ctx }) => {
     }
   }
 
-  await linkPartners(created, ctx);
+  const partners = await linkPartners(created, ctx);
+  await createHouseholds(created, partners, ctx);
   return { created: created.length, failed };
 };
 
@@ -128,47 +130,21 @@ async function createPerson(
   item: ParsedItem<PersonCsvData>,
   ctx: BulkImportContext,
 ): Promise<PersonRecord> {
-  const data = item.data;
-  const createdBy = ctx.auth.user.path;
-  const hs = serverClient(ctx.auth.token);
-
-  const person = await hs
+  return serverClient(ctx.auth.token)
     .collection<PersonRecord>(PEOPLE)
-    .create({ name: data.name, created_by: createdBy });
-
-  // Wifi credentials hang off an address record, so a row carrying only wifi
-  // still needs one (with an empty `line1`) — otherwise the wifi it specified
-  // would be silently dropped.
-  if (!data.address && !data.wifi_network) return person;
-
-  const address = await hs.collection<{ id: string }>(ADDRESSES).create({
-    line1: data.address ?? '',
-    wifi_network: data.wifi_network,
-    wifi_password: data.wifi_password,
-    created_by: createdBy,
-  });
-
-  await hs.collection<SharedDataRecord>(PERSON_SHARED_DATA).create({
-    person_a: person.id,
-    address_id: address.id,
-    created_by: createdBy,
-  });
-
-  return person;
+    .create({ name: item.data.name, created_by: ctx.auth.user.path });
 }
 
 /**
- * Second pass: resolve `partner_name` to an id, record the partner
- * relationship, and share the pair's address record.
+ * Second pass: resolve `partner_name` to an id and record the partner
+ * relationship. Returns each imported person's partner id.
  *
  * Names are matched case-insensitively against everyone created here first,
  * then against people already in the household.
  */
-async function linkPartners(
-  created: Array<{ record: PersonRecord; partnerName?: string }>,
-  ctx: BulkImportContext,
-): Promise<void> {
-  if (!created.some((c) => c.partnerName)) return;
+async function linkPartners(created: Created[], ctx: BulkImportContext): Promise<Map<string, string>> {
+  const partnerOf = new Map<string, string>();
+  if (!created.some((c) => c.data.partner_name)) return partnerOf;
 
   const idByName = new Map<string, string>();
   for (const { record } of created) {
@@ -185,83 +161,113 @@ async function linkPartners(
     console.warn('Bulk import: could not list people for partner matching:', error);
   }
 
-  const sharedData = await listSharedData(ctx);
   const relationships = serverClient(ctx.auth.token).collection<PersonRelationship>(
     PERSON_RELATIONSHIPS,
   );
   const existingLinks = new Set(
     (await relationships.listAll().catch(() => [])).map(linkKey),
   );
-  const linked = new Set<string>();
 
-  for (const { record, partnerName } of created) {
+  for (const { record, data } of created) {
+    const partnerName = data.partner_name;
     if (!partnerName) continue;
-
-    // A couple appears twice (once from each side); link them once.
-    const pair = [record.name.toLowerCase(), partnerName.toLowerCase()].sort().join('|');
-    if (linked.has(pair)) continue;
 
     const partnerId = idByName.get(partnerName.toLowerCase());
     if (!partnerId || partnerId === record.id) {
       console.warn(`Bulk import: no match for partner "${partnerName}" of ${record.name}`);
       continue;
     }
+    partnerOf.set(record.id, partnerId);
 
+    // A couple appears twice (once from each side); link them once.
+    const link = canonicalLink('partner', record.id, partnerId);
+    if (existingLinks.has(linkKey(link))) continue;
     try {
-      await setPartner(record.id, partnerId, sharedData, ctx);
-      const link = canonicalLink('partner', record.id, partnerId);
-      if (!existingLinks.has(linkKey(link))) {
-        await relationships.create({ ...link, created_by: ctx.auth.user.path });
-        existingLinks.add(linkKey(link));
-      }
-      linked.add(pair);
+      await relationships.create({ ...link, created_by: ctx.auth.user.path });
+      existingLinks.add(linkKey(link));
     } catch (error) {
       console.warn(`Bulk import: could not link ${record.name} to ${partnerName}:`, error);
     }
   }
+  return partnerOf;
 }
 
-async function listSharedData(ctx: BulkImportContext): Promise<SharedDataRecord[]> {
-  try {
-    return await serverClient(ctx.auth.token)
-      .collection<SharedDataRecord>(PERSON_SHARED_DATA)
-      .listAll();
-  } catch {
-    return [];
-  }
+/** Rows that should share a household get the same key. */
+function householdKey(data: PersonCsvData): string | undefined {
+  const address = data.address?.trim().toLowerCase();
+  if (address) return `address:${address}`;
+  const wifi = data.wifi_network?.trim().toLowerCase();
+  return wifi ? `wifi:${wifi}` : undefined;
 }
 
-/**
- * Point one person's shared-data record at their partner, creating the record
- * when neither side has one yet.
- *
- * Narrower than the app's full `setPartner`: an imported person is brand new, so
- * the merge-two-existing-records branches can't arise here.
- */
-async function setPartner(
-  personId: string,
-  partnerId: string,
-  sharedData: SharedDataRecord[],
+/** Third pass: create the households and fill in their members. */
+async function createHouseholds(
+  created: Created[],
+  partnerOf: Map<string, string>,
   ctx: BulkImportContext,
 ): Promise<void> {
-  const find = (id: string) =>
-    sharedData.find((s) => s.person_a === id || s.person_b === id);
-
-  const existing = find(personId) ?? find(partnerId);
-  const shared = serverClient(ctx.auth.token).collection<SharedDataRecord>(PERSON_SHARED_DATA);
-  if (!existing) {
-    const record = await shared.create({
-      person_a: personId,
-      person_b: partnerId,
-      created_by: ctx.auth.user.path,
-    });
-    sharedData.push(record);
-    return;
+  const groups = new Map<string, Created[]>();
+  for (const entry of created) {
+    const key = householdKey(entry.data);
+    if (!key) continue;
+    const group = groups.get(key) ?? [];
+    group.push(entry);
+    groups.set(key, group);
   }
 
-  const other = existing.person_a === personId ? partnerId : personId;
-  await shared.record(existing.id).update({ person_b: other });
-  existing.person_b = other;
+  const hs = serverClient(ctx.auth.token);
+  const households = hs.collection<Household>(HOUSEHOLDS);
+  const keyOf = new Map<string, string>();
+  for (const [key, group] of groups) {
+    for (const { record } of group) keyOf.set(record.id, key);
+  }
+
+  // A person with no address of their own follows their partner.
+  const joiners = new Map<string, string[]>(); // household key -> person ids
+  const joinExisting: Array<{ personId: string; partnerId: string }> = [];
+  for (const { record } of created) {
+    if (keyOf.has(record.id)) continue;
+    const partnerId = partnerOf.get(record.id);
+    if (!partnerId) continue;
+    const partnerKey = keyOf.get(partnerId);
+    if (partnerKey) {
+      joiners.set(partnerKey, [...(joiners.get(partnerKey) ?? []), record.id]);
+    } else if (!created.some((c) => c.record.id === partnerId)) {
+      joinExisting.push({ personId: record.id, partnerId });
+    }
+  }
+
+  for (const [key, group] of groups) {
+    const first = group[0].data;
+    const members = [...group.map((g) => g.record.id), ...(joiners.get(key) ?? [])];
+    const names = members.map((id) => created.find((c) => c.record.id === id)?.record.name ?? '');
+    try {
+      await households.create({
+        name: householdNameFor(names),
+        members,
+        line1: first.address?.trim() || undefined,
+        wifi_network: group.find((g) => g.data.wifi_network)?.data.wifi_network,
+        wifi_password: group.find((g) => g.data.wifi_password)?.data.wifi_password,
+        created_by: ctx.auth.user.path,
+      });
+    } catch (error) {
+      console.warn(`Bulk import: could not create household for ${names.join(', ')}:`, error);
+    }
+  }
+
+  if (joinExisting.length === 0) return;
+  const existing = await households.listAll().catch(() => [] as Household[]);
+  for (const { personId, partnerId } of joinExisting) {
+    for (const household of householdsFor(partnerId, existing)) {
+      const members = [...memberIds(household), personId];
+      try {
+        await households.record(household.id).update({ members });
+        household.members = members;
+      } catch (error) {
+        console.warn(`Bulk import: could not add ${personId} to ${household.name}:`, error);
+      }
+    }
+  }
 }
 
 export default createCsvParser(personCsvSchema);
