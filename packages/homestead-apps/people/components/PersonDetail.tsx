@@ -9,27 +9,15 @@
 
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, FileText, Loader2, MapPin, Users } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Users } from 'lucide-react';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { DocumentListItem } from '../../documents/components/DocumentListItem';
 import { groupDocumentsByCategory } from '../../documents/categorize';
 import { usePersonById } from '../hooks/usePersonById';
 import { useDocumentsForPerson } from '../hooks/useDocumentsForPerson';
-import type { Address, RelatedPerson } from '../types';
-
-function formatAddress(address: Address): string {
-  return [
-    address.line1,
-    address.line2,
-    address.city,
-    address.state,
-    address.postal_code,
-    address.country,
-  ]
-    .filter(Boolean)
-    .join(', ');
-}
+import type { RelatedPerson } from '../types';
+import { HouseholdSummary } from './HouseholdSummary';
 
 export function PersonDetail({ personId }: { personId: string }) {
   const { data: person, isLoading, isError } = usePersonById(personId);
@@ -66,23 +54,17 @@ export function PersonDetail({ personId }: { personId: string }) {
         subtitle={person.aliases.length > 0 ? `aka ${person.aliases.join(', ')}` : undefined}
       />
 
-      {(person.partner || person.addresses.length > 0) && (
+      {(person.partner || person.households.length > 0) && (
         <Card>
-          <div className="space-y-2">
+          <div className="space-y-3" data-testid="person-households">
             {person.partner && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Users className="h-4 w-4 text-brand-navy" aria-label="Partner icon" />
                 <span>{person.partner.name}</span>
               </div>
             )}
-            {person.addresses.map((address, index) => (
-              <div
-                key={address.id || index}
-                className="flex items-center gap-2 text-sm text-gray-600"
-              >
-                <MapPin className="h-4 w-4 text-blue-500" aria-label="Map pin icon" />
-                <span>{formatAddress(address)}</span>
-              </div>
+            {person.households.map((household) => (
+              <HouseholdSummary key={household.id} household={household} showName />
             ))}
           </div>
         </Card>

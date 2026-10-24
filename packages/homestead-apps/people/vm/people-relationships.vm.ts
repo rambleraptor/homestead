@@ -12,7 +12,7 @@ import { PersonDetailPage } from '../e2e/PersonDetailPage';
 import {
   createPerson,
   createRelationship,
-  getPersonSharedData,
+  getHouseholdsForPerson,
   listRelationships,
 } from '../e2e/helpers';
 
@@ -54,9 +54,9 @@ describe('People relationships', () => {
     await detailPage.expectFamily('children', ['Kid Parent']);
   });
 
-  test('choosing a partner stores a partner row and still shares the address record', async () => {
-    const ann = await createPerson(userToken, { name: 'Ann Partner' });
-    const bob = await createPerson(userToken, { name: 'Bob Partner' });
+  test('choosing a partner stores a partner row and leaves households alone', async () => {
+    const ann = await createPerson(userToken, { name: 'Ann Partner', address: '1 Ann St' });
+    const bob = await createPerson(userToken, { name: 'Bob Partner', address: '2 Bob St' });
 
     await peoplePage.goto();
     await peoplePage.openEditForm('Ann Partner');
@@ -68,10 +68,9 @@ describe('People relationships', () => {
     expect(row.kind).toBe('partner');
     expect([row.person_a, row.person_b].sort()).toEqual([ann.id, bob.id].sort());
 
-    const annShared = await getPersonSharedData(userToken, ann.id);
-    const bobShared = await getPersonSharedData(userToken, bob.id);
-    expect(annShared?.id).toBeDefined();
-    expect(annShared?.id).toBe(bobShared?.id);
+    // Partners living apart keep their own households.
+    expect((await getHouseholdsForPerson(userToken, ann.id)).map((x) => x.line1)).toEqual(['1 Ann St']);
+    expect((await getHouseholdsForPerson(userToken, bob.id)).map((x) => x.line1)).toEqual(['2 Bob St']);
 
     await peoplePage.expectPartnerOnCard(ann, 'Bob Partner');
     await peoplePage.expectPartnerOnCard(bob, 'Ann Partner');

@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Cake, CalendarHeart, Edit, Heart, Star, Trash2, MapPin, Users } from 'lucide-react';
+import { Cake, CalendarHeart, Edit, Heart, Star, Trash2, Users } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
-import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useFavorites } from '@rambleraptor/homestead-core/shared/favorites';
 import {
   getNextEventOccurrence,
@@ -10,7 +9,7 @@ import {
 } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
 import { useEventsForPerson } from '../../events/hooks/useEventsForPerson';
 import type { Event } from '../../events/types';
-import { getMapUrl } from '../utils/mapUtils';
+import { HouseholdSummary } from './HouseholdSummary';
 import type { Person } from '../types';
 
 interface PersonCardProps {
@@ -49,25 +48,10 @@ export function PersonCard({
   onEdit,
   onDelete,
 }: PersonCardProps) {
-  const { user } = useAuth();
   const partner = person.partner;
   const events = useEventsForPerson(person.id);
   const favorites = useFavorites('person');
   const starred = favorites.isFavorite(person.id);
-
-  const formatAddress = (address: Person['addresses'][0]): string => {
-    const parts = [
-      address.line1,
-      address.line2,
-      address.city,
-      address.state,
-      address.postal_code,
-      address.country,
-    ].filter(Boolean);
-    return parts.join(', ');
-  };
-
-  const mapProvider = user?.map_provider || 'google';
 
   return (
     <Card>
@@ -112,36 +96,11 @@ export function PersonCard({
                 </p>
               </div>
             ))}
-            {person.addresses && person.addresses.length > 0 && (
-              <div className="mt-1 space-y-2">
-                {person.addresses.map((address, index) => {
-                  const addressString = formatAddress(address);
-                  const mapsUrl = getMapUrl(addressString, mapProvider);
-
-                  return (
-                    <div key={address.id || index}>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-blue-500" aria-label="Map pin icon" />
-                        <a
-                          href={mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-500 hover:underline"
-                        >
-                          {addressString}
-                        </a>
-                      </div>
-                      {address.wifi_network && (
-                        <div className="ml-7 mt-1 text-xs text-gray-600">
-                          <span className="font-medium">WiFi:</span> {address.wifi_network}
-                          {address.wifi_password && (
-                            <span className="ml-2 font-mono">{address.wifi_password}</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            {person.households.length > 0 && (
+              <div className="mt-1 space-y-2" data-testid={`person-card-households-${person.id}`}>
+                {person.households.map((household) => (
+                  <HouseholdSummary key={household.id} household={household} showName />
+                ))}
               </div>
             )}
           </div>

@@ -180,18 +180,18 @@ export const source: BulkExportSource<PersonRow> = async ({ ctx, filter }) => {
 ```
 
 A source receives the whole request at once, so it can do the cross-collection
-joins the default can't. **People** is the reason: a person's address lives in a
-sibling `address` record linked through `person-shared-data`, and their partner
-is another person linked by a `person-relationship` row — so exporting "names and addresses" means walking that graph
-backwards. That's exactly the inverse of what the people *importer's* saver
+joins the default can't. **People** is the reason: a person's address lives on
+the `household` records listing them as a member, and their partner is another
+person linked by a `person-relationship` row — so exporting "names and
+addresses" means walking that graph backwards. That's exactly the inverse of what the people *importer's* saver
 writes.
 
 ## Export options
 
 A resource can offer **toggles** that change how the source shapes the export —
 declared as data, rendered generically by the export screen, and interpreted by
-the source. People uses one to collapse a household (people who share an
-`address_id`) into a single row instead of one row each:
+the source. People uses one to collapse a household (people who are members of
+the same `household` record) into a single row instead of one row each:
 
 ```ts
 bulkExport: {
@@ -214,7 +214,7 @@ every declared option is always present (its `default` fills in an omitted one):
 export const source = async ({ ctx, filter, options }) => {
   const people = await hs.collection('people').listAll(filter ? { filter } : undefined);
   if (!options?.combine_households) return perPersonRows(people);
-  return groupByAddress(people).map((household) => ({
+  return groupByHousehold(people).map((household) => ({
     name: household.map((p) => p.name).join(' & '),
     // ...shared address columns...
   }));

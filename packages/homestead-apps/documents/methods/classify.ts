@@ -407,7 +407,7 @@ const handler: AsyncCustomMethodHandler = async ({ id, auth, request }) => {
           id: row.id,
           name: row.name,
           aliases: row.aliases ?? [],
-          addresses: [],
+          households: [],
           parents: [],
           children: [],
           siblings: [],

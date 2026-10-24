@@ -311,7 +311,8 @@ what lets it do things a row-at-a-time loop can't:
 
 - **Pictionary** creates a game plus a team child record per team column.
 - **People** creates everyone, *then* resolves `partner_name` in a second pass,
-  because a partner may be someone created later in the same file.
+  because a partner may be someone created later in the same file, and finally
+  groups rows that share an address into one household.
 
 Collect per-item failures into `failed` instead of throwing, so one bad row
 doesn't abandon the rest.

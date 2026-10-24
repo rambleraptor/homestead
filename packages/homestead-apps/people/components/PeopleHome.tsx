@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, Plus, Upload } from 'lucide-react';
+import { Download, Home, Plus, Upload } from 'lucide-react';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
@@ -34,6 +34,14 @@ export function PeopleHome() {
         subtitle="Track important dates and information about people you know"
         actions={
           <>
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/people/households')}
+              data-testid="households-link"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Households
+            </Button>
             <Button variant="secondary" onClick={() => navigate('/people/import')}>
               <Upload className="w-4 h-4 mr-2" />
               Import

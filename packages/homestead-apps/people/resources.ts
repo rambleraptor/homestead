@@ -4,6 +4,7 @@ export const PEOPLE = 'people' as const;
 export const PERSON_SHARED_DATA = 'person-shared-data' as const;
 export const ADDRESSES = 'addresses' as const;
 export const PERSON_RELATIONSHIPS = 'person-relationships' as const;
+export const HOUSEHOLDS = 'households' as const;
 
 export const RELATIONSHIP_KINDS = ['partner', 'parent', 'sibling'] as const;
 
@@ -64,9 +65,11 @@ export const peopleResources: ResourceDefinition[] = [
   {
     singular: 'person-shared-data',
     plural: PERSON_SHARED_DATA,
+    // Legacy: replaced by `household`. Kept (unread) until a later release
+    // drops it, so the backfill migration has its data to copy.
     description:
-      'Groups up to two people who share an address. Not the record of who ' +
-      'is partnered: that lives in person-relationships.',
+      'Legacy, replaced by households — do not create. Grouped up to two ' +
+      'people who shared an address.',
     user_settable_create: true,
     fields: {
       person_a: {
@@ -103,10 +106,37 @@ export const peopleResources: ResourceDefinition[] = [
     },
   },
   {
+    singular: 'household',
+    plural: HOUSEHOLDS,
+    description:
+      'A home shared by a group of people: its address and WiFi. A person ' +
+      'can belong to several households (a main home and a lake house).',
+    user_settable_create: true,
+    fields: {
+      name: { type: 'string', required: true },
+      members: {
+        type: 'array',
+        items: { type: 'string', reference: { resource: 'person', onDelete: 'set-null' } },
+      },
+      line1: { type: 'string' },
+      line2: { type: 'string' },
+      city: { type: 'string' },
+      state: { type: 'string' },
+      postal_code: { type: 'string' },
+      country: { type: 'string' },
+      wifi_network: { type: 'string' },
+      wifi_password: { type: 'string' },
+      created_by: { type: 'string', reference: { resource: 'user' } },
+    },
+  },
+  {
     singular: 'address',
     plural: ADDRESSES,
+    // Legacy: replaced by the address fields on `household`. Kept (unread)
+    // until a later release drops it, so the backfill migration has its data.
     description:
-      'A physical address, optionally with WiFi credentials, optionally shared between people.',
+      'Legacy, replaced by households — do not create. A physical address ' +
+      'with optional WiFi credentials.',
     user_settable_create: true,
     fields: {
       line1: { type: 'string', required: true },

@@ -1,42 +1,31 @@
 import { useQuery } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
-import { ADDRESSES, PEOPLE } from '../resources';
+import { PEOPLE } from '../resources';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import type { Address } from '../types';
-import { findSharedDataForPerson } from '../utils/sharedDataSync';
 import { listRelationships } from '../utils/relationshipSync';
 import { relativesFor } from '../utils/relationships';
+import { householdsFor } from '../utils/households';
+import { listHouseholds } from '../utils/householdSync';
 import { toPerson, type PersonRecord } from './usePeople';
 
 export function usePersonById(id: string) {
   return useQuery({
     queryKey: queryKeys.app('people').detail(id),
     queryFn: async () => {
-      const record = await aepbase.get<PersonRecord>(PEOPLE, id);
-      const sharedData = await findSharedDataForPerson(id);
-
-      const addresses: Address[] = [];
-      if (sharedData) {
-        const all = await aepbase.list<Address>(ADDRESSES).catch(() => []);
-        const primary = sharedData.address_id
-          ? all.find((a) => a.id === sharedData.address_id)
-          : undefined;
-        if (primary) addresses.push(primary);
-        for (const address of all) {
-          if (address.shared_data_id === sharedData.id && address.id !== sharedData.address_id) {
-            addresses.push(address);
-          }
-        }
-      }
-
       // Relatives are named from the whole people list (household-sized).
-      const [relationships, people] = await Promise.all([
+      const [record, households, relationships, people] = await Promise.all([
+        aepbase.get<PersonRecord>(PEOPLE, id),
+        listHouseholds(),
         listRelationships(),
         aepbase.list<PersonRecord>(PEOPLE),
       ]);
       const nameById = new Map(people.map((p) => [p.id, p.name]));
 
-      return toPerson(record, addresses, relativesFor(id, relationships, nameById));
+      return toPerson(
+        record,
+        householdsFor(id, households),
+        relativesFor(id, relationships, nameById),
+      );
     },
     enabled: !!id,
   });

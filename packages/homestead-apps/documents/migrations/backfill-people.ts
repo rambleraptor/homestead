@@ -37,7 +37,7 @@ const migrate: MigrationHandler = async ({ token, log }) => {
       id: row.id,
       name: row.name,
       aliases: row.aliases ?? [],
-      addresses: [],
+      households: [],
       parents: [],
       children: [],
       siblings: [],
