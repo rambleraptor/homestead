@@ -195,6 +195,21 @@ describe('Chat', () => {
       await d.expect(chat.attachments.first()).toHaveAttribute('title', 'beach.png');
     });
 
+    test('an attached photo can be saved into an app', async () => {
+      const d = h.driver;
+      const chat = new ChatPage(d);
+      await chat.goto();
+      await chat.attach({ ...png, name: 'card.png' });
+      await chat.send(`Save this gift card ${CHAT_MARKERS.fileGiftCard}`);
+
+      await d.expect(chat.messages).toContainText('Saved the REI gift card with its photo.');
+      await d.expect(chat.toolCalls.first()).toContainText('gift_cards · create');
+      await chat.expectSettled(/Save this gift card/);
+      const cards = await e2eClient(token).collection<{ front_image?: string }>('gift-cards').listAll();
+      expect(cards).toHaveLength(1);
+      expect(cards[0]!.front_image).toBeTruthy();
+    });
+
     test('a message can be only a photo', async () => {
       const d = h.driver;
       const chat = new ChatPage(d);

@@ -36,7 +36,7 @@ import { CHAT_MESSAGES, CONVERSATIONS } from '../../chat/resources';
 import type { ChatTurnRequest } from '../../chat/types';
 import type { ResourceDefinition } from '../../resources/types';
 import { buildChatToolSet, buildSystemPrompt } from './handler';
-import { attachmentsTitle, checkAttachments, withAttachments } from './attachments';
+import { attachmentSource, attachmentsTitle, checkAttachments, withAttachments } from './attachments';
 
 /** Max rounds of tool execution per turn before forcing a text answer. */
 const MAX_TOOL_ROUNDS = 10;
@@ -351,14 +351,17 @@ export async function handleTurn(
     return engineFailure(err);
   }
 
+  /** One attached file's bytes, read under the caller's own token. */
+  const readAttachment = async (messageId: string, file: FileDescriptor): Promise<Uint8Array> => {
+    const blob = await messages.record(messageId).download(file);
+    return new Uint8Array(await blob.arrayBuffer());
+  };
+
   // 4. The model's context, rebuilt from storage.
   let modelMessages;
   try {
     const recent = history.slice(-HISTORY_LIMIT);
-    const ui = await withAttachments(toUiMessages(recent), recent, async (messageId, file) => {
-      const blob = await messages.record(messageId).download(file);
-      return new Uint8Array(await blob.arrayBuffer());
-    });
+    const ui = await withAttachments(toUiMessages(recent), recent, readAttachment);
     modelMessages = await convertToModelMessages(ui);
   } catch (err) {
     await finish({ status: 'error', error: `could not rebuild the conversation: ${String(err)}` });
@@ -366,7 +369,11 @@ export async function handleTurn(
   }
 
   // 5. Stream the model, writing the assistant message at each step boundary.
-  const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token);
+  // File fields take this conversation's attachments — every message's, not
+  // only those the model is shown — and nothing else.
+  const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token, {
+    attachments: attachmentSource(history, readAttachment),
+  });
   const parts: UIMessage['parts'] = [];
   // The reply text of the step in flight. Steps are stored when they end, so
   // without this a stopped turn would lose the words the reader already saw.

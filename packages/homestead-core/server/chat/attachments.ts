@@ -108,11 +108,12 @@ export async function withAttachments(
       const files = byId.get(message.id)?.attachments ?? [];
       if (message.role !== 'user' || files.length === 0) return message;
       const parts: UIMessage['parts'] = [];
+      const labels: string[] = [];
       const notes: string[] = [];
       const unreadable: string[] = [];
       for (const file of files) {
         if (!shown.has(message.id)) {
-          notes.push(file.name);
+          notes.push(attachmentLabel(file));
           continue;
         }
         try {
@@ -123,17 +124,50 @@ export async function withAttachments(
             filename: file.name,
             url: `data:${file.media_type};base64,${Buffer.from(bytes).toString('base64')}`,
           });
+          labels.push(attachmentLabel(file));
         } catch {
-          unreadable.push(file.name);
+          unreadable.push(attachmentLabel(file));
         }
       }
+      // Every file is named with its id, shown or not, so the model can file
+      // it into a record (see `attachmentSource`).
+      if (labels.length > 0) {
+        parts.push({ type: 'text', text: `[Attached: ${labels.join('; ')}]` });
+      }
       if (notes.length > 0) {
-        parts.push({ type: 'text', text: `[Attached earlier, no longer shown: ${notes.join(', ')}]` });
+        parts.push({ type: 'text', text: `[Attached earlier, no longer shown: ${notes.join('; ')}]` });
       }
       if (unreadable.length > 0) {
-        parts.push({ type: 'text', text: `[Attached, but couldn't be read: ${unreadable.join(', ')}]` });
+        parts.push({ type: 'text', text: `[Attached, but couldn't be read: ${unreadable.join('; ')}]` });
       }
       return { ...message, parts: [...message.parts, ...parts] };
     }),
   );
+}
+
+/** How the model sees a file: its name, type and the id a file field takes. */
+function attachmentLabel(file: FileDescriptor): string {
+  return `${file.name} (${file.media_type}, attachment id: ${file.id})`;
+}
+
+/**
+ * The files of one conversation, by attachment id, for the chat tools to put
+ * in a file field (`AttachmentSource` in `./execute`). Only ids from
+ * `stored` — this conversation's messages — resolve; anything else is refused,
+ * so a model can't be talked into filing a file from somewhere else.
+ */
+export function attachmentSource(
+  stored: readonly WithAttachments[],
+  read: (messageId: string, file: FileDescriptor) => Promise<Uint8Array>,
+): (id: string) => Promise<File> {
+  const byFileId = new Map<string, { messageId: string; file: FileDescriptor }>();
+  for (const message of stored) {
+    for (const file of message.attachments ?? []) byFileId.set(file.id, { messageId: message.id, file });
+  }
+  return async (id) => {
+    const found = byFileId.get(id);
+    if (!found) throw new Error(`no attachment "${id}" in this conversation`);
+    const bytes = await read(found.messageId, found.file);
+    return new File([new Uint8Array(bytes)], found.file.name, { type: found.file.media_type });
+  };
 }

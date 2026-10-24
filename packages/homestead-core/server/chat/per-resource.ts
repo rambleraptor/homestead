@@ -63,7 +63,7 @@ import {
   type ToolBinding,
   type ToolSpec,
 } from './tools';
-import { executeToolCall } from './execute';
+import { executeToolCall, type AttachmentSource } from './execute';
 import {
   buildCustomMethodTools,
   customMethodToolName,
@@ -113,12 +113,23 @@ interface ResourceTool {
  */
 export function buildResourceTools(
   defs: ResourceDefinition[],
-  { write = true }: { write?: boolean } = {},
+  {
+    write = true,
+    attachments,
+  }: {
+    write?: boolean;
+    /**
+     * Files a write may put in a file field, by attachment id — the chat's
+     * conversation. Without it (MCP), file fields stay out of the tools.
+     */
+    attachments?: AttachmentSource;
+  } = {},
 ): ToolSurface {
   // Reference hints name this surface's tools: one per resource, listed with
   // its `list` action — not the typed surface's `read_<singular>`.
   const { tools: typed, bindings } = buildTools(defs, {
     findHint: (target) => `use the ${snake(target.plural)} tool's "list" action to find one`,
+    files: attachments !== undefined,
   });
   const custom = buildCustomMethodTools(defs);
 
@@ -253,7 +264,9 @@ export function buildResourceTools(
     );
     if ('error' in call) return { ok: false, error: call.error };
 
-    const out = await executeToolCall({ name: call.name, args: call.args }, bindings, token);
+    const out = await executeToolCall({ name: call.name, args: call.args }, bindings, token, {
+      attachments,
+    });
     return out.ok ? { ok: true, result: out.result } : { ok: false, error: out.error ?? 'error' };
   }
 

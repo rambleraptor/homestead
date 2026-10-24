@@ -139,9 +139,12 @@ only on resources that have such files — the frozen baseline is unchanged.
   `record.download({ file: id })` or `record.download(descriptor)`.
 - SPA (`core/api/aepbase.ts`): `create` / `update` use the same encoding;
   `download(plural, id, { file })`; `useFileUrl` renders a descriptor.
-- Chat tools leave files out, and leave out any **list** holding a file: a list
-  is replaced whole on update, and a model that can't name the files to keep
-  would delete them. An object's other fields stay available.
+- Chat tools leave nested files out, and leave out any **list** holding a
+  file: a list is replaced whole on update, and a model that can't name the
+  files to keep would delete them. An object's other fields stay available. A
+  top-level file field takes the id of a file attached in the same
+  conversation (`attachmentSource` in `core/server/chat/attachments.ts`);
+  MCP's tools leave every file out.
 
 ## 7. What stays the same
 

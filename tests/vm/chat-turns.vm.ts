@@ -326,6 +326,34 @@ describe('attachments', () => {
     expect((await conversations().get(conversationId)).title).toBe('receipt.png');
   });
 
+  test("an attachment is filed into an app's file field", async () => {
+    const res = await sendWithFiles(`Save this gift card ${CHAT_MARKERS.fileGiftCard}`, [
+      ['card.png', PNG, 'image/png'],
+    ]);
+    expect(res.status).toBe(200);
+    expect(replyText(await events(res))).toBe('Saved the REI gift card with its photo.');
+
+    const cards = await e2eClient(token).collection<{ id: string; merchant: string; front_image?: string }>('gift-cards').listAll();
+    expect(cards.map((c) => c.merchant)).toEqual(['REI']);
+    expect(cards[0]!.front_image).toBeTruthy();
+    const image = await e2eClient(token).collection('gift-cards').record(cards[0]!.id).download('front_image');
+    expect(new Uint8Array(await image.arrayBuffer())).toEqual(PNG);
+  });
+
+  test('a file field can only take an attachment from this conversation', async () => {
+    // The script files "the first attachment of the latest message" — here
+    // there is none, so the tool call names an id the conversation doesn't have.
+    const res = await send(token, `Save this gift card ${CHAT_MARKERS.fileGiftCard}`);
+    const conversationId = res.headers.get('x-conversation-id')!;
+    const stream = await events(res);
+    const failed = stream.find((e) => e.type === 'tool-output-available') as
+      | { output?: { error?: string } }
+      | undefined;
+    expect(failed?.output?.error).toMatch(/no attachment .* in this conversation/);
+    expect(await e2eClient(token).collection('gift-cards').listAll()).toEqual([]);
+    await eventually(() => conversations().get(conversationId), (c) => c.status === 'idle');
+  });
+
   test("a file that isn't an image or PDF is refused, whatever it claims to be", async () => {
     const fake = new TextEncoder().encode('<html><script>alert(1)</script></html>');
     const res = await sendWithFiles('hi', [['photo.png', fake, 'image/png']]);

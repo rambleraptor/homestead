@@ -164,6 +164,13 @@ messages that have any; older ones are noted by name, so a long thread doesn't
 resend every photo. Attachments are stored with the message, so they're there
 on a reload or another device, and they go when the conversation does.
 
+The assistant can also **file an attachment into an app**: "save this as an HSA
+receipt", "add this gift card with its photo", "file this PDF". It copies the
+file into the record's file field (a receipt's scan, a gift card's front image,
+a document's file) as it creates or updates it. It can only use files attached
+in the same conversation, including older ones it no longer sees, and only
+fields that hold a single file. The MCP server's tools don't take files.
+
 Under the hood the assistant sees the same **one-tool-per-resource** surface
 the [MCP server](#the-tool-surface) serves by default: one tool per
 resource, with the verb — `list`, `get`, `create`, `update`, `delete`, or an

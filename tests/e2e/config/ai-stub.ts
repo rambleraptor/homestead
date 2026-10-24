@@ -25,7 +25,13 @@
 
 import { createServer, type Server } from 'http';
 import type { AddressInfo } from 'net';
-import { ATTACHMENTS_PLACEHOLDER, SCRIPT_EXHAUSTED_TEXT, scriptFor, type ScriptStep } from './ai-scripts';
+import {
+  ATTACHMENT_ID_PLACEHOLDER,
+  ATTACHMENTS_PLACEHOLDER,
+  SCRIPT_EXHAUSTED_TEXT,
+  scriptFor,
+  type ScriptStep,
+} from './ai-scripts';
 
 /**
  * Long enough to observe "running", short enough to keep tests quick.
@@ -206,9 +212,16 @@ export function scriptedStep(body: unknown): ScriptStep | null {
   if (!script) return null;
 
   const round = items.slice(lastUser + 1).filter((item) => item.type === 'function_call_output').length;
-  const step = script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT };
+  let step = script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT };
   if (step.text?.includes(ATTACHMENTS_PLACEHOLDER)) {
-    return { ...step, text: step.text.replace(ATTACHMENTS_PLACEHOLDER, attachmentSummary(items[lastUser]!)) };
+    step = { ...step, text: step.text.replace(ATTACHMENTS_PLACEHOLDER, attachmentSummary(items[lastUser]!)) };
+  }
+  if (step.toolCalls && JSON.stringify(step.toolCalls).includes(ATTACHMENT_ID_PLACEHOLDER)) {
+    const id = /attachment id: ([A-Za-z0-9_-]+)/.exec(textOf(items[lastUser]!))?.[1] ?? 'no-attachment';
+    step = {
+      ...step,
+      toolCalls: JSON.parse(JSON.stringify(step.toolCalls).replaceAll(ATTACHMENT_ID_PLACEHOLDER, id)),
+    };
   }
   return step;
 }

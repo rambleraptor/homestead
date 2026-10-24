@@ -164,6 +164,17 @@ describe('buildTools', () => {
     expect(create.safeParse({ title: 't', profile: { bio: 'hi' } }).success).toBe(true);
   });
 
+  it('offers a top-level file field as an attachment id only when asked to', () => {
+    expect(keysFor(buildTools([giftCard]).tools, 'create_gift_card')).not.toContain('front_image');
+    const { tools, bindings } = buildTools([giftCard], { files: true });
+    expect(keysFor(tools, 'create_gift_card')).toContain('front_image');
+    expect(bindings.get('create_gift_card')!.fileFields).toEqual(new Set(['front_image']));
+    const create = schemaFor(tools, 'create_gift_card');
+    // Required on create, like the field itself.
+    expect(create.safeParse({ merchant: 'M', amount: 5 }).success).toBe(false);
+    expect(create.safeParse({ merchant: 'M', amount: 5, front_image: 'f1' }).success).toBe(true);
+  });
+
   it('omits deprecated fields from the create and update tools', () => {
     const withDeprecated: ResourceDefinition = {
       singular: 'widget',

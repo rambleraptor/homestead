@@ -42,6 +42,12 @@ export interface ToolBinding {
   /** Tool params that map to schema fields (excludes `id` and parent ids). */
   bodyFields: Set<string>;
   /**
+   * Top-level file fields, offered as the id of a file attached in the chat
+   * (only when the tools are built with `files`). The executor swaps each id
+   * for the file's bytes before writing.
+   */
+  fileFields: Set<string>;
+  /**
    * Schema fields declared as free-form objects, taken as a JSON-encoded
    * string and JSON-parsed by the executor before hitting aepbase. (Originally
    * a Gemini constraint — empty OBJECT schemas were rejected — now kept for
@@ -306,9 +312,24 @@ export function resolveParentChain(
  * will actually serve these schemas — `read_person` on the typed surface, the
  * `people` tool on the per-resource one. Only targets in `defs` get a hint.
  */
+/** How a file field reads to the model when the tools can take attachments. */
+export const ATTACHMENT_PARAM_NOTE =
+  'the attachment id of a file the person attached in this conversation (shown beside it ' +
+  'as `attachment id: …`)';
+
+export interface BuildToolsOptions {
+  findHint?: (target: ResourceDefinition) => string;
+  /**
+   * Offer top-level file fields as attachment ids. Only a surface that can
+   * resolve them — the chat, over its conversation's attachments — sets this;
+   * elsewhere file fields stay out of the tools, as before.
+   */
+  files?: boolean;
+}
+
 export function buildTools(
   defs: ResourceDefinition[],
-  { findHint = typedFindHint }: { findHint?: (target: ResourceDefinition) => string } = {},
+  { findHint = typedFindHint, files = false }: BuildToolsOptions = {},
 ): BuiltTools {
   const bySingular = indexBySingular(defs);
   const hintFor: FindHint = (singular) => {
@@ -335,9 +356,18 @@ export function buildTools(
     const fieldSchemas: Record<string, z.ZodTypeAny> = {};
     const bodyFields = new Set<string>();
     const jsonStringFields = new Set<string>();
+    const fileFields = new Set<string>();
     for (const [key, prop] of Object.entries(def.fields)) {
       // Deprecated fields are on their way out — don't offer them to the model.
       if (prop.deprecated) continue;
+      if (prop.type === 'file') {
+        if (!files) continue;
+        const about = prop.description ? `${prop.description} — ` : '';
+        fieldSchemas[key] = z.string().describe(`${about}${ATTACHMENT_PARAM_NOTE}`);
+        bodyFields.add(key);
+        fileFields.add(key);
+        continue;
+      }
       const converted = fieldToZod(prop, hintFor);
       if (!converted) continue;
       fieldSchemas[key] = converted.schema;
@@ -429,6 +459,7 @@ export function buildTools(
         parentPlurals,
         bodyFields,
         jsonStringFields,
+        fileFields,
         // Only create/update write bodies, so only they validate references.
         references: op === 'create' || op === 'update' ? references : [],
       });
