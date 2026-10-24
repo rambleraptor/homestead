@@ -78,29 +78,29 @@ describe('PersonCard', () => {
     expect(screen.getByLabelText('Map pin icon')).toBeInTheDocument();
   });
 
-  it('should call onEdit when edit button is clicked', async () => {
+  it('should call onEdit from the actions menu', async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();
     const onDelete = vi.fn();
 
     renderWithClient(<PersonCard person={mockPerson} onEdit={onEdit} onDelete={onDelete} />);
 
-    const editButton = screen.getByLabelText(`Edit ${mockPerson.name}`);
-    await user.click(editButton);
+    await user.click(screen.getByLabelText(`More actions for ${mockPerson.name}`));
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit' }));
 
     expect(onEdit).toHaveBeenCalledWith(mockPerson);
     expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
-  it('should call onDelete when delete button is clicked', async () => {
+  it('should call onDelete from the actions menu', async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();
     const onDelete = vi.fn();
 
     renderWithClient(<PersonCard person={mockPerson} onEdit={onEdit} onDelete={onDelete} />);
 
-    const deleteButton = screen.getByLabelText(`Delete ${mockPerson.name}`);
-    await user.click(deleteButton);
+    await user.click(screen.getByLabelText(`More actions for ${mockPerson.name}`));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }));
 
     expect(onDelete).toHaveBeenCalledWith(mockPerson);
     expect(onDelete).toHaveBeenCalledTimes(1);
@@ -114,21 +114,24 @@ describe('PersonCard', () => {
           {
             id: 'e1',
             name: "John's Birthday",
-            date: '1990-07-04',
+            month: 7,
+            day: 4,
             tag: 'birthday',
             people: ['people/1'],
           },
           {
             id: 'e2',
             name: 'Anniversary',
-            date: '2010-08-15',
+            month: 8,
+            day: 15,
             tag: 'anniversary',
             people: ['people/1', 'people/2'],
           },
           {
             id: 'e3',
             name: "Someone Else's Birthday",
-            date: '1990-09-20',
+            month: 9,
+            day: 20,
             tag: 'birthday',
             people: ['people/2'],
           },
@@ -146,8 +149,59 @@ describe('PersonCard', () => {
     );
     expect(screen.getByLabelText('Cake icon')).toBeInTheDocument();
     expect(screen.getByLabelText('Heart icon')).toBeInTheDocument();
-    expect(screen.getByText('July 4')).toBeInTheDocument();
-    expect(screen.getByText('August 15')).toBeInTheDocument();
+    expect(screen.getByTestId('person-event-e1')).toHaveTextContent('Birthday Jul 4');
+    expect(screen.getByTestId('person-event-e2')).toHaveTextContent('Anniversary Aug 15');
     expect(screen.queryByTestId('person-event-e3')).not.toBeInTheDocument();
+  });
+
+  it('flags an event coming up within two weeks', async () => {
+    vi.setSystemTime(new Date('2024-07-01T12:00:00'));
+    vi.mocked(aepbase.list).mockImplementation(async (plural: string) =>
+      plural === 'events'
+        ? [{ id: 'e1', name: 'Bday', month: 7, day: 4, tag: 'birthday', people: ['1'] }]
+        : [],
+    );
+
+    renderWithClient(<PersonCard person={mockPerson} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('person-event-e1')).toHaveTextContent('Birthday Jul 4 · in 3 days'),
+    );
+  });
+
+  it('names the partner as a link to their page', () => {
+    renderWithClient(
+      <PersonCard
+        person={{ ...mockPerson, partner: { id: '2', name: 'Jane Doe' } }}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const partner = screen.getByTestId('person-partner-1');
+    expect(partner).toHaveTextContent('Jane Doe');
+    expect(partner).toHaveAttribute('href', '/people/2');
+  });
+
+  it('keeps WiFi off the card and names households only when there are several', () => {
+    const withWifi = { ...mockPerson.households[0], wifi_network: 'DoeNet', wifi_password: 'secret' };
+    const { unmount } = renderWithClient(
+      <PersonCard person={{ ...mockPerson, households: [withWifi] }} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+    expect(screen.queryByText(/DoeNet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/secret/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Doe home/)).not.toBeInTheDocument();
+    unmount();
+
+    const lake = { id: 'household-2', name: 'Lake house', members: ['1'], line1: '9 Lake Rd' };
+    renderWithClient(
+      <PersonCard
+        person={{ ...mockPerson, households: [withWifi, lake] }}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Doe home/)).toBeInTheDocument();
+    expect(screen.getByText(/Lake house/)).toBeInTheDocument();
   });
 });

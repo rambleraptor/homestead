@@ -10,6 +10,7 @@ import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harnes
 import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 import { HouseholdsPage } from '../e2e/HouseholdsPage';
 import { PeoplePage } from '../e2e/PeoplePage';
+import { PersonDetailPage } from '../e2e/PersonDetailPage';
 import {
   createHousehold,
   createPerson,
@@ -59,7 +60,11 @@ describe('People households', () => {
     expect(household.members).toEqual([jane.id]);
 
     await peoplePage.expectHouseholdOnCard(jane, '789 Pine Blvd');
-    await peoplePage.expectHouseholdOnCard(jane, 'PineNet');
+    // WiFi is reference detail: off the list, on the person's page.
+    await peoplePage.expectNotOnHouseholdLines(jane, 'PineNet');
+    const detail = new PersonDetailPage(h.driver);
+    await detail.openFromList('Jane Smith');
+    await detail.expectHouseholdDetail('PineNet');
   });
 
   test('a New household without a name is blocked with a message', async () => {
