@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { applyFilters, deriveEnumOptions, getByPath } from '../applyFilters';
+import {
+  applyFilters,
+  deriveEnumOptionCounts,
+  deriveEnumOptions,
+  getByPath,
+} from '../applyFilters';
 import type { AppFilterDecl } from '../types';
 
 interface Person {
@@ -233,5 +238,24 @@ describe('getByPath', () => {
   it('returns undefined on non-objects', () => {
     expect(getByPath(null, 'x')).toBeUndefined();
     expect(getByPath(42, 'x')).toBeUndefined();
+  });
+});
+
+describe('deriveEnumOptionCounts', () => {
+  it('counts each value once per item, most used first, ties alphabetical', () => {
+    const items = [
+      { tags: ['b', 'a', 'a'] },
+      { tags: ['c', 'a'] },
+      { tags: ['c'] },
+      { tags: ['b'] },
+      { tags: [] },
+    ];
+    expect(
+      deriveEnumOptionCounts(items, { key: 'tags', label: 'Tags', type: 'enum', multi: true }),
+    ).toEqual([
+      { value: 'a', count: 2 },
+      { value: 'b', count: 2 },
+      { value: 'c', count: 2 },
+    ]);
   });
 });

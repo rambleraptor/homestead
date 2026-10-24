@@ -63,9 +63,12 @@ describe('FilterBar', () => {
     expect(screen.getByTestId('item-2')).toBeInTheDocument();
   });
 
-  it('enum multi chip toggles combine with OR semantics', () => {
+  it('enum multi options toggle with OR semantics', () => {
     renderBar([{ key: 'tags', label: 'Tags', type: 'enum', multi: true }]);
-    // Chip options derived from loaded items
+    const trigger = screen.getByTestId('filter-enum-multi-tags');
+    expect(trigger).toHaveTextContent('Any');
+    fireEvent.click(trigger);
+    // Options derived from loaded items
     expect(screen.getByTestId('filter-chip-tags-breakfast')).toBeInTheDocument();
     expect(screen.getByTestId('filter-chip-tags-vegan')).toBeInTheDocument();
 
@@ -75,6 +78,49 @@ describe('FilterBar', () => {
     fireEvent.click(screen.getByTestId('filter-chip-tags-dinner'));
     // breakfast OR dinner
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('enum multi orders options by use, searches, summarises and clears', () => {
+    renderBar([{ key: 'tags', label: 'Tags', type: 'enum', multi: true }]);
+    const trigger = screen.getByTestId('filter-enum-multi-tags');
+    fireEvent.click(trigger);
+    const panel = screen.getByTestId('filter-enum-multi-panel-tags');
+    const rows = Array.from(panel.querySelectorAll('[data-testid^="filter-chip-tags-"]'));
+    // breakfast ×2, vegan ×2, dinner ×1 — most used first, ties alphabetical.
+    expect(rows.map((r) => r.textContent)).toEqual(['breakfast2', 'vegan2', 'dinner1']);
+
+    fireEvent.click(screen.getByTestId('filter-chip-tags-vegan'));
+    expect(trigger).toHaveTextContent('vegan');
+    fireEvent.click(screen.getByTestId('filter-chip-tags-dinner'));
+    fireEvent.click(screen.getByTestId('filter-chip-tags-breakfast'));
+    expect(trigger).toHaveTextContent('3 selected');
+
+    fireEvent.click(screen.getByTestId('filter-enum-multi-clear-tags'));
+    expect(trigger).toHaveTextContent('Any');
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('enum multi shows a search box once options get long', () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({
+      id: String(i),
+      title: `R${i}`,
+      tags: [`tag-${i}`],
+    }));
+    render(
+      <AppFiltersProvider
+        appId="recipes"
+        decls={[{ key: 'tags', label: 'Tags', type: 'enum', multi: true }]}
+        items={many}
+      >
+        <FilterBar />
+      </AppFiltersProvider>,
+    );
+    fireEvent.click(screen.getByTestId('filter-enum-multi-tags'));
+    fireEvent.change(screen.getByTestId('filter-enum-multi-search-tags'), {
+      target: { value: 'tag-3' },
+    });
+    expect(screen.getByTestId('filter-chip-tags-tag-3')).toBeInTheDocument();
+    expect(screen.queryByTestId('filter-chip-tags-tag-4')).not.toBeInTheDocument();
   });
 
   it('enum single filter renders a select with derived options', () => {

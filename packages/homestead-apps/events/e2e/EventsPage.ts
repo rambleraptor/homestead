@@ -162,7 +162,11 @@ export class EventsPage {
   }
 
   async toggleTagFilter(tag: string) {
-    await this.driver.getByTestId(`filter-chip-tag-${tag}`).click();
+    const option = this.driver.getByTestId(`filter-chip-tag-${tag}`);
+    if (!(await option.isVisible())) {
+      await this.driver.getByTestId('filter-enum-multi-tag').click();
+    }
+    await option.click();
   }
 
   async deleteEvent(eventName: string) {
