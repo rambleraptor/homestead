@@ -102,10 +102,18 @@ export class PeoplePage {
 
   /** Open a person's edit form from their card in the list. */
   async openEditForm(personName: string) {
-    await this.expectPersonInList(personName);
-    const editButton = this.driver.getByRole('button', { name: `Edit ${personName}` }).first();
-    await editButton.click();
+    await this.openCardMenu(personName);
+    await this.driver.getByRole('menuitem', { name: 'Edit' }).click();
     await this.driver.locator('#name').waitFor({ state: 'visible' });
+  }
+
+  /** Open the "more actions" menu on a person's card. */
+  async openCardMenu(personName: string) {
+    await this.expectPersonInList(personName);
+    await this.driver
+      .getByRole('button', { name: `More actions for ${personName}` })
+      .first()
+      .click();
   }
 
   /** Pick a partner in the open person form. */
@@ -130,11 +138,8 @@ export class PeoplePage {
   }
 
   async deletePerson(personName: string) {
-    await this.expectPersonInList(personName);
-
-    const deleteButton = this.driver.getByRole('button', { name: `Delete ${personName}` }).first();
-    await deleteButton.waitFor({ state: 'visible' });
-    await deleteButton.click();
+    await this.openCardMenu(personName);
+    await this.driver.getByRole('menuitem', { name: 'Delete' }).click();
 
     const confirmButton = this.driver.getByRole('button', { name: /confirm|yes|delete/i });
     const isConfirmVisible = await confirmButton.isVisible();
@@ -203,9 +208,14 @@ export class PeoplePage {
     await this.expect(this.driver.getByText(`WiFi: ${wifiNetwork}`, { exact: false })).toBeVisible({ timeout: 5000 });
   }
 
-  /** The person's card lists a household showing this text (name, address or WiFi). */
+  /** The person's card lists a household showing this text (address, or name when there are several). */
   async expectHouseholdOnCard(person: { id: string }, text: string) {
     await this.expect(this.driver.getByTestId(`person-card-households-${person.id}`)).toContainText(text);
+  }
+
+  /** The person's household lines don't show this text (WiFi stays off the list). */
+  async expectNotOnHouseholdLines(person: { id: string }, text: string) {
+    await this.expect(this.driver.getByTestId(`person-card-households-${person.id}`)).not.toContainText(text);
   }
 
   async expectNoHouseholdOnCard(person: { id: string }) {

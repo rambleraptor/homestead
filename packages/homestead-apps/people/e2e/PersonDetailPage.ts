@@ -62,6 +62,11 @@ export class PersonDetailPage {
     await this.expect(this.driver.getByTestId('person-family')).toHaveCount(0);
   }
 
+  /** The households card (partner, addresses, WiFi) shows this text. */
+  async expectHouseholdDetail(text: string) {
+    await this.expect(this.driver.getByTestId('person-households')).toContainText(text);
+  }
+
   async expectNoDocuments() {
     await this.expect(this.driver.getByTestId('person-documents-empty')).toBeVisible();
   }
