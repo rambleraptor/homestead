@@ -3,6 +3,9 @@ import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/
 export const PEOPLE = 'people' as const;
 export const PERSON_SHARED_DATA = 'person-shared-data' as const;
 export const ADDRESSES = 'addresses' as const;
+export const PERSON_RELATIONSHIPS = 'person-relationships' as const;
+
+export const RELATIONSHIP_KINDS = ['partner', 'parent', 'sibling'] as const;
 
 export const peopleResources: ResourceDefinition[] = [
   {
@@ -62,7 +65,8 @@ export const peopleResources: ResourceDefinition[] = [
     singular: 'person-shared-data',
     plural: PERSON_SHARED_DATA,
     description:
-      "Data shared between two people (e.g. a couple's shared address).",
+      'Groups up to two people who share an address. Not the record of who ' +
+      'is partnered: that lives in person-relationships.',
     user_settable_create: true,
     fields: {
       person_a: {
@@ -72,6 +76,29 @@ export const peopleResources: ResourceDefinition[] = [
       },
       person_b: { type: 'string', reference: { resource: 'person' } },
       address_id: { type: 'string', reference: { resource: 'address' } },
+      created_by: { type: 'string', reference: { resource: 'user' } },
+    },
+  },
+  {
+    singular: 'person-relationship',
+    plural: PERSON_RELATIONSHIPS,
+    description:
+      'A family link between two people. For kind=parent, person_a is the ' +
+      'parent of person_b; partner and sibling are symmetric.',
+    user_settable_create: true,
+    fields: {
+      // A relationship row is only a link, so it goes with either person.
+      person_a: {
+        type: 'string',
+        required: true,
+        reference: { resource: 'person', onDelete: 'cascade' },
+      },
+      person_b: {
+        type: 'string',
+        required: true,
+        reference: { resource: 'person', onDelete: 'cascade' },
+      },
+      kind: { type: 'string', required: true, enum: [...RELATIONSHIP_KINDS] },
       created_by: { type: 'string', reference: { resource: 'user' } },
     },
   },

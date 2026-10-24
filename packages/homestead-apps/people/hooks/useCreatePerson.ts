@@ -8,6 +8,7 @@ import { PEOPLE } from '../resources';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { PersonFormData } from '../types';
 import { createSharedData, setPartner } from '../utils/sharedDataSync';
+import { syncRelationships } from '../utils/relationshipSync';
 
 interface PersonRecord {
   id: string;
@@ -15,6 +16,15 @@ interface PersonRecord {
   created_by?: string;
   create_time?: string;
   update_time?: string;
+}
+
+export function relativesFromForm(data: PersonFormData) {
+  return {
+    partnerId: data.partner_id || undefined,
+    parentIds: data.parent_ids ?? [],
+    childIds: data.child_ids ?? [],
+    siblingIds: data.sibling_ids ?? [],
+  };
 }
 
 export function useCreatePerson() {
@@ -40,10 +50,13 @@ export function useCreatePerson() {
         });
       }
 
+      await syncRelationships(personRecord.id, relativesFromForm(data));
+
       return personRecord;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.app('people').list() });
+      // Relatives show on the other side too, so every person's view is stale.
+      queryClient.invalidateQueries({ queryKey: queryKeys.app('people').all() });
     },
   });
 }

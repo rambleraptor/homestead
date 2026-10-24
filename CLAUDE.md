@@ -605,8 +605,9 @@ fields: {
   - `restrict` blocks the delete (409) while any record still points at it;
   - `set-null` clears the pointer on each referrer (array items: drops the
     element) — not allowed on a `required` field;
-  - `cascade` deletes each referring record and its subtree. Supported by the
-    engine but intentionally unused in this repo's schemas.
+  - `cascade` deletes each referring record and its subtree. Used only for
+    pure link records that mean nothing without their target
+    (`person-relationship`); don't reach for it on records that hold data.
   A structured `x-aepbase-reference` marker on the wire property carries this to
   the engine (see `homestead-server/src/engine/references.ts`); the human-
   readable `description` note is emitted alongside it.

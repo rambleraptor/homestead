@@ -21,7 +21,9 @@ import type {
   ParsedItem,
 } from '@rambleraptor/homestead-core/resources/bulk-import/types';
 import { serverClient } from '@rambleraptor/homestead-core/server/client';
-import { ADDRESSES, PEOPLE, PERSON_SHARED_DATA } from '../resources';
+import { ADDRESSES, PEOPLE, PERSON_RELATIONSHIPS, PERSON_SHARED_DATA } from '../resources';
+import type { PersonRelationship } from '../types';
+import { canonicalLink, linkKey } from '../utils/relationships';
 
 /** A person as it comes from a CSV — flat, one row per person. */
 export interface PersonCsvData {
@@ -156,7 +158,8 @@ async function createPerson(
 }
 
 /**
- * Second pass: resolve `partner_name` to an id and record the pairing.
+ * Second pass: resolve `partner_name` to an id, record the partner
+ * relationship, and share the pair's address record.
  *
  * Names are matched case-insensitively against everyone created here first,
  * then against people already in the household.
@@ -183,6 +186,12 @@ async function linkPartners(
   }
 
   const sharedData = await listSharedData(ctx);
+  const relationships = serverClient(ctx.auth.token).collection<PersonRelationship>(
+    PERSON_RELATIONSHIPS,
+  );
+  const existingLinks = new Set(
+    (await relationships.listAll().catch(() => [])).map(linkKey),
+  );
   const linked = new Set<string>();
 
   for (const { record, partnerName } of created) {
@@ -200,6 +209,11 @@ async function linkPartners(
 
     try {
       await setPartner(record.id, partnerId, sharedData, ctx);
+      const link = canonicalLink('partner', record.id, partnerId);
+      if (!existingLinks.has(linkKey(link))) {
+        await relationships.create({ ...link, created_by: ctx.auth.user.path });
+        existingLinks.add(linkKey(link));
+      }
       linked.add(pair);
     } catch (error) {
       console.warn(`Bulk import: could not link ${record.name} to ${partnerName}:`, error);

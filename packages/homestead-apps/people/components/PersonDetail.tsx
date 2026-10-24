@@ -16,7 +16,7 @@ import { DocumentListItem } from '../../documents/components/DocumentListItem';
 import { groupDocumentsByCategory } from '../../documents/categorize';
 import { usePersonById } from '../hooks/usePersonById';
 import { useDocumentsForPerson } from '../hooks/useDocumentsForPerson';
-import type { Address } from '../types';
+import type { Address, RelatedPerson } from '../types';
 
 function formatAddress(address: Address): string {
   return [
@@ -88,6 +88,14 @@ export function PersonDetail({ personId }: { personId: string }) {
         </Card>
       )}
 
+      <FamilyCard
+        groups={[
+          ['Parents', 'parents', person.parents],
+          ['Children', 'children', person.children],
+          ['Siblings', 'siblings', person.siblings],
+        ]}
+      />
+
       <section data-testid="person-documents">
         <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900">
           <FileText className="h-5 w-5 text-gray-500" />
@@ -122,6 +130,41 @@ export function PersonDetail({ personId }: { personId: string }) {
         )}
       </section>
     </div>
+  );
+}
+
+function FamilyCard({
+  groups,
+}: {
+  groups: Array<[label: string, key: string, people: RelatedPerson[]]>;
+}) {
+  const shown = groups.filter(([, , people]) => people.length > 0);
+  if (shown.length === 0) return null;
+
+  return (
+    <Card>
+      <dl className="space-y-3" data-testid="person-family">
+        {shown.map(([label, key, people]) => (
+          <div key={key} data-testid={`person-family-${key}`}>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {label}
+            </dt>
+            <dd className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+              {people.map((p) => (
+                <Link
+                  key={p.id}
+                  to={`/people/${p.id}`}
+                  className="text-brand-navy hover:underline"
+                  title={p.inferred ? 'Shares a parent' : undefined}
+                >
+                  {p.name}
+                </Link>
+              ))}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </Card>
   );
 }
 
