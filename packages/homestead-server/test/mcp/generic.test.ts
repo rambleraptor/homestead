@@ -247,7 +247,7 @@ describe('generic CRUD', () => {
     const list = stubFetch(new Response('{"results":[]}'));
     const out = await execute('read_records', { resource: 'gift-cards' }, 'tok');
     expect(list.calls[0].url).toMatch(/\/gift-cards(\?|$)/);
-    expect(out).toEqual({ ok: true, result: { records: [], total: 0 } });
+    expect(out).toEqual({ ok: true, result: { records: [], count: 0, truncated: false } });
   });
 
   it('merge-patches on update and deletes by id', async () => {

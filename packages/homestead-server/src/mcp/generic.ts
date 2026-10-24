@@ -45,7 +45,11 @@ import type {
 } from '@rambleraptor/homestead-core/resources/types';
 import {
   buildTools,
+  FILTER_SYNTAX,
+  listParamShape,
+  ORDER_BY_SYNTAX,
   parentIdParam,
+  pickListParams,
   snake,
   type CrudOp,
   type ToolBinding,
@@ -56,9 +60,9 @@ import {
   buildCustomMethodTools,
   customMethodToolName,
   executeCustomMethod,
-} from './custom-methods';
-import type { SurfaceResult, ToolSurface } from './surface';
-import { toCustomMethodCall, toTypedCall } from './translate';
+} from '@rambleraptor/homestead-core/server/chat/custom-methods';
+import type { SurfaceResult, ToolSurface } from '@rambleraptor/homestead-core/server/chat/surface';
+import { toCustomMethodCall, toTypedCall } from '@rambleraptor/homestead-core/server/chat/translate';
 
 export const DESCRIBE_TOOL = 'describe_resources';
 export const READ_TOOL = 'read_records';
@@ -191,12 +195,13 @@ export function buildGenericTools(
     },
     [READ_TOOL]: {
       description:
-        'Read records. Omit `id` to list the whole collection, or pass one to fetch a' +
-        ' single record.',
+        'Read records. Pass `id` to fetch one record; omit it to list, optionally narrowed' +
+        ' with `filter`, sorted with `order_by`, and capped with `limit`.',
       inputSchema: z.object({
         resource: resourceParam,
-        id: z.string().describe('Id of one record. Omit to list all records.').optional(),
+        id: z.string().describe('Id of one record. Omit to list records.').optional(),
         parent_ids: PARENT_IDS_PARAM,
+        ...listParamShape({ brief: true }),
       }),
     },
   };
@@ -314,6 +319,7 @@ export function buildGenericTools(
       id: args.id,
       fields: args.fields,
       parentIds: args.parent_ids,
+      list: op === 'read' ? pickListParams(args) : undefined,
     });
   }
 
@@ -414,6 +420,11 @@ export function homesteadInstructions(defs: ResourceDefinition[]): string {
       ` fields, allowed values, references, and custom methods. Reading needs no lookup;` +
       ` call ${DESCRIBE_TOOL} before your first write to a resource. Nested resources take` +
       ' their ancestor ids in `parent_ids`.',
+    '',
+    `A ${READ_TOOL} without an id lists; pass \`filter\`, \`order_by\`, and \`limit\` (default` +
+      ' and max 100) to let the server narrow and sort instead of reading a whole collection.',
+    `- filter: ${FILTER_SYNTAX}`,
+    `- order_by: ${ORDER_BY_SYNTAX}`,
     '',
     'Resources:',
     ...lines,

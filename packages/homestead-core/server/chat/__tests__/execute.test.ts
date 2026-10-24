@@ -86,13 +86,54 @@ describe('executeToolCall', () => {
     expect(createFn).toHaveBeenCalledWith('/todos', { title: 'Buy milk', done: false });
   });
 
-  it('read without id lists; with id gets', async () => {
+  it('read without id lists one page; with id gets', async () => {
     const list = await executeToolCall({ name: 'read_todo', args: {} }, bindings, TOKEN);
-    expect(listAllFn).toHaveBeenCalledWith('/todos', undefined);
-    expect(list.result).toMatchObject({ total: 2 });
+    expect(listAllFn).toHaveBeenCalledWith('/todos', {
+      filter: undefined,
+      orderBy: undefined,
+      pageSize: 100,
+    });
+    expect(list.result).toEqual({
+      records: [{ id: 'rec-1' }, { id: 'rec-2' }],
+      count: 2,
+      truncated: false,
+    });
 
     await executeToolCall({ name: 'read_todo', args: { id: 'rec-1' } }, bindings, TOKEN);
     expect(getFn).toHaveBeenCalledWith('/todos/rec-1');
+  });
+
+  it('passes filter, order_by and limit through to the engine list', async () => {
+    await executeToolCall(
+      {
+        name: 'read_todo',
+        args: { filter: 'done == false && has(due)', order_by: '-due, title', limit: 5 },
+      },
+      bindings,
+      TOKEN,
+    );
+    expect(listAllFn).toHaveBeenCalledWith('/todos', {
+      filter: 'done == false && has(due)',
+      orderBy: '-due, title',
+      pageSize: 5,
+    });
+  });
+
+  it('clamps an out-of-range limit instead of forwarding it', async () => {
+    await executeToolCall({ name: 'read_todo', args: { limit: 5000 } }, bindings, TOKEN);
+    expect(listAllFn).toHaveBeenLastCalledWith('/todos', expect.objectContaining({ pageSize: 100 }));
+    await executeToolCall({ name: 'read_todo', args: { limit: 0 } }, bindings, TOKEN);
+    expect(listAllFn).toHaveBeenLastCalledWith('/todos', expect.objectContaining({ pageSize: 1 }));
+  });
+
+  it('surfaces an engine filter rejection as a recoverable error', async () => {
+    listAllFn.mockRejectedValueOnce(new Error('invalid filter: unknown field "nope"'));
+    const out = await executeToolCall(
+      { name: 'read_todo', args: { filter: 'nope == 1' } },
+      bindings,
+      TOKEN,
+    );
+    expect(out).toMatchObject({ ok: false, error: 'invalid filter: unknown field "nope"' });
   });
 
   it('builds the parent path for user-scoped resources', async () => {
@@ -101,7 +142,10 @@ describe('executeToolCall', () => {
       bindings,
       TOKEN,
     );
-    expect(listAllFn).toHaveBeenCalledWith('/users/u-1/notifications', undefined);
+    expect(listAllFn).toHaveBeenCalledWith(
+      '/users/u-1/notifications',
+      expect.objectContaining({ pageSize: 100 }),
+    );
   });
 
   it('fails recoverably when a parent id is missing', async () => {

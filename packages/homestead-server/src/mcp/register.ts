@@ -1,11 +1,12 @@
 /**
- * Registers Homestead's tools on an MCP server. This is the MCP analog of the
- * tool-wiring loop in `core/server/chat/handler.ts`: it reuses the exact same
+ * Registers Homestead's tools on an MCP server. This is the MCP analog of
+ * `buildChatToolSet` in `core/server/chat/handler.ts`: it reuses the exact same
  * `buildTools` / `executeToolCall` / `makeSearchTool` machinery the AI chat
- * uses, so the CRUD surface and the chat surface stay identical by construction.
+ * uses, so the MCP surface and the chat surface stay identical by construction.
  * On top of those it registers one tool per app-declared AEP-136 custom method
- * (see `./custom-methods`), which the chat has no equivalent of — an MCP client
- * would otherwise be limited to plain CRUD.
+ * (see `core/server/chat/custom-methods`), so an MCP client is not limited to
+ * plain CRUD; the chat reaches the same methods through the per-resource
+ * surface's `:verb` actions.
  *
  * That is the `typed` surface. Two derived surfaces re-shape the same
  * operations for clients that can't hold ~167 tools — `./per-resource` (one
@@ -30,10 +31,10 @@ import {
   makeSearchTool,
   SEARCH_TOOL_NAME,
 } from '@rambleraptor/homestead-core/server/chat/search-tool';
-import { buildCustomMethodTools, executeCustomMethod } from './custom-methods';
+import { buildCustomMethodTools, executeCustomMethod } from '@rambleraptor/homestead-core/server/chat/custom-methods';
 import { buildGenericTools } from './generic';
-import { buildResourceTools } from './per-resource';
-import type { McpToolMode, ToolSurface } from './surface';
+import { buildResourceTools } from '@rambleraptor/homestead-core/server/chat/per-resource';
+import type { McpToolMode, ToolSurface } from '@rambleraptor/homestead-core/server/chat/surface';
 
 function ok(result: unknown): CallToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(result ?? null) }] };

@@ -26,7 +26,7 @@ import { buildAuthenticators } from '../auth/providers';
 import { getUserByEmail } from '../engine/users';
 import { mintTokenForUser } from '../bootstrap';
 import { buildSurface, registerHomesteadTools } from '../mcp/register';
-import type { McpToolMode } from '../mcp/surface';
+import type { McpToolMode } from '@rambleraptor/homestead-core/server/chat/surface';
 import { scopeAllowsWrite } from '../auth/scopes';
 import { readAppFlag } from '../app-flags';
 

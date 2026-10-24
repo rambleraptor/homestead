@@ -1,10 +1,12 @@
 /**
  * Chat App Configuration
  *
- * Core app (always installed): a Gemini-backed household assistant
- * with one tool per CRUD operation per registered aepbase resource.
- * The backend lives in `core/server/chat/` behind the sidecar's
- * `POST /api/chat`; conversations are ephemeral (client state only).
+ * Core app (always installed): a household assistant on the operator's
+ * configured AI provider, with one tool per registered aepbase resource (the
+ * verb — list/get/create/update/delete or an app's `:custom-method` — is the
+ * tool's `action` parameter; see `core/server/chat/per-resource.ts`).
+ * The backend lives in `core/server/chat/` behind `POST /api/chat`;
+ * conversations are ephemeral (client state only).
  */
 
 import type { AppConfig } from '../apps/types';

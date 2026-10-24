@@ -18,7 +18,7 @@ import type { z } from 'zod';
 import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
 import { buildTools } from '@rambleraptor/homestead-core/server/chat/tools';
 import { executeToolCall } from '@rambleraptor/homestead-core/server/chat/execute';
-import { buildResourceTools, resourceInstructions } from '../../src/mcp/per-resource';
+import { buildResourceTools, resourceInstructions } from '@rambleraptor/homestead-core/server/chat/per-resource';
 
 const GIFT_CARD: ResourceDefinition = {
   singular: 'gift-card',
@@ -192,12 +192,46 @@ describe('executing a call', () => {
     const list = stubFetch(new Response('{"results":[]}'));
     const out = await execute('gift_cards', { action: 'list' }, 'tok');
     expect(list.calls[0].url).toMatch(/\/gift-cards(\?|$)/);
-    expect(out).toEqual({ ok: true, result: { records: [], total: 0 } });
+    expect(out).toEqual({ ok: true, result: { records: [], count: 0, truncated: false } });
     list.restore();
 
     const single = stubFetch();
     await execute('gift_cards', { action: 'get', id: 'abc' }, 'tok');
     expect(single.calls[0].url).toMatch(/\/gift-cards\/abc$/);
+  });
+
+  it('narrows, sorts and caps a list server-side', async () => {
+    const { execute } = buildResourceTools(DEFS);
+    const { calls } = stubFetch(new Response('{"results":[],"next_page_token":"more"}'));
+    const out = await execute(
+      'gift_cards',
+      { action: 'list', filter: 'status == "active"', order_by: '-balance', limit: 3 },
+      'tok',
+    );
+    const url = new URL(calls[0].url);
+    expect(url.pathname).toMatch(/\/gift-cards$/);
+    expect(url.searchParams.get('filter')).toBe('status == "active"');
+    expect(url.searchParams.get('order_by')).toBe('-balance');
+    expect(url.searchParams.get('max_page_size')).toBe('3');
+    // A next-page token from the engine is reported as truncation the model can act on.
+    expect(out).toMatchObject({ ok: true, result: { truncated: true, count: 0 } });
+    expect((out as { result: { note: string } }).result.note).toMatch(/filter/);
+  });
+
+  it('rejects a limit outside 1–100 before it reaches the engine', async () => {
+    const { execute } = buildResourceTools(DEFS);
+    const { calls } = stubFetch();
+    const out = await execute('gift_cards', { action: 'list', limit: 500 }, 'tok');
+    expect(out.ok).toBe(false);
+    expect(errorOf(out)).toMatch(/limit/);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('drops list options on get rather than sending them along', async () => {
+    const { execute } = buildResourceTools(DEFS);
+    const { calls } = stubFetch();
+    await execute('gift_cards', { action: 'get', id: 'abc', filter: 'x == 1', limit: 5 }, 'tok');
+    expect(calls[0].url).toMatch(/\/gift-cards\/abc$/);
   });
 
   it('ignores a stray id on list rather than silently fetching one record', async () => {

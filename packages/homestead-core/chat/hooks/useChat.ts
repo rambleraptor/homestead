@@ -13,15 +13,24 @@ export interface UiChatMessage extends ChatMessage {
   toolCalls?: ChatToolCall[];
 }
 
+/** The verb a per-resource tool call carried, or '' for a tool without one. */
+export function toolAction(call: Pick<ChatToolCall, 'args'>): string {
+  const action = call.args?.action;
+  return typeof action === 'string' ? action : '';
+}
+
 /**
- * True when a tool call mutated aepbase (create/update/delete). Reads
- * (`read_*`) leave the cache untouched. Tool names follow
- * `${op}_${snake_singular}` (see server/chat/tools.ts).
+ * True when a tool call may have mutated aepbase: a create/update/delete
+ * action, or a `:verb` custom method (which has side effects unless declared
+ * GET — the client can't tell, so it errs toward refetching). `list`/`get`
+ * and the search tool leave the cache untouched. Tool names are the resource
+ * (see server/chat/per-resource.ts); the verb is `args.action`.
  */
 function isMutation(call: ChatToolCall): boolean {
+  if (!call.ok) return false;
+  const action = toolAction(call);
   return (
-    call.ok &&
-    /^(create|update|delete)_/.test(call.tool)
+    action === 'create' || action === 'update' || action === 'delete' || action.startsWith(':')
   );
 }
 

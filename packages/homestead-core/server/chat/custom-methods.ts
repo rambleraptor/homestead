@@ -25,8 +25,9 @@ import type {
   CustomMethodTarget,
   ResourceCustomMethod,
   ResourceDefinition,
-} from '@rambleraptor/homestead-core/resources/types';
-import { aepbaseFetch } from '@rambleraptor/homestead-core/server/aepbase';
+} from '../../resources/types';
+import { aepbaseFetch } from '../aepbase';
+import { logger } from '../../utils/logger';
 import {
   indexBySingular,
   parentIdParam,
@@ -34,7 +35,7 @@ import {
   resolveParentChain,
   snake,
   type ToolSpec,
-} from '@rambleraptor/homestead-core/server/chat/tools';
+} from './tools';
 
 /** Param carrying the addressed record id for an `item`-target method. */
 const ID_PARAM = 'id';
@@ -193,8 +194,8 @@ export function buildCustomMethodTools(
       const target = method.target ?? 'collection';
       const name = customMethodToolName(def, verb, target);
       if (taken.has(name) || name in tools) {
-        console.warn(
-          `[mcp] skipping custom method ${def.plural}:${verb}: tool name "${name}" is already registered`,
+        logger.warn(
+          `tools: skipping custom method ${def.plural}:${verb}: tool name "${name}" is already registered`,
         );
         continue;
       }

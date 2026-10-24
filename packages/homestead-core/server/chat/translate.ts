@@ -17,7 +17,7 @@
  */
 
 import type { z } from 'zod';
-import type { ToolBinding } from '@rambleraptor/homestead-core/server/chat/tools';
+import type { ToolBinding } from './tools';
 import type { CustomMethodBinding } from './custom-methods';
 
 /** A call ready for `executeToolCall` / `executeCustomMethod`. */
@@ -53,14 +53,16 @@ export function issueMessage(error: z.ZodError): string {
  * rejected it). `parentIds` carries the ancestor ids however the surface
  * collects them — `generic` takes them as one `parent_ids` record, `resource`
  * as top-level `<parent>_id` params — since by this point both are just a map
- * keyed the way the typed tool expects.
+ * keyed the way the typed tool expects. `list` carries a list read's
+ * `filter` / `order_by` / `limit` (see `pickListParams`), which the typed read
+ * tool's schema validates like any other param.
  */
 export function toTypedCall(
   label: string,
   name: string,
   binding: ToolBinding,
   schema: z.ZodObject,
-  input: { id?: unknown; fields?: unknown; parentIds?: unknown },
+  input: { id?: unknown; fields?: unknown; parentIds?: unknown; list?: unknown },
 ): TypedCall | TranslationError {
   const fields = isRecord(input.fields) ? input.fields : {};
   const unknown = Object.keys(fields).filter((key) => !binding.bodyFields.has(key));
@@ -75,6 +77,7 @@ export function toTypedCall(
   const merged: Record<string, unknown> = {
     ...(isRecord(input.parentIds) ? input.parentIds : {}),
     ...fields,
+    ...(isRecord(input.list) ? input.list : {}),
   };
   if (typeof input.id === 'string' && input.id) merged.id = input.id;
 
