@@ -79,6 +79,7 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
             onClick={onClose}
             className="p-2 text-text-muted hover:text-brand-navy hover:bg-bg-pearl rounded-lg transition-colors"
             aria-label="Close"
+            data-testid="close-store-management"
           >
             <X className="w-5 h-5" />
           </button>
