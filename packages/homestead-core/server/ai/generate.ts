@@ -1,13 +1,13 @@
 /**
  * The unified server-side AI API.
  *
- * Every AI call in Homestead goes through one of these three primitives, so the
+ * Every AI call in Homestead goes through one of these primitives, so the
  * provider/model is chosen once (in homestead.config.ts) and no call site talks
  * to a provider SDK directly:
  *
  * - {@link aiGenerateText}   — plain or multimodal text completion.
  * - {@link aiGenerateObject} — schema-validated structured output.
- * - {@link aiRunAgent}       — a tool-calling agentic loop (the chat assistant).
+ * - {@link aiStreamAgent}    — a streamed tool-calling loop (the chat assistant).
  * - {@link aiEmbed}          — batch text embedding (semantic search index).
  *
  * The first three resolve the configured model via {@link getAiModel} (gate on
@@ -24,8 +24,6 @@ import {
   streamText,
   type JSONValue,
   type ModelMessage,
-  type StepResult,
-  type ToolSet,
 } from 'ai';
 import type { z } from 'zod';
 import { getAiModel, getEmbeddingModel } from './config';
@@ -137,31 +135,9 @@ export async function aiGenerateObject<T>(opts: {
 }
 
 /**
- * Run a tool-calling agentic turn. The SDK invokes each tool's `execute` and
- * feeds the result back to the model, looping up to `maxRounds` model steps
- * before returning the final text. Returns the text plus the per-step record
- * (tool calls/results) for callers that need it.
- */
-export async function aiRunAgent<TOOLS extends ToolSet>(opts: {
-  system: string;
-  messages: ModelMessage[];
-  tools: TOOLS;
-  maxRounds: number;
-}): Promise<{ text: string; steps: StepResult<TOOLS>[] }> {
-  const { text, steps } = await generateText({
-    model: getAiModel(),
-    system: opts.system,
-    messages: opts.messages,
-    tools: opts.tools,
-    stopWhen: stepCountIs(opts.maxRounds),
-  });
-  return { text, steps };
-}
-
-/**
  * Stream a tool-calling agentic turn on the configured model: `streamText`
- * with the model filled in and the round limit expressed as `maxRounds`, like
- * {@link aiRunAgent}. Every other option (callbacks, `abortSignal`, …) passes
+ * with the model filled in and the round limit expressed as `maxRounds`. Every
+ * other option (callbacks, `abortSignal`, …) passes
  * straight through, and the result is the SDK's own, so a caller can turn it
  * into a UI message stream.
  */

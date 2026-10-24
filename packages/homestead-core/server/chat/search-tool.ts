@@ -21,7 +21,6 @@ import { fileEmbeds } from '../../resources/ai-fields';
 import { referenceFields, referenceId } from '../../resources/references';
 import type { ResourceDefinition } from '../../resources/types';
 import { getVectorStore } from '../vectors/store';
-import type { ChatToolCall } from '../../chat/types';
 
 /** Built-in user root — searchable resources may reference it (`created_by`). */
 const USER_PLURAL = 'users';
@@ -76,13 +75,11 @@ function pickTitle(record: unknown): string | undefined {
 
 /**
  * Build the search tool, or return null when it shouldn't exist (no embedded
- * resources, or embedding/vector store unconfigured). `record` captures the
- * call for the response's `toolCalls`, matching the CRUD tools.
+ * resources, or embedding/vector store unconfigured).
  */
 export function makeSearchTool(opts: {
   defs: ResourceDefinition[];
   token: string;
-  record: (call: ChatToolCall) => void;
 }) {
   const resources = embeddedResources(opts.defs);
   if (resources.length === 0 || !isEmbeddingConfigured() || !getVectorStore()) {
@@ -143,11 +140,7 @@ export function makeSearchTool(opts: {
       const hs = serverClient(opts.token);
       const limit = Math.min(Math.max(args.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
       const store = getVectorStore();
-      if (!store) {
-        const out = { error: 'Document search is not available.' };
-        opts.record({ tool: SEARCH_TOOL_NAME, args, ok: false, error: out.error });
-        return out;
-      }
+      if (!store) return { error: 'Document search is not available.' };
 
       const wantSingulars = args.resources
         ?.map((p) => pluralToSingular.get(p))
@@ -247,12 +240,6 @@ export function makeSearchTool(opts: {
         });
       }
 
-      opts.record({
-        tool: SEARCH_TOOL_NAME,
-        args,
-        ok: true,
-        result: { count: results.length },
-      });
       return { results };
     },
   });

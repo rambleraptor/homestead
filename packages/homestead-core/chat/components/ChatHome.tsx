@@ -1,262 +1,204 @@
-import { useState } from 'react';
-import { Check, MessageCircle, Send, Sparkles, User, Wrench, X } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { History, MessageCircle } from 'lucide-react';
+import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
+import { appExists } from '@rambleraptor/homestead-core/apps/registry';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
-import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
-import { Input } from '@rambleraptor/homestead-core/shared/components/ui/input';
+import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
+import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import {
-  Avatar,
-  AvatarFallback,
-} from '@rambleraptor/homestead-core/shared/components/ui/avatar';
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from '@rambleraptor/homestead-core/shared/components/ai-elements/conversation';
+import { Message, MessageContent } from '@rambleraptor/homestead-core/shared/components/ai-elements/message';
 import {
-  Bubble,
-  BubbleContent,
-} from '@rambleraptor/homestead-core/shared/components/ui/bubble';
+  PromptInput,
+  PromptInputBody,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from '@rambleraptor/homestead-core/shared/components/ai-elements/prompt-input';
+import { Shimmer } from '@rambleraptor/homestead-core/shared/components/ai-elements/shimmer';
 import {
-  Marker,
-  MarkerContent,
-  MarkerIcon,
-} from '@rambleraptor/homestead-core/shared/components/ui/marker';
-import {
-  Message,
-  MessageAvatar,
-  MessageContent,
-} from '@rambleraptor/homestead-core/shared/components/ui/message';
-import {
-  MessageScroller,
-  MessageScrollerButton,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerProvider,
-  MessageScrollerViewport,
-} from '@rambleraptor/homestead-core/shared/components/ui/message-scroller';
-import { toolAction, useChat, type UiChatMessage } from '../hooks/useChat';
-import type { ChatToolCall } from '../types';
+  Suggestion,
+  Suggestions,
+} from '@rambleraptor/homestead-core/shared/components/ai-elements/suggestion';
+import { useConversation } from '../hooks/useConversation';
+import { useConversations } from '../hooks/useConversations';
+import type { HomesteadUIMessage } from '../types';
+import { ChatMessage } from './ChatMessage';
+import { ConversationList } from './ConversationList';
 
-/**
- * A tool the assistant invoked, shown as a status marker in the transcript:
- * the resource it touched and, when the call carried one, the action.
- */
-function ToolMarker({ call }: { call: ChatToolCall }) {
-  const action = toolAction(call);
-  return (
-    <Marker
-      className={call.ok ? undefined : 'text-destructive'}
-      title={call.ok ? undefined : call.error}
-      data-testid="chat-tool-call"
-    >
-      <MarkerIcon>
-        <Wrench />
-      </MarkerIcon>
-      <MarkerContent>
-        {call.ok ? 'Used' : 'Failed'} <span className="font-medium">{call.tool}</span>
-        {action ? (
-          <>
-            {' · '}
-            <span className="font-medium" data-testid="chat-tool-action">
-              {action}
-            </span>
-          </>
-        ) : null}
-        {!call.ok && call.error ? ` — ${call.error}` : null}
-      </MarkerContent>
-      {call.ok ? (
-        <Check className="size-3.5 shrink-0" aria-hidden="true" />
-      ) : (
-        <X className="size-3.5 shrink-0" aria-hidden="true" />
-      )}
-    </Marker>
-  );
+/** Starter prompts, each shown only when the app it needs is installed. */
+const STARTERS: { text: string; app: string }[] = [
+  { text: "What's on my todo list?", app: 'todos' },
+  { text: 'Add milk to the grocery list', app: 'groceries' },
+  { text: 'Which gift cards still have a balance?', app: 'gift-cards' },
+  { text: 'What birthdays are coming up?', app: 'events' },
+];
+
+/** Whether the reply text is already arriving, so no "thinking" row is needed. */
+function isAnswering(last: HomesteadUIMessage | undefined): boolean {
+  const part = last?.role === 'assistant' ? last.parts.at(-1) : undefined;
+  return part?.type === 'text' && part.text !== '';
 }
 
-/** Animated three-dot "assistant is typing" indicator. */
-function TypingDots() {
+function NotConfigured() {
   return (
-    <div
-      className="flex items-center gap-1 py-1"
-      data-testid="chat-pending"
-      aria-label="Assistant is typing"
-    >
-      {[0, 150, 300].map((delay) => (
-        <span
-          key={delay}
-          className="size-2 rounded-full bg-muted-foreground/60 animate-bounce"
-          style={{ animationDelay: `${delay}ms` }}
-        />
-      ))}
+    <div className="space-y-6">
+      <PageHeader title="Chat" subtitle="Your household assistant" />
+      <Card>
+        <div className="py-12 text-center">
+          <MessageCircle className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+          <p className="text-gray-600">Chat isn't configured</p>
+          <p className="mt-2 text-sm text-gray-500">
+            Configure the `ai` block in homestead.config.ts to enable the assistant.
+          </p>
+        </div>
+      </Card>
     </div>
   );
 }
 
-function ChatMessage({ message }: { message: UiChatMessage }) {
-  const isUser = message.role === 'user';
-  return (
-    <Message align={isUser ? 'end' : 'start'}>
-      <MessageAvatar>
-        <Avatar>
-          <AvatarFallback
-            className={isUser ? 'bg-primary text-primary-foreground' : undefined}
-          >
-            {isUser ? (
-              <User className="size-4" aria-hidden="true" />
-            ) : (
-              <Sparkles className="size-4" aria-hidden="true" />
-            )}
-          </AvatarFallback>
-        </Avatar>
-      </MessageAvatar>
-      <MessageContent>
-        {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
-          <div className="flex flex-col gap-1">
-            {message.toolCalls.map((call, i) => (
-              <ToolMarker key={i} call={call} />
-            ))}
-          </div>
-        )}
-        <Bubble variant={isUser ? 'default' : 'muted'}>
-          <BubbleContent className="whitespace-pre-wrap">
-            {message.content}
-          </BubbleContent>
-        </Bubble>
-      </MessageContent>
-    </Message>
+/** `/chat` (a new conversation) and `/chat/:id` (an existing one). */
+export function ChatHome({ params }: AppRouteProps) {
+  const conversationId = params?.id || null;
+  const navigate = useNavigate();
+  const onCreated = useCallback(
+    (id: string) => navigate(`/chat/${id}`, { replace: true }),
+    [navigate],
   );
-}
+  const chat = useConversation(conversationId, { onCreated });
+  const conversations = useConversations();
+  // Phones have no room for the list beside the thread; it takes the thread's place.
+  const [showList, setShowList] = useState(false);
+  const title = conversationId
+    ? conversations.data?.find((c) => c.id === conversationId)?.title
+    : undefined;
 
-/** Assistant row that shows the typing indicator while a reply is pending. */
-function PendingMessage() {
-  return (
-    <Message align="start">
-      <MessageAvatar>
-        <Avatar>
-          <AvatarFallback>
-            <Sparkles className="size-4" aria-hidden="true" />
-          </AvatarFallback>
-        </Avatar>
-      </MessageAvatar>
-      <MessageContent>
-        <Bubble variant="muted">
-          <BubbleContent>
-            <TypingDots />
-          </BubbleContent>
-        </Bubble>
-      </MessageContent>
-    </Message>
-  );
-}
+  if (chat.notConfigured) return <NotConfigured />;
 
-export function ChatHome() {
-  const { messages, pending, error, notConfigured, send } = useChat();
-  const [draft, setDraft] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!draft.trim() || pending) return;
-    void send(draft);
-    setDraft('');
-  };
-
-  if (notConfigured) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Chat" subtitle="Your household assistant" />
-        <Card>
-          <div className="text-center py-12">
-            <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">Chat isn't configured</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Configure the `ai` block in homestead.config.ts to enable the
-              assistant.
-            </p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  const isEmpty = messages.length === 0 && !pending;
+  const { messages, status, busy } = chat;
+  const last = messages.at(-1);
+  const showThinking = busy && !isAnswering(last);
+  const starters = STARTERS.filter((s) => appExists(s.app));
+  const missing = chat.history.isError;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] space-y-4">
+    <div className="flex h-[calc(100vh-8rem)] flex-col space-y-4">
       <PageHeader
-        title="Chat"
+        title={title || 'Chat'}
         subtitle="Ask the assistant to look up or change your household data"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 md:hidden"
+            aria-pressed={showList}
+            onClick={() => setShowList((v) => !v)}
+          >
+            <History className="size-4" />
+            {showList ? 'Back to chat' : 'Conversations'}
+          </Button>
+        }
       />
 
-      {/* Card's inner CardContent isn't a flex container, so the chat
-          column uses a plain styled div to let the message list stretch. */}
-      <div className="flex-1 flex flex-col min-h-0 bg-surface-white border border-gray-100 rounded-xl shadow-sm p-4">
-        {isEmpty ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <MessageCircle className="w-16 h-16 text-gray-300 mb-4" />
-            <p className="text-gray-600">Start a conversation</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Try "What's on my todo list?" or "Add milk to the grocery list"
-            </p>
-          </div>
-        ) : (
-          <MessageScrollerProvider autoScroll>
-            <MessageScroller className="min-h-0 flex-1">
-              <MessageScrollerViewport
-                className="py-1"
-                data-testid="chat-messages"
-              >
-                <MessageScrollerContent className="gap-6 px-1">
-                  {messages.map((message, i) => (
-                    <MessageScrollerItem
-                      key={i}
-                      messageId={String(i)}
-                      scrollAnchor={message.role === 'user'}
-                    >
-                      <ChatMessage message={message} />
-                    </MessageScrollerItem>
-                  ))}
-                  {pending && (
-                    <MessageScrollerItem messageId="pending">
-                      <PendingMessage />
-                    </MessageScrollerItem>
-                  )}
-                  {error && (
-                    <MessageScrollerItem messageId="error">
-                      <Marker
-                        variant="border"
-                        className="text-destructive"
-                        role="alert"
-                      >
-                        <MarkerContent className="whitespace-pre-wrap break-words">
-                          {error}
-                        </MarkerContent>
-                      </Marker>
-                    </MessageScrollerItem>
-                  )}
-                </MessageScrollerContent>
-              </MessageScrollerViewport>
-              <MessageScrollerButton />
-            </MessageScroller>
-          </MessageScrollerProvider>
-        )}
+      <div className="flex min-h-0 flex-1 gap-4">
+        <ConversationList
+          activeId={conversationId}
+          onDeletedActive={() => navigate('/chat', { replace: true })}
+          className={cn('shrink-0 md:flex md:w-60', showList ? 'flex w-full' : 'hidden')}
+        />
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-center gap-2 pt-3 mt-3 border-t border-gray-100"
+        <div
+          className={cn(
+            'min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-gray-100 bg-surface-white shadow-sm md:flex',
+            showList ? 'hidden' : 'flex',
+          )}
         >
-          <Input
-            type="text"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Message the assistant…"
-            disabled={pending}
-            data-testid="chat-input"
-            className="flex-1"
-          />
-          <Button
-            type="submit"
-            disabled={pending || !draft.trim()}
-            data-testid="chat-send"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
+          {missing ? (
+            <ConversationEmptyState
+              role="alert"
+              title="Couldn't open this conversation"
+              description={chat.history.error.message}
+            />
+          ) : (
+            <Conversation className="min-h-0" data-testid="chat-messages">
+              <ConversationContent>
+                {messages.length === 0 && !busy ? (
+                  conversationId && chat.history.isPending ? null : (
+                    <ConversationEmptyState
+                      icon={<MessageCircle className="size-10" />}
+                      title="Start a conversation"
+                      description="Ask about anything in your household, or have the assistant change it."
+                    />
+                  )
+                ) : (
+                  messages.map((message, i) => (
+                    <ChatMessage
+                      key={message.id}
+                      message={message}
+                      stored={chat.storedById.get(message.id)}
+                      streaming={busy && i === messages.length - 1 && message.role === 'assistant'}
+                    />
+                  ))
+                )}
+                {showThinking && (
+                  <Message from="assistant">
+                    <MessageContent>
+                      <div data-testid="chat-pending" aria-label="The assistant is working">
+                        <Shimmer>{chat.remoteRunning ? 'Working in another window…' : 'Thinking…'}</Shimmer>
+                      </div>
+                    </MessageContent>
+                  </Message>
+                )}
+              </ConversationContent>
+              <ConversationScrollButton />
+            </Conversation>
+          )}
+
+          <div className="space-y-3 p-3">
+            {messages.length === 0 && !busy && !conversationId && starters.length > 0 && (
+              <Suggestions data-testid="chat-suggestions">
+                {starters.map((s) => (
+                  <Suggestion
+                    key={s.text}
+                    suggestion={s.text}
+                    onClick={(text) => void chat.send(text).catch(() => {})}
+                  />
+                ))}
+              </Suggestions>
+            )}
+            <PromptInput onSubmit={({ text }) => chat.send(text)}>
+              <PromptInputBody>
+                <PromptInputTextarea
+                  placeholder="Message the assistant…"
+                  aria-label="Message the assistant"
+                  data-testid="chat-input"
+                  disabled={missing}
+                  onKeyDown={(e) => {
+                    // Mid-reply, Enter waits: the draft stays put rather than
+                    // being sent into a conversation that can't take it yet.
+                    if (busy && e.key === 'Enter' && !e.shiftKey) e.preventDefault();
+                  }}
+                />
+              </PromptInputBody>
+              <PromptInputFooter>
+                <PromptInputTools />
+                <PromptInputSubmit
+                  status={chat.remoteRunning ? 'streaming' : status}
+                  onStop={chat.canStop ? () => void chat.stop() : undefined}
+                  disabled={missing || (busy && !chat.canStop)}
+                  data-testid="chat-send"
+                />
+              </PromptInputFooter>
+            </PromptInput>
+          </div>
+        </div>
       </div>
     </div>
   );

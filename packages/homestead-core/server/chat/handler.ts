@@ -1,20 +1,17 @@
 /**
  * Chat backend: `POST /api/chat`.
  *
- * Two request shapes. `{ conversation_id?, message }` runs one stored, streamed
- * turn of a conversation (`./turns`). `{ messages }` — the original shape, the
- * whole transcript in and one JSON reply out, nothing stored — stays until the
- * SPA moves over. What follows describes the tools both share.
+ * `{ conversation_id?, message: { id, text } }` runs one stored, streamed turn
+ * of a conversation (`./turns`). This module holds what a turn is built from:
+ * the system prompt and the tool set.
  *
- * Runs a chat turn through the unified AI API over the per-resource tool
- * surface (`./per-resource`): one tool per registered aepbase resource, the
- * verb as an `action` parameter, with each app's AEP-136 custom methods in the
- * same enum — the surface `/api/mcp` serves by default, so chat and an MCP
- * client see the same tools. The configured provider/model comes from
- * homestead.config.ts. Tool calls execute against aepbase with the caller's
- * own token, so they can only do what the user could do directly.
- * Conversations are ephemeral — the client sends the full transcript each turn
- * and nothing is persisted server-side.
+ * The tools are the per-resource surface (`./per-resource`): one tool per
+ * registered aepbase resource, the verb as an `action` parameter, with each
+ * app's AEP-136 custom methods in the same enum — the surface `/api/mcp` serves
+ * by default, so chat and an MCP client see the same tools. The configured
+ * provider/model comes from homestead.config.ts. Tool calls execute against
+ * aepbase with the caller's own token, so they can only do what the user could
+ * do directly.
  */
 
 import { authenticate, type AuthedUser } from '../aepbase';
@@ -22,20 +19,11 @@ import { getAllResourceDefs } from '../../apps/registry';
 import { BUILTIN_RESOURCE_DEFS } from '../../resources/builtins';
 import type { ResourceDefinition } from '../../resources/types';
 import { visibleToModel } from '../../resources/model-tools';
-import { logger } from '../../utils/logger';
-import type {
-  ChatMessage,
-  ChatResponse,
-  ChatToolCall,
-} from '../../chat/types';
 import { isAiConfigured } from '../ai/config';
-import { aiRunAgent, tool, type ModelMessage, type ToolSet } from '../ai/generate';
+import { tool, type ToolSet } from '../ai/generate';
 import { buildResourceTools, resourceInstructions } from './per-resource';
 import { handleTurn } from './turns';
 import { makeSearchTool, SEARCH_TOOL_NAME } from './search-tool';
-
-/** Max rounds of tool execution per turn before forcing a text answer. */
-const MAX_TOOL_ROUNDS = 10;
 
 export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): string {
   return [
@@ -80,30 +68,15 @@ export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): stri
   ].join('\n');
 }
 
-function badRequest(message: string): Response {
-  return Response.json({ error: 'Bad request', message }, { status: 400 });
-}
-
-function isValidMessage(m: unknown): m is ChatMessage {
-  if (typeof m !== 'object' || m === null) return false;
-  const { role, content } = m as Record<string, unknown>;
-  return (role === 'user' || role === 'assistant') && typeof content === 'string';
-}
-
 /**
  * The tool set one chat turn runs with: the per-resource surface over `defs`,
  * each tool executing under `token`, plus the semantic document search when
- * embeddings are configured. Every outcome is reported through `record` in
- * invocation order — the SDK calls each tool's `execute` and loops, so
- * recording here (vs. reading the final step) keeps the turn's `toolCalls`
- * ordered and complete even across several calls per step.
- *
- * Exported for tests; `handleChat` is the only runtime caller.
+ * embeddings are configured. A failed call goes back to the model as
+ * `{ error }` for it to correct, never thrown.
  */
 export function buildChatToolSet(
   defs: ResourceDefinition[],
   token: string,
-  record: (call: ChatToolCall) => void,
 ): { toolSet: ToolSet; hasDocSearch: boolean } {
   const surface = buildResourceTools(defs);
   const toolSet: ToolSet = {};
@@ -114,11 +87,6 @@ export function buildChatToolSet(
       execute: async (rawArgs: unknown) => {
         const args = (rawArgs ?? {}) as Record<string, unknown>;
         const out = await surface.execute(name, args, token);
-        record(
-          out.ok
-            ? { tool: name, args, ok: true, result: out.result }
-            : { tool: name, args, ok: false, error: out.error },
-        );
         return out.ok ? { result: out.result ?? null } : { error: out.error };
       },
     });
@@ -126,7 +94,7 @@ export function buildChatToolSet(
 
   // Semantic search over embedded file fields. Auto-registered only when some
   // resource embeds a file field and embedding is configured; null otherwise.
-  const searchTool = makeSearchTool({ defs, token, record });
+  const searchTool = makeSearchTool({ defs, token });
   if (searchTool) toolSet[SEARCH_TOOL_NAME] = searchTool;
 
   return { toolSet, hasDocSearch: searchTool !== null };
@@ -148,61 +116,18 @@ export async function handleChat(request: Request): Promise<Response> {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: { messages?: unknown; message?: unknown };
+  let body: unknown;
   try {
-    body = (await request.json()) as { messages?: unknown; message?: unknown };
+    body = await request.json();
   } catch {
-    return badRequest('request body must be JSON');
+    return Response.json(
+      { error: { code: 400, message: 'request body must be JSON' } },
+      { status: 400 },
+    );
   }
 
   // Same definition union the schema sync applies, so the model sees every
   // collection that exists in aepbase — less any a definition hides from chat.
   const defs = visibleToModel([...BUILTIN_RESOURCE_DEFS, ...getAllResourceDefs()], 'chat');
-
-  // A stored, streamed turn: `{ conversation_id?, message: { id, text } }`.
-  if (body.message !== undefined) return handleTurn(auth, body, defs);
-
-  // The original shape — the client sends the whole transcript and gets one
-  // JSON reply, nothing stored — kept until the SPA moves to stored turns.
-  const messages = body.messages;
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return badRequest('messages must be a non-empty array');
-  }
-  if (!messages.every(isValidMessage)) {
-    return badRequest('each message needs a user/assistant role and string content');
-  }
-  if (messages[messages.length - 1].role !== 'user') {
-    return badRequest('the last message must be from the user');
-  }
-
-  const toolCalls: ChatToolCall[] = [];
-  const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token, (call) =>
-    toolCalls.push(call),
-  );
-
-  const modelMessages: ModelMessage[] = messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
-
-  try {
-    const { text } = await aiRunAgent({
-      system: buildSystemPrompt(auth.user, hasDocSearch),
-      messages: modelMessages,
-      tools: toolSet,
-      maxRounds: MAX_TOOL_ROUNDS,
-    });
-
-    const response: ChatResponse = { reply: text, toolCalls };
-    return Response.json(response);
-  } catch (err) {
-    logger.error('chat: AI request failed', err);
-    return Response.json(
-      {
-        error: 'Bad gateway',
-        message: err instanceof Error ? err.message : 'The AI request failed',
-      },
-      { status: 502 },
-    );
-  }
+  return handleTurn(auth, body, defs);
 }

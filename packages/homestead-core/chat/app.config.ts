@@ -28,6 +28,11 @@ export const chatApp: AppConfig = {
         index: true,
         component: () => import('./components/ChatHome').then((m) => m.ChatHome),
       },
+      {
+        path: ':id',
+        component: () => import('./components/ChatHome').then((m) => m.ChatHome),
+        dynamic: true,
+      },
     ],
     placement: 'topbar',
     navOrder: 5,

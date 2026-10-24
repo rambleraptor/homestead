@@ -19,6 +19,8 @@
  * class from these packages and ships an unstyled SPA. */
 @source "../../homestead-core";
 @source "../../homestead-apps";
+/* Streamdown (chat markdown) styles its output with Tailwind classes. */
+@source "../../../node_modules/streamdown/dist/*.js";
 
 /* Inter + Outfit are loaded via <link> in index.html (Google Fonts). The
  * design tokens below reference these variables; define them here so the
@@ -254,6 +256,19 @@
     to {
       opacity: 0;
       transform: translateX(220%);
+    }
+  }
+
+  /* The chat's "thinking" text (AI Elements' Shimmer): a highlight sweeps
+   * across the letters while the assistant hasn't started its reply. The
+   * gradient and its width come from the component; this moves it. */
+  --animate-text-shimmer: text-shimmer 2s linear infinite;
+  @keyframes text-shimmer {
+    from {
+      background-position: 100% center;
+    }
+    to {
+      background-position: 0% center;
     }
   }
 

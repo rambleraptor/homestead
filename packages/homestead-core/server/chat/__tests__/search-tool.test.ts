@@ -59,29 +59,27 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const noop = () => {};
-
 describe('makeSearchTool — gating', () => {
   it('is null when no resource embeds a file field', () => {
     setEmbeddingConfig({ provider: 'openai', model: 'm', auth: { apiKey: 'k' } });
     setVectorStore(fakeStore([]));
-    expect(makeSearchTool({ defs: [TODO_DEF], token: 't', record: noop })).toBeNull();
+    expect(makeSearchTool({ defs: [TODO_DEF], token: 't' })).toBeNull();
   });
 
   it('is null when embedding is unconfigured, even with an embedded resource', () => {
     setVectorStore(fakeStore([]));
-    expect(makeSearchTool({ defs: [DOC_DEF], token: 't', record: noop })).toBeNull();
+    expect(makeSearchTool({ defs: [DOC_DEF], token: 't' })).toBeNull();
   });
 
   it('is null when the vector store is not wired', () => {
     setEmbeddingConfig({ provider: 'openai', model: 'm', auth: { apiKey: 'k' } });
-    expect(makeSearchTool({ defs: [DOC_DEF], token: 't', record: noop })).toBeNull();
+    expect(makeSearchTool({ defs: [DOC_DEF], token: 't' })).toBeNull();
   });
 
   it('is a tool when embedded resource + embedding + store are all present', () => {
     setEmbeddingConfig({ provider: 'openai', model: 'm', auth: { apiKey: 'k' } });
     setVectorStore(fakeStore([]));
-    expect(makeSearchTool({ defs: [DOC_DEF], token: 't', record: noop })).not.toBeNull();
+    expect(makeSearchTool({ defs: [DOC_DEF], token: 't' })).not.toBeNull();
   });
 });
 
@@ -91,18 +89,13 @@ describe('makeSearchTool — execute', () => {
   function toolFor(hits: VectorHit[]) {
     setEmbeddingConfig({ provider: 'openai', model: 'm', auth: { apiKey: 'k' } });
     setVectorStore(fakeStore(hits));
-    const calls: unknown[] = [];
-    const t = makeSearchTool({
-      defs: [DOC_DEF, TODO_DEF],
-      token: 't',
-      record: (c) => calls.push(c),
-    })!;
-    return { execute: t.execute as unknown as ExecuteFn, calls };
+    const t = makeSearchTool({ defs: [DOC_DEF, TODO_DEF], token: 't' })!;
+    return { execute: t.execute as unknown as ExecuteFn };
   }
 
   it('returns accessible passages with plural-resource citations', async () => {
     getFn.mockResolvedValue({ title: 'Tax Return' });
-    const { execute, calls } = toolFor([hit('d1', 0, 'adjusted gross income', 0.9)]);
+    const { execute } = toolFor([hit('d1', 0, 'adjusted gross income', 0.9)]);
 
     const out = (await execute({ query: 'income' }, {} as never)) as {
       results: Array<Record<string, unknown>>;
@@ -116,9 +109,6 @@ describe('makeSearchTool — execute', () => {
         passage: 'adjusted gross income',
         score: 0.9,
       },
-    ]);
-    expect(calls).toEqual([
-      { tool: 'search_documents', args: { query: 'income' }, ok: true, result: { count: 1 } },
     ]);
   });
 
@@ -156,7 +146,7 @@ describe('makeSearchTool — execute', () => {
       if (path === '/users/u-7') return { display_name: 'Alice' };
       throw new Error('404');
     });
-    const t = makeSearchTool({ defs: [docWithRef], token: 't', record: noop })!;
+    const t = makeSearchTool({ defs: [docWithRef], token: 't' })!;
 
     const out = (await (t.execute as unknown as (a: { query: string }, o: never) => Promise<unknown>)(
       { query: 'x' },

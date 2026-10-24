@@ -1,7 +1,8 @@
 export { chatApp } from './app.config';
 export type {
-  ChatMessage,
   ChatToolCall,
-  ChatRequest,
-  ChatResponse,
+  ChatTurnRequest,
+  Conversation,
+  HomesteadUIMessage,
+  StoredChatMessage,
 } from './types';
