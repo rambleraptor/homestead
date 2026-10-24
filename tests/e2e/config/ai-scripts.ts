@@ -56,7 +56,15 @@ export const CHAT_MARKERS = {
   listUnchecked: 'e2e-chat-list-unchecked',
   /** Answer in text with no tool call — the plain streaming case. */
   hello: 'e2e-chat-hello',
+  /**
+   * A long text reply (200 words, so ~1s at the VM's 5ms chunk pace): long
+   * enough to cancel, interrupt, or collide with while it is still streaming.
+   */
+  longReply: 'e2e-chat-long-reply',
 } as const;
+
+/** The long reply's text, exported so a spec can check the whole of it arrived. */
+export const LONG_REPLY_TEXT = Array.from({ length: 200 }, (_, i) => `word${i + 1}`).join(' ');
 
 export const CHAT_SCRIPTS: readonly ChatScript[] = [
   {
@@ -83,6 +91,10 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
   {
     marker: CHAT_MARKERS.hello,
     steps: [{ text: 'Hello from the scripted assistant. How can I help?' }],
+  },
+  {
+    marker: CHAT_MARKERS.longReply,
+    steps: [{ text: LONG_REPLY_TEXT }],
   },
 ];
 

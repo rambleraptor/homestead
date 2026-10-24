@@ -62,6 +62,16 @@ export interface PageOptions extends ListOptions {
   pageToken?: string;
 }
 
+/** Options for a create. */
+export interface CreateOptions {
+  /**
+   * Choose the new record's id (AEP-133 `?id=`), for resources that allow it
+   * (`user_settable_create`). A retried create with the same id then fails
+   * with a conflict (409) instead of making a duplicate.
+   */
+  id?: string;
+}
+
 /** Options for a single-record delete. */
 export interface DeleteOptions {
   /**

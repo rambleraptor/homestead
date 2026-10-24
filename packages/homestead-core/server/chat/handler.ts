@@ -1,6 +1,11 @@
 /**
  * Chat backend: `POST /api/chat`.
  *
+ * Two request shapes. `{ conversation_id?, message }` runs one stored, streamed
+ * turn of a conversation (`./turns`). `{ messages }` — the original shape, the
+ * whole transcript in and one JSON reply out, nothing stored — stays until the
+ * SPA moves over. What follows describes the tools both share.
+ *
  * Runs a chat turn through the unified AI API over the per-resource tool
  * surface (`./per-resource`): one tool per registered aepbase resource, the
  * verb as an `action` parameter, with each app's AEP-136 custom methods in the
@@ -26,12 +31,13 @@ import type {
 import { isAiConfigured } from '../ai/config';
 import { aiRunAgent, tool, type ModelMessage, type ToolSet } from '../ai/generate';
 import { buildResourceTools, resourceInstructions } from './per-resource';
+import { handleTurn } from './turns';
 import { makeSearchTool, SEARCH_TOOL_NAME } from './search-tool';
 
 /** Max rounds of tool execution per turn before forcing a text answer. */
 const MAX_TOOL_ROUNDS = 10;
 
-function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): string {
+export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): string {
   return [
     'You are the Homestead household assistant. You help members of the',
     'household look up and manage their data (todos, groceries, recipes,',
@@ -142,12 +148,22 @@ export async function handleChat(request: Request): Promise<Response> {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: { messages?: unknown };
+  let body: { messages?: unknown; message?: unknown };
   try {
-    body = (await request.json()) as { messages?: unknown };
+    body = (await request.json()) as { messages?: unknown; message?: unknown };
   } catch {
     return badRequest('request body must be JSON');
   }
+
+  // Same definition union the schema sync applies, so the model sees every
+  // collection that exists in aepbase — less any a definition hides from chat.
+  const defs = visibleToModel([...BUILTIN_RESOURCE_DEFS, ...getAllResourceDefs()], 'chat');
+
+  // A stored, streamed turn: `{ conversation_id?, message: { id, text } }`.
+  if (body.message !== undefined) return handleTurn(auth, body, defs);
+
+  // The original shape — the client sends the whole transcript and gets one
+  // JSON reply, nothing stored — kept until the SPA moves to stored turns.
   const messages = body.messages;
   if (!Array.isArray(messages) || messages.length === 0) {
     return badRequest('messages must be a non-empty array');
@@ -159,9 +175,6 @@ export async function handleChat(request: Request): Promise<Response> {
     return badRequest('the last message must be from the user');
   }
 
-  // Same definition union the schema sync applies, so the model sees every
-  // collection that exists in aepbase — less any a definition hides from chat.
-  const defs = visibleToModel([...BUILTIN_RESOURCE_DEFS, ...getAllResourceDefs()], 'chat');
   const toolCalls: ChatToolCall[] = [];
   const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token, (call) =>
     toolCalls.push(call),
