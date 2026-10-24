@@ -21,6 +21,7 @@ import {
   userColumnsFromSchema,
   type ColumnDef,
 } from './db';
+import { nestedFileFieldNames } from './file-entries';
 import type { ResourceDefinition, Schema, SchemaProperty } from './types';
 import { STANDARD_FIELDS } from './types';
 import type { SyncDispatcher } from '../sync';
@@ -37,6 +38,11 @@ export interface RegisteredResource {
   singleton: boolean;
   enums: Record<string, string[]>;
   fileFields: Set<string>;
+  /**
+   * Top-level fields with files below them — in a list, inside an object.
+   * Derived from the schema; those files are stored by id (see `./file-entries`).
+   */
+  nestedFileFields: Set<string>;
   description: string;
   examples: Record<string, unknown>;
   userSettableId: boolean;
@@ -116,6 +122,7 @@ export class Registry {
       singleton: false,
       enums: {},
       fileFields: new Set(),
+      nestedFileFields: new Set(),
       description: '',
       examples: {},
       userSettableId: false,
@@ -212,6 +219,7 @@ export class Registry {
       singleton: def.singleton ?? false,
       enums: def.enums ?? {},
       fileFields,
+      nestedFileFields: nestedFileFieldNames(def.schema),
       description: def.description ?? '',
       examples: def.examples ?? {},
       userSettableId: def.user_settable_create ?? false,
@@ -349,5 +357,6 @@ export class Registry {
     // Enums and file fields are replaced wholesale on update.
     r.enums = def.enums && Object.keys(def.enums).length > 0 ? def.enums : {};
     r.fileFields = new Set(def.file_fields ?? []);
+    r.nestedFileFields = nestedFileFieldNames(def.schema);
   }
 }

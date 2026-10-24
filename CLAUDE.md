@@ -594,7 +594,12 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
 6. **File fields**: declare with `type: 'file'`. The translator emits
    aepbase's `binary` + `x-aepbase-file-field` wire encoding (never
    write those yourself). The engine writes files under
-   `data/files/...` and exposes a `:download` custom method.
+   `data/files/...` and exposes a `:download` custom method. A file may also
+   sit in a list or inside an object (not inside `variants`); those are stored
+   by id, read as descriptors (`{ id, url, name, media_type, size, encrypted }`),
+   written with `$upload` / `$file` placeholders (the clients' `encodeBody`
+   does this for you), and downloaded with `{ file: id }` — see
+   [`docs/design/nested-files.md`](packages/homestead-site/docs/design/nested-files.md).
 7. **`singular` is globally unique.** The registry throws on
    duplicate declarations across apps.
 

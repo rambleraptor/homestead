@@ -160,6 +160,8 @@ interface ResourceDoc {
   singleton: boolean;
   userSettableId: boolean;
   fileFields: Set<string>;
+  /** Top-level fields with files below them (see `./file-entries`). */
+  nestedFileFields: Set<string>;
   patternElems: string[];
   /** Children make delete advertise a `force` query param (aep-lib-go shape). */
   hasChildren: boolean;
@@ -248,6 +250,7 @@ function metaResourceDoc(): ResourceDoc {
     singleton: false,
     userSettableId: false,
     fileFields: new Set(),
+    nestedFileFields: new Set(),
     patternElems: ['aep-resource-definitions', '{aep_resource_definition_id}'],
     hasChildren: false,
     methods: {
@@ -271,6 +274,7 @@ function registeredToDoc(r: RegisteredResource, hasChildren: boolean): ResourceD
     singleton: r.singleton,
     userSettableId: r.userSettableId,
     fileFields: r.fileFields,
+    nestedFileFields: r.nestedFileFields,
     patternElems: r.patternElems,
     hasChildren,
     methods: r.builtin
@@ -331,6 +335,42 @@ function withReferenceAnnotation(out: Json, prop: SchemaProperty): void {
   }
 }
 
+/** What a file below the top level reads as: see `FileDescriptor` in `./file-entries`. */
+const FILE_DESCRIPTOR_PROPERTIES: Json = {
+  id: { type: 'string', description: 'The file id; download it with {"file": id}.' },
+  url: { type: 'string', description: 'The download URL (POST).' },
+  name: { type: 'string', description: 'The uploaded filename.' },
+  media_type: {
+    type: 'string',
+    description: 'From the leading bytes where the format is recognizable, else as uploaded.',
+  },
+  size: { type: 'integer', description: 'Size in bytes.' },
+  encrypted: { type: 'boolean', description: 'Whether the file is encrypted at rest.' },
+};
+
+/** Replace each file below a property with the descriptor it reads as. */
+function withFileDescriptorSchemas(prop: Json): Json {
+  if (prop['x-aepbase-file-field'] === true && prop.type === 'binary') {
+    const { type: _type, ...rest } = prop;
+    return {
+      ...rest,
+      type: 'object',
+      properties: FILE_DESCRIPTOR_PROPERTIES,
+      description:
+        (typeof rest.description === 'string' ? `${rest.description} ` : '') +
+        'Write {"$upload": "<part name>"} for a new file, {"$file": "<id>"} to keep one, or null.',
+    };
+  }
+  const out: Json = { ...prop };
+  if (prop.items && typeof prop.items === 'object') out.items = withFileDescriptorSchemas(prop.items as Json);
+  if (prop.properties && typeof prop.properties === 'object') {
+    out.properties = Object.fromEntries(
+      Object.entries(prop.properties as Record<string, Json>).map(([k, v]) => [k, withFileDescriptorSchemas(v)]),
+    );
+  }
+  return out;
+}
+
 /** Component schema with enriched property metadata + example object. */
 function componentSchema(doc: ResourceDoc): Json {
   const properties: Record<string, Json> = {};
@@ -344,7 +384,7 @@ function componentSchema(doc: ResourceDoc): Json {
     if (name in doc.examples) out.example = doc.examples[name];
     if (doc.fileFields.has(name)) out['x-aepbase-file-field'] = true;
     withReferenceAnnotation(out, prop as SchemaProperty);
-    properties[name] = out;
+    properties[name] = doc.nestedFileFields.has(name) ? withFileDescriptorSchemas(out) : out;
   }
 
   const example: Json = {};
@@ -590,7 +630,32 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
   }
   if (Object.keys(resourceOps).length > 0) paths[resourcePath] = resourceOps;
 
-  if (doc.fileFields.size > 0) {
+  if (doc.fileFields.size > 0 || doc.nestedFileFields.size > 0) {
+    // `file` (a file below the top level, by id) is documented only where such
+    // files exist, so resources with top-level file fields alone keep the
+    // original `{ field }` contract.
+    const downloadBody: Json =
+      doc.nestedFileFields.size > 0
+        ? {
+            type: 'object',
+            description: 'Name the file by `field` or by `file`, not both.',
+            properties: {
+              ...(doc.fileFields.size > 0
+                ? { field: { type: 'string', description: 'Name of the top-level file field to download.' } }
+                : {}),
+              file: { type: 'string', description: 'Id of a file below the top level, from the record.' },
+            },
+          }
+        : {
+            type: 'object',
+            required: ['field'],
+            properties: {
+              field: {
+                type: 'string',
+                description: 'Name of the file field to download.',
+              },
+            },
+          };
     paths[`${resourcePath}:download`] = {
       post: {
         operationId: `:Download${pascal(doc.singular)}`,
@@ -601,18 +666,7 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
           description: '',
           required: true,
           content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['field'],
-                properties: {
-                  field: {
-                    type: 'string',
-                    description: 'Name of the file field to download.',
-                  },
-                },
-              },
-            },
+            'application/json': { schema: downloadBody },
           },
         },
         responses: {

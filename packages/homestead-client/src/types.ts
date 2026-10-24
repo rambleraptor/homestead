@@ -5,6 +5,25 @@ export type MaybePromise<T> = T | Promise<T>;
 export type RecordBody = Record<string, unknown>;
 
 /**
+ * What a file below a record's top level reads as — in a list, inside an
+ * object. Download it with `record.download(descriptor)`. A top-level file
+ * field reads as its download URL instead.
+ */
+export interface FileDescriptor {
+  id: string;
+  /** The download URL (POST). */
+  url: string;
+  name: string;
+  /** From the file's leading bytes where the format is recognizable, else as uploaded. */
+  media_type: string;
+  size: number;
+  encrypted: boolean;
+}
+
+/** Which file to download: a top-level file field's name, or a file below the top level. */
+export type DownloadTarget = string | { file: string } | FileDescriptor;
+
+/**
  * The wire shape of aepbase's `user` resource. Kept as an escape hatch on
  * {@link HomesteadUser.raw} so callers can read fields the library doesn't
  * model (custom claims, timestamps) without another round-trip.

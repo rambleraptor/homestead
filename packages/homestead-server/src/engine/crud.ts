@@ -18,13 +18,25 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import {
   deleteAllFileFields,
+  deleteStoredFiles,
   fileFieldExists,
   fileKeyId,
   fileLooksEncrypted,
   filePath,
   openFileStream,
+  storedFileKeyId,
+  storedFilePath,
   writeFileField,
+  writeStoredFile,
 } from './files';
+import {
+  expandListShorthand,
+  resolveFilePlaceholders,
+  storedEntries,
+  withFileDescriptors,
+  type FileEntry,
+  type UploadPart,
+} from './file-entries';
 import {
   decryptBytes,
   DecryptError,
@@ -168,6 +180,10 @@ function fileFieldDownloadUrl(serverUrl: string, resourcePath: string, field: st
   return `${serverUrl.replace(/\/+$/, '')}/${resourcePath}:download?field=${field}`;
 }
 
+function storedFileDownloadUrl(serverUrl: string, resourcePath: string, id: string): string {
+  return `${serverUrl.replace(/\/+$/, '')}/${resourcePath}:download?file=${id}`;
+}
+
 /**
  * Response map for a stored resource: standard fields + schema fields that
  * are present, with file fields rewritten to download URLs (omitted when
@@ -199,6 +215,9 @@ function storedToMap(
     // way a client can tell an encrypted file from legacy plaintext.
     m[`${name}_encrypted`] = s.fields[name] === FILE_MARKER_ENCRYPTED;
   }
+  withFileDescriptors(r.schema, r.nestedFileFields, m, (id) =>
+    storedFileDownloadUrl(reg.serverUrl, s.path, id),
+  );
   return m;
 }
 
@@ -242,12 +261,16 @@ function coerceFormValue(value: string, schema: Schema, name: string): unknown {
 interface ParsedBody {
   fields: Record<string, unknown>;
   uploaded: Set<string>;
+  /** File parts for files below the top level, by part name; see `./file-entries`. */
+  parts: Map<string, UploadPart[]>;
 }
 
 /**
  * Parse a JSON or multipart/form-data body. Multipart accepts a
  * `resource`/`body` JSON part and/or individual scalar parts; file parts
- * matching declared file fields are streamed to disk.
+ * matching declared top-level file fields are written to disk, and the rest
+ * are held for the placeholders that name them (resources with files below the
+ * top level) or skipped (resources without).
  */
 async function readCreateOrApplyBody(
   req: Request,
@@ -270,10 +293,10 @@ async function readCreateOrApplyBody(
         throw new HttpError(400, 'invalid JSON');
       }
     }
-    return { fields, uploaded: new Set() };
+    return { fields, uploaded: new Set(), parts: new Map() };
   }
 
-  if (r.fileFields.size === 0) {
+  if (r.fileFields.size === 0 && r.nestedFileFields.size === 0) {
     throw new HttpError(400, 'resource does not accept multipart uploads');
   }
 
@@ -286,6 +309,7 @@ async function readCreateOrApplyBody(
 
   const fields: Record<string, unknown> = {};
   const uploaded = new Set<string>();
+  const parts = new Map<string, UploadPart[]>();
   for (const [name, value] of form.entries()) {
     if (typeof value === 'string') {
       if (name === 'resource' || name === 'body') {
@@ -304,7 +328,7 @@ async function readCreateOrApplyBody(
       fields[name] = coerceFormValue(value, r.schema, name);
       continue;
     }
-    // File part matching a declared file field — write to disk.
+    // File part matching a declared top-level file field — write to disk.
     if (r.fileFields.has(name)) {
       try {
         await writeFileField(reg.filesDir, resourcePath, name, value);
@@ -315,10 +339,122 @@ async function readCreateOrApplyBody(
         );
       }
       uploaded.add(name);
+      continue;
     }
-    // Unknown file parts are skipped to avoid accidental writes.
+    // Other parts are held for the placeholders that name them. A resource
+    // without files below the top level skips them, as it always has.
+    if (r.nestedFileFields.size > 0) {
+      const held = parts.get(name) ?? [];
+      held.push(await readPart(value));
+      parts.set(name, held);
+    }
   }
-  return { fields, uploaded };
+  expandListShorthand(r.schema, r.nestedFileFields, fields, parts);
+  return { fields, uploaded, parts };
+}
+
+async function readPart(file: File): Promise<UploadPart> {
+  return {
+    name: file.name || 'file',
+    bytes: new Uint8Array(await file.arrayBuffer()),
+    declaredType: file.type,
+  };
+}
+
+/** New files a write has placed below the top level, written but not yet committed. */
+interface NestedFileWrite {
+  written: FileEntry[];
+  /** Files the record held before the write (empty on create). */
+  before: Map<string, FileEntry>;
+  /** Existing files the write keeps by `$file`. */
+  kept: Set<string>;
+}
+
+/**
+ * Resolve a write's file placeholders into entries and write the new files.
+ * Everything is checked before the first byte is written; a write that fails
+ * later must call {@link discardNestedFiles}.
+ */
+async function writeNestedFiles(
+  reg: Registry,
+  r: RegisteredResource,
+  path: string,
+  fields: Record<string, unknown>,
+  parts: Map<string, UploadPart[]>,
+  existingFields: Record<string, unknown> | null,
+): Promise<NestedFileWrite> {
+  const before = existingFields
+    ? storedEntries(r.schema, r.nestedFileFields, existingFields)
+    : new Map<string, FileEntry>();
+  if (r.nestedFileFields.size === 0) return { written: [], before, kept: new Set() };
+  const encrypt = encryptionEnabled();
+  const { pending, kept } = resolveFilePlaceholders({
+    schema: r.schema,
+    fieldNames: r.nestedFileFields,
+    fields,
+    parts,
+    existing: before,
+    encrypt,
+  });
+  const written: FileEntry[] = [];
+  try {
+    for (const { entry, bytes } of pending) {
+      await writeStoredFile(reg.filesDir, path, entry.id, bytes, encrypt);
+      written.push(entry);
+    }
+  } catch (err) {
+    deleteStoredFiles(reg.filesDir, path, written.map((e) => e.id));
+    throw new HttpError(400, `storing a file: ${err instanceof Error ? err.message : err}`);
+  }
+  return { written, before, kept };
+}
+
+/**
+ * Re-read the record once a write's files are on disk. Reading the body and
+ * writing files awaits, so another write may have committed since the record
+ * was first read — even removed a file this write keeps. Returns the fresh
+ * record to merge onto (with nothing awaited before the commit), or a response
+ * refusing the write; either way the files are accounted for.
+ */
+function freshTarget(
+  reg: Registry,
+  r: RegisteredResource,
+  path: string,
+  files: NestedFileWrite,
+): StoredResource | Response {
+  const fresh = getResource(reg.db, r.plural, path, r.schema);
+  if (!fresh) {
+    discardNestedFiles(reg, path, files);
+    return errorResponse(404, `resource "${path}" not found`);
+  }
+  const now = storedEntries(r.schema, r.nestedFileFields, fresh.fields);
+  for (const id of files.kept) {
+    if (!now.has(id)) {
+      discardNestedFiles(reg, path, files);
+      return errorResponse(409, `the record changed while this write was in flight (file "${id}" is gone); retry`);
+    }
+  }
+  files.before = now;
+  return fresh;
+}
+
+/** Undo {@link writeNestedFiles} for a write that didn't commit. */
+function discardNestedFiles(reg: Registry, path: string, write: NestedFileWrite): void {
+  deleteStoredFiles(reg.filesDir, path, write.written.map((e) => e.id));
+}
+
+/** After a committed write, delete the files the record no longer references. */
+function collectReplacedFiles(
+  reg: Registry,
+  r: RegisteredResource,
+  path: string,
+  write: NestedFileWrite,
+  fields: Record<string, unknown>,
+): void {
+  if (write.before.size === 0) return;
+  const kept = storedEntries(r.schema, r.nestedFileFields, fields);
+  const gone = [...write.before.keys()].filter((id) => !kept.has(id));
+  deleteStoredFiles(reg.filesDir, path, gone);
 }
 
 /**
@@ -420,26 +556,24 @@ export async function handleCreate(
   const id = url.searchParams.get('id') || generateId();
   const path = buildResourcePath(r, match.parentIds, id);
 
-  const { fields, uploaded } = await readCreateOrApplyBody(req, r, reg, path);
+  const { fields, uploaded, parts } = await readCreateOrApplyBody(req, r, reg, path);
   preparePayload(r, fields, uploaded);
-  applyDefaults(r.schema, fields);
-  applyDynamicDefaults(reg, r.schema, fields);
-
-  const requiredErr = validateRequiredWithFiles(r.schema, fields, r.fileFields, uploaded);
-  if (requiredErr) throw new HttpError(400, requiredErr);
-
-  const now = nowRFC3339();
-  const stored: StoredResource = {
-    id,
-    path,
-    create_time: now,
-    update_time: now,
-    fields,
-  };
-
+  const files = await writeNestedFiles(reg, r, path, fields, parts, null);
+  const stored: StoredResource = { id, path, create_time: '', update_time: '', fields };
   try {
+    applyDefaults(r.schema, fields);
+    applyDynamicDefaults(reg, r.schema, fields);
+
+    const requiredErr = validateRequiredWithFiles(r.schema, fields, r.fileFields, uploaded);
+    if (requiredErr) throw new HttpError(400, requiredErr);
+
+    const now = nowRFC3339();
+    stored.create_time = now;
+    stored.update_time = now;
     insertResource(reg.db, r.plural, stored, directParentIds(reg, r, match.parentIds), r.schema, ownerFor(caller));
   } catch (err) {
+    discardNestedFiles(reg, path, files);
+    if (err instanceof HttpError) throw err;
     if (isUniqueConstraintError(err)) {
       return errorResponse(409, `resource "${path}" already exists`);
     }
@@ -547,11 +681,7 @@ export async function handleUpdate(
   const existing = getResource(reg.db, r.plural, path, r.schema);
   if (!existing) return errorResponse(404, `resource "${path}" not found`);
 
-  // Snapshot the pre-state for the sync's `previous`, before the patch mutates
-  // `existing.fields`. Only materialized when a dispatcher is wired.
-  const preState = reg.syncDispatcher ? storedToMap(reg, r, existing) : null;
-
-  const { fields: patch, uploaded } = await readCreateOrApplyBody(req, r, reg, path);
+  const { fields: patch, uploaded, parts } = await readCreateOrApplyBody(req, r, reg, path);
   preparePayload(r, patch, uploaded);
 
   // Create-only fields are refused, not dropped: a caller told "no" can correct
@@ -559,13 +689,25 @@ export async function handleUpdate(
   const frozen = immutableFieldsIn(r.schema, patch);
   if (frozen.length) return errorResponse(400, immutableFieldsError(frozen));
 
-  // RFC 7396 merge patch onto existing fields (AEP-134 HTTP semantics).
-  applyMergePatch(r.schema, existing.fields, patch);
+  const files = await writeNestedFiles(reg, r, path, patch, parts, existing.fields);
+  // Merge onto the record as it is now: nothing below awaits until the commit.
+  const target = freshTarget(reg, r, path, files);
+  if (target instanceof Response) return target;
+  // Snapshot the pre-state for the sync's `previous`, before the patch mutates
+  // `target.fields`. Only materialized when a dispatcher is wired.
+  const preState = reg.syncDispatcher ? storedToMap(reg, r, target) : null;
   const now = nowRFC3339();
-  existing.update_time = now;
-
-  updateResource(reg.db, r.plural, path, existing.fields, now, r.schema);
-  const updated = storedToMap(reg, r, existing);
+  try {
+    // RFC 7396 merge patch onto existing fields (AEP-134 HTTP semantics).
+    applyMergePatch(r.schema, target.fields, patch);
+    target.update_time = now;
+    updateResource(reg.db, r.plural, path, target.fields, now, r.schema);
+  } catch (err) {
+    discardNestedFiles(reg, path, files);
+    throw err;
+  }
+  collectReplacedFiles(reg, r, path, files, target.fields);
+  const updated = storedToMap(reg, r, target);
   // Post-commit mirror (fire-and-forget).
   reg.syncDispatcher?.dispatch({
     event: 'update',
@@ -586,12 +728,41 @@ export async function handleApply(
   const r = match.resource;
   const path = buildResourcePath(r, match.parentIds, match.id);
 
-  const { fields, uploaded } = await readCreateOrApplyBody(req, r, reg, path);
+  const { fields, uploaded, parts } = await readCreateOrApplyBody(req, r, reg, path);
   preparePayload(r, fields, uploaded);
 
   const now = nowRFC3339();
-  const existing = getResource(reg.db, r.plural, path, r.schema);
+  const first = getResource(reg.db, r.plural, path, r.schema);
+  const files = await writeNestedFiles(reg, r, path, fields, parts, first?.fields ?? null);
+  // As in update: apply onto the record as it is now, nothing awaited before
+  // the commit. A record that appeared meanwhile is updated, not re-created.
+  let existing: StoredResource | null = null;
+  if (getResource(reg.db, r.plural, path, r.schema)) {
+    const target = freshTarget(reg, r, path, files);
+    if (target instanceof Response) return target;
+    existing = target;
+  }
+  try {
+    return applyResolved(reg, match, caller, r, path, fields, uploaded, now, existing, files);
+  } catch (err) {
+    discardNestedFiles(reg, path, files);
+    throw err;
+  }
+}
 
+/** The rest of {@link handleApply}, once the request's files are written. */
+function applyResolved(
+  reg: Registry,
+  match: RouteMatch,
+  caller: User | null,
+  r: RegisteredResource,
+  path: string,
+  fields: Record<string, unknown>,
+  uploaded: Set<string>,
+  now: string,
+  existing: StoredResource | null,
+  files: NestedFileWrite,
+): Response {
   if (existing) {
     // AEP-137: Apply must reject a request that omits a required field (400),
     // and must not modify fields the request leaves out — so validate required
@@ -610,6 +781,7 @@ export async function handleApply(
     applyMergePatch(r.schema, existing.fields, fields);
     existing.update_time = now;
     updateResource(reg.db, r.plural, path, existing.fields, now, r.schema);
+    collectReplacedFiles(reg, r, path, files, existing.fields);
     const updated = storedToMap(reg, r, existing);
     // Post-commit mirror (fire-and-forget) — an apply onto an existing record
     // is an update.
@@ -885,32 +1057,61 @@ export async function handleSingletonUpdate(
   return jsonResponse(updated);
 }
 
-/** The auto-registered `POST /{plural}/{id}:download` for file-field resources. */
+/**
+ * The auto-registered `POST /{plural}/{id}:download` for resources with files.
+ * Names the file by `field` (a top-level file field) or `file` (the id of a
+ * file below the top level), in the JSON body or the query string — the
+ * `url` a record reports is a query-string form, POSTable as-is.
+ */
 export async function handleDownload(
   reg: Registry,
   match: RouteMatch,
   req: Request,
 ): Promise<Response> {
   const r = match.resource;
-  let payload: { field?: string };
-  try {
-    payload = await req.json();
-  } catch (err) {
-    return errorResponse(400, `invalid JSON: ${err instanceof Error ? err.message : err}`);
+  const url = new URL(req.url);
+  let payload: { field?: unknown; file?: unknown } = {};
+  const text = await req.text();
+  if (text.trim() !== '') {
+    try {
+      payload = JSON.parse(text);
+    } catch (err) {
+      return errorResponse(400, `invalid JSON: ${err instanceof Error ? err.message : err}`);
+    }
   }
-  const field = payload.field;
-  if (!field) return errorResponse(400, 'field is required');
-  if (!r.fileFields.has(field)) {
-    return errorResponse(400, `field "${field}" is not a file field`);
-  }
+  const pick = (key: 'field' | 'file'): string | Response | undefined => {
+    const fromBody = typeof payload[key] === 'string' ? (payload[key] as string) : undefined;
+    const fromQuery = url.searchParams.get(key) ?? undefined;
+    if (fromBody && fromQuery && fromBody !== fromQuery) {
+      return errorResponse(400, `"${key}" differs between the body and the query`);
+    }
+    return fromBody ?? fromQuery;
+  };
+  const field = pick('field');
+  if (field instanceof Response) return field;
+  const fileId = pick('file');
+  if (fileId instanceof Response) return fileId;
+  if (field && fileId) return errorResponse(400, 'name a file by "field" or "file", not both');
+  if (!field && !fileId) return errorResponse(400, 'field or file is required');
 
   const path = buildResourcePath(r, match.parentIds, match.id);
   const stored = getResource(reg.db, r.plural, path, r.schema);
   if (!stored) return errorResponse(404, `resource "${path}" not found`);
 
+  if (fileId) return downloadStoredFile(reg, r, path, stored, fileId);
+
+  if (!r.fileFields.has(field!)) {
+    return errorResponse(
+      400,
+      r.nestedFileFields.has(field!)
+        ? `field "${field}" holds files by id; download one with "file" and an id from the record`
+        : `field "${field}" is not a file field`,
+    );
+  }
+
   let diskPath: string;
   try {
-    diskPath = filePath(reg.filesDir, path, field);
+    diskPath = filePath(reg.filesDir, path, field!);
   } catch (err) {
     return errorResponse(400, err instanceof Error ? err.message : String(err));
   }
@@ -918,20 +1119,79 @@ export async function handleDownload(
     return errorResponse(404, `file field "${field}" has no content`);
   }
 
-  const headers = {
-    'Content-Type': 'application/octet-stream',
-    'Content-Disposition': `inline; filename="${field}"`,
-  };
+  const headers = downloadHeaders(field!);
+  const encrypted = stored.fields[field!] === FILE_MARKER_ENCRYPTED;
+  return serveFile(diskPath, fileKeyId(path, field!), encrypted, headers, `file field "${field}"`);
+}
 
-  // The DB marker is authoritative: encrypted content is buffered + decrypted
-  // (GCM needs the whole buffer to verify), plaintext is streamed as before.
-  if (stored.fields[field] === FILE_MARKER_ENCRYPTED) {
+/**
+ * Response headers for a download. Always opaque bytes, never sniffed: a
+ * file's stored type is only as honest as its uploader, and serving an
+ * uploaded page as `text/html` from our own origin would run it as the app.
+ * Clients read the type from the record.
+ */
+function downloadHeaders(filename: string, size?: number): Record<string, string> {
+  const ascii = filename.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/octet-stream',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Disposition':
+      ascii === filename
+        ? `inline; filename="${ascii}"`
+        : `inline; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+  };
+  if (size !== undefined) headers['Content-Length'] = String(size);
+  return headers;
+}
+
+/** Download a file stored by id; only an id this record references is served. */
+async function downloadStoredFile(
+  reg: Registry,
+  r: RegisteredResource,
+  path: string,
+  stored: StoredResource,
+  fileId: string,
+): Promise<Response> {
+  // An id the record doesn't hold gets the same answer as a missing file, so
+  // the endpoint never confirms that an id exists somewhere else.
+  const entry = storedEntries(r.schema, r.nestedFileFields, stored.fields).get(fileId);
+  const missing = errorResponse(404, `file "${fileId}" not found`);
+  if (!entry) return missing;
+  let diskPath: string;
+  try {
+    diskPath = storedFilePath(reg.filesDir, path, fileId);
+  } catch {
+    return missing;
+  }
+  if (!existsSync(diskPath)) return missing;
+  return serveFile(
+    diskPath,
+    storedFileKeyId(path, fileId),
+    entry.encrypted,
+    downloadHeaders(entry.name, entry.encrypted ? undefined : entry.size),
+    `file "${fileId}"`,
+  );
+}
+
+/** Stream a plaintext file, or decrypt an encrypted one, behind `headers`. */
+async function serveFile(
+  diskPath: string,
+  keyId: string,
+  encrypted: boolean,
+  headers: Record<string, string>,
+  label: string,
+): Promise<Response> {
+  // The stored marker is authoritative: encrypted content is buffered and
+  // decrypted (GCM needs the whole buffer to verify), plaintext is streamed.
+  if (encrypted) {
     try {
-      const plaintext = decryptBytes(await readFile(diskPath), fileKeyId(path, field));
-      return new Response(new Uint8Array(plaintext), { headers });
+      const plaintext = decryptBytes(await readFile(diskPath), keyId);
+      return new Response(new Uint8Array(plaintext), {
+        headers: { ...headers, 'Content-Length': String(plaintext.length) },
+      });
     } catch (err) {
       if (err instanceof MissingMasterKeyError || err instanceof DecryptError) {
-        return errorResponse(500, `cannot decrypt file field "${field}": ${err.message}`);
+        return errorResponse(500, `cannot decrypt ${label}: ${err.message}`);
       }
       throw err;
     }
@@ -939,7 +1199,7 @@ export async function handleDownload(
 
   // Legacy plaintext. Guard against a marker/format mismatch leaking ciphertext.
   if (await fileLooksEncrypted(diskPath)) {
-    return errorResponse(500, `file field "${field}" is encrypted but not marked; refusing to serve`);
+    return errorResponse(500, `${label} is encrypted but not marked; refusing to serve`);
   }
   return new Response(openFileStream(diskPath), { headers });
 }

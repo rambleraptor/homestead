@@ -93,3 +93,45 @@ export function deleteAllFileFields(root: string, resourcePath: string): void {
   if (!existsSync(dir)) return;
   rmSync(dir, { recursive: true, force: true });
 }
+
+/**
+ * Files below a record's top level (in a list, inside an object) are stored by
+ * id under this directory of the record: `{record path}/_files/{id}`. Plurals
+ * and field names can't start with an underscore, so it never collides with a
+ * child collection or a top-level file field.
+ */
+const STORED_FILES_DIR = '_files';
+
+/** Encryption key id for a file stored by id; stable for the record's lifetime. */
+export function storedFileKeyId(resourcePath: string, id: string): string {
+  return `${resourcePath}/${STORED_FILES_DIR}/${id}`;
+}
+
+export function storedFilePath(root: string, resourcePath: string, id: string): string {
+  return filePath(root, `${resourcePath}/${STORED_FILES_DIR}`, id);
+}
+
+/** Write a file stored by id, encrypting it when encryption at rest is on. */
+export async function writeStoredFile(
+  root: string,
+  resourcePath: string,
+  id: string,
+  bytes: Uint8Array,
+  encrypt: boolean,
+): Promise<void> {
+  const p = storedFilePath(root, resourcePath, id);
+  mkdirSync(dirname(p), { recursive: true });
+  await writeFile(p, encrypt ? encryptBytes(bytes, storedFileKeyId(resourcePath, id)) : bytes);
+}
+
+/** Remove files stored by id (best-effort: a missing file is already gone). */
+export function deleteStoredFiles(root: string, resourcePath: string, ids: Iterable<string>): void {
+  if (!root) return;
+  for (const id of ids) {
+    try {
+      rmSync(storedFilePath(root, resourcePath, id), { force: true });
+    } catch {
+      // An id that can't form a path was never written.
+    }
+  }
+}

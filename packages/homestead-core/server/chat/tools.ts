@@ -180,9 +180,18 @@ function referenceNote(
   return hint ? `${base} (${hint})` : base;
 }
 
+/** Whether a file sits anywhere at or below this field. */
+function holdsFile(field: FieldDef): boolean {
+  if (field.type === 'file') return true;
+  if (field.items && holdsFile(field.items)) return true;
+  return Object.values(field.properties ?? {}).some(holdsFile);
+}
+
 /**
  * Convert one declared field to a Zod schema.
- * Returns null for fields the model can't supply (file fields).
+ * Returns null for fields the model can't supply: files, and any list that
+ * holds files — a list is replaced whole on update, so a model that can't
+ * name the files to keep would delete them.
  */
 function fieldToZod(
   prop: FieldDef,
@@ -215,6 +224,7 @@ function fieldToZod(
     case 'boolean':
       return { schema: described(z.boolean(), description), jsonString: false };
     case 'array': {
+      if (prop.items && holdsFile(prop.items)) return null;
       const items = prop.items ? fieldToZod(prop.items, findHint) : null;
       if (!items) return null;
       return { schema: described(z.array(items.schema), description), jsonString: false };

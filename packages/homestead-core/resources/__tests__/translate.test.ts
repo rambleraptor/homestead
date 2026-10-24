@@ -1009,3 +1009,77 @@ describe('constraint keywords', () => {
     ).not.toThrow();
   });
 });
+
+describe('files below the top level', () => {
+  const def = (fields: ResourceDefinition['fields']): ResourceDefinition => ({
+    singular: 'scrapbook',
+    plural: 'scrapbooks',
+    fields,
+  });
+
+  it('marks a file wherever it sits', () => {
+    const wire = toWireSchema(
+      {
+        attachments: {
+          type: 'array',
+          maxItems: 5,
+          items: { type: 'file' },
+        },
+        profile: { type: 'object', properties: { avatar: { type: 'file', required: true } } },
+        pages: {
+          type: 'array',
+          items: { type: 'object', properties: { scan: { type: 'file' }, caption: { type: 'string' } } },
+        },
+      },
+      'scrapbook',
+    );
+    expect(wire.properties.attachments).toEqual({
+      type: 'array',
+      maxItems: 5,
+      items: { type: 'binary', 'x-aepbase-file-field': true },
+    });
+    expect(wire.properties.profile).toEqual({
+      type: 'object',
+      properties: { avatar: { type: 'binary', 'x-aepbase-file-field': true } },
+      required: ['avatar'],
+    });
+    expect(wire.properties.pages.items?.properties?.scan).toEqual({
+      type: 'binary',
+      'x-aepbase-file-field': true,
+    });
+  });
+
+  it('accepts lists, objects and lists of objects', () => {
+    expect(() =>
+      validateResourceDefinition(
+        def({
+          attachments: { type: 'array', items: { type: 'file' } },
+          profile: { type: 'object', properties: { avatar: { type: 'file' } } },
+          pages: { type: 'array', items: { type: 'object', properties: { scan: { type: 'file' } } } },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('refuses a file inside a tagged-union variant', () => {
+    expect(() =>
+      validateResourceDefinition(
+        def({
+          meta: {
+            type: 'object',
+            discriminator: 'kind',
+            variants: { scan: { image: { type: 'file' } } },
+          },
+        }),
+      ),
+    ).toThrow(/file inside a tagged-union variant/);
+  });
+
+  it('keeps ai options to a top-level file', () => {
+    expect(() =>
+      validateResourceDefinition(
+        def({ attachments: { type: 'array', items: { type: 'file', ai: { embed: true } } } }),
+      ),
+    ).toThrow(/only a top-level file may/);
+  });
+});

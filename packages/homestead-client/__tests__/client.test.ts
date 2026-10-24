@@ -117,6 +117,32 @@ describe('file upload', () => {
     // Multipart must not carry the JSON content type (boundary is auto-set).
     expect(mock.calls[0].headers['Content-Type']).toBeUndefined();
   });
+
+  it('turns Blobs below the top level into upload placeholders', async () => {
+    const mock = mockFetch(() => ({ status: 201, json: { id: 'x' } }));
+    const hs = createHomesteadClient({ auth: bearerToken('t'), fetch: mock.fetch });
+    const a = new Blob(['a']);
+    const b = new Blob(['b']);
+    const c = new Blob(['c']);
+    await hs.collection('scrapbooks').create({
+      title: 'Trip',
+      attachments: [a, b],
+      pages: [{ caption: 'front', scan: c }],
+      note: null,
+    });
+
+    const form = mock.calls[0].body as FormData;
+    expect(JSON.parse(form.get('attachments') as string)).toEqual([
+      { $upload: '$upload-0' },
+      { $upload: '$upload-1' },
+    ]);
+    expect(JSON.parse(form.get('pages') as string)).toEqual([
+      { caption: 'front', scan: { $upload: '$upload-2' } },
+    ]);
+    expect(await (form.get('$upload-1') as Blob).text()).toBe('b');
+    expect(await (form.get('$upload-2') as Blob).text()).toBe('c');
+    expect(form.has('note')).toBe(false);
+  });
 });
 
 describe('errors', () => {
@@ -144,5 +170,22 @@ describe('download', () => {
     expect(mock.calls[0].url).toBe('/api/aep/gift-cards/abc:download');
     expect(jsonBody(mock.calls[0])).toEqual({ field: 'front_image' });
     expect(await blob.text()).toBe('raw-bytes');
+  });
+
+  it('names a file below the top level by id, or by its descriptor', async () => {
+    const mock = mockFetch(() => ({ text: 'raw-bytes' }));
+    const hs = createHomesteadClient({ auth: bearerToken('t'), fetch: mock.fetch });
+    const record = hs.collection('scrapbooks').record('s1');
+    await record.download({ file: 'f1' });
+    await record.download({
+      id: 'f2',
+      url: '/scrapbooks/s1:download?file=f2',
+      name: 'a.png',
+      media_type: 'image/png',
+      size: 3,
+      encrypted: false,
+    });
+    expect(jsonBody(mock.calls[0])).toEqual({ file: 'f1' });
+    expect(jsonBody(mock.calls[1])).toEqual({ file: 'f2' });
   });
 });

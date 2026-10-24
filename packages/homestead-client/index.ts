@@ -32,9 +32,11 @@ export {
 
 export { HomesteadError, AepbaseError } from './src/errors';
 
-export type {
-  CollectionRef,
-  RecordRef,
+export {
+  downloadBody,
+  encodeBody,
+  type CollectionRef,
+  type RecordRef,
 } from './src/refs';
 
 export type {
@@ -47,6 +49,8 @@ export type {
   DeleteOptions,
   RecordBody,
   MaybePromise,
+  FileDescriptor,
+  DownloadTarget,
 } from './src/types';
 
 export {
