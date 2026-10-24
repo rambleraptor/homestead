@@ -18,7 +18,8 @@
  * rows match: create what's missing, patch what drifted (an event renamed,
  * someone opting in or out), withdraw a future row nothing implies any more.
  * Rows already delivered — or cancelled by the person they were for — are left
- * alone until {@link PRUNE_AFTER_DAYS} sweeps them. Because the year is in the
+ * alone until platform retention sweeps them (30 days after their moment; see
+ * the `scheduled-notification` definition). Because the year is in the
  * key, next year's occurrence is a different row rather than a re-announce of
  * this year's.
  *
@@ -64,9 +65,6 @@ const EVENTS_URL = '/events';
  * over a weekend still writes the row before its moment.
  */
 export const HORIZON_DAYS = 9;
-
-/** How far back a delivered event reminder is kept before being swept. */
-export const PRUNE_AFTER_DAYS = 30;
 
 /** How long before the event each lead fires. */
 const LEAD_OFFSET_DAYS: Record<Exclude<ReminderLead, 'both'>, number> = {
@@ -192,11 +190,10 @@ const handler: CronHandler = async ({ token, firedAt, log }) => {
 
   const outcome = await reconcileScheduled(token, EVENTS_REMINDER_TYPE, planned, {
     now,
-    pruneAfterDays: PRUNE_AFTER_DAYS,
   });
 
   await log(
-    `events=${events.length} planned=${planned.length} created=${outcome.created} updated=${outcome.updated} unchanged=${outcome.unchanged} settled=${outcome.settled} withdrawn=${outcome.withdrawn} pruned=${outcome.pruned}`,
+    `events=${events.length} planned=${planned.length} created=${outcome.created} updated=${outcome.updated} unchanged=${outcome.unchanged} settled=${outcome.settled} withdrawn=${outcome.withdrawn}`,
   );
   return { events: events.length, planned: planned.length, ...outcome };
 };

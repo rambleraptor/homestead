@@ -12,15 +12,25 @@
  * `set-null` / `cascade` referrers are updated, and the change feed tells open
  * tabs.
  *
- * Each run deletes at most {@link RETENTION_SWEEP_CAP} rows per resource, so a
- * large backlog (a resource that just gained a retention window) drains over a
- * few days instead of in one long firing.
+ * A resource parented directly under `user` is swept per user: the sweep lists
+ * every user and walks each one's `users/{id}/<plural>` collection — the same
+ * walk a scheduled-notification reconcile does, done once for every such
+ * resource.
+ *
+ * Each run deletes at most {@link RETENTION_SWEEP_CAP} rows per resource (across
+ * all users, for a user-parented one), so a large backlog — a resource that just
+ * gained a retention window — drains over a few days instead of in one long
+ * firing.
  *
  * Server-only in practice (it deletes), but free of server imports: the caller
  * hands in the client, so tests drive it against an in-memory engine.
  */
 
-import { HomesteadError, type HomesteadClient } from '@rambleraptor/homestead-client';
+import {
+  HomesteadError,
+  type CollectionRef,
+  type HomesteadClient,
+} from '@rambleraptor/homestead-client';
 import type { ResourceDefinition, ResourceRetention } from './types';
 
 /** Most rows one run deletes from one resource. */
@@ -73,9 +83,20 @@ export function isExpired(
   return Number.isFinite(at) && at < new Date(cutoff).getTime();
 }
 
-/** The definitions a sweep acts on: top-level, with a retention window. */
+/** True for a resource parented directly under the built-in `user` root. */
+function isUserParented(def: ResourceDefinition): boolean {
+  const parents = def.parents ?? [];
+  return parents.length === 1 && parents[0] === 'user';
+}
+
+/**
+ * The definitions a sweep acts on: those with a retention window that are
+ * top-level or parented directly under `user`.
+ */
 export function retainedResources(defs: readonly ResourceDefinition[]): ResourceDefinition[] {
-  return defs.filter((d) => d.retention && (d.parents ?? []).length === 0);
+  return defs.filter(
+    (d) => d.retention && ((d.parents ?? []).length === 0 || isUserParented(d)),
+  );
 }
 
 /** What one sweep did to one resource. */
@@ -100,24 +121,50 @@ export interface SweepOptions {
   cap?: number;
 }
 
-/** Collect up to `cap + 1` expired ids (the extra one reports `capped`). */
-async function expiredIds(
+/** One collection a resource's rows live in, and how to name its rows in logs. */
+interface Scope {
+  records: CollectionRef<Record<string, unknown>>;
+  /** Path prefix for log lines, e.g. `memos` or `users/u1/scheduled-notifications`. */
+  label: string;
+}
+
+/** An expired row: where to delete it, and what to call it. */
+interface ExpiredRow {
+  scope: Scope;
+  id: string;
+}
+
+/** Where `def`'s rows live: one collection, or one per user. */
+async function scopesOf(client: HomesteadClient, def: ResourceDefinition): Promise<Scope[]> {
+  if (!isUserParented(def)) {
+    return [{ records: client.collection(def.plural), label: def.plural }];
+  }
+  const users = await client.collection<{ id: string }>('users').listAll();
+  return users.map((user) => ({
+    records: client.collection('users').record(user.id).collection(def.plural),
+    label: `users/${user.id}/${def.plural}`,
+  }));
+}
+
+/** Collect up to `cap + 1` expired rows (the extra one reports `capped`). */
+async function expiredRows(
   client: HomesteadClient,
   def: ResourceDefinition,
   cutoff: string,
   cap: number,
-): Promise<string[]> {
+): Promise<ExpiredRow[]> {
   const retention = def.retention!;
-  const ids: string[] = [];
+  const filter = retentionFilter(retention, cutoff);
+  const rows: ExpiredRow[] = [];
   // Collected before any delete: deleting while paging would shift the pages.
-  for await (const record of client
-    .collection<Record<string, unknown>>(def.plural)
-    .list({ filter: retentionFilter(retention, cutoff) })) {
-    if (!isExpired(record, retention, cutoff)) continue;
-    ids.push(String(record.id));
-    if (ids.length > cap) break;
+  for (const scope of await scopesOf(client, def)) {
+    for await (const record of scope.records.list({ filter })) {
+      if (!isExpired(record, retention, cutoff)) continue;
+      rows.push({ scope, id: String(record.id) });
+      if (rows.length > cap) return rows;
+    }
   }
-  return ids;
+  return rows;
 }
 
 /**
@@ -145,32 +192,31 @@ export async function sweepRetention(opts: SweepOptions): Promise<RetentionResul
     };
     results.push(result);
 
-    let ids: string[];
+    let rows: ExpiredRow[];
     try {
-      ids = await expiredIds(opts.client, def, cutoff, cap);
+      rows = await expiredRows(opts.client, def, cutoff, cap);
     } catch (err) {
       result.failed += 1;
       await log(`${def.plural}: could not list expired rows: ${String(err)}`);
       continue;
     }
-    if (ids.length > cap) {
+    if (rows.length > cap) {
       result.capped = true;
-      ids = ids.slice(0, cap);
+      rows = rows.slice(0, cap);
     }
 
-    const records = opts.client.collection(def.plural);
-    for (const id of ids) {
+    for (const { scope, id } of rows) {
       try {
         // force: take the child subtree with it. Reference rules still apply.
-        await records.record(id).delete({ force: true });
+        await scope.records.record(id).delete({ force: true });
         result.deleted += 1;
       } catch (err) {
         if (err instanceof HomesteadError && err.code === 409) {
           result.blocked += 1;
-          await log(`${def.plural}/${id}: kept — ${err.message}`);
+          await log(`${scope.label}/${id}: kept — ${err.message}`);
         } else {
           result.failed += 1;
-          await log(`${def.plural}/${id}: delete failed — ${String(err)}`);
+          await log(`${scope.label}/${id}: delete failed — ${String(err)}`);
         }
       }
     }

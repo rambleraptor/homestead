@@ -15,6 +15,7 @@ import {
 import type { ResourceDefinition } from '../types';
 import { operationsApp } from '../../operations/app.config';
 import { operationsResources } from '../../operations/resources';
+import { notificationsResources } from '../../notifications/resources';
 
 const thread = (overrides: Partial<ResourceDefinition> = {}): ResourceDefinition => ({
   singular: 'thread',
@@ -41,10 +42,14 @@ describe('retention boot validation', () => {
     );
   });
 
-  it('rejects a child resource — it goes when its parent does', () => {
+  it('rejects a child of an ordinary parent — it goes when its parent does', () => {
     expect(() => validateResourceDefinition(thread({ parents: ['board'] }))).toThrow(
-      /top-level resource/,
+      /top-level or user-parented/,
     );
+  });
+
+  it('accepts a resource parented directly under user — the sweep walks every user', () => {
+    expect(() => validateResourceDefinition(thread({ parents: ['user'] }))).not.toThrow();
   });
 
   it('accepts the engine timestamps as the field, and a where condition', () => {
@@ -102,9 +107,20 @@ describe('retention helpers', () => {
     expect(isExpired({}, r, cutoff)).toBe(false);
   });
 
-  it('sweeps only top-level resources that declare a window', () => {
-    const defs = [thread(), thread({ singular: 'plain', plural: 'plains', retention: undefined })];
-    expect(retainedResources(defs).map((d) => d.singular)).toEqual(['thread']);
+  it('sweeps top-level and user-parented resources that declare a window', () => {
+    const defs = [
+      thread(),
+      thread({ singular: 'plain', plural: 'plains', retention: undefined }),
+      thread({ singular: 'mine', plural: 'mines', parents: ['user'] }),
+      thread({ singular: 'nested', plural: 'nesteds', parents: ['board'] }),
+    ];
+    expect(retainedResources(defs).map((d) => d.singular)).toEqual(['thread', 'mine']);
+  });
+
+  it('is how scheduled notifications are cleaned up — an app’s rows only', () => {
+    const def = notificationsResources.find((d) => d.singular === 'scheduled-notification')!;
+    expect(def.retention).toEqual({ days: 30, field: 'send_at', where: 'has(source_app)' });
+    expect(() => validateResourceDefinition(def)).not.toThrow();
   });
 
   it('is scheduled daily on the always-installed Operations app', () => {

@@ -665,8 +665,9 @@ export interface ResourceDefinition {
    */
   bulkExport?: BulkExportDef<any>;
   /**
-   * Delete rows past an age (see {@link ResourceRetention}). Top-level
-   * resources only: a child goes when its parent does. Server-only — never
+   * Delete rows past an age (see {@link ResourceRetention}). Top-level and
+   * user-parented resources only: a child of anything else goes when its
+   * parent does. Server-only — never
    * sent to the engine (the schema-sync wire payload is an explicit
    * whitelist). Validated at boot by `validateResourceDefinition`.
    */

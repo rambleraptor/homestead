@@ -83,10 +83,15 @@ function validateRetention(
   if (!Number.isInteger(retention.days) || retention.days < 1) {
     fail(`retention.days must be a positive integer (got ${String(retention.days)})`);
   }
-  if ((def.parents ?? []).length > 0) {
-    // A child is deleted with its parent; sweeping it independently would need
-    // a walk over every parent (and, under `user`, every user).
-    fail('retention is only valid on a top-level resource — a child goes when its parent does');
+  const parents = def.parents ?? [];
+  if (parents.length > 0 && !(parents.length === 1 && parents[0] === 'user')) {
+    // A child of an ordinary parent is deleted with its parent; sweeping it
+    // independently would need a walk over every parent record. Under `user`
+    // the sweep walks every user, which is cheap and bounded.
+    fail(
+      'retention is only valid on a top-level or user-parented resource — ' +
+        'a child of anything else goes when its parent does',
+    );
   }
   if (retention.field !== undefined && !ENGINE_TIMESTAMPS.has(retention.field)) {
     const field = def.fields[retention.field];

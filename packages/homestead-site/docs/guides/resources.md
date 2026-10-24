@@ -190,9 +190,11 @@ than it:
   in the log rather than forced.
 - A run deletes at most 500 rows per resource, so a big backlog clears over a
   few days.
-- Only **top-level** resources take `retention` — a child goes when its
-  parent does. The boot check refuses a bad window, a child, or a `field`
-  that isn't a declared `date-time`.
+- **Top-level** resources take `retention`, and so do resources parented
+  directly under `user` — the sweep walks every user's records, which is how
+  scheduled notifications are cleaned up. A child of anything else goes when
+  its parent does. The boot check refuses a bad window, such a child, or a
+  `field` that isn't a declared `date-time`.
 
 Adding `retention` to a resource that already has data deletes the old rows
 on the next sweep. Treat it like any change that touches real data.

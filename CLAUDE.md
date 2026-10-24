@@ -517,7 +517,8 @@ Two server-only options shape how a resource is handled rather than stored
   (`resource-retention`, on the Operations app) deletes rows older than the
   window, with their children, through the normal API
   (`core/resources/retention.ts`). `where` limits eligible rows (operations
-  use `done == true`). Top-level resources only.
+  use `done == true`). Top-level and user-parented resources only (the sweep
+  walks every user for the latter — scheduled notifications use it).
 - `modelTools: { chat?, mcp? }` — set either to `false` to leave the resource
   (and its children) out of that surface's model tools
   (`core/resources/model-tools.ts`). Not a permission.

@@ -67,9 +67,6 @@ export const TASK_KEY_PREFIX = 'task:';
  */
 export const HORIZON_DAYS = 14;
 
-/** How long a delivered upkeep reminder is kept before being swept. */
-export const PRUNE_AFTER_DAYS = 30;
-
 /** Longest lead a stored row is trusted to ask for; guards a bad hand-edit. */
 const MAX_LEAD_DAYS = 90;
 
@@ -199,13 +196,12 @@ const handler: CronHandler = async ({ token, firedAt, log }) => {
 
   const outcome = await reconcileScheduled(token, HOME_REMINDER_TYPE, planned, {
     now,
-    pruneAfterDays: PRUNE_AFTER_DAYS,
     // Scoped so this run never touches the bin-night rows sharing `source_app`.
     keyPrefix: TASK_KEY_PREFIX,
   });
 
   await log(
-    `optedIn=${optedIn.length} tasks=${considered} planned=${planned.length} created=${outcome.created} updated=${outcome.updated} unchanged=${outcome.unchanged} settled=${outcome.settled} withdrawn=${outcome.withdrawn} pruned=${outcome.pruned}`,
+    `optedIn=${optedIn.length} tasks=${considered} planned=${planned.length} created=${outcome.created} updated=${outcome.updated} unchanged=${outcome.unchanged} settled=${outcome.settled} withdrawn=${outcome.withdrawn}`,
   );
   return { optedIn: optedIn.length, tasks: considered, planned: planned.length, ...outcome };
 };
