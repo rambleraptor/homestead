@@ -13,34 +13,28 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR supersedes the run still going on its previous commit.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Independent jobs, so the wall-clock time is the slowest one rather than the
+# sum. Each suite runs exactly once per runtime.
 jobs:
-  # Run CI checks to ensure code quality
-  ci-checks:
+  static:
     runs-on: ubuntu-latest
-    name: CI Checks
+    name: Type check, lint, build
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          # node:sqlite (used when the server runs under Node) needs >= 22.13
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
+      - name: Setup
+        uses: ./.github/actions/setup
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: make install
-
+      # The tsc projects are independent; run them side by side.
       - name: Run TypeScript type check
-        run: make type-check
+        run: make -j --output-sync=target type-check
 
       - name: Run ESLint
         run: make lint
@@ -48,26 +42,46 @@ jobs:
       - name: Build application
         run: make build
 
-      - name: Run frontend tests
-        run: make test
+  unit:
+    runs-on: ubuntu-latest
+    name: Unit tests (${{ matrix.shard }}/2)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
 
-      - name: Build + test homestead launcher
-        run: make homestead-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Run server + CLI tests under Node
-        run: make test-node
+      - name: Setup
+        uses: ./.github/actions/setup
 
-      - name: CI Summary
-        if: success()
-        run: |
-          echo "✅ All CI checks passed!"
-          echo "📌 Commit: ${{ github.sha }}"
-          echo "🔀 Branch: ${{ github.ref_name }}"
-          echo ""
-          echo "Your server can now pull this commit and deploy automatically."
+      - name: Run frontend unit tests
+        run: make test-unit VITEST_ARGS=--shard=${{ matrix.shard }}/2
 
-  # The VM tier (the real SPA in happy-dom against the in-process server) runs
-  # in parallel with the checks above rather than after them.
+  # The CLI + server suites run under both supported runtimes.
+  server:
+    runs-on: ubuntu-latest
+    name: Server + CLI tests (${{ matrix.runtime }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [bun, node]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          bun: ${{ matrix.runtime == 'bun' }}
+
+      - name: Run server + CLI tests
+        run: make ${{ matrix.runtime == 'bun' && 'test-cli' || 'test-node' }}
+
+  # The VM tier: the real SPA in happy-dom against the in-process server.
   vm-tests:
     runs-on: ubuntu-latest
     name: VM Tests
@@ -76,16 +90,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          # node:sqlite (the server runs under Node here) needs >= 22.13
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: make install
+      - name: Setup
+        uses: ./.github/actions/setup
 
       # Warm-start caches, restored after install so npm leaves them alone.
       # All three validate their own contents (the template db is keyed on the
@@ -105,3 +111,67 @@ jobs:
 
       - name: Run VM-tier tests
         run: make test-vm
+
+  # Only the flows that need a real browser (offline, canvas, request
+  # interception) stay on Playwright; see CLAUDE.md.
+  e2e:
+    runs-on: ubuntu-latest
+    name: E2E (Playwright)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # globalSetup boots homestead-server under Bun.
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          bun: 'true'
+
+      - name: Restore Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browser
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        working-directory: tests/e2e
+        run: npx playwright install-deps chromium
+
+      - name: Run e2e tests
+        working-directory: tests/e2e
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
+          retention-days: 7
+
+  # One stable check that is green only when every job above is, so branch
+  # protection can require a single name.
+  ci-checks:
+    runs-on: ubuntu-latest
+    name: CI Checks
+    if: always()
+    needs: [static, unit, server, vm-tests, e2e]
+
+    steps:
+      - name: Require every job to pass
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" = "true" ]; then
+            echo "❌ Some CI jobs did not pass" >&2
+            exit 1
+          fi
+          echo "✅ All CI checks passed!"
+          echo "📌 Commit: ${{ github.sha }}"
+          echo "🔀 Branch: ${{ github.ref_name }}"

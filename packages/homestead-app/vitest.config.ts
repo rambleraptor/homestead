@@ -17,7 +17,9 @@ export default defineConfig({
   esbuild: { jsx: 'automatic' },
   test: {
     globals: true,
-    environment: 'jsdom',
+    // happy-dom, as the VM tier uses: its per-file setup is far cheaper than
+    // jsdom's, which dominated this suite's run time.
+    environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
     include: [
       'src/**/*.{test,spec}.{js,jsx,ts,tsx}',

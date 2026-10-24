@@ -1,4 +1,4 @@
-.PHONY: help install clean lint type-check type-check-cli type-check-server type-check-client type-check-harness build test test-cli test-node test-vm test-e2e test-e2e-ui test-all dev start audit format all ci install-service start-services stop restart status logs homestead homestead-test release
+.PHONY: help install clean lint type-check type-check-app type-check-cli type-check-server type-check-client type-check-harness build test test-unit test-cli test-node test-vm test-e2e test-e2e-ui test-all dev start audit format all ci install-service start-services stop restart status logs homestead homestead-test release
 
 # Release target platforms (filename arch follows Bun's convention: x64/arm64).
 RELEASE_PLATFORMS := linux-x64 linux-arm64 darwin-x64 darwin-arm64
@@ -32,8 +32,11 @@ lint: ## Run ESLint
 	@echo "Running ESLint..."
 	cd $(FRONTEND_DIR) && npm run lint
 
-type-check: type-check-cli type-check-server type-check-client type-check-harness ## Run TypeScript type checking (frontend + CLI + server + client + VM harness)
-	@echo "Running TypeScript type check..."
+# Independent tsc projects: `make -j type-check` runs them side by side.
+type-check: type-check-app type-check-cli type-check-server type-check-client type-check-harness ## Run TypeScript type checking (frontend + CLI + server + client + VM harness)
+
+type-check-app: ## Type-check the SPA, core and feature apps
+	@echo "Type-checking homestead-app..."
 	cd $(FRONTEND_DIR) && npm run type-check
 
 type-check-client: ## Type-check the standalone client library
@@ -65,9 +68,11 @@ start: homestead ## Build and run the homestead launcher (prod, single binary)
 	@echo "Starting homestead..."
 	./bin/homestead start
 
-test: test-cli ## Run frontend tests with Vitest (+ CLI tests)
+test: test-cli test-unit ## Run frontend tests with Vitest (+ CLI tests)
+
+test-unit: ## Run the frontend unit tests (Vitest); pass extra flags via VITEST_ARGS
 	@echo "Running frontend tests..."
-	cd $(FRONTEND_DIR) && npm run test
+	cd $(FRONTEND_DIR) && npx vitest run $(VITEST_ARGS)
 
 test-cli: ## Run the homestead CLI + server unit tests (Bun)
 	@echo "Running homestead CLI tests..."
