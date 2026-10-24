@@ -23,6 +23,7 @@ import { visibleToModel } from '../../resources/model-tools';
 import { isAiConfigured } from '../ai/config';
 import { tool, type ToolSet } from '../ai/generate';
 import { buildResourceTools, resourceInstructions } from './per-resource';
+import type { AttachmentSource } from './execute';
 import { handleTurn } from './turns';
 import { MAX_TURN_REQUEST_BYTES } from './attachments';
 import { makeSearchTool, SEARCH_TOOL_NAME } from './search-tool';
@@ -63,6 +64,10 @@ export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): stri
           '  Cite the resource type and record id of any passage you rely on.',
         ]
       : []),
+    '- A file the person attached is labelled with its attachment id. To',
+    '  save it into a record, pass that id as the value of a file field;',
+    '  set any field describing the file (such as a mime_type) from its',
+    '  media type. Only attachments from this conversation can be used.',
     '- Updates are merge patches: send only the fields to change.',
     '- Deletes cannot be undone. Before deleting, confirm with the user',
     '  unless they have already clearly identified the exact record.',
@@ -74,13 +79,15 @@ export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): stri
  * The tool set one chat turn runs with: the per-resource surface over `defs`,
  * each tool executing under `token`, plus the semantic document search when
  * embeddings are configured. A failed call goes back to the model as
- * `{ error }` for it to correct, never thrown.
+ * `{ error }` for it to correct, never thrown. `attachments` resolves the
+ * conversation's attached files, which file fields then accept by id.
  */
 export function buildChatToolSet(
   defs: ResourceDefinition[],
   token: string,
+  { attachments }: { attachments?: AttachmentSource } = {},
 ): { toolSet: ToolSet; hasDocSearch: boolean } {
-  const surface = buildResourceTools(defs);
+  const surface = buildResourceTools(defs, { attachments });
   const toolSet: ToolSet = {};
   for (const [name, spec] of Object.entries(surface.tools)) {
     toolSet[name] = tool({

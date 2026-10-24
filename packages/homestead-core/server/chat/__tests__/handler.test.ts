@@ -26,6 +26,12 @@ const GIFT_CARD: ResourceDefinition = {
   },
 };
 
+const GIFT_CARD_WITH_IMAGE: ResourceDefinition = {
+  singular: 'gift-card',
+  plural: 'gift-cards',
+  fields: { merchant: { type: 'string', required: true }, front_image: { type: 'file' } },
+};
+
 const TRANSACTION: ResourceDefinition = {
   singular: 'transaction',
   plural: 'transactions',
@@ -97,6 +103,33 @@ describe('buildChatToolSet', () => {
     // back to the model as a correctable error, not thrown.
     const bad = await run(toolSet.gift_cards, { action: 'update', id: 'gc1' });
     expect(bad).toEqual({ error: expect.stringMatching(/needs at least one field/) });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("fills a file field from the conversation's attachments, and only from them", async () => {
+    const photo = new File([new Uint8Array([1, 2, 3])], 'card.png', { type: 'image/png' });
+    const { toolSet } = buildChatToolSet([GIFT_CARD_WITH_IMAGE], 'tok', {
+      attachments: async (id) => {
+        if (id !== 'f1') throw new Error(`no attachment "${id}" in this conversation`);
+        return photo;
+      },
+    });
+    const calls = stubFetch('{"id":"gc1"}', 201);
+    const ok = await run(toolSet.gift_cards, {
+      action: 'create',
+      fields: { merchant: 'REI', front_image: 'f1' },
+    });
+    expect(ok).toEqual({ result: { id: 'gc1' } });
+    const body = calls[0].init.body as FormData;
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('merchant')).toBe('REI');
+    expect(await (body.get('front_image') as File).text()).toBe('\u0001\u0002\u0003');
+
+    const bad = await run(toolSet.gift_cards, {
+      action: 'create',
+      fields: { merchant: 'REI', front_image: 'elsewhere' },
+    });
+    expect(bad).toEqual({ error: 'no attachment "elsewhere" in this conversation' });
     expect(calls).toHaveLength(1);
   });
 

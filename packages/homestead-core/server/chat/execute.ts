@@ -21,6 +21,16 @@ export interface ToolCall {
   args?: Record<string, unknown>;
 }
 
+/**
+ * Where an attachment id in a file field comes from: the files of the chat
+ * conversation the call runs in. Throws for an id that isn't one of them.
+ */
+export type AttachmentSource = (id: string) => Promise<File>;
+
+export interface ExecuteOptions {
+  attachments?: AttachmentSource;
+}
+
 function stringArg(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
@@ -86,16 +96,23 @@ async function validateReferences(
 
 /**
  * Extract the record body from tool args: only declared schema fields,
- * with free-form-object fields JSON-parsed back into objects.
+ * with free-form-object fields JSON-parsed back into objects and file fields'
+ * attachment ids swapped for the files themselves.
  */
-function buildBody(
+async function buildBody(
   binding: ToolBinding,
   args: Record<string, unknown>,
-): Record<string, unknown> {
+  attachments: AttachmentSource | undefined,
+): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {};
   for (const field of binding.bodyFields) {
     if (!(field in args) || args[field] === undefined) continue;
-    if (binding.jsonStringFields.has(field) && typeof args[field] === 'string') {
+    if (binding.fileFields.has(field)) {
+      const id = stringArg(args[field]);
+      if (!id) throw new Error(`parameter "${field}" must be an attachment id`);
+      if (!attachments) throw new Error(`parameter "${field}" takes a file, and there are none here`);
+      body[field] = await attachments(id);
+    } else if (binding.jsonStringFields.has(field) && typeof args[field] === 'string') {
       try {
         body[field] = JSON.parse(args[field] as string);
       } catch {
@@ -112,6 +129,7 @@ export async function executeToolCall(
   call: ToolCall,
   bindings: Map<string, ToolBinding>,
   token: string,
+  { attachments }: ExecuteOptions = {},
 ): Promise<ChatToolCall> {
   const args = (call.args ?? {}) as Record<string, unknown>;
   const base = { tool: call.name, args };
@@ -129,7 +147,7 @@ export async function executeToolCall(
 
     switch (binding.op) {
       case 'create': {
-        const body = buildBody(binding, args);
+        const body = await buildBody(binding, args, attachments);
         const refErr = await validateReferences(binding, body, hs);
         if (refErr) return { ...base, ok: false, error: refErr };
         const result = await records.create(body);
@@ -164,7 +182,7 @@ export async function executeToolCall(
       case 'update': {
         const id = stringArg(args.id);
         if (!id) throw new Error('missing required parameter "id"');
-        const body = buildBody(binding, args);
+        const body = await buildBody(binding, args, attachments);
         const refErr = await validateReferences(binding, body, hs);
         if (refErr) return { ...base, ok: false, error: refErr };
         const result = await records.record(id).update(body);
