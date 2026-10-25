@@ -147,6 +147,12 @@ the changes you're allowed to make — confirms before deleting, and shows you w
 actions it took — each tool call is a card you can open to see what it sent and
 what came back. Replies stream in as they're written, and render as Markdown.
 
+You can also start from the dashboard: the **Ask Homestead** box at the top
+takes a question (and photos or PDFs) and opens it as a new chat, with the
+answer coming in there. Like any dashboard widget it can be moved or hidden
+from your dashboard settings, and it only shows when the assistant is
+configured and you can use Chat.
+
 It knows your local date and time: your browser sends its timezone with each
 message, so "tomorrow", "this weekend" and "at 6pm" mean yours. Nothing about
 it is stored.

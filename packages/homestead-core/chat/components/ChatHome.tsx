@@ -1,8 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { History, MessageCircle } from 'lucide-react';
 import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
-import { appExists } from '@rambleraptor/homestead-core/apps/registry';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
@@ -33,25 +32,17 @@ import { useConversation } from '../hooks/useConversation';
 import { useConversations } from '../hooks/useConversations';
 import type { HomesteadUIMessage } from '../types';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { ATTACHMENT_TYPES, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS } from '../attachment-limits';
+import {
+  ATTACHMENT_ERRORS,
+  ATTACHMENT_TYPES,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS,
+} from '../attachment-limits';
+import { takeHandOff } from '../handoff';
+import { availableStarters } from '../starters';
 import { ChatMessage } from './ChatMessage';
 import { ComposerAttachments } from './ComposerAttachments';
 import { ConversationList } from './ConversationList';
-
-/** Starter prompts, each shown only when the app it needs is installed. */
-const STARTERS: { text: string; app: string }[] = [
-  { text: "What's on my todo list?", app: 'todos' },
-  { text: 'Add milk to the grocery list', app: 'groceries' },
-  { text: 'Which gift cards still have a balance?', app: 'gift-cards' },
-  { text: 'What birthdays are coming up?', app: 'events' },
-];
-
-/** What the composer says when it turns a file away. */
-const ATTACHMENT_ERRORS = {
-  accept: 'Only photos (JPEG, PNG, WebP, GIF) and PDFs can be attached.',
-  max_file_size: `Files can be at most ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB each.`,
-  max_files: `A message can carry at most ${MAX_ATTACHMENTS} files.`,
-} as const;
 
 /** Whether the reply text is already arriving, so no "thinking" row is needed. */
 function isAnswering(last: HomesteadUIMessage | undefined): boolean {
@@ -93,12 +84,21 @@ export function ChatHome({ params }: AppRouteProps) {
     ? conversations.data?.find((c) => c.id === conversationId)?.title
     : undefined;
 
+  // A message written elsewhere (the dashboard's ask box) starts a new chat
+  // here. Taken once, so a re-render, reload or back button never resends it.
+  const { send } = chat;
+  useEffect(() => {
+    if (conversationId) return;
+    const handed = takeHandOff();
+    if (handed) void send(handed.text, handed.files).catch(() => {});
+  }, [conversationId, send]);
+
   if (chat.notConfigured) return <NotConfigured />;
 
   const { messages, status, busy } = chat;
   const last = messages.at(-1);
   const showThinking = busy && !isAnswering(last);
-  const starters = STARTERS.filter((s) => appExists(s.app));
+  const starters = availableStarters();
   const missing = chat.history.isError;
 
   return (
@@ -178,10 +178,10 @@ export function ChatHome({ params }: AppRouteProps) {
           <div className="space-y-3 p-3">
             {messages.length === 0 && !busy && !conversationId && starters.length > 0 && (
               <Suggestions data-testid="chat-suggestions">
-                {starters.map((s) => (
+                {starters.map((text) => (
                   <Suggestion
-                    key={s.text}
-                    suggestion={s.text}
+                    key={text}
+                    suggestion={text}
                     onClick={(text) => void chat.send(text).catch(() => {})}
                   />
                 ))}

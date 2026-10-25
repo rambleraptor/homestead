@@ -36,5 +36,14 @@ export const chatApp: AppConfig = {
     ],
     placement: 'topbar',
     navOrder: 5,
+    widgets: [
+      {
+        id: 'chat-ask',
+        label: 'Ask Homestead',
+        component: () => import('./components/AskWidget').then((m) => m.AskWidget),
+        // Above every app's widget: the way into everything else.
+        order: 0,
+      },
+    ],
   },
 };

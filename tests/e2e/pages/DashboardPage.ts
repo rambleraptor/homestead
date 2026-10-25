@@ -5,7 +5,7 @@
  * (`playwrightDriver(page)`) and the in-process VM tier (`tests/vm/`).
  */
 
-import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
+import type { Driver, FilePayload, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class DashboardPage {
   constructor(readonly driver: Driver) {}
@@ -54,6 +54,27 @@ export class DashboardPage {
 
   get adminChecklist() {
     return this.driver.getByTestId('admin-checklist');
+  }
+
+  /** The "Ask Homestead" box that opens a new chat. */
+  get askBox() {
+    return this.driver.getByTestId('ask-widget');
+  }
+
+  /** The suggestion chips under the ask box. */
+  get askSuggestions() {
+    return this.driver.getByTestId('ask-suggestions').getByRole('button');
+  }
+
+  /** Type into the ask box and send. Resolves once it's submitted. */
+  async ask(text: string) {
+    await this.driver.getByTestId('ask-input').fill(text);
+    await this.driver.getByTestId('ask-send').click();
+  }
+
+  /** Attach files to the ask box, as its file picker would. */
+  async attachToAsk(files: FilePayload | FilePayload[]) {
+    await this.askBox.getByLabel('Upload files').setInputFiles(files);
   }
 
   async dismissWelcome() {
