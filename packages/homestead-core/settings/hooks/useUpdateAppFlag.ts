@@ -21,16 +21,18 @@ import { aepbase, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase'
 import { syncAppFlagsSchema } from '@rambleraptor/homestead-core/app-flags/sync';
 import { getAllAppFlagDefs } from '@rambleraptor/homestead-core/apps/registry';
 import type { AppFlagValue } from '@rambleraptor/homestead-core/apps/types';
-import { fieldName } from '../flags';
+import { audienceFieldName, encodeAudience, fieldName, type FlagAudience } from '../flags';
 import {
   APP_FLAGS_QUERY_KEY,
   type AppFlagsRecord,
 } from './useAppFlags';
 
+/** A flag's new value, its new audience, or both. */
 export interface UpdateAppFlagArgs {
   appId: string;
   key: string;
-  value: AppFlagValue;
+  value?: AppFlagValue;
+  audience?: FlagAudience;
 }
 
 async function upsertFlag(
@@ -56,9 +58,11 @@ export function useUpdateAppFlag() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ appId, key, value }: UpdateAppFlagArgs) => {
-      const flat = fieldName(appId, key);
-      const payload = { [flat]: value };
+    mutationFn: async ({ appId, key, value, audience }: UpdateAppFlagArgs) => {
+      const payload: Record<string, AppFlagValue> = {};
+      if (value !== undefined) payload[fieldName(appId, key)] = value;
+      if (audience !== undefined) payload[audienceFieldName(appId, key)] = encodeAudience(audience);
+      if (Object.keys(payload).length === 0) throw new Error('nothing to change on the flag');
 
       try {
         return await upsertFlag(payload);

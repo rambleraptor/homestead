@@ -14,6 +14,7 @@ import { syncAppFlagsSchema } from '@rambleraptor/homestead-core/app-flags/sync'
 import { initializeAppRegistry } from '@rambleraptor/homestead-core/apps/registry';
 import { groceriesApp } from '@rambleraptor/homestead-apps/groceries/app.config';
 import { useAppFlag } from '../hooks/useAppFlag';
+import { AuthContext } from '../../auth/context';
 
 beforeAll(() => {
   // Register the groceries app so `getAllAppFlagDefs` returns the
@@ -38,9 +39,61 @@ const createWrapper = () => {
   );
 };
 
+/** A wrapper whose signed-in user is in `groupNames`. */
+const inGroups = (groupNames: string[]) => {
+  const Query = createWrapper();
+  const value = {
+    user: { id: 'u1', permissions: { enforced: true, groupIds: [], groupNames, grants: [] } },
+  } as unknown as React.ContextType<typeof AuthContext>;
+  return ({ children }: { children: React.ReactNode }) => (
+    <AuthContext.Provider value={value}>
+      <Query>{children}</Query>
+    </AuthContext.Provider>
+  );
+};
+
 describe('useAppFlag', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('applies a stored value only within its audience', async () => {
+    vi.mocked(aepbase.list).mockResolvedValue([
+      { id: 'rec-1', groceries__default_store: 'store-1', groceries__default_store__audience: '["Beta"]' },
+    ]);
+
+    const beta = renderHook(() => useAppFlag<string>('groceries', 'default_store'), {
+      wrapper: inGroups(['Beta']),
+    });
+    await waitFor(() => expect(beta.result.current.isLoading).toBe(false));
+    expect(beta.result.current.value).toBe('store-1');
+    expect(beta.result.current.inAudience).toBe(true);
+
+    const other = renderHook(() => useAppFlag<string>('groceries', 'default_store'), {
+      wrapper: inGroups(['Members']),
+    });
+    await waitFor(() => expect(other.result.current.isLoading).toBe(false));
+    // Outside the audience the flag reads as its declared default…
+    expect(other.result.current.value).toBe('');
+    expect(other.result.current.inAudience).toBe(false);
+    // …while the stored value is still there for Flag Management to show.
+    expect(other.result.current.storedValue).toBe('store-1');
+    expect(other.result.current.audience).toEqual(['Beta']);
+  });
+
+  it('writes an audience to the sibling field', async () => {
+    vi.mocked(aepbase.list).mockResolvedValue([{ id: 'rec-1' }]);
+    vi.mocked(aepbase.update).mockResolvedValue({ id: 'rec-1' });
+
+    const { result } = renderHook(() => useAppFlag<string>('groceries', 'default_store'), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(() => result.current.setAudience(['Beta']));
+
+    expect(aepbase.update).toHaveBeenCalledWith('app-flags', 'rec-1', {
+      groceries__default_store__audience: '["Beta"]',
+    });
   });
 
   it('returns the declared default when no record exists', async () => {

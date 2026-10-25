@@ -125,6 +125,10 @@ const { value, setValue, isLoading, isSaving, error } =
 | `isLoading` | `true` while the value is first being fetched.                 |
 | `isSaving`  | `true` while a `setValue` mutation is in flight.               |
 | `error`     | Non-fatal fetch error (treated as "no value yet").             |
+| `audience`  | Who the stored value applies to ([below](#rolling-a-flag-out-to-a-group)). |
+| `inAudience`| Whether the signed-in person is in that audience.              |
+| `storedValue` | The stored value regardless of audience (what Flag Management edits). |
+| `setAudience` | `(audience) => Promise<void>` — changes who the value applies to. |
 
 ### Type narrowing
 
@@ -150,6 +154,29 @@ import { useUpdateAppFlag } from '@rambleraptor/homestead-core/settings/hooks/us
 const update = useUpdateAppFlag();
 await update.mutateAsync({ appId, key, value });
 ```
+
+---
+
+## Rolling a Flag Out to a Group
+
+A flag's stored value applies to an **audience**: everyone (the default),
+nobody, or the members of chosen groups. Anyone outside the audience reads the
+flag's declared default, as if nothing had been set. That's how a new
+experience is tried on a few people first:
+
+1. In **Superuser → Permissions**, make a group (say, "Beta") and add the
+   people who want to try it.
+2. In **Flag Management**, set the flag, then change its **Applies to** from
+   "everyone" to "these groups" and tick Beta.
+3. When it's ready for the household, switch **Applies to** back to
+   "everyone".
+
+`useAppFlag`'s `value` already accounts for this, so a component needs no
+extra check. The audience rides in a sibling field on the `app-flags` record
+(`<flag>__audience`, a JSON list of group names; empty for everyone), which
+the schema sync adds for every declared flag. Server-side reads
+(`readAppFlag`) see the stored value and ignore audiences — they're for what
+people see, not for how the server runs.
 
 ---
 
@@ -192,9 +219,10 @@ current user.
    If you skip `default`, expect `undefined` until something is written.
 
 2. **Household-wide, not per-user.** All flags share one stored value for
-   the whole household. There's no per-user variant — flags are "household
-   toggles", not user preferences. For per-user state, use an app's
-   `userSettings` (backed by the `user-preference` resource; see CLAUDE.md).
+   the whole household; the only per-person variation is its audience
+   ([above](#rolling-a-flag-out-to-a-group)). Flags are "household toggles",
+   not user preferences. For per-user state, use an app's `userSettings`
+   (backed by the `user-preference` resource; see CLAUDE.md).
 
 3. **No realtime cross-tab sync.** Writing a flag updates the current tab
    immediately, but other tabs see the new value only on their next
