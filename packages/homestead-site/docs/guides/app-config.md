@@ -374,6 +374,38 @@ people offered at least one of the app's tools — so they never describe a tool
 someone doesn't have. They describe how the app works; never put household data
 in them, since they live in your code. MCP clients don't receive them.
 
+### Typed values in replies
+
+An app can also teach the chat a kind of value, so the assistant's replies show
+it as something you can act on. People declares `address`, which opens in the
+map service each person picked:
+
+```ts
+chat: {
+  values: {
+    address: {
+      description: 'a postal address, written on one line',
+      example: '12 Oak St, Springfield, IL 62704',
+      component: () => import('./components/AddressValue'),
+    },
+  },
+},
+```
+
+The model is told to write such a value as a Markdown link to `homestead:<type>`
+with the value as the link text, e.g. `[12 Oak St](homestead:address)`. The chat
+renders it with your component, which receives only `text`, the value itself.
+Build any link from that text and the person's settings. Never let the reply
+choose a URL: a reply can echo whatever a document said. The core
+`ValueLink` component (`@rambleraptor/homestead-core/chat/components/values/ValueLink`)
+gives every type the same look.
+
+- Type names are lowercase (`address`, `license-plate`). Core owns `phone` and
+  `email`, and the first app to declare a name keeps it.
+- Like instructions, an app's types are offered only to people offered one of
+  the app's tools. A type nobody declares shows as plain text.
+- Copying a reply copies the plain values.
+
 ## Nesting apps
 
 Setting `children` makes an app a container. Each child is a full `AppConfig`

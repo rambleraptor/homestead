@@ -100,6 +100,8 @@ export const CHAT_MARKERS = {
   describeContext: 'e2e-chat-describe-context',
   /** A Markdown reply: a bulleted list with bold names, then a table. */
   formattedReply: 'e2e-chat-formatted-reply',
+  /** A reply marking typed values: an address, phone, email, and two bad ones. */
+  typedValues: 'e2e-chat-typed-values',
   /** Look a person up by a first name, loosely (name or alias), then answer. */
   findPerson: 'e2e-chat-find-person',
 } as const;
@@ -144,6 +146,23 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
         ],
       },
       { text: 'Here is who I found.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.typedValues,
+    steps: [
+      {
+        text: [
+          '**Jake Miller**',
+          '',
+          '- Address: [12 Oak St, Springfield, IL 62704](homestead:address)',
+          '- Phone: [(555) 123-4567](homestead:phone)',
+          '- Email: [jake@example.com](homestead:email)',
+          '- Ship: [a spaceship](homestead:spaceship)',
+          '- Odd: [sneaky](homestead:address/../x)',
+          '- Unsafe: [click](javascript:alert(1))',
+        ].join('\n'),
+      },
     ],
   },
   {

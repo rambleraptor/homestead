@@ -37,6 +37,7 @@ import type { ChatTurnRequest } from '../../chat/types';
 import type { ResourceDefinition } from '../../resources/types';
 import { buildChatToolSet, buildSystemPrompt } from './handler';
 import { appNotes, localNow, resolveTimezone } from './context';
+import { valueTypeLines } from '../../chat/values';
 import { getAllApps } from '../../apps/registry';
 import { modelResourcesFor } from '../collection-access';
 import { attachmentSource, attachmentsTitle, checkAttachments, withAttachments } from './attachments';
@@ -395,11 +396,13 @@ export async function handleTurn(
     stepText ? [...parts, { type: 'text', text: stepText, state: 'done' }] : parts;
   let result: ReturnType<typeof aiStreamAgent>;
   try {
+    const offered = new Set(reachable.defs.map((d) => d.singular));
     result = aiStreamAgent({
       system: buildSystemPrompt(auth.user, {
         now: localNow(resolveTimezone(body.timezone)),
         hasDocSearch,
-        appNotes: appNotes(getAllApps(), new Set(reachable.defs.map((d) => d.singular))),
+        appNotes: appNotes(getAllApps(), offered),
+        valueTypes: valueTypeLines(getAllApps(), offered),
       }),
       messages: modelMessages,
       tools: toolSet,
