@@ -78,6 +78,11 @@ export class ChatPage {
     return this.driver.getByTestId('chat-tool-call');
   }
 
+  /** Open a tool card to show what it sent and got back. */
+  async openToolCall(index = 0) {
+    await this.toolCalls.nth(index).getByRole('button').first().click();
+  }
+
   /** The "assistant is working" row, present until the reply starts. */
   get pending(): Locator {
     return this.driver.getByTestId('chat-pending');
