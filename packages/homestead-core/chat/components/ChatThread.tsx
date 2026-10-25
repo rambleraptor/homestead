@@ -114,6 +114,8 @@ export function ChatThread({
                 message={message}
                 stored={chat.storedById.get(message.id)}
                 streaming={busy && i === messages.length - 1 && message.role === 'assistant'}
+                onAnswerApproval={chat.answerApproval}
+                busy={busy}
               />
             ))
           )}

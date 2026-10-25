@@ -6,9 +6,14 @@
 
 import { describe, expect, it } from 'vitest';
 import { convertToModelMessages } from 'ai';
+import type { UIMessage } from 'ai';
 import {
   capOutput,
+  denyPendingApprovals,
+  mergeStep,
   partsFromStep,
+  pendingApproval,
+  settleResumedCall,
   STORED_OUTPUT_CAP,
   textOfParts,
   titleFrom,
@@ -182,5 +187,76 @@ describe('the conversation schema', () => {
 
   it('passes boot validation', () => {
     for (const def of chatResources) expect(() => validateResourceDefinition(def)).not.toThrow();
+  });
+});
+
+describe('approvals', () => {
+  const call = { toolCallId: 'c1', toolName: 'notifications', input: { action: ':send' } };
+  type Part = Record<string, unknown>;
+
+  it('a step that stops for approval stores the call waiting on its approval id', () => {
+    const parts = partsFromStep([
+      { type: 'tool-call', ...call },
+      { type: 'tool-approval-request', approvalId: 'a1', toolCall: call },
+    ]) as Part[];
+    expect(parts[1]).toMatchObject({ type: 'tool-notifications', state: 'approval-requested', approval: { id: 'a1' } });
+    expect(pendingApproval(parts as UIMessage['parts'], 'a1')).toBe(parts[1]);
+    expect(pendingApproval(parts as UIMessage['parts'], 'other')).toBeUndefined();
+  });
+
+  it("a resumed call's outcome lands on the part that asked, not a copy", () => {
+    const parts = partsFromStep([
+      { type: 'tool-call', ...call },
+      { type: 'tool-approval-request', approvalId: 'a1', toolCall: call },
+    ]);
+    const waiting = parts[1] as Part;
+    Object.assign(waiting, { state: 'approval-responded', approval: { id: 'a1', approved: true } });
+
+    settleResumedCall(parts, { type: 'tool-result', toolCallId: 'c1', output: { result: { sent: true } } });
+    expect(waiting).toMatchObject({ state: 'output-available', output: { result: { sent: true } } });
+    expect(waiting.approval).toEqual({ id: 'a1', approved: true });
+
+    // A later step mentioning the same call merges, it doesn't append.
+    mergeStep(parts, [{ type: 'text', text: 'Done.' }]);
+    expect(parts.filter((p) => (p as Part).toolCallId === 'c1')).toHaveLength(1);
+    expect(textOfParts(parts)).toBe('Done.');
+  });
+
+  it("settles only calls that were waiting on their approval", () => {
+    const parts = [{ type: 'tool-groceries', toolCallId: 'c2', state: 'input-available' }] as UIMessage['parts'];
+    settleResumedCall(parts, { type: 'tool-result', toolCallId: 'c2', output: 1 });
+    expect((parts[0] as Part).state).toBe('input-available');
+  });
+
+  it('an unanswered approval is denied when the person moves on', () => {
+    const parts = [
+      { type: 'tool-notifications', toolCallId: 'c1', state: 'approval-requested', approval: { id: 'a1' } },
+      { type: 'tool-groceries', toolCallId: 'c2', state: 'output-available' },
+    ] as unknown as UIMessage['parts'];
+    expect(denyPendingApprovals(parts)).toBe(true);
+    expect(parts[0]).toMatchObject({ state: 'output-denied', approval: { id: 'a1', approved: false } });
+    expect(denyPendingApprovals(parts)).toBe(false);
+  });
+
+  it('a denied call reaches the model as denied', async () => {
+    const ui = toUiMessages([
+      { id: 'u', seq: 1, role: 'user', parts: [{ type: 'text', text: 'tell Sam' }] },
+      {
+        id: 'a',
+        seq: 2,
+        role: 'assistant',
+        parts: [
+          {
+            type: 'tool-notifications',
+            toolCallId: 'c1',
+            state: 'output-denied',
+            input: { action: ':send' },
+            approval: { id: 'a1', approved: false },
+          },
+        ] as unknown as UIMessage['parts'],
+      },
+    ]);
+    const model = await convertToModelMessages(ui);
+    expect(JSON.stringify(model)).toContain('c1');
   });
 });

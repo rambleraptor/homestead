@@ -23,6 +23,7 @@ import { visibleToModel } from '../../resources/model-tools';
 import { isAiConfigured } from '../ai/config';
 import { tool, type ToolSet } from '../ai/generate';
 import { buildResourceTools, resourceInstructions } from './per-resource';
+import { snake } from './tools';
 import type { AttachmentSource } from './execute';
 import type { WriteAccess } from './surface';
 import { handleTurn } from './turns';
@@ -136,11 +137,18 @@ export function buildChatToolSet(
   { attachments, write = true }: { attachments?: AttachmentSource; write?: WriteAccess } = {},
 ): { toolSet: ToolSet; hasDocSearch: boolean } {
   const surface = buildResourceTools(defs, { attachments, write });
+  const confirm = confirmActions(defs);
   const toolSet: ToolSet = {};
   for (const [name, spec] of Object.entries(surface.tools)) {
+    const asks = confirm.get(name);
     toolSet[name] = tool({
       description: spec.description,
       inputSchema: spec.inputSchema,
+      // A `confirm` custom method waits for the person's Approve; the turn
+      // ends with the request, and resumes on their answer (`./turns`).
+      ...(asks
+        ? { needsApproval: (input: unknown) => asks.has(String((input as { action?: unknown })?.action)) }
+        : {}),
       execute: async (rawArgs: unknown) => {
         const args = (rawArgs ?? {}) as Record<string, unknown>;
         const out = await surface.execute(name, args, token);
@@ -155,6 +163,20 @@ export function buildChatToolSet(
   if (searchTool) toolSet[SEARCH_TOOL_NAME] = searchTool;
 
   return { toolSet, hasDocSearch: searchTool !== null };
+}
+
+/**
+ * The actions that need the person's approval, by tool name: each resource's
+ * `confirm` custom methods, as the per-resource surface names them
+ * (`notifications` → `:send`).
+ */
+export function confirmActions(defs: readonly ResourceDefinition[]): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  for (const def of defs) {
+    const verbs = Object.entries(def.customMethods ?? {}).filter(([, m]) => m.confirm);
+    if (verbs.length > 0) out.set(snake(def.plural), new Set(verbs.map(([verb]) => `:${verb}`)));
+  }
+  return out;
 }
 
 export async function handleChat(request: Request): Promise<Response> {

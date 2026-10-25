@@ -64,6 +64,31 @@ describe('createChatTransport', () => {
     expect(init.headers).toMatchObject({ authorization: 'Bearer tok', 'x-user-id': 'u1' });
   });
 
+  it("sends just the answer when the reply's waiting tool call was approved or denied", async () => {
+    fetchMock.mockResolvedValueOnce(stream());
+    const transport = createChatTransport({ conversationId: () => 'c1', onConversation: vi.fn() });
+    const reply = {
+      id: 'm1-reply',
+      role: 'assistant',
+      parts: [
+        {
+          type: 'tool-notifications',
+          toolCallId: 'call1',
+          state: 'approval-responded',
+          input: { action: ':send' },
+          approval: { id: 'a1', approved: false },
+        },
+      ],
+    } as HomesteadUIMessage;
+
+    await send(transport, [user('m1', 'tell Sam'), reply]);
+
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({
+      conversation_id: 'c1',
+      approval: { id: 'a1', approved: false },
+    });
+  });
+
   it('starts a new conversation and learns its id from the response', async () => {
     fetchMock.mockResolvedValueOnce(stream({ 'X-Conversation-Id': 'c9' }));
     const onConversation = vi.fn();

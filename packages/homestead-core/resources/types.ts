@@ -498,6 +498,14 @@ export interface ResourceCustomMethod {
    * permission: the method still answers anyone allowed to call it.
    */
   modelTools?: { chat?: boolean; mcp?: boolean };
+  /**
+   * When a model calls this, ask the person first. The assistant shows an
+   * approve/deny card and runs the call only on Approve; MCP clients, which
+   * prompt per tool call themselves, get no extra step. People calling it
+   * directly (the SPA, scripts, the CLI) are already deciding, so it changes
+   * nothing for them.
+   */
+  confirm?: boolean;
   /** HTTP method this custom method accepts. Defaults to `'POST'`. */
   method?: CustomMethodHttpMethod;
   /**

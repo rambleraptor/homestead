@@ -27,12 +27,17 @@ export interface ChatToolCall {
   error?: string;
 }
 
-/** `POST /api/chat`: one new message, into a conversation or a new one. */
+/**
+ * `POST /api/chat`: one new message, into a conversation or a new one — or the
+ * person's answer to an approval the last reply is waiting on, which resumes it.
+ */
 export interface ChatTurnRequest {
-  /** Omit to start a new conversation. */
+  /** Omit to start a new conversation (a message only). */
   conversation_id?: string;
   /** The client picks the id, so a retried send is a conflict, not a duplicate. */
-  message: { id: string; text: string };
+  message?: { id: string; text: string };
+  /** Approve or deny the tool call the last reply asked about, by its approval id. */
+  approval?: { id: string; approved: boolean };
   /**
    * The person's IANA timezone (`America/Chicago`), so "today" and "6pm" mean
    * theirs. Unrecognized or omitted, the turn uses UTC. Not stored.

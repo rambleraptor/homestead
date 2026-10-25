@@ -120,6 +120,15 @@ export function createChatTransport(
     headers: authHeaders,
     prepareSendMessagesRequest: ({ messages, headers }) => {
       const last = messages.at(-1);
+      // The person answered an approval the reply is waiting on: send just
+      // that answer, and the server takes the reply up again.
+      const answer = last?.role === 'assistant' ? answeredApproval(last) : undefined;
+      if (answer) {
+        const conversationId = options.conversationId();
+        if (!conversationId) throw new Error('an approval belongs to a conversation');
+        const body: ChatTurnRequest = { conversation_id: conversationId, approval: answer };
+        return { headers, body };
+      }
       if (!last || last.role !== 'user') throw new Error('the last message must be the user’s');
       const text = last.parts
         .filter((p) => p.type === 'text')
@@ -152,6 +161,16 @@ export function createChatTransport(
       return res;
     }) as typeof fetch,
   });
+}
+
+/** The approval a reply's tool part was just answered with, if any. */
+export function answeredApproval(message: HomesteadUIMessage): { id: string; approved: boolean } | undefined {
+  for (const part of message.parts) {
+    if (!part.type.startsWith('tool-') || !('state' in part)) continue;
+    if (part.state !== 'approval-responded' || !part.approval) continue;
+    return { id: part.approval.id, approved: part.approval.approved };
+  }
+  return undefined;
 }
 
 /** Stop the turn running in a conversation. False when none was running. */

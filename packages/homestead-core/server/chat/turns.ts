@@ -116,6 +116,7 @@ type StepContent =
   | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
   | { type: 'tool-result'; toolCallId: string; toolName: string; input: unknown; output: unknown }
   | { type: 'tool-error'; toolCallId: string; toolName: string; input: unknown; error: unknown }
+  | { type: 'tool-approval-request'; approvalId: string; toolCall: { toolCallId: string; toolName: string; input: unknown } }
   | { type: string };
 
 /**
@@ -146,6 +147,34 @@ export function partsFromStep(content: readonly StepContent[]): UIMessage['parts
         parts.push(part);
         break;
       }
+      case 'tool-approval-request':
+      case 'tool-approval-response': {
+        const asked = item as {
+          approvalId: string;
+          approved?: boolean;
+          reason?: string;
+          toolCall: { toolCallId: string; toolName: string; input: unknown };
+        };
+        let part = toolParts.get(asked.toolCall.toolCallId);
+        if (!part) {
+          part = {
+            type: `tool-${asked.toolCall.toolName}`,
+            toolCallId: asked.toolCall.toolCallId,
+            input: asked.toolCall.input,
+          };
+          toolParts.set(asked.toolCall.toolCallId, part);
+          parts.push(part);
+        }
+        if (item.type === 'tool-approval-request') {
+          Object.assign(part, { state: 'approval-requested', approval: { id: asked.approvalId } });
+        } else if (asked.approved === false) {
+          Object.assign(part, {
+            state: 'output-denied',
+            approval: { id: asked.approvalId, approved: false, ...(asked.reason ? { reason: asked.reason } : {}) },
+          });
+        }
+        break;
+      }
       case 'tool-result':
       case 'tool-error': {
         const done = item as {
@@ -171,6 +200,75 @@ export function partsFromStep(content: readonly StepContent[]): UIMessage['parts
     }
   }
   return parts as UIMessage['parts'];
+}
+
+/**
+ * Add a finished step to a message's `parts`. A tool call the message already
+ * holds — one resumed after the person approved it — is updated where it is,
+ * so its result lands on the card that asked, not on a copy below it.
+ */
+export function mergeStep(parts: UIMessage['parts'], content: readonly StepContent[]): void {
+  for (const part of partsFromStep(content)) {
+    const id = (part as { toolCallId?: string }).toolCallId;
+    const existing = id ? parts.find((p) => (p as { toolCallId?: string }).toolCallId === id) : undefined;
+    if (existing) Object.assign(existing, part);
+    else parts.push(part);
+  }
+}
+
+/** The chunks `streamText` reports as they happen, as far as the runner reads them. */
+type StreamChunk = {
+  type: string;
+  text?: string;
+  toolCallId?: string;
+  output?: unknown;
+  error?: unknown;
+};
+
+/**
+ * A tool outcome for a call already in `parts` — one resumed after its
+ * approval — written onto that part. Anything else waits for its step.
+ */
+export function settleResumedCall(parts: UIMessage['parts'], chunk: StreamChunk): void {
+  if (!chunk.toolCallId) return;
+  const part = (parts as ToolPartShape[]).find((p) => p.toolCallId === chunk.toolCallId);
+  if (!part || part.state !== 'approval-responded') return;
+  if (chunk.type === 'tool-result') {
+    Object.assign(part, { state: 'output-available', output: capOutput(chunk.output) });
+  } else if (chunk.type === 'tool-error') {
+    Object.assign(part, { state: 'output-error', errorText: String(chunk.error) });
+  } else if (chunk.type === 'tool-output-denied') {
+    part.state = 'output-denied';
+  }
+}
+
+type ToolPartShape = {
+  type: string;
+  toolCallId?: string;
+  state?: string;
+  approval?: { id: string; approved?: boolean; reason?: string };
+};
+
+/** The tool part in `parts` waiting on approval `approvalId`, if any. */
+export function pendingApproval(parts: UIMessage['parts'] | undefined, approvalId: string): ToolPartShape | undefined {
+  return (parts ?? [])
+    .map((p) => p as ToolPartShape)
+    .find((p) => p.state === 'approval-requested' && p.approval?.id === approvalId);
+}
+
+/**
+ * Settle every approval still waiting in `parts` as denied — the person moved
+ * on without answering, so the call never runs. True when any was waiting.
+ */
+export function denyPendingApprovals(parts: UIMessage['parts'] | undefined): boolean {
+  let any = false;
+  for (const p of (parts ?? []) as ToolPartShape[]) {
+    if (p.state !== 'approval-requested' || !p.approval) continue;
+    p.state = 'output-denied';
+    p.approval = { id: p.approval.id, approved: false, reason: 'not answered before the next message' };
+    any = true;
+  }
+  return any;
 }
 
 /** The plain text of a message's parts. */
@@ -242,14 +340,23 @@ function engineFailure(err: unknown): Response {
   throw err;
 }
 
-/** A well-formed request. The text may be empty only when files come with it. */
+/**
+ * A well-formed request: a message (whose text may be empty only when files
+ * come with it), or an answer to an approval in an existing conversation.
+ */
 function isValidRequest(body: unknown, hasAttachments: boolean): body is ChatTurnRequest {
   if (typeof body !== 'object' || body === null) return false;
-  const { conversation_id, message, timezone } = body as Record<string, unknown>;
+  const { conversation_id, message, approval, timezone } = body as Record<string, unknown>;
   if (conversation_id !== undefined && (typeof conversation_id !== 'string' || !conversation_id)) {
     return false;
   }
   if (timezone !== undefined && typeof timezone !== 'string') return false;
+  if (approval !== undefined) {
+    if (message !== undefined || hasAttachments || !conversation_id) return false;
+    if (typeof approval !== 'object' || approval === null) return false;
+    const { id, approved } = approval as Record<string, unknown>;
+    return typeof id === 'string' && id.length > 0 && typeof approved === 'boolean';
+  }
   if (typeof message !== 'object' || message === null) return false;
   const { id, text } = message as Record<string, unknown>;
   return (
@@ -278,14 +385,15 @@ export async function handleTurn(
     return problem(
       400,
       'expected { conversation_id?, message: { id, text }, timezone? } with a non-empty id, and text ' +
-        `of 1–${MAX_MESSAGE_CHARS} characters (it may be empty when files are attached)`,
+        `of 1–${MAX_MESSAGE_CHARS} characters (it may be empty when files are attached); or ` +
+        '{ conversation_id, approval: { id, approved } } to answer an approval',
     );
   }
   // Checked before anything is created, so a bad file leaves nothing behind.
   const checked = await checkAttachments(uploads);
   if (!checked.ok) return problem(checked.status, checked.message);
   const attachments = checked.files;
-  const { message } = body;
+  const { message, approval } = body;
   const hs = serverClient(auth.token);
   const conversations = hs.collection<ConversationRecord>(CONVERSATIONS);
 
@@ -295,7 +403,7 @@ export async function handleTurn(
     conversation = body.conversation_id
       ? await conversations.get(body.conversation_id)
       : await conversations.create({
-          title: titleFrom(message.text) || titleFrom(attachmentsTitle(attachments)),
+          title: titleFrom(message!.text) || titleFrom(attachmentsTitle(attachments)),
           status: 'idle',
           last_message_at: now(),
           created_by: auth.user.id,
@@ -315,7 +423,10 @@ export async function handleTurn(
   const messages: CollectionRef<StoredMessage> = conversations
     .record(conversationId)
     .collection<StoredMessage>(CHAT_MESSAGES);
-  const assistantId = `${message.id}-reply`;
+  // A resumed turn continues the reply that asked; a new one gets its own.
+  let assistantId = message ? `${message.id}-reply` : '';
+  let resumed: UIMessage['parts'] | undefined;
+  let answered: ToolPartShape | undefined;
 
   let finished = false;
   /** Release the conversation and record how the turn ended. Runs once. */
@@ -331,30 +442,56 @@ export async function handleTurn(
     }
   };
 
-  // 3. History, then this turn's two messages at the next positions.
+  // 3. History, then this turn's two messages at the next positions — or, for
+  //    an answer to an approval, the reply that asked, taken up again.
   let history: StoredMessage[];
   try {
     history = await messages.listAll({ orderBy: 'seq' });
-    const seq = (history.at(-1)?.seq ?? 0) + 1;
+    const last = history.at(-1);
+    if (approval) {
+      const waiting = last?.role === 'assistant' ? pendingApproval(last.parts, approval.id) : undefined;
+      if (!last || !waiting) {
+        running.delete(conversationId);
+        return problem(409, 'nothing in this conversation is waiting on that approval');
+      }
+      waiting.state = 'approval-responded';
+      waiting.approval = { id: approval.id, approved: approval.approved };
+      answered = waiting;
+      assistantId = last.id;
+      resumed = last.parts ?? [];
+      await messages.record(last.id).update({ parts: resumed, status: 'streaming' });
+      await conversations.record(conversationId).update({ status: 'running', last_message_at: now() });
+    } else {
+      await startTurn(last);
+    }
+  } catch (err) {
+    running.delete(conversationId);
+    return engineFailure(err);
+  }
+
+  /** A new message: an unanswered approval is denied, then this turn's two messages. */
+  async function startTurn(last: StoredMessage | undefined): Promise<void> {
+    if (last?.role === 'assistant' && denyPendingApprovals(last.parts)) {
+      await messages.record(last.id).update({ parts: last.parts });
+    }
+    const seq = (last?.seq ?? 0) + 1;
+    const text = message!.text;
     const userBody = {
       seq,
       role: 'user' as const,
-      content: message.text,
-      parts: message.text.trim() ? [{ type: 'text' as const, text: message.text }] : [],
+      content: text,
+      parts: text.trim() ? [{ type: 'text' as const, text }] : [],
       status: 'complete',
       // Files ride on the message itself (the client encodes them as uploads).
       ...(attachments.length > 0 ? { attachments } : {}),
     };
     // A retried send reuses its id, so it lands here as a 409 — not a duplicate.
-    history.push(await messages.create(userBody, { id: message.id }));
+    history.push(await messages.create(userBody, { id: message!.id }));
     await messages.create(
       { seq: seq + 1, role: 'assistant', content: '', parts: [], status: 'streaming' },
       { id: assistantId },
     );
     await conversations.record(conversationId).update({ status: 'running', last_message_at: now() });
-  } catch (err) {
-    running.delete(conversationId);
-    return engineFailure(err);
   }
 
   /** One attached file's bytes, read under the caller's own token. */
@@ -369,6 +506,9 @@ export async function handleTurn(
     const recent = history.slice(-HISTORY_LIMIT);
     const ui = await withAttachments(toUiMessages(recent), recent, readAttachment);
     modelMessages = await convertToModelMessages(ui);
+    // The model hears a denial through the context above; the stream reports
+    // nothing for it, so the card is settled here.
+    if (answered && answered.approval?.approved === false) answered.state = 'output-denied';
   } catch (err) {
     await finish({ status: 'error', error: `could not rebuild the conversation: ${String(err)}` });
     return problem(500, 'could not rebuild the conversation history');
@@ -397,7 +537,7 @@ export async function handleTurn(
     userId: auth.user.id,
     household,
   });
-  const parts: UIMessage['parts'] = [];
+  const parts: UIMessage['parts'] = resumed ? [...resumed] : [];
   // The reply text of the step in flight. Steps are stored when they end, so
   // without this a stopped turn would lose the words the reader already saw.
   let stepText = '';
@@ -418,12 +558,15 @@ export async function handleTurn(
       tools: toolSet,
       maxRounds: MAX_TOOL_ROUNDS,
       abortSignal: controller.signal,
-      onChunk: ({ chunk }: { chunk: { type: string; text?: string } }) => {
+      onChunk: ({ chunk }: { chunk: StreamChunk }) => {
         if (chunk.type === 'text-delta') stepText += chunk.text ?? '';
+        // An approved call runs before the first step, so its outcome is in
+        // no step's content: settle it on the part that asked.
+        else settleResumedCall(parts, chunk);
       },
       onStepEnd: async (step: { content: readonly StepContent[] }) => {
         stepText = '';
-        parts.push(...partsFromStep(step.content));
+        mergeStep(parts, step.content);
         try {
           await messages.record(assistantId).update({ parts, content: textOfParts(parts) });
         } catch (err) {

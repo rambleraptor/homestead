@@ -47,9 +47,8 @@ export const notificationsResources: ResourceDefinition[] = [
     customMethods: {
       send: {
         target: 'collection',
-        // The assistant gets it once it can ask before sending (an approval
-        // card); until then a person composes every message it would send.
-        modelTools: { chat: false },
+        // A model's message goes out only once the person approves it.
+        confirm: true,
         description:
           'Send this user a message from you: a push to their devices and a row in their ' +
           'inbox. They must be in your household. At most 10 messages an hour.',
