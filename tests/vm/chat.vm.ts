@@ -112,28 +112,45 @@ describe('Chat', () => {
     await chat.expectSettled(/Hi there/);
   });
 
+  // These two use the short reply on purpose: what they check is the stored
+  // conversation, not streaming, and a 200-word reply plus a reload plus a
+  // second turn was more than the 5s budget on a busy CI runner. The long
+  // reply stays with the stop and interrupt specs, where its length matters.
   test('the first message starts a stored conversation that a reload brings back', async () => {
     const d = h.driver;
     const chat = new ChatPage(d);
     await chat.goto();
-    await chat.send(`Tell me a lot ${CHAT_MARKERS.longReply}`);
+    await chat.send(`Hi there ${CHAT_MARKERS.hello}`);
 
-    // The page moves to the new conversation before the reply has finished.
+    // The page moves to the new conversation as soon as it exists.
     const id = await openConversationId(d);
-    await d.expect(chat.messages).toContainText(LONG_REPLY_TEXT.split(' ').slice(-3).join(' '));
-    await d.expect(chat.conversation(`Tell me a lot ${CHAT_MARKERS.longReply}`)).toHaveCount(1);
+    await d.expect(chat.messages).toContainText('Hello from the scripted assistant.');
+    await d.expect(chat.conversation(`Hi there ${CHAT_MARKERS.hello}`)).toHaveCount(1);
+    await chat.expectSettled(/Hi there/);
 
     await d.reload();
     await d.expect(chat.userMessages).toHaveCount(1);
     await d.expect(chat.assistantMessages).toHaveCount(1);
-    await d.expect(chat.messages).toContainText(LONG_REPLY_TEXT.split(' ').slice(-3).join(' '));
-
-    // A second message continues the same conversation.
-    await chat.send(`And hello ${CHAT_MARKERS.hello}`);
-    await d.expect(chat.assistantMessages).toHaveCount(2);
     await d.expect(chat.messages).toContainText('Hello from the scripted assistant.');
     expect(new URL(d.url(), 'http://x').pathname).toBe(`/chat/${id}`);
-    await chat.expectSettled(/Tell me a lot/);
+    expect((await messagesOf(id).listAll()).map((m) => m.role)).toEqual(['user', 'assistant']);
+  });
+
+  test('a message sent after a reload continues the same conversation', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Hi there ${CHAT_MARKERS.hello}`);
+    const id = await openConversationId(d);
+    await d.expect(chat.assistantMessages).toHaveCount(1);
+    await chat.expectSettled(/Hi there/);
+
+    await d.reload();
+    await d.expect(chat.assistantMessages).toHaveCount(1);
+    await chat.send(`And hello again ${CHAT_MARKERS.hello}`);
+    await d.expect(chat.assistantMessages).toHaveCount(2);
+    expect(new URL(d.url(), 'http://x').pathname).toBe(`/chat/${id}`);
+    await chat.expectSettled(/Hi there/);
     expect(await conversations().listAll()).toHaveLength(1);
     expect((await messagesOf(id).listAll()).map((m) => m.role)).toEqual([
       'user',

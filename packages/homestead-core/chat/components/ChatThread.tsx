@@ -1,7 +1,7 @@
 /**
  * One conversation: its messages and the composer, as a column that fills its
  * parent. The Chat screen puts it beside the conversation list; the agentic
- * home puts it under the day's briefing. The page owns `useConversation` (and
+ * home puts it under the widget strip. The page owns `useConversation` (and
  * so where a new conversation's id goes); this only renders it.
  */
 
@@ -56,6 +56,8 @@ export interface ChatThreadProps {
   /** What an empty new conversation says. */
   empty?: { title: string; description: string };
   placeholder?: string;
+  /** Leave off the card frame (border, background, shadow): the thread is the page. */
+  bare?: boolean;
   className?: string;
 }
 
@@ -70,6 +72,7 @@ export function ChatThread({
   starters = [],
   empty = DEFAULT_EMPTY,
   placeholder = 'Message the assistant…',
+  bare = false,
   className,
 }: ChatThreadProps) {
   const toast = useToast();
@@ -81,7 +84,8 @@ export function ChatThread({
   return (
     <div
       className={cn(
-        'min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-gray-100 bg-surface-white shadow-sm',
+        'min-h-0 min-w-0 flex-1 flex-col',
+        !bare && 'rounded-xl border border-gray-100 bg-surface-white shadow-sm',
         className,
       )}
     >

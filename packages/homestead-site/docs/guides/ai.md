@@ -151,20 +151,23 @@ what came back. Replies stream in as they're written, and render as Markdown.
 
 Behind the `dashboard.agentic_home` flag (off by default; see
 [App Flags](./app-flags#rolling-a-flag-out-to-a-group) to try it on one group
-first), the dashboard becomes the assistant's home:
+first), the dashboard becomes the assistant's home: the **conversation** fills
+the screen, with a strip of **chips** along the top for the widgets that matter
+now.
 
-- a greeting with a one-line **briefing** composed from the widgets ("2 todos
-  due today · plumber at 2 · 4 items left to buy") — no model call on page
-  load, so it's instant;
-- a **carousel** of the widgets that matter now: the ones you've pinned in your
-  dashboard settings, plus any whose summary says it's urgent (those go first).
-  A pinned widget with nothing to say stays off the strip;
-- the **conversation** itself, in place of the widget stack. It starts fresh on
-  every visit, stays on the home as it grows, and is a stored conversation like
-  any other — **Open in Chat** takes you to it on the Chat screen.
+- Each chip is a widget's one-line summary ("Groceries · 4 items left to buy",
+  "Today · plumber at 2, 1 more"), composed from the widgets' own data — no
+  model call on page load, so it's instant. Tap a chip to open the widget under
+  the strip; tap again to put it away.
+- The strip holds the widgets you've pinned in your dashboard settings, plus
+  any whose summary says it's urgent (those go first). A pinned widget with
+  nothing to say stays off the strip.
+- The conversation starts fresh on every visit (your greeting is its empty
+  state), stays on the home as it grows, and is a stored conversation like any
+  other — **Open in Chat** takes you to it on the Chat screen.
 
-On a phone the carousel sits at the top, the thread fills the middle, and the
-composer is docked at the bottom.
+On a phone the strip sits under the top bar, the thread takes the rest of the
+screen, and the composer is docked at the bottom.
 
 You can also start from the dashboard: the **Ask Homestead** box at the top
 takes a question (and photos or PDFs) and opens it as a new chat, with the

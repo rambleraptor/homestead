@@ -1,8 +1,8 @@
 /**
  * The agentic home (`dashboard.agentic_home`): the assistant front and centre,
- * a briefing composed from the widgets, and a carousel of what matters now. It
- * sits behind a flag whose audience can be one group, so this also proves the
- * flag reaches only that group.
+ * with a strip of chips for the widgets that matter now, each opening its
+ * widget on tap. It sits behind a flag whose audience can be one group, so this
+ * also proves the flag reaches only that group.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -108,21 +108,38 @@ describe('Agentic home', () => {
     await d.expect(chat.conversation(/Hi there/)).toHaveCount(1);
   });
 
-  test('the briefing and carousel follow the widgets\' summaries', async () => {
+  test('the strip follows the widgets\' summaries, and a chip opens its widget', async () => {
     await enableFor('everyone');
     const { token } = await h.loginAs(h.member);
     const d = h.driver;
     const dashboard = new DashboardPage(d);
     await d.expect(dashboard.agenticHome).toBeVisible();
 
-    // Nothing to buy: the groceries card has nothing to say and stays off.
-    await d.expect(dashboard.carousel).toBeVisible();
-    await d.expect(dashboard.carouselCard('groceries-remaining')).toHaveCount(0);
-    await d.expect(dashboard.carouselCard('chat-ask')).toHaveCount(0);
+    // Nothing to buy: the groceries chip has nothing to say and stays off.
+    await d.expect(dashboard.strip).toBeVisible();
+    await d.expect(dashboard.widgetChip('groceries-remaining')).toHaveCount(0);
+    await d.expect(dashboard.widgetChip('chat-ask')).toHaveCount(0);
 
     await e2eClient(token).collection('groceries').create({ name: 'Milk', checked: false });
     await d.reload();
-    await d.expect(dashboard.carouselCard('groceries-remaining')).toBeVisible();
-    await d.expect(dashboard.briefing).toContainText('1 item left to buy');
+    const chip = dashboard.widgetChip('groceries-remaining');
+    await d.expect(chip).toBeVisible();
+    await d.expect(chip).toContainText('1 item left to buy');
+
+    // The widget itself is a tap away, and a second tap puts it back.
+    await d.expect(dashboard.widgetPanel).toHaveCount(0);
+    await chip.click();
+    await d.expect(dashboard.widgetPanel.getByTestId('groceries-widget')).toBeVisible();
+    await d.expect(chip).toHaveAttribute('aria-expanded', 'true');
+    await chip.click();
+    await d.expect(dashboard.widgetPanel).toHaveCount(0);
+  });
+
+  test('fills the screen: no shell padding around the thread', async () => {
+    await enableFor('everyone');
+    await h.loginAs(h.member);
+    const d = h.driver;
+    await d.expect(new DashboardPage(d).agenticHome).toBeVisible();
+    await d.expect(d.getByRole('main')).toHaveAttribute('data-fill', 'true');
   });
 });
