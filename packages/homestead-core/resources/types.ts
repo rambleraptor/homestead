@@ -492,6 +492,12 @@ export type AsyncCustomMethodValidator = (
 export interface ResourceCustomMethod {
   /** Collection- vs item-scoped. Defaults to `'collection'`. */
   target?: CustomMethodTarget;
+  /**
+   * Set a surface to `false` to leave this method out of that surface's model
+   * tools, like `ResourceDefinition.modelTools` for a whole resource. Not a
+   * permission: the method still answers anyone allowed to call it.
+   */
+  modelTools?: { chat?: boolean; mcp?: boolean };
   /** HTTP method this custom method accepts. Defaults to `'POST'`. */
   method?: CustomMethodHttpMethod;
   /**

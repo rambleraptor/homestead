@@ -22,6 +22,9 @@ vi.mock('../hooks/useScheduledNotifications', () => ({
 vi.mock('../hooks/useMarkNotificationAsRead', () => ({
   useMarkNotificationAsRead: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
+vi.mock('@rambleraptor/homestead-core/household/useHousehold', () => ({
+  useHousehold: () => ({ data: [{ id: 'u2', name: 'Sam', admin: false }] }),
+}));
 
 function notification(overrides: Partial<Notification> = {}): Notification {
   return {
@@ -73,5 +76,18 @@ describe('inbox click-through', () => {
   test('a protocol-relative url is not treated as internal', () => {
     renderWith([notification({ url: '//evil.example.com' })]);
     expect(screen.queryByTestId('notification-link-n1')).not.toBeInTheDocument();
+  });
+});
+
+describe('messages', () => {
+  test('say who sent them', () => {
+    renderWith([
+      notification({ id: 'm1', notification_type: 'message', from_user: 'users/u2' }),
+      notification({ id: 'm2', notification_type: 'message', from_user: 'users/gone' }),
+      notification({ id: 'r1' }),
+    ]);
+    expect(screen.getByTestId('notification-from-m1')).toHaveTextContent('From Sam');
+    expect(screen.getByTestId('notification-from-m2')).toHaveTextContent('From a household member');
+    expect(screen.queryByTestId('notification-from-r1')).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Bell, Check, Calendar } from 'lucide-react';
+import { Bell, Check, Calendar, MessageCircle, Send } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
@@ -8,7 +9,12 @@ import { useNotifications } from '../hooks/useNotifications';
 import { useScheduledNotifications } from '../hooks/useScheduledNotifications';
 import { ScheduledSection } from './ScheduledSection';
 import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
+import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehold';
+import { SendMessageDialog } from './SendMessageDialog';
 import type { Notification } from '../types';
+
+/** `users/u1` (or a bare id) → `u1`. */
+const bareUserId = (ref: string) => (ref.startsWith('users/') ? ref.slice('users/'.length) : ref);
 
 /**
  * Where tapping a notification lands.
@@ -28,6 +34,11 @@ function internalPath(url: string | undefined): string | null {
 function NotificationsPanel() {
   const { data: notifications, isLoading } = useNotifications();
   const markAsRead = useMarkNotificationAsRead();
+  const household = useHousehold();
+  const senderName = (n: Notification): string | undefined =>
+    n.from_user
+      ? (household.data?.find((m) => m.id === bareUserId(n.from_user!))?.name ?? 'a household member')
+      : undefined;
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -54,6 +65,9 @@ function NotificationsPanel() {
     // from core and had stopped matching anything besides: the events cron
     // stamps `events`, and `person_id` is deprecated. Every scheduled reminder
     // — from any app — now reads as a calendar; anything else is a bell.
+    if (notification.notification_type === 'message') {
+      return <MessageCircle className="w-5 h-5 text-brand-navy" />;
+    }
     const scheduled =
       notification.notification_type === 'day_of' ||
       notification.notification_type === 'day_before' ||
@@ -90,6 +104,14 @@ function NotificationsPanel() {
                   <div className="flex items-start gap-3">
                     {getNotificationIcon(notification)}
                     <div className="flex-1">
+                      {senderName(notification) && (
+                        <p
+                          className="text-xs font-medium text-brand-navy"
+                          data-testid={`notification-from-${notification.id}`}
+                        >
+                          From {senderName(notification)}
+                        </p>
+                      )}
                       <h3 className="font-semibold text-gray-900">
                         {internalPath(notification.url) ? (
                           <Link
@@ -179,13 +201,21 @@ export function NotificationsHome() {
   };
 
   const queuedCount = (scheduled ?? []).filter((r) => r.status === 'scheduled').length;
+  const [composing, setComposing] = useState(false);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Notification Center"
         subtitle="What you've been told, and what you're about to be"
+        actions={
+          <Button onClick={() => setComposing(true)} data-testid="new-message-button">
+            <Send className="w-4 h-4 mr-2" />
+            New message
+          </Button>
+        }
       />
+      <SendMessageDialog isOpen={composing} onClose={() => setComposing(false)} />
 
       <div
         className="border-b border-gray-200"

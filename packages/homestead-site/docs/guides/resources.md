@@ -269,6 +269,18 @@ This is **not** a permission. The REST API, the CLI, and bulk export still
 reach the resource exactly as before, under the caller's own access. It only
 decides what a model is handed as tools.
 
+A single custom method can opt out the same way, leaving the rest of its
+resource in place:
+
+```ts
+customMethods: {
+  send: {
+    modelTools: { chat: false }, // the assistant can't send messages yet
+    load: () => import('./methods/send-message'),
+  },
+},
+```
+
 ---
 
 ## Wiring It Up

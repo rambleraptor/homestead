@@ -27,13 +27,18 @@ export interface CollectionAccess {
 /**
  * `defs` minus the resources hidden from `surface`, and minus their
  * descendants: a child whose parent is hidden can't be addressed (its tool
- * would need a parent id the model has no way to find), so it goes too.
+ * would need a parent id the model has no way to find), so it goes too. A
+ * resource that stays loses the custom methods hidden from `surface`.
  */
 export function visibleToModel(
   defs: readonly ResourceDefinition[],
   surface: ModelSurface,
 ): ResourceDefinition[] {
-  return withoutDescendants(defs, (def) => def.modelTools?.[surface] === false);
+  return withoutDescendants(defs, (def) => def.modelTools?.[surface] === false).map((def) => {
+    const methods = Object.entries(def.customMethods ?? {});
+    const shown = methods.filter(([, method]) => method.modelTools?.[surface] !== false);
+    return shown.length === methods.length ? def : { ...def, customMethods: Object.fromEntries(shown) };
+  });
 }
 
 /**

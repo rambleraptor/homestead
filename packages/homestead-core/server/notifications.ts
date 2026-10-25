@@ -13,7 +13,7 @@ import webpush from 'web-push';
 import { authenticate, type AuthResult } from './aepbase';
 import { serverClient } from './client';
 
-interface NotificationSubscriptionRecord {
+export interface NotificationSubscriptionRecord {
   id: string;
   subscription_data: webpush.PushSubscription;
   enabled: boolean;
@@ -91,19 +91,79 @@ export async function sendNotificationForAuth(
  * and write `/users/{userId}/notifications` — the per-firing admin token the
  * cron scheduler mints qualifies.
  */
+/** Set web push up from the environment; false when the VAPID keys aren't configured. */
+export function configureWebPush(): boolean {
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!vapidPublicKey || !vapidPrivateKey) return false;
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL || 'mailto:admin@example.com',
+    vapidPublicKey,
+    vapidPrivateKey,
+  );
+  return true;
+}
+
+/** What one push carries. */
+export interface PushContent {
+  title: string;
+  body: string;
+  tag: string;
+  url: string;
+  sourceCollection?: string;
+  sourceId?: string;
+}
+
+/**
+ * Push `content` to each of `userId`'s `subscriptions` (call
+ * {@link configureWebPush} first), dropping a subscription the push service
+ * says is gone. `token` must be able to delete under the user's subtree.
+ */
+export async function pushToDevices(
+  token: string,
+  userId: string,
+  subscriptions: readonly NotificationSubscriptionRecord[],
+  content: PushContent,
+): Promise<{ sent: number; failed: number }> {
+  const devices = serverClient(token).collection('users').record(userId).collection('notification-subscriptions');
+  let sent = 0;
+  let failed = 0;
+  for (const sub of subscriptions) {
+    try {
+      const payload = JSON.stringify({
+        title: content.title,
+        body: content.body,
+        icon: '/icon-192.png',
+        badge: '/badge-72.png',
+        tag: content.tag,
+        data: {
+          url: content.url,
+          sourceCollection: content.sourceCollection,
+          sourceId: content.sourceId,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      await webpush.sendNotification(sub.subscription_data, payload);
+      sent++;
+    } catch (error: unknown) {
+      const err = error as { statusCode?: number };
+      failed++;
+      if (err.statusCode === 404 || err.statusCode === 410) {
+        await devices.record(sub.id).delete().catch(() => undefined);
+      }
+    }
+  }
+  return { sent, failed };
+}
+
 export async function sendNotificationToUser(
   token: string,
   userId: string,
   options: UserNotificationOptions,
 ): Promise<Response> {
-  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
-  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-  const vapidEmail = process.env.VAPID_EMAIL || 'mailto:admin@example.com';
-
-  if (!vapidPublicKey || !vapidPrivateKey) {
+  if (!configureWebPush()) {
     return Response.json({ error: 'VAPID keys not configured' }, { status: 500 });
   }
-  webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
 
   const hs = serverClient(token);
   const userRecord = hs.collection('users').record(userId);
@@ -135,39 +195,14 @@ export async function sendNotificationToUser(
     }
   }
 
-  let sentCount = 0;
-  let failedCount = 0;
-
-  for (const sub of enabledSubs) {
-    try {
-      const payload = JSON.stringify({
-        title: options.title,
-        body: options.body,
-        icon: '/icon-192.png',
-        badge: '/badge-72.png',
-        tag: options.tag,
-        data: {
-          url: options.url,
-          sourceCollection: options.sourceCollection,
-          sourceId: options.sourceId,
-          timestamp: new Date().toISOString(),
-        },
-      });
-
-      await webpush.sendNotification(sub.subscription_data, payload);
-      sentCount++;
-    } catch (error: unknown) {
-      const err = error as { statusCode?: number };
-      failedCount++;
-      if (err.statusCode === 404 || err.statusCode === 410) {
-        await userRecord
-          .collection('notification-subscriptions')
-          .record(sub.id)
-          .delete()
-          .catch(() => undefined);
-      }
-    }
-  }
+  const { sent: sentCount, failed: failedCount } = await pushToDevices(token, userId, enabledSubs, {
+    title: options.title,
+    body: options.body,
+    tag: options.tag,
+    url: options.url,
+    sourceCollection: options.sourceCollection,
+    sourceId: options.sourceId,
+  });
 
   // Record the notification in the user's inbox exactly once — regardless of
   // how many devices it reached, or whether any did. The inbox is the durable

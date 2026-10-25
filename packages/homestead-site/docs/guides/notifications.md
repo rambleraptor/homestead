@@ -19,6 +19,7 @@ This page covers:
 - [Send from a server route](#send-from-a-server-route)
 - [Send from a background job](#send-from-a-background-job)
 - [Send to a specific device](#send-to-a-specific-device)
+- [Message a household member](#message-a-household-member)
 - [Read notifications](#read-notifications)
 - [Add notifications to a new app](#add-notifications-to-a-new-app)
 - [Test notifications](#test-notifications)
@@ -322,6 +323,56 @@ send — one inbox row is recorded. List a user's device ids with
 
 From the client, invoke it with
 `aepbase.customMethod('notification-subscriptions', 'send-notification', body, { id })`.
+
+---
+
+## Message a household member
+
+Everything above notifies *the caller* (or, from a job, anyone). To send
+**another member** a message — a push to their devices and a row in their inbox
+that says who it's from — call `:send` on their inbox:
+
+```bash
+curl -X POST "$HOMESTEAD_URL/api/aep/users/$SAM_ID/notifications:send" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{ "title": "Running late", "body": "Be there by 6:30", "url": "/groceries" }'
+# → { "notification": "users/u2/notifications/n_81", "delivered": 2, "failed": 0 }
+```
+
+Find user ids with `GET /api/household`. The same method is everywhere the
+engine is:
+
+- **The app:** Notifications → **New message**, or open `SendMessageDialog`
+  (`@rambleraptor/homestead-core/notifications/components/SendMessageDialog`)
+  from your own app with a `url` back to what the message is about; the hook
+  underneath is `useSendMessage()`.
+- **The CLI:** `homestead resources --user $SAM_ID notification send --@data msg.json`.
+- **MCP:** the `notifications` tool's `send` action, on connections that may
+  write.
+- **Server code:** `sendMessage({ from, to, title, body, url })` from
+  `@rambleraptor/homestead-core/server/messages` — no HTTP hop, and no rate
+  limit (your code is the caller).
+
+The method holds the rules, whoever calls it:
+
+- Sender and recipient must both be in the household (superusers and anyone
+  with the Admin or Member role). A guest can't send or be sent to.
+- The caller must be able to write notifications: every signed-in member can;
+  a personal access token only if it was granted `write` on `notification`; a
+  read-only connection never.
+- `title` is required, at most 80 characters; `body` at most 500; `url` must be
+  a path in this Homestead (`/…`, never another site). Plain text only.
+- At most 10 messages an hour per sender — then `429` with `Retry-After`. A
+  refused message doesn't count.
+
+The inbox row is written even when push isn't set up or the recipient has no
+devices, so a message is never lost. It carries `notification_type: 'message'`
+and `from_user`, and the inbox shows "From Sam" on it; the push reads
+"Sam: Running late".
+
+The built-in assistant doesn't get `send` yet: it will once it can ask you
+before sending. Until then the method is marked `modelTools: { chat: false }`
+(see [Hiding a Resource from AI Tools](./resources#hiding-a-resource-from-ai-tools)).
 
 ---
 

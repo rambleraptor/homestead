@@ -50,3 +50,14 @@ export async function modelResourcesFor(
     writable: (def) => access.get(def.singular)?.write === true,
   };
 }
+
+/**
+ * Whether `token`'s caller could write `singular` at all — the same reach the
+ * model surfaces use, for a server route that acts on someone's behalf. True
+ * when no resolver is installed (unit tests).
+ */
+export async function canWriteCollection(token: string, singular: string): Promise<boolean> {
+  if (!current) return true;
+  const access = await current(token);
+  return access?.get(singular)?.write === true;
+}
