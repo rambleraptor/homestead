@@ -82,6 +82,12 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('App notes:\nTodos\n- Default to personal todos.');
   });
 
+  it('answers for every match, and asks which one only before a change', () => {
+    const prompt = buildSystemPrompt(user, { now: 'x', hasDocSearch: false });
+    expect(prompt).toContain('answer for every match');
+    expect(prompt).toContain('Ask only before creating, changing or deleting something');
+  });
+
   it('names no app-specific tool on its own', () => {
     const prompt = buildSystemPrompt(user, { now: 'x', hasDocSearch: false });
     expect(prompt).not.toContain('personal_todos');

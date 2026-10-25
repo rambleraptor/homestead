@@ -20,7 +20,9 @@ export const peopleApp: AppConfig = {
         'look them up with the "people" tool\'s list action first and use that record\'s ' +
         'id. People usually give a first name or a nickname, so match loosely on both: ' +
         '`name.contains("Sam") || aliases.exists(a, a.contains("Sam"))`.',
-      'If more than one person matches, ask which one they mean.',
+      'If more than one person matches a question, answer it for each of them ' +
+        '(both Jakes\' addresses, say). Ask which one only before changing ' +
+        'something for one of them.',
     ],
   },
   // Partnership moved from person-shared-data's person_b to partner

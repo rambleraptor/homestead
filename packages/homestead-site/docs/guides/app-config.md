@@ -363,7 +363,8 @@ chat: {
   instructions: [
     'When someone mentions a person by name, look them up with the "people" ' +
       "tool's list action first, matching on name or aliases.",
-    'If more than one person matches, ask which one they mean.',
+    'If more than one person matches a question, answer it for each of them. ' +
+      'Ask which one only before changing something for one of them.',
   ],
 },
 ```
