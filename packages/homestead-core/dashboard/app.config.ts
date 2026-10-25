@@ -47,6 +47,13 @@ export const dashboardApp: AppConfig = {
         component: () =>
           import('./components/DashboardHome').then((m) => m.DashboardHome),
       },
+      {
+        // A conversation on the agentic home; the classic home sends it to Chat.
+        path: 'c/:id',
+        component: () =>
+          import('./components/DashboardHome').then((m) => m.DashboardHome),
+        dynamic: true,
+      },
     ],
     showInNav: false,
     navOrder: 1,

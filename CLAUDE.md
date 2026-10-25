@@ -375,8 +375,11 @@ SPA and apps share:
   `dashboard` renders the widget stack, or — behind the `dashboard.agentic_home`
   flag — the assistant-first home (`dashboard/components/agentic/`): a strip of
   widget chips built from each widget's optional `summary` hook (tap one to open
-  the widget), over a fresh in-place conversation rendered with the shared
-  `chat/components/ChatThread`. It fills the main area via `layout/pageFill`.
+  the widget), over a conversation rendered with the shared
+  `chat/components/ChatThread`, held in the address (`/dashboard/c/:id`) with
+  past ones in a drawer (`chat/components/ConversationList`). It fills the main
+  area via `layout/pageFill`, and falls back to the widget stack when the AI
+  isn't configured or the viewer can't use Chat.
 - `layout/`, `shared/`, `resources/`, `app-flags/`, `user-settings/` —
   shared chrome, components, and schema/sync plumbing. `shared/components/ui/`
   holds vendored shadcn primitives and `shared/components/ai-elements/` the

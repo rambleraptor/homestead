@@ -168,9 +168,14 @@ now.
 - The strip holds the widgets you've pinned in your dashboard settings, plus
   any whose summary says it's urgent (those go first). A pinned widget with
   nothing to say stays off the strip.
-- The conversation starts fresh on every visit (your greeting is its empty
-  state), stays on the home as it grows, and is a stored conversation like any
-  other — **Open in Chat** takes you to it on the Chat screen.
+- The conversation stays on the home as it grows. Its first message gives it
+  its own address (`/dashboard/c/<id>`), so a reload or a shared link brings it
+  back, while going Home or tapping **New chat** starts a fresh one (your
+  greeting is its empty state).
+- The **history** button beside the chips opens your past conversations in a
+  drawer: pick one to carry on with it on the home, or delete it.
+- The home needs the assistant: if no AI provider is configured, or you can't
+  use Chat, you get the classic dashboard instead.
 
 On a phone the strip sits under the top bar, the thread takes the rest of the
 screen, and the composer is docked at the bottom.

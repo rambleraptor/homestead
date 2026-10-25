@@ -9,18 +9,20 @@
  *  - The strip holds the widgets the person pinned (their dashboard settings)
  *    plus any whose summary says it's urgent, urgent first; a pinned widget
  *    with nothing to say drops out, so the strip never shows empty chips.
- *  - The conversation starts fresh on every visit and stays here as it grows;
- *    it is a stored conversation like any other, one tap from the Chat screen.
- *    The greeting is its empty state, so it gives way to the first message.
+ *  - The conversation lives in the address: `/dashboard` is a new one, and the
+ *    first message moves the page to `/dashboard/c/<id>`, so a reload or a link
+ *    brings it back while Home always starts fresh. Past conversations are in
+ *    the history drawer (the Chat screen's list). The greeting is the empty
+ *    state, so it gives way to the first message.
  *
  * The page fills the main area (`useFillPage`): no shell padding, no card
  * around the thread — on a phone the strip sits under the top bar, the thread
  * takes the rest, and the composer is docked at the bottom.
  */
 
-import { Suspense, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowUpRight } from 'lucide-react';
+import { Suspense, useCallback, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { History, MessageSquarePlus } from 'lucide-react';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
 import {
@@ -32,6 +34,15 @@ import { AppIcon, getLazyComponent } from '@rambleraptor/homestead-core/apps/laz
 import { resolveDashboardWidgets } from '@rambleraptor/homestead-core/settings/utils/resolveDashboardWidgets';
 import { useConversation } from '@rambleraptor/homestead-core/chat/hooks/useConversation';
 import { ChatThread } from '@rambleraptor/homestead-core/chat/components/ChatThread';
+import { ConversationList } from '@rambleraptor/homestead-core/chat/components/ConversationList';
+import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@rambleraptor/homestead-core/shared/components/ui/sheet';
 import { availableStarters } from '@rambleraptor/homestead-core/chat/starters';
 import { useFillPage } from '@rambleraptor/homestead-core/layout/pageFill';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
@@ -43,16 +54,31 @@ const ASK_WIDGET_ID = 'chat-ask';
 
 const EMPTY_DESCRIPTION = 'Ask about anything in your household, or have me change it.';
 
-export function AgenticHome() {
+/** The home's address for a conversation; `/dashboard` itself is a new one. */
+export const HOME_PATH = '/dashboard';
+export const homeConversationPath = (conversationId: string) =>
+  `${HOME_PATH}/c/${conversationId}`;
+
+export interface AgenticHomeProps {
+  /** The conversation in the address, or null for a new one. */
+  conversationId: string | null;
+}
+
+export function AgenticHome({ conversationId }: AgenticHomeProps) {
   useFillPage();
   const { user } = useAuth();
   const { greeting } = useGreeting();
   const isVisible = useAppVisible();
+  const navigate = useNavigate();
 
-  // Fresh every visit: the id lives in component state, so a remount starts a
-  // new conversation. The old ones are in the Chat screen's list.
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const chat = useConversation(conversationId, { onCreated: setConversationId });
+  // The first message names the conversation: move to its address, replacing
+  // the bare home so Back doesn't return to an empty chat.
+  const onCreated = useCallback(
+    (id: string) => navigate(homeConversationPath(id), { replace: true }),
+    [navigate],
+  );
+  const chat = useConversation(conversationId, { onCreated });
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const widgets = useMemo(
     () =>
@@ -90,8 +116,19 @@ export function AgenticHome() {
     <div className="flex min-h-0 flex-1 flex-col" data-testid="agentic-home">
       {probes}
 
-      {(strip.length > 0 || conversationId) && (
-        <div className="flex items-center gap-3 px-4 pt-3 lg:px-6">
+      <div className="flex items-center gap-2 px-4 pt-3 lg:px-6">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0"
+          aria-label="Past conversations"
+          aria-expanded={historyOpen}
+          onClick={() => setHistoryOpen(true)}
+          data-testid="agentic-history"
+        >
+          <History className="size-4" />
+        </Button>
+        {strip.length > 0 ? (
           <div
             className="flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             data-testid="agentic-strip"
@@ -107,17 +144,35 @@ export function AgenticHome() {
               />
             ))}
           </div>
-          {conversationId && (
-            <Link
-              to={`/chat/${conversationId}`}
-              className="shrink-0 text-sm text-text-muted hover:text-text-main"
-              data-testid="agentic-open-chat"
-            >
-              Open in Chat <ArrowUpRight className="inline size-4" aria-hidden />
+        ) : (
+          <div className="flex-1" />
+        )}
+        {conversationId && (
+          <Button asChild variant="ghost" size="sm" className="shrink-0 gap-1.5">
+            <Link to={HOME_PATH} data-testid="agentic-new-chat">
+              <MessageSquarePlus className="size-4" aria-hidden />
+              New chat
             </Link>
-          )}
-        </div>
-      )}
+          </Button>
+        )}
+      </div>
+
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetContent side="left" data-testid="agentic-history-drawer">
+          <SheetHeader>
+            <SheetTitle>Conversations</SheetTitle>
+            <SheetDescription>Pick one up where you left off.</SheetDescription>
+          </SheetHeader>
+          <ConversationList
+            activeId={conversationId}
+            hrefFor={homeConversationPath}
+            newHref={HOME_PATH}
+            onNavigate={() => setHistoryOpen(false)}
+            onDeletedActive={() => navigate(HOME_PATH, { replace: true })}
+            className="flex min-h-0 flex-1"
+          />
+        </SheetContent>
+      </Sheet>
 
       {OpenWidget && (
         <div

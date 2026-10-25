@@ -76,9 +76,29 @@ export class DashboardPage {
     return this.driver.getByTestId('agentic-widget-panel');
   }
 
-  /** The link from the home's conversation to the Chat screen. */
-  get openInChat() {
-    return this.driver.getByTestId('agentic-open-chat');
+  /** "New chat" on the agentic home, once a conversation is open. */
+  get newChat() {
+    return this.driver.getByTestId('agentic-new-chat');
+  }
+
+  /** The button that opens the past-conversations drawer. */
+  get historyButton() {
+    return this.driver.getByTestId('agentic-history');
+  }
+
+  get historyDrawer() {
+    return this.driver.getByTestId('agentic-history-drawer');
+  }
+
+  /** A past conversation in the drawer, by its title. */
+  historyConversation(title: string | RegExp) {
+    return this.historyDrawer.getByTestId('chat-conversation').filter({ hasText: title });
+  }
+
+  /** Open the drawer and pick a past conversation. */
+  async openPastConversation(title: string | RegExp) {
+    await this.historyButton.click();
+    await this.historyConversation(title).getByRole('link').click();
   }
 
   /** The "Ask Homestead" box that opens a new chat. */

@@ -20,11 +20,26 @@ export interface ConversationListProps {
   activeId: string | null;
   /** After the open conversation is deleted. */
   onDeletedActive: () => void;
+  /** Where a conversation opens. The Chat screen's own address by default. */
+  hrefFor?: (conversationId: string) => string;
+  /** Where "New chat" goes. */
+  newHref?: string;
+  /** After a link in the list is followed (a drawer closes itself). */
+  onNavigate?: () => void;
   className?: string;
 }
 
+const chatHref = (conversationId: string) => `/chat/${conversationId}`;
+
 /** The user's conversations, newest activity first, with a way to start another. */
-export function ConversationList({ activeId, onDeletedActive, className }: ConversationListProps) {
+export function ConversationList({
+  activeId,
+  onDeletedActive,
+  hrefFor = chatHref,
+  newHref = '/chat',
+  onNavigate,
+  className,
+}: ConversationListProps) {
   const conversations = useConversations();
   const remove = useDeleteConversation();
   const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
@@ -46,7 +61,7 @@ export function ConversationList({ activeId, onDeletedActive, className }: Conve
   return (
     <nav className={cn('flex min-h-0 flex-col gap-2', className)} aria-label="Conversations">
       <Button asChild variant="outline" size="sm" className="justify-start gap-2">
-        <Link to="/chat" data-testid="chat-new">
+        <Link to={newHref} onClick={onNavigate} data-testid="chat-new">
           <MessageSquarePlus className="size-4" />
           New chat
         </Link>
@@ -66,7 +81,8 @@ export function ConversationList({ activeId, onDeletedActive, className }: Conve
               data-status={c.status ?? 'idle'}
             >
               <Link
-                to={`/chat/${c.id}`}
+                to={hrefFor(c.id)}
+                onClick={onNavigate}
                 aria-current={c.id === activeId ? 'page' : undefined}
                 className={cn(
                   'flex flex-col rounded-md px-2 py-1.5 pr-9 text-sm hover:bg-muted',
