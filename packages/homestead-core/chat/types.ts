@@ -33,6 +33,11 @@ export interface ChatTurnRequest {
   conversation_id?: string;
   /** The client picks the id, so a retried send is a conflict, not a duplicate. */
   message: { id: string; text: string };
+  /**
+   * The person's IANA timezone (`America/Chicago`), so "today" and "6pm" mean
+   * theirs. Unrecognized or omitted, the turn uses UTC. Not stored.
+   */
+  timezone?: string;
 }
 
 /** What the turn's stream carries on its start event. */

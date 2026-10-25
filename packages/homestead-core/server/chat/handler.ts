@@ -29,13 +29,24 @@ import { handleTurn } from './turns';
 import { MAX_TURN_REQUEST_BYTES } from './attachments';
 import { makeSearchTool, SEARCH_TOOL_NAME } from './search-tool';
 
-export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): string {
+/** What a turn's system prompt is built from, besides the person. */
+export interface PromptContext {
+  /** The person's local date and time (`localNow` in `./context`). */
+  now: string;
+  /** Whether the semantic document search is among the tools. */
+  hasDocSearch: boolean;
+  /** Notes from the apps whose tools are offered (`appNotes` in `./context`). */
+  appNotes?: string[];
+}
+
+export function buildSystemPrompt(user: AuthedUser, context: PromptContext): string {
+  const { now, hasDocSearch, appNotes = [] } = context;
   return [
     'You are the Homestead household assistant. You help members of the',
     'household look up and manage their data (todos, groceries, recipes,',
     'gift cards, events, and more) using the provided tools.',
     '',
-    `Today's date: ${new Date().toISOString().slice(0, 10)}.`,
+    `Now: ${now}. Read "today", "tomorrow" and times of day in this timezone.`,
     `Signed-in user: id "${user.id}", email "${user.email}"` +
       (user.display_name ? `, name "${user.display_name}"` : '') +
       '.',
@@ -43,16 +54,11 @@ export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): stri
     'Tools:',
     resourceInstructions(),
     '',
+    ...(appNotes.length > 0 ? ['App notes:', ...appNotes, ''] : []),
     'Guidelines:',
     `- When a tool takes a "user_id" parameter (notifications, preferences,`,
     `  and other user-scoped data), use the signed-in user's id above. You`,
     '  can only act on data the signed-in user can access.',
-    '- Todos come in two kinds: personal (private to one user; the',
-    '  "personal_todos" tool, user-scoped via user_id) and family (shared with',
-    '  the whole household; the "todos" tool). When a member asks to add or',
-    '  list todos without saying which, default to PERSONAL for the signed-in',
-    '  user. Use the family todos tool only when they say it is shared/family/',
-    '  household.',
     '- Record ids are server-assigned. When you are not sure of an id, list',
     '  the collection (with a filter when you can) instead of guessing.',
     '- Prefer a filtered, sorted, limited list over reading a whole',

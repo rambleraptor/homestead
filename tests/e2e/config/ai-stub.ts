@@ -29,6 +29,7 @@ import {
   ATTACHMENT_ID_PLACEHOLDER,
   ATTACHMENTS_PLACEHOLDER,
   TOOLS_PLACEHOLDER,
+  CONTEXT_PLACEHOLDER,
   SCRIPT_EXHAUSTED_TEXT,
   scriptFor,
   type ScriptStep,
@@ -202,6 +203,23 @@ function toolSummary(body: unknown): string {
     .join(' | ');
 }
 
+/**
+ * What the system prompt says about the model's situation, as
+ * {@link CONTEXT_PLACEHOLDER} reads: its `Now:` line and the app names under
+ * `App notes:`.
+ */
+function contextSummary(items: InputItem[]): string {
+  const system = items
+    .filter((item) => item.role === 'system' || item.role === 'developer')
+    .map(textOf)
+    .join('\n');
+  const now = /^Now: (.*?)\. Read /m.exec(system)?.[1] ?? '(none)';
+  const notes: string[] = [];
+  const section = /^App notes:\n([\s\S]*?)\n\n/m.exec(system)?.[1] ?? '';
+  for (const line of section.split('\n')) if (line && !line.startsWith('- ')) notes.push(line);
+  return `now=${now} | notes=${notes.sort().join(', ') || '(none)'}`;
+}
+
 /** The text of an input item's content, however the provider shaped it. */
 function textOf(item: InputItem): string {
   if (typeof item.content === 'string') return item.content;
@@ -230,6 +248,9 @@ export function scriptedStep(body: unknown): ScriptStep | null {
 
   const round = items.slice(lastUser + 1).filter((item) => item.type === 'function_call_output').length;
   let step = script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT };
+  if (step.text?.includes(CONTEXT_PLACEHOLDER)) {
+    step = { ...step, text: step.text.replace(CONTEXT_PLACEHOLDER, contextSummary(items)) };
+  }
   if (step.text?.includes(TOOLS_PLACEHOLDER)) {
     step = { ...step, text: step.text.replace(TOOLS_PLACEHOLDER, toolSummary(body)) };
   }

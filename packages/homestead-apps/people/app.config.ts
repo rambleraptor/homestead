@@ -14,6 +14,14 @@ export const peopleApp: AppConfig = {
   name: 'People',
   description: 'Manage contact information and important dates for people you know',
   resources: peopleResources,
+  chat: {
+    instructions: [
+      'When someone mentions a person by name ("remind Sam", "Mom\'s birthday"), ' +
+        'look them up with the "people" tool\'s list action first, matching on name ' +
+        'or aliases, and use that record\'s id.',
+      'If more than one person matches, ask which one they mean.',
+    ],
+  },
   // Partnership moved from person-shared-data's person_b to partner
   // relationship rows. One-shot and idempotent.
   migrations: [

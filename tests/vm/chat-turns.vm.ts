@@ -41,7 +41,7 @@ const nextId = () => `m${Date.now().toString(36)}${(counter++).toString(36)}`;
 function send(
   as: string,
   text: string,
-  opts: { conversationId?: string; id?: string; signal?: AbortSignal } = {},
+  opts: { conversationId?: string; id?: string; signal?: AbortSignal; timezone?: string } = {},
 ): Promise<Response> {
   return fetch(`${APP}/api/chat`, {
     method: 'POST',
@@ -49,6 +49,7 @@ function send(
     body: JSON.stringify({
       ...(opts.conversationId ? { conversation_id: opts.conversationId } : {}),
       message: { id: opts.id ?? nextId(), text },
+      ...(opts.timezone !== undefined ? { timezone: opts.timezone } : {}),
     }),
     signal: opts.signal,
   });
@@ -335,6 +336,55 @@ describe('the tools a turn offers', () => {
     expect(tools.get('gift_cards')).toBe('list get');
     expect(tools.get('transactions')).toBe('list get');
     expect(tools.has('groceries')).toBe(false);
+  });
+});
+
+describe('what a turn tells the model', () => {
+  /** The prompt's clock and app notes, as the model received them. */
+  async function context(as: string, timezone?: string): Promise<{ now: string; notes: string }> {
+    const res = await send(as, `Where am I? ${CHAT_MARKERS.describeContext}`, { timezone });
+    expect(res.status).toBe(200);
+    const conversationId = res.headers.get('x-conversation-id')!;
+    const summary = replyText(await events(res));
+    await eventually(() => conversations(as).get(conversationId), (c) => c.status === 'idle');
+    const [, now = '', notes = ''] = /^now=(.*) \| notes=(.*)$/.exec(summary) ?? [];
+    return { now, notes };
+  }
+
+  const CLOCK = /^[A-Z][a-z]+day \d{4}-\d{2}-\d{2}, \d{1,2}:\d{2} [AP]M /;
+
+  test('the clock is where the person is', async () => {
+    const chicago = await context(token, 'America/Chicago');
+    expect(chicago.now).toMatch(CLOCK);
+    expect(chicago.now).toMatch(/\(America\/Chicago\)$/);
+    // Omitted or unrecognized, it's UTC; a bad zone doesn't fail the turn.
+    expect((await context(token)).now).toMatch(/\(UTC\)$/);
+    expect((await context(token, 'Not/A_Zone')).now).toMatch(/\(UTC\)$/);
+  });
+
+  test("a timezone that isn't a string is refused", async () => {
+    const res = await fetch(`${APP}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ message: { id: nextId(), text: 'hi' }, timezone: 5 }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test('app notes come from the apps the person can use', async () => {
+    expect((await context(token)).notes).toBe('People, Todos');
+
+    // A guest who may only chat and read gift cards loses People's note. Todos
+    // stays: their own personal todos live in their user subtree, so that
+    // tool is still theirs.
+    const email = `guest-${Date.now()}@example.com`;
+    const password = 'guest-vm-password';
+    const guest = await createUser(h.admin.token, { email, password, display_name: 'Guest', noRole: true });
+    const grants = e2eClient(h.admin.token).collection('access-grants');
+    const allow = { subject_type: 'user', subject_id: guest.id, effect: 'allow' };
+    await grants.create({ ...allow, target_scope: 'collection', resource_type: 'conversation', capability: 'write' });
+    await grants.create({ ...allow, target_scope: 'collection', resource_type: 'gift-card', capability: 'read' });
+    expect((await context(await login(email, password))).notes).toBe('Todos');
   });
 });
 
