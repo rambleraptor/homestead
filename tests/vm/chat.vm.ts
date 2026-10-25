@@ -69,6 +69,13 @@ describe('Chat', () => {
     await d.expect(chat.pending).toHaveCount(0);
     await chat.expectSettled(/Add milk to the grocery list/);
 
+    // Opening the card shows what the tool was sent and what came back.
+    await chat.openToolCall();
+    await d.expect(chat.toolCalls.first()).toContainText('Parameters');
+    await d.expect(chat.toolCalls.first()).toContainText('"action": "create"');
+    await d.expect(chat.toolCalls.first()).toContainText('Result');
+    await d.expect(chat.toolCalls.first()).toContainText('"name": "Milk"');
+
     const items = await e2eClient(token).collection<GroceryItemRecord>('groceries').listAll();
     expect(items.map((i) => i.name)).toEqual(['Milk']);
 
