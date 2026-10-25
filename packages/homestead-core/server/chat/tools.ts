@@ -89,7 +89,11 @@ export const LIST_CAP = 100;
 export const FILTER_SYNTAX =
   'Syntax: `<field> <op> <value>` with ops == != < <= > >=, combined with && and ||' +
   ' and parentheses; `has(<field>)` is true when the field is set; `<field> in ["a", "b"]`' +
-  ' matches any listed value; `"x" in <array_field>` tests array membership. String values' +
+  ' matches any listed value; `"x" in <array_field>` tests array membership.' +
+  ' `<field>.contains("x")`, `.startsWith("x")` and `.endsWith("x")` match part of a text field,' +
+  ' ignoring case, and `<array_field>.exists(v, v.contains("x"))` does the same for a list of' +
+  ' strings. People rarely give a full name or exact title, so look things up by what they' +
+  ' called them with `contains` (e.g. `name.contains("Jake")`), not `==`. String values' +
   ' are double-quoted; date-times are ISO 8601 strings and compare as text, so' +
   ' `due_date < "2026-11-01"` works. Fields are the resource\'s own field names plus `id`,' +
   ' `create_time`, and `update_time` (UTC, e.g. `update_time > "2026-10-17T00:00:00Z"` for' +

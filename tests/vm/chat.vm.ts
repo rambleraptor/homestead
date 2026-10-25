@@ -101,6 +101,27 @@ describe('Chat', () => {
     expect((await groceries.listAll()).map((i) => i.name).sort()).toEqual(['Bread', 'Eggs']);
   });
 
+  test('a person is found by a first name or a nickname, not only a full name', async () => {
+    const d = h.driver;
+    const people = e2eClient(token).collection<{ id: string; name: string }>('people');
+    await people.create({ name: 'Jake Miller' });
+    await people.create({ name: 'Jacob Stone', aliases: ['Jakey'] });
+    await people.create({ name: 'Sam Jones' });
+
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`What's Jake's address? ${CHAT_MARKERS.findPerson}`);
+
+    await d.expect(chat.messages).toContainText('Here is who I found.');
+    await d.expect(chat.toolCalls.first()).toContainText('people · list');
+    await d.expect(chat.toolCalls.first()).toContainText('Completed');
+    await chat.openToolCall();
+    await d.expect(chat.toolCalls.first()).toContainText('"name": "Jake Miller"');
+    await d.expect(chat.toolCalls.first()).toContainText('"name": "Jacob Stone"');
+    await d.expect(chat.toolCalls.first()).not.toContainText('Sam Jones');
+    await chat.expectSettled(/Jake's address/);
+  });
+
   test('a plain reply needs no tool at all', async () => {
     const d = h.driver;
     const chat = new ChatPage(d);

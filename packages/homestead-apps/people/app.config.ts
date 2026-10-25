@@ -17,8 +17,9 @@ export const peopleApp: AppConfig = {
   chat: {
     instructions: [
       'When someone mentions a person by name ("remind Sam", "Mom\'s birthday"), ' +
-        'look them up with the "people" tool\'s list action first, matching on name ' +
-        'or aliases, and use that record\'s id.',
+        'look them up with the "people" tool\'s list action first and use that record\'s ' +
+        'id. People usually give a first name or a nickname, so match loosely on both: ' +
+        '`name.contains("Sam") || aliases.exists(a, a.contains("Sam"))`.',
       'If more than one person matches, ask which one they mean.',
     ],
   },

@@ -22,6 +22,14 @@
  *
  * `has(<field>)` is CEL's presence macro: true when the field is set (column
  * non-null), and for a repeated field only when it is also non-empty.
+ *
+ * CEL's string functions `<field>.contains("x")`, `.startsWith("x")` and
+ * `.endsWith("x")` match part of a string field, compiled to `LIKE`. Unlike
+ * CEL they ignore case (ASCII letters): people and models rarely type a name
+ * the way it was stored, and "jake" should find "Jake Miller". The one
+ * comprehension supported is `<array>.exists(v, <predicate on v>)` with a
+ * single string function or `==` on `v`, so an array of strings (a person's
+ * aliases) can be searched the same way.
  */
 
 import type { Schema } from './types';
@@ -103,6 +111,28 @@ function tokenize(input: string): Token[] {
   return tokens;
 }
 
+/** CEL string functions → the `LIKE` pattern around the escaped value. */
+const STRING_FUNCTIONS: Record<string, (v: string) => string> = {
+  contains: (v) => `%${v}%`,
+  startsWith: (v) => `${v}%`,
+  endsWith: (v) => `%${v}`,
+};
+
+/** Escape `LIKE`'s wildcards so a value only ever matches itself. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/** `name.contains` → `{ receiver: 'name', fn: 'contains' }`, when it's a call. */
+function splitCall(ident: string): { receiver: string; fn: string } | null {
+  const dot = ident.lastIndexOf('.');
+  if (dot <= 0) return null;
+  return { receiver: ident.slice(0, dot), fn: ident.slice(dot + 1) };
+}
+
+/** Types a string function can't be applied to (everything else is text). */
+const NON_TEXT_TYPES = new Set(['integer', 'number', 'boolean', 'array', 'object']);
+
 const COMPARISON_OPS: Record<string, string> = {
   '==': '=',
   '!=': '!=',
@@ -180,6 +210,86 @@ export function compileFilter(
 
     const params: (string | number)[] = [];
 
+    const isColumn = (name: string) => fields.has(name) || derived.has(name);
+
+    /** A field name → its column and declared type, or a 400 for anything else. */
+    function resolveField(name: string): { sql: string; propType?: string } {
+      const column = fields.has(name) ? name : derived.get(name);
+      if (!column) {
+        throw new FilterError(`unknown field ${JSON.stringify(name)}`);
+      }
+      // Extracted-text columns are encrypted at rest, so a SQL comparison
+      // would match ciphertext and silently return nothing. Reject it.
+      if (schema.properties?.[name]?.['x-aepbase-file-text-field'] === true) {
+        throw new FilterError(`field ${JSON.stringify(name)} is encrypted and cannot be filtered`);
+      }
+      // propType is the declared type for a direct field; derived union
+      // columns don't carry one (they're never arrays).
+      const propType = fields.has(name) ? schema.properties?.[name]?.type : undefined;
+      return { sql: column, propType };
+    }
+
+    /** `("value")` — a string function's one argument, bound as its pattern. */
+    function parseStringArgument(fn: string): void {
+      expectOp('(');
+      const arg = next();
+      if (arg?.kind !== 'string') {
+        throw new FilterError(`${fn}() takes one string value`);
+      }
+      expectOp(')');
+      params.push(STRING_FUNCTIONS[fn]!(escapeLike(arg.value)));
+    }
+
+    /**
+     * `<field>.contains("x")` and friends, or `<array>.exists(v, <pred>)`.
+     * Called with the call's identifier already consumed.
+     */
+    function parseCall(receiver: string, fn: string): string {
+      if (fn in STRING_FUNCTIONS) {
+        const field = resolveField(receiver);
+        if (field.propType && NON_TEXT_TYPES.has(field.propType)) {
+          throw new FilterError(`${fn}() needs a text field; ${JSON.stringify(receiver)} is not one`);
+        }
+        parseStringArgument(fn);
+        return `${field.sql} LIKE ? ESCAPE '\\'`;
+      }
+      if (fn === 'exists') {
+        const field = resolveField(receiver);
+        if (field.propType !== 'array') {
+          throw new FilterError(`exists() needs an array field; ${JSON.stringify(receiver)} is not one`);
+        }
+        expectOp('(');
+        const variable = next();
+        if (variable?.kind !== 'ident' || variable.value.includes('.')) {
+          throw new FilterError('exists() takes a variable name first');
+        }
+        expectOp(',');
+        const predicate = next();
+        let sql: string;
+        const call = predicate?.kind === 'ident' ? splitCall(predicate.value) : null;
+        if (call && call.receiver === variable.value && call.fn in STRING_FUNCTIONS) {
+          parseStringArgument(call.fn);
+          sql = `value LIKE ? ESCAPE '\\'`;
+        } else if (predicate?.kind === 'ident' && predicate.value === variable.value) {
+          expectOp('==');
+          const value = next();
+          if (value?.kind !== 'string' && value?.kind !== 'number') {
+            throw new FilterError('exists() compares its variable to a value');
+          }
+          params.push(value.value);
+          sql = 'value = ?';
+        } else {
+          throw new FilterError(
+            `exists() supports one test on ${variable.value}: ${variable.value}.contains("x"), ` +
+              `.startsWith, .endsWith, or ${variable.value} == "x"`,
+          );
+        }
+        expectOp(')');
+        return `EXISTS (SELECT 1 FROM json_each(${field.sql}) WHERE ${sql})`;
+      }
+      throw new FilterError(`unknown function ${JSON.stringify(fn)}`);
+    }
+
     function parseOperand(): { sql: string; isField: boolean; propType?: string } {
       const t = next();
       if (!t) throw new FilterError('unexpected end of filter');
@@ -195,21 +305,7 @@ export function compileFilter(
             params.push(opts.subject[attr] ?? '');
             return { sql: '?', isField: false };
           }
-          const column = fields.has(t.value) ? t.value : derived.get(t.value);
-          if (!column) {
-            throw new FilterError(`unknown field ${JSON.stringify(t.value)}`);
-          }
-          // Extracted-text columns are encrypted at rest, so a SQL comparison
-          // would match ciphertext and silently return nothing. Reject it.
-          if (schema.properties?.[t.value]?.['x-aepbase-file-text-field'] === true) {
-            throw new FilterError(`field ${JSON.stringify(t.value)} is encrypted and cannot be filtered`);
-          }
-          // propType is the declared type for a direct field; derived union
-          // columns don't carry one (they're never arrays).
-          const propType = fields.has(t.value)
-            ? schema.properties?.[t.value]?.type
-            : undefined;
-          return { sql: column, isField: true, propType };
+          return { ...resolveField(t.value), isField: true };
         }
         case 'string':
           params.push(t.value);
@@ -284,6 +380,20 @@ export function compileFilter(
           return `(${operand.sql} IS NOT NULL AND json_array_length(${operand.sql}) > 0)`;
         }
         return `${operand.sql} IS NOT NULL`;
+      }
+      // A function call: `name.contains("x")`, `aliases.exists(a, ...)`. A
+      // dotted name that is itself a column (a union path) stays a field.
+      if (
+        t?.kind === 'ident' &&
+        peekAt(1)?.kind === 'op' &&
+        peekAt(1)?.value === '(' &&
+        !isColumn(t.value)
+      ) {
+        const call = splitCall(t.value);
+        if (call) {
+          next(); // the call's identifier
+          return parseCall(call.receiver, call.fn);
+        }
       }
       const left = parseOperand();
       const opTok = next();

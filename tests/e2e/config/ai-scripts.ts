@@ -98,6 +98,8 @@ export const CHAT_MARKERS = {
   listTools: 'e2e-chat-list-tools',
   /** Reply with the prompt's clock and app notes (see CONTEXT_PLACEHOLDER). */
   describeContext: 'e2e-chat-describe-context',
+  /** Look a person up by a first name, loosely (name or alias), then answer. */
+  findPerson: 'e2e-chat-find-person',
 } as const;
 
 /** The long reply's text, exported so a spec can check the whole of it arrived. */
@@ -123,6 +125,23 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
         ],
       },
       { text: 'Here is what is still on the list.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.findPerson,
+    steps: [
+      {
+        toolCalls: [
+          {
+            name: 'people',
+            args: {
+              action: 'list',
+              filter: 'name.contains("jake") || aliases.exists(a, a.contains("jake"))',
+            },
+          },
+        ],
+      },
+      { text: 'Here is who I found.' },
     ],
   },
   {
