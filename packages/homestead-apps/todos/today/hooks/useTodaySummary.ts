@@ -1,5 +1,5 @@
 /**
- * The Today card in one line, for the agentic home's briefing: the lines that
+ * The Today card in one line, for the agentic home's strip: the lines that
  * happen today lead; the card is urgent while there are any.
  */
 

@@ -47,8 +47,8 @@ export type LazyIcon = () => Promise<LucideIcon>;
  */
 /**
  * What a widget would say if it had one line: its headline on the agentic
- * home's briefing, and whether it needs attention now. `null` means it has
- * nothing to say — the card stays off the carousel unless pinned.
+ * home's strip, and whether it needs attention now. `null` means it has
+ * nothing to say — the widget stays off the strip even when pinned.
  */
 export interface WidgetSummary {
   /** A sentence fragment: "2 todos due today", "4 items left to buy". */
@@ -81,8 +81,8 @@ export interface DashboardWidget {
   order?: number;
   /**
    * The widget in one line, for the agentic home (see {@link WidgetSummary}).
-   * Optional: without it a widget shows on the carousel only when pinned, and
-   * says nothing in the briefing.
+   * Optional: without it a widget shows on the strip only when pinned, with
+   * no headline on its chip.
    */
   summary?: LazySummaryHook;
 }

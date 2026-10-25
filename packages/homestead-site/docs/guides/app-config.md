@@ -259,8 +259,8 @@ web: {
 ### Widget summaries
 
 A widget can also say what it would say in one line, for the
-[agentic home](./ai#the-agentic-home): its headline in the briefing, and
-whether it needs attention now. Declare `summary` as a lazily-imported **hook**
+[agentic home](./ai#the-agentic-home): its headline on its chip, and whether
+it needs attention now. Declare `summary` as a lazily-imported **hook**
 (so it can use the app's data hooks, sharing their cache with the widget):
 
 ```ts
@@ -279,13 +279,13 @@ export default function useGroceriesSummary(): WidgetSummary | null | undefined 
   const { data, isLoading } = useGroceries();
   if (isLoading) return undefined;          // not known yet
   const left = data?.filter((i) => !i.checked).length ?? 0;
-  if (left === 0) return null;              // nothing to say: off the carousel unless urgent
-  return { headline: `${left} items left to buy` };   // `urgent: true` moves the card to the front
+  if (left === 0) return null;              // nothing to say: off the strip
+  return { headline: `${left} items left to buy` };   // `urgent: true` moves the chip to the front
 }
 ```
 
-Without `summary`, a widget shows on the carousel only when pinned and says
-nothing in the briefing.
+Without `summary`, a widget shows on the strip only when pinned, with no
+headline on its chip.
 
 ## Scheduling background work
 

@@ -23,8 +23,8 @@ export const dashboardApp: AppConfig = {
       type: 'boolean',
       label: 'Agentic home',
       description:
-        'Make the assistant the home screen: a briefing, a carousel of the widgets ' +
-        'that need attention, and a conversation in place of the widget stack. ' +
+        'Make the assistant the home screen: a conversation in place of the widget ' +
+        'stack, with a strip of chips for the widgets that need attention. ' +
         'Limit its audience to try it on a group first.',
       default: false,
     },

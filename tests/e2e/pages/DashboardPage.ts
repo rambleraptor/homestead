@@ -61,17 +61,19 @@ export class DashboardPage {
     return this.driver.getByTestId('agentic-home');
   }
 
-  get briefing() {
-    return this.driver.getByTestId('agentic-briefing');
+  /** The strip of widget chips along the top of the agentic home. */
+  get strip() {
+    return this.driver.getByTestId('agentic-strip');
   }
 
-  get carousel() {
-    return this.driver.getByTestId('agentic-carousel');
+  /** One chip on the strip, by widget id. Tapping it opens the widget. */
+  widgetChip(widgetId: string) {
+    return this.driver.getByTestId(`agentic-chip-${widgetId}`);
   }
 
-  /** One card on the carousel, by widget id. */
-  carouselCard(widgetId: string) {
-    return this.driver.getByTestId(`agentic-card-${widgetId}`);
+  /** The widget opened from its chip, under the strip. */
+  get widgetPanel() {
+    return this.driver.getByTestId('agentic-widget-panel');
   }
 
   /** The link from the home's conversation to the Chat screen. */

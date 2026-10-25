@@ -370,9 +370,10 @@ SPA and apps share:
   web-push inbox + subscription management; its server half lives in
   `server/notifications.ts`)
   `dashboard` renders the widget stack, or — behind the `dashboard.agentic_home`
-  flag — the assistant-first home (`dashboard/components/agentic/`): a briefing
-  and carousel built from each widget's optional `summary` hook, over a fresh
-  in-place conversation rendered with the shared `chat/components/ChatThread`.
+  flag — the assistant-first home (`dashboard/components/agentic/`): a strip of
+  widget chips built from each widget's optional `summary` hook (tap one to open
+  the widget), over a fresh in-place conversation rendered with the shared
+  `chat/components/ChatThread`. It fills the main area via `layout/pageFill`.
 - `layout/`, `shared/`, `resources/`, `app-flags/`, `user-settings/` —
   shared chrome, components, and schema/sync plumbing. `shared/components/ui/`
   holds vendored shadcn primitives and `shared/components/ai-elements/` the

@@ -1,5 +1,5 @@
 /**
- * The groceries widget in one line, for the agentic home's briefing. Never
+ * The groceries widget in one line, for the agentic home's strip. Never
  * urgent: a shopping list is standing state, not an appointment.
  */
 

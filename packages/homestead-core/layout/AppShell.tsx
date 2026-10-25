@@ -16,6 +16,8 @@ import { OfflineBanner } from '../shared/components/OfflineBanner';
 import { useHomeScreenIcon } from '../shared/pwa';
 import { useBuildReload } from '../shared/useBuildReload';
 import { useChromeless } from './useChromeless';
+import { PageFillContext } from './pageFill';
+import { cn } from '../shared/lib/utils';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -44,6 +46,10 @@ export function AppShell({ children }: AppShellProps) {
 
   // `?chrome=none` hides the sidebar + header for the session.
   const chromeless = useChromeless();
+
+  // A page that fills the main area (`useFillPage`) gets it unpadded and
+  // owns its scrolling.
+  const [fill, setFill] = useState(false);
 
   // Reload the tab when the launcher swaps in a new SPA build (config change).
   useBuildReload();
@@ -92,9 +98,18 @@ export function AppShell({ children }: AppShellProps) {
           )}
 
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="container mx-auto px-4 py-6 lg:px-6 lg:py-8 max-w-7xl">
-              {children}
+          <main
+            className={cn('flex-1', fill ? 'flex min-h-0 flex-col overflow-hidden' : 'overflow-y-auto')}
+            data-fill={fill ? 'true' : undefined}
+          >
+            <div
+              className={
+                fill
+                  ? 'flex min-h-0 flex-1 flex-col'
+                  : 'container mx-auto px-4 py-6 lg:px-6 lg:py-8 max-w-7xl'
+              }
+            >
+              <PageFillContext.Provider value={setFill}>{children}</PageFillContext.Provider>
             </div>
           </main>
         </div>
