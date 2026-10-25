@@ -39,6 +39,7 @@ export const groceriesApp: AppConfig = {
     widgets: [
       {
         id: 'groceries-remaining',
+        summary: () => import('./hooks/useGroceriesSummary'),
         label: 'Groceries',
         component: () =>
           import('./components/GroceriesWidget').then((m) => m.GroceriesWidget),

@@ -39,11 +39,11 @@ const createWrapper = () => {
   );
 };
 
-/** A wrapper whose signed-in user is in `groupNames`. */
-const inGroups = (groupNames: string[]) => {
+/** A wrapper whose signed-in user is in the groups `groupIds`. */
+const inGroups = (groupIds: string[]) => {
   const Query = createWrapper();
   const value = {
-    user: { id: 'u1', permissions: { enforced: true, groupIds: [], groupNames, grants: [] } },
+    user: { id: 'u1', permissions: { enforced: true, groupIds, groupNames: [], grants: [] } },
   } as unknown as React.ContextType<typeof AuthContext>;
   return ({ children }: { children: React.ReactNode }) => (
     <AuthContext.Provider value={value}>
@@ -59,18 +59,18 @@ describe('useAppFlag', () => {
 
   it('applies a stored value only within its audience', async () => {
     vi.mocked(aepbase.list).mockResolvedValue([
-      { id: 'rec-1', groceries__default_store: 'store-1', groceries__default_store__audience: '["Beta"]' },
+      { id: 'rec-1', groceries__default_store: 'store-1', groceries__default_store__audience: '["beta"]' },
     ]);
 
     const beta = renderHook(() => useAppFlag<string>('groceries', 'default_store'), {
-      wrapper: inGroups(['Beta']),
+      wrapper: inGroups(['beta']),
     });
     await waitFor(() => expect(beta.result.current.isLoading).toBe(false));
     expect(beta.result.current.value).toBe('store-1');
     expect(beta.result.current.inAudience).toBe(true);
 
     const other = renderHook(() => useAppFlag<string>('groceries', 'default_store'), {
-      wrapper: inGroups(['Members']),
+      wrapper: inGroups(['members']),
     });
     await waitFor(() => expect(other.result.current.isLoading).toBe(false));
     // Outside the audience the flag reads as its declared default…
@@ -78,7 +78,7 @@ describe('useAppFlag', () => {
     expect(other.result.current.inAudience).toBe(false);
     // …while the stored value is still there for Flag Management to show.
     expect(other.result.current.storedValue).toBe('store-1');
-    expect(other.result.current.audience).toEqual(['Beta']);
+    expect(other.result.current.audience).toEqual(['beta']);
   });
 
   it('writes an audience to the sibling field', async () => {
@@ -89,10 +89,10 @@ describe('useAppFlag', () => {
       wrapper: createWrapper(),
     });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    await act(() => result.current.setAudience(['Beta']));
+    await act(() => result.current.setAudience(['beta']));
 
     expect(aepbase.update).toHaveBeenCalledWith('app-flags', 'rec-1', {
-      groceries__default_store__audience: '["Beta"]',
+      groceries__default_store__audience: '["beta"]',
     });
   });
 

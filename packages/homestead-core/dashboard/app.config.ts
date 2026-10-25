@@ -18,6 +18,17 @@ export const dashboardApp: AppConfig = {
   id: 'dashboard',
   name: 'Dashboard',
   description: 'Overview of your Homestead system',
+  flags: {
+    agentic_home: {
+      type: 'boolean',
+      label: 'Agentic home',
+      description:
+        'Make the assistant the home screen: a briefing, a carousel of the widgets ' +
+        'that need attention, and a conversation in place of the widget stack. ' +
+        'Limit its audience to try it on a group first.',
+      default: false,
+    },
+  },
   userSettings: {
     show_welcome_guide: {
       type: 'boolean',

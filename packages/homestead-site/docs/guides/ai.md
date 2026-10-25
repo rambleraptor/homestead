@@ -147,6 +147,25 @@ the changes you're allowed to make — confirms before deleting, and shows you w
 actions it took — each tool call is a card you can open to see what it sent and
 what came back. Replies stream in as they're written, and render as Markdown.
 
+### The agentic home
+
+Behind the `dashboard.agentic_home` flag (off by default; see
+[App Flags](./app-flags#rolling-a-flag-out-to-a-group) to try it on one group
+first), the dashboard becomes the assistant's home:
+
+- a greeting with a one-line **briefing** composed from the widgets ("2 todos
+  due today · plumber at 2 · 4 items left to buy") — no model call on page
+  load, so it's instant;
+- a **carousel** of the widgets that matter now: the ones you've pinned in your
+  dashboard settings, plus any whose summary says it's urgent (those go first).
+  A pinned widget with nothing to say stays off the strip;
+- the **conversation** itself, in place of the widget stack. It starts fresh on
+  every visit, stays on the home as it grows, and is a stored conversation like
+  any other — **Open in Chat** takes you to it on the Chat screen.
+
+On a phone the carousel sits at the top, the thread fills the middle, and the
+composer is docked at the bottom.
+
 You can also start from the dashboard: the **Ask Homestead** box at the top
 takes a question (and photos or PDFs) and opens it as a new chat, with the
 answer coming in there. Like any dashboard widget it can be moved or hidden

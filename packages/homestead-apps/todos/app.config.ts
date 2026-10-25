@@ -52,6 +52,7 @@ export const todosApp: AppConfig = {
         // here rather than in its own app so a single card doesn't cost a
         // registry entry — see `today/hooks/useToday`.
         id: 'todos-today',
+        summary: () => import('./today/hooks/useTodaySummary'),
         label: 'Today',
         component: () =>
           import('./today/components/TodayWidget').then((m) => m.TodayWidget),

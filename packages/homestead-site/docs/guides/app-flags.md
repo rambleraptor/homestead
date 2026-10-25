@@ -173,10 +173,15 @@ experience is tried on a few people first:
 
 `useAppFlag`'s `value` already accounts for this, so a component needs no
 extra check. The audience rides in a sibling field on the `app-flags` record
-(`<flag>__audience`, a JSON list of group names; empty for everyone), which
-the schema sync adds for every declared flag. Server-side reads
-(`readAppFlag`) see the stored value and ignore audiences — they're for what
-people see, not for how the server runs.
+(`<flag>__audience`, a JSON list of group **ids**; empty for everyone), which
+the schema sync adds for every declared flag — so renaming a group changes
+nothing, and a deleted group's id matches nobody. Server-side reads
+(`readAppFlag`) see the stored value and ignore audiences.
+
+An audience decides which experience a person gets. It is **not an access
+control**: it is resolved in the browser, and every member can read the
+`app-flags` record, stored values and audiences included. Gate anything
+sensitive with permissions, not a flag.
 
 ---
 

@@ -46,11 +46,11 @@ export function useAppFlag<T extends AppFlagValue = AppFlagValue>(
   const mutation = useUpdateAppFlag();
   // Read without `useAuth`'s provider check: a flag outside the signed-in
   // shell (or in a unit test) has no groups, and so is in no group audience.
-  const groupNames = useContext(AuthContext)?.user?.permissions?.groupNames ?? [];
+  const groupIds = useContext(AuthContext)?.user?.permissions?.groupIds ?? [];
 
   const storedValue = values[appId]?.[key] as T | undefined;
   const audience = audiences[appId]?.[key] ?? 'everyone';
-  const included = inAudience(audience, groupNames);
+  const included = inAudience(audience, groupIds);
   const value = included
     ? storedValue
     : (getAllAppFlagDefs()[appId]?.[key]?.default as T | undefined);

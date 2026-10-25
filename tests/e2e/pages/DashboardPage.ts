@@ -56,6 +56,29 @@ export class DashboardPage {
     return this.driver.getByTestId('admin-checklist');
   }
 
+  /** The assistant-first home (behind the `dashboard.agentic_home` flag). */
+  get agenticHome() {
+    return this.driver.getByTestId('agentic-home');
+  }
+
+  get briefing() {
+    return this.driver.getByTestId('agentic-briefing');
+  }
+
+  get carousel() {
+    return this.driver.getByTestId('agentic-carousel');
+  }
+
+  /** One card on the carousel, by widget id. */
+  carouselCard(widgetId: string) {
+    return this.driver.getByTestId(`agentic-card-${widgetId}`);
+  }
+
+  /** The link from the home's conversation to the Chat screen. */
+  get openInChat() {
+    return this.driver.getByTestId('agentic-open-chat');
+  }
+
   /** The "Ask Homestead" box that opens a new chat. */
   get askBox() {
     return this.driver.getByTestId('ask-widget');

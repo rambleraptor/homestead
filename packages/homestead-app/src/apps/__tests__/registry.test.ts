@@ -46,7 +46,9 @@ describe('getAllAppFlagDefs', () => {
 
   it('leaves flag-less apps with an empty flag map', () => {
     const defs = getAllAppFlagDefs();
-    expect(defs.dashboard).toEqual({});
+    expect(defs.notifications).toEqual({});
+    // The dashboard now declares the agentic-home switch.
+    expect(Object.keys(defs.dashboard)).toEqual(['agentic_home']);
   });
 });
 

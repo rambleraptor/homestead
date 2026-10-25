@@ -156,10 +156,10 @@ describe('audiences', () => {
     expect(audienceFieldName('gift-cards', 'show_archived')).toBe('gift_cards__show_archived__audience');
     const record = {
       gift_cards__show_archived: true,
-      gift_cards__show_archived__audience: '["Beta"]',
+      gift_cards__show_archived__audience: '["beta"]',
     };
     expect(unflatten(record, defs)['gift-cards']).toEqual({ show_archived: true });
-    expect(unflattenAudiences(record, defs)['gift-cards']).toEqual({ show_archived: ['Beta'] });
+    expect(unflattenAudiences(record, defs)['gift-cards']).toEqual({ show_archived: ['beta'] });
     // Unset is everyone, for every declared flag.
     expect(unflattenAudiences(record, defs).settings).toEqual({ theme: 'everyone' });
   });
@@ -167,7 +167,7 @@ describe('audiences', () => {
   it('encode as empty for everyone and a JSON list otherwise', () => {
     expect(encodeAudience('everyone')).toBe('');
     expect(encodeAudience([])).toBe('[]');
-    expect(decodeAudience(encodeAudience(['Beta', 'Admins']))).toEqual(['Beta', 'Admins']);
+    expect(decodeAudience(encodeAudience(['beta', 'admins']))).toEqual(['beta', 'admins']);
     expect(decodeAudience('')).toBe('everyone');
     expect(decodeAudience(undefined)).toBe('everyone');
     // Anything unreadable is everyone rather than locking the flag away.
@@ -177,9 +177,16 @@ describe('audiences', () => {
 
   it('include a person by any of their groups, and nobody by an empty list', () => {
     expect(inAudience('everyone', [])).toBe(true);
-    expect(inAudience(['Beta'], ['Members', 'Beta'])).toBe(true);
-    expect(inAudience(['Beta'], ['Members'])).toBe(false);
-    expect(inAudience([], ['Members'])).toBe(false);
+    expect(inAudience(['beta'], ['members', 'beta'])).toBe(true);
+    expect(inAudience(['beta'], ['members'])).toBe(false);
+    expect(inAudience([], ['members'])).toBe(false);
+  });
+
+  it('refuse a flag key that would read as an audience field', () => {
+    const bad: AppFlagDefs = {
+      todos: { mode__audience: { type: 'string', label: 'x', description: 'x' } },
+    };
+    expect(() => buildResourceSchema(bad)).toThrow(/may not end in "__audience"/);
   });
 
   it('get a schema property beside each flag', () => {

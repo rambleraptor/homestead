@@ -45,6 +45,28 @@ export type LazyIcon = () => Promise<LucideIcon>;
  * responsible for its own data fetching and chrome (typically a
  * `SectionCard`); the dashboard just lays widgets out in `order`.
  */
+/**
+ * What a widget would say if it had one line: its headline on the agentic
+ * home's briefing, and whether it needs attention now. `null` means it has
+ * nothing to say — the card stays off the carousel unless pinned.
+ */
+export interface WidgetSummary {
+  /** A sentence fragment: "2 todos due today", "4 items left to buy". */
+  headline: string;
+  /** Something happens today or is about to: the card jumps to the front. */
+  urgent?: boolean;
+}
+
+/**
+ * A lazily-imported React hook returning a widget's {@link WidgetSummary}
+ * (or `null`/`undefined` while loading or when there's nothing to say). A hook
+ * rather than a value so it can use the app's own data hooks, and so the
+ * dashboard shares their cache with the widget itself.
+ */
+export type LazySummaryHook = () => Promise<
+  { default: () => WidgetSummary | null | undefined } | (() => WidgetSummary | null | undefined)
+>;
+
 export interface DashboardWidget {
   /** Stable id, unique across all apps. */
   id: string;
@@ -57,6 +79,12 @@ export interface DashboardWidget {
   component: LazyComponent;
   /** Lower numbers render first. Defaults to 100. */
   order?: number;
+  /**
+   * The widget in one line, for the agentic home (see {@link WidgetSummary}).
+   * Optional: without it a widget shows on the carousel only when pinned, and
+   * says nothing in the briefing.
+   */
+  summary?: LazySummaryHook;
 }
 
 /**

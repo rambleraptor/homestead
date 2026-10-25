@@ -17,11 +17,21 @@ import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibilit
 import { getAllDashboardWidgets, getAppById } from '@rambleraptor/homestead-core/apps/registry';
 import { getLazyComponent } from '@rambleraptor/homestead-core/apps/lazy';
 import { useUserSetting } from '@rambleraptor/homestead-core/user-settings/hooks/useUserSetting';
+import { useAppFlag } from '@rambleraptor/homestead-core/settings/hooks/useAppFlag';
+import { AgenticHome } from './agentic/AgenticHome';
 import { WelcomePanel } from './WelcomePanel';
 import { AdminChecklistPanel } from './AdminChecklistPanel';
 import { NoAppsPanel } from './NoAppsPanel';
 
 export function DashboardHome() {
+  // Behind a flag whose audience can be one group, so the assistant-first
+  // home can be tried by a few people while everyone else keeps this one.
+  const agentic = useAppFlag<boolean>('dashboard', 'agentic_home');
+  if (agentic.value === true) return <AgenticHome />;
+  return <ClassicHome />;
+}
+
+function ClassicHome() {
   const { user } = useAuth();
   const isVisible = useAppVisible();
   const todaysHoliday = getTodaysHoliday();
