@@ -43,7 +43,7 @@ describe('Chat', () => {
 
   /** The id of the conversation the page has moved to. */
   async function openConversationId(d: Harness['driver']): Promise<string> {
-    await d.expectURL(/\/chat\/[^/]+$/);
+    await d.expectURL(/\/dashboard\/c\/[^/]+$/);
     return new URL(d.url(), 'http://x').pathname.split('/').pop()!;
   }
 
@@ -202,14 +202,16 @@ describe('Chat', () => {
     // The page moves to the new conversation as soon as it exists.
     const id = await openConversationId(d);
     await d.expect(chat.messages).toContainText('Hello from the scripted assistant.');
+    await chat.openHistory();
     await d.expect(chat.conversation(`Hi there ${CHAT_MARKERS.hello}`)).toHaveCount(1);
+    await chat.closeHistory();
     await chat.expectSettled(/Hi there/);
 
     await d.reload();
     await d.expect(chat.userMessages).toHaveCount(1);
     await d.expect(chat.assistantMessages).toHaveCount(1);
     await d.expect(chat.messages).toContainText('Hello from the scripted assistant.');
-    expect(new URL(d.url(), 'http://x').pathname).toBe(`/chat/${id}`);
+    expect(new URL(d.url(), 'http://x').pathname).toBe(`/dashboard/c/${id}`);
     expect((await messagesOf(id).listAll()).map((m) => m.role)).toEqual(['user', 'assistant']);
   });
 
@@ -226,7 +228,7 @@ describe('Chat', () => {
     await d.expect(chat.assistantMessages).toHaveCount(1);
     await chat.send(`And hello again ${CHAT_MARKERS.hello}`);
     await d.expect(chat.assistantMessages).toHaveCount(2);
-    expect(new URL(d.url(), 'http://x').pathname).toBe(`/chat/${id}`);
+    expect(new URL(d.url(), 'http://x').pathname).toBe(`/dashboard/c/${id}`);
     await chat.expectSettled(/Hi there/);
     expect(await conversations().listAll()).toHaveLength(1);
     expect((await messagesOf(id).listAll()).map((m) => m.role)).toEqual([
@@ -396,8 +398,9 @@ describe('Chat', () => {
 
     await chat.deleteConversation(`Hi ${CHAT_MARKERS.hello}`);
 
+    await d.waitForURL('/dashboard');
+    await chat.openHistory();
     await d.expect(chat.conversations).toHaveCount(0);
-    await d.waitForURL('/chat');
     await d.expect(chat.userMessages).toHaveCount(0);
     expect(await conversations().listAll()).toEqual([]);
     // Gone, messages and all: the private record no longer answers at all.

@@ -1,5 +1,5 @@
 /**
- * Dashboard empty state for an instance with nothing to show.
+ * The home's notice for an instance (or a person) with no apps to show.
  *
  * Two situations leave the dashboard blank, and each gets its own message:
  *
@@ -9,7 +9,7 @@
  * - Apps are installed, but none are visible to this viewer (the admin
  *   hasn't shared any with them). They're pointed at their admin.
  *
- * Unlike the welcome guide, this panel isn't dismissable: it reflects the
+ * Unlike the setup checklist, this panel isn't dismissable: it reflects the
  * live state of the instance and disappears on its own once an app shows up.
  */
 

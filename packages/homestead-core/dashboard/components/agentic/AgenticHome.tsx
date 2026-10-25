@@ -1,7 +1,6 @@
 /**
- * The home screen with the assistant front and centre (behind the
- * `dashboard.agentic_home` flag): the conversation fills the screen, with a
- * strip of chips along the top for the widgets that matter right now.
+ * The home: the assistant's conversation fills the screen, with a strip of
+ * chips along the top for the widgets that matter right now.
  *
  *  - Each chip is a widget's one-line summary (`DashboardWidget.summary`) —
  *    no model call on page load, so the page is instant and free. Tapping a
@@ -12,8 +11,12 @@
  *  - The conversation lives in the address: `/dashboard` is a new one, and the
  *    first message moves the page to `/dashboard/c/<id>`, so a reload or a link
  *    brings it back while Home always starts fresh. Past conversations are in
- *    the history drawer (the Chat screen's list). The greeting is the empty
- *    state, so it gives way to the first message.
+ *    the history drawer. The greeting is the empty state, so it gives way to
+ *    the first message.
+ *  - Without the assistant (no AI provider, or no access to Chat) the home
+ *    keeps its chips and says why the conversation isn't there.
+ *  - Above a new conversation: the admin setup checklist (until dismissed) and
+ *    the notice for someone with no apps yet.
  *
  * The page fills the main area (`useFillPage`): no shell padding, no card
  * around the thread — on a phone the strip sits under the top bar, the thread
@@ -21,8 +24,8 @@
  */
 
 import { Suspense, useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { History, MessageSquarePlus } from 'lucide-react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { History, MessageCircleOff, MessageSquarePlus } from 'lucide-react';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
 import {
@@ -47,11 +50,15 @@ import { availableStarters } from '@rambleraptor/homestead-core/chat/starters';
 import { useFillPage } from '@rambleraptor/homestead-core/layout/pageFill';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { useGreeting } from '../../greeting';
-import { HOME_PATH, homeConversationPath } from '../../homeMode';
+import {
+  HOME_PATH,
+  homeConversationPath,
+  useAssistantAvailability,
+  type AssistantAvailability,
+} from '../../home';
+import { AdminChecklistPanel } from '../AdminChecklistPanel';
+import { NoAppsPanel } from '../NoAppsPanel';
 import { useWidgetSummaries, type SummaryState } from './WidgetSummaries';
-
-/** The dashboard's own way into chat; redundant when the chat *is* the home. */
-const ASK_WIDGET_ID = 'chat-ask';
 
 const EMPTY_DESCRIPTION = 'Ask about anything in your household, or have me change it.';
 
@@ -63,23 +70,15 @@ export interface AgenticHomeProps {
 export function AgenticHome({ conversationId }: AgenticHomeProps) {
   useFillPage();
   const { user } = useAuth();
-  const { greeting } = useGreeting();
+  const greeting = useGreeting();
   const isVisible = useAppVisible();
   const navigate = useNavigate();
-
-  // The first message names the conversation: move to its address, replacing
-  // the bare home so Back doesn't return to an empty chat.
-  const onCreated = useCallback(
-    (id: string) => navigate(homeConversationPath(id), { replace: true }),
-    [navigate],
-  );
-  const chat = useConversation(conversationId, { onCreated });
+  const assistant = useAssistantAvailability();
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const widgets = useMemo(
     () =>
       getAllDashboardWidgets().filter((w) => {
-        if (w.id === ASK_WIDGET_ID) return false;
         const app = getAppById(w.appId);
         return app ? isVisible(app) : false;
       }),
@@ -108,22 +107,30 @@ export function AgenticHome({ conversationId }: AgenticHomeProps) {
   const open = strip.find((w) => w.id === openId);
   const OpenWidget = open ? getLazyComponent(open.component) : null;
 
+  // A conversation's address with no assistant to hold it: the plain home.
+  if (conversationId && assistant !== undefined && assistant !== 'available') {
+    return <Navigate to={HOME_PATH} replace />;
+  }
+  const withAssistant = assistant === 'available';
+
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="agentic-home">
       {probes}
 
       <div className="flex items-center gap-2 px-4 pt-3 lg:px-6">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0"
-          aria-label="Past conversations"
-          aria-expanded={historyOpen}
-          onClick={() => setHistoryOpen(true)}
-          data-testid="agentic-history"
-        >
-          <History className="size-4" />
-        </Button>
+        {withAssistant && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0"
+            aria-label="Past conversations"
+            aria-expanded={historyOpen}
+            onClick={() => setHistoryOpen(true)}
+            data-testid="agentic-history"
+          >
+            <History className="size-4" />
+          </Button>
+        )}
         {strip.length > 0 ? (
           <div
             className="flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -143,7 +150,7 @@ export function AgenticHome({ conversationId }: AgenticHomeProps) {
         ) : (
           <div className="flex-1" />
         )}
-        {conversationId && (
+        {withAssistant && conversationId && (
           <Button asChild variant="ghost" size="sm" className="shrink-0 gap-1.5">
             <Link to={HOME_PATH} data-testid="agentic-new-chat">
               <MessageSquarePlus className="size-4" aria-hidden />
@@ -153,22 +160,24 @@ export function AgenticHome({ conversationId }: AgenticHomeProps) {
         )}
       </div>
 
-      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
-        <SheetContent side="left" data-testid="agentic-history-drawer">
-          <SheetHeader>
-            <SheetTitle>Conversations</SheetTitle>
-            <SheetDescription>Pick one up where you left off.</SheetDescription>
-          </SheetHeader>
-          <ConversationList
-            activeId={conversationId}
-            hrefFor={homeConversationPath}
-            newHref={HOME_PATH}
-            onNavigate={() => setHistoryOpen(false)}
-            onDeletedActive={() => navigate(HOME_PATH, { replace: true })}
-            className="flex min-h-0 flex-1"
-          />
-        </SheetContent>
-      </Sheet>
+      {withAssistant && (
+        <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+          <SheetContent side="left" data-testid="agentic-history-drawer">
+            <SheetHeader>
+              <SheetTitle>Conversations</SheetTitle>
+              <SheetDescription>Pick one up where you left off.</SheetDescription>
+            </SheetHeader>
+            <ConversationList
+              activeId={conversationId}
+              hrefFor={homeConversationPath}
+              newHref={HOME_PATH}
+              onNavigate={() => setHistoryOpen(false)}
+              onDeletedActive={() => navigate(HOME_PATH, { replace: true })}
+              className="flex min-h-0 flex-1"
+            />
+          </SheetContent>
+        </Sheet>
+      )}
 
       {OpenWidget && (
         <div
@@ -181,15 +190,70 @@ export function AgenticHome({ conversationId }: AgenticHomeProps) {
         </div>
       )}
 
-      <ChatThread
-        bare
-        chat={chat}
-        conversationId={conversationId}
-        starters={availableStarters()}
-        empty={{ title: greeting, description: EMPTY_DESCRIPTION }}
-        placeholder="Ask Homestead…"
-        className="flex"
-      />
+      {!conversationId && !OpenWidget && (
+        <div className="max-h-[40dvh] shrink-0 space-y-3 overflow-y-auto px-4 pt-3 empty:hidden sm:max-w-2xl lg:px-6">
+          {user?.type === 'superuser' && <AdminChecklistPanel />}
+          <NoAppsPanel />
+        </div>
+      )}
+
+      {withAssistant ? (
+        <HomeThread conversationId={conversationId} greeting={greeting} />
+      ) : assistant !== undefined ? (
+        <AssistantUnavailable reason={assistant} greeting={greeting} />
+      ) : (
+        <div className="flex-1" />
+      )}
+    </div>
+  );
+}
+
+/** The conversation, once the assistant can serve this person. */
+function HomeThread({ conversationId, greeting }: { conversationId: string | null; greeting: string }) {
+  const navigate = useNavigate();
+  // The first message names the conversation: move to its address, replacing
+  // the bare home so Back doesn't return to an empty chat.
+  const onCreated = useCallback(
+    (id: string) => navigate(homeConversationPath(id), { replace: true }),
+    [navigate],
+  );
+  const chat = useConversation(conversationId, { onCreated });
+  return (
+    <ChatThread
+      bare
+      chat={chat}
+      conversationId={conversationId}
+      starters={availableStarters()}
+      empty={{ title: greeting, description: EMPTY_DESCRIPTION }}
+      placeholder="Ask Homestead…"
+      className="flex"
+    />
+  );
+}
+
+const UNAVAILABLE: Record<Exclude<AssistantAvailability, 'available'>, string> = {
+  'not-configured':
+    "The assistant isn't set up on this Homestead yet. Your apps are in the menu in the meantime.",
+  'no-access': "The assistant isn't one of your apps. Your apps are in the menu.",
+};
+
+/** Where the conversation would be, when the assistant can't serve this person. */
+function AssistantUnavailable({
+  reason,
+  greeting,
+}: {
+  reason: Exclude<AssistantAvailability, 'available'>;
+  greeting: string;
+}) {
+  return (
+    <div
+      className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center"
+      data-testid="home-assistant-unavailable"
+      data-reason={reason}
+    >
+      <MessageCircleOff className="size-10 text-muted-foreground" aria-hidden />
+      <h2 className="font-medium text-sm">{greeting}</h2>
+      <p className="max-w-sm text-muted-foreground text-sm">{UNAVAILABLE[reason]}</p>
     </div>
   );
 }

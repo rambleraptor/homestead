@@ -1,10 +1,9 @@
 /**
  * Post-claim getting-started checklist for the household admin.
  *
- * Shown on the dashboard to superusers (regular users get {@link WelcomePanel}
- * instead) while the shared `dashboard.show_welcome_guide` setting is truthy —
- * so it appears on the admin's first login after claiming the instance and is
- * dismissed the same way the welcome guide is.
+ * Shown on the home to superusers, above a new conversation, while the
+ * `dashboard.show_welcome_guide` setting is truthy — so it appears on the
+ * admin's first login after claiming the instance, until dismissed.
  *
  * Each step reports its own done-state from live data (how many users exist,
  * whether an AI provider is configured), so the list checks itself off as the
@@ -54,8 +53,9 @@ export function AdminChecklistPanel() {
         key: 'ai',
         label: 'Turn on the AI assistant',
         done: aiConfigured === true,
+        // Once it's on, the assistant is right here on the home.
         ...(aiConfigured
-          ? { to: '/chat', linkLabel: 'Open the assistant' }
+          ? {}
           : {
               hint: 'Add an `ai` block to homestead.config.ts (and an API key), then restart.',
             }),

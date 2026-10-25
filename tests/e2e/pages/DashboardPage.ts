@@ -5,14 +5,10 @@
  * (`playwrightDriver(page)`) and the in-process VM tier (`tests/vm/`).
  */
 
-import type { Driver, FilePayload, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
+import type { Driver } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class DashboardPage {
   constructor(readonly driver: Driver) {}
-
-  private expect(locator: Locator) {
-    return this.driver.expect(locator);
-  }
 
   async goto() {
     await this.driver.goto('/dashboard');
@@ -20,12 +16,6 @@ export class DashboardPage {
 
   async expectToBeOnDashboard() {
     await this.driver.expectURL(/\/dashboard/);
-  }
-
-  async expectWelcomeMessage() {
-    await this.expect(
-      this.driver.getByText(/welcome/i).or(this.driver.getByRole('heading', { level: 1 })),
-    ).toBeVisible();
   }
 
   async logout() {
@@ -48,20 +38,21 @@ export class DashboardPage {
     await this.driver.getByRole('navigation').getByRole('link', { name: appName }).click();
   }
 
-  get welcomePanel() {
-    return this.driver.getByTestId('welcome-panel');
-  }
-
   get adminChecklist() {
     return this.driver.getByTestId('admin-checklist');
   }
 
-  /** The assistant-first home (behind the `dashboard.agentic_home` flag). */
+  /** The home: the assistant's conversation under the strip of widget chips. */
   get agenticHome() {
     return this.driver.getByTestId('agentic-home');
   }
 
-  /** The strip of widget chips along the top of the agentic home. */
+  /** In place of the conversation when the assistant can't serve this person; `data-reason` says why. */
+  get assistantUnavailable() {
+    return this.driver.getByTestId('home-assistant-unavailable');
+  }
+
+  /** The strip of widget chips along the top of the home. */
   get strip() {
     return this.driver.getByTestId('agentic-strip');
   }
@@ -76,7 +67,7 @@ export class DashboardPage {
     return this.driver.getByTestId('agentic-widget-panel');
   }
 
-  /** "New chat" on the agentic home, once a conversation is open. */
+  /** "New chat" on the home, once a conversation is open. */
   get newChat() {
     return this.driver.getByTestId('agentic-new-chat');
   }
@@ -99,34 +90,5 @@ export class DashboardPage {
   async openPastConversation(title: string | RegExp) {
     await this.historyButton.click();
     await this.historyConversation(title).getByRole('link').click();
-  }
-
-  /** The "Ask Homestead" box that opens a new chat. */
-  get askBox() {
-    return this.driver.getByTestId('ask-widget');
-  }
-
-  /** The suggestion chips under the ask box. */
-  get askSuggestions() {
-    return this.driver.getByTestId('ask-suggestions').getByRole('button');
-  }
-
-  /** Type into the ask box and send. Resolves once it's submitted. */
-  async ask(text: string) {
-    await this.driver.getByTestId('ask-input').fill(text);
-    await this.driver.getByTestId('ask-send').click();
-  }
-
-  /** Attach files to the ask box, as its file picker would. */
-  async attachToAsk(files: FilePayload | FilePayload[]) {
-    await this.askBox.getByLabel('Upload files').setInputFiles(files);
-  }
-
-  async dismissWelcome() {
-    const dismiss = this.driver.getByTestId('welcome-dismiss');
-    await dismiss.waitFor({ state: 'visible' });
-    await dismiss.click();
-    // The panel unmounts as soon as the setting write resolves.
-    await this.welcomePanel.waitFor({ state: 'detached' });
   }
 }

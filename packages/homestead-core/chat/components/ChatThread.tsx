@@ -1,8 +1,8 @@
 /**
  * One conversation: its messages and the composer, as a column that fills its
- * parent. The Chat screen puts it beside the conversation list; the agentic
- * home puts it under the widget strip. The page owns `useConversation` (and
- * so where a new conversation's id goes); this only renders it.
+ * parent. The home puts it under the widget strip. The page owns
+ * `useConversation` (and so where a new conversation's id goes); this only
+ * renders it.
  */
 
 import { MessageCircle } from 'lucide-react';

@@ -2,8 +2,8 @@
  * Dashboard — admin getting-started checklist, on the VM tier.
  *
  * A port of tests/e2e/tests/dashboard/admin-checklist.spec.ts. A superuser
- * lands on the dashboard and sees the post-claim checklist (in place of the
- * generic welcome guide), with its two setup steps and a link into the Users
+ * lands on the home and sees the post-claim checklist above a new
+ * conversation, with its two setup steps and a link into the Users
  * admin. Done-state is data-dependent (how many users exist, whether AI is
  * configured), so we assert the steps render rather than their checked state.
  */
@@ -24,7 +24,7 @@ describe('Dashboard admin checklist', () => {
     await h.close();
   });
 
-  test('shows the getting-started checklist to the admin', async () => {
+  test('shows the getting-started checklist to the admin, above a new conversation', async () => {
     const dashboard = new DashboardPage(h.driver);
     await dashboard.goto();
     await dashboard.expectToBeOnDashboard();
@@ -35,5 +35,14 @@ describe('Dashboard admin checklist', () => {
     await h.driver
       .expect(h.driver.getByTestId('checklist-link-members'))
       .toHaveAttribute('href', '/superuser/users');
+    await h.driver.expect(h.driver.getByTestId('chat-input')).toBeVisible();
+  });
+
+  test('a member gets no checklist', async () => {
+    await h.loginAs(h.member);
+    const dashboard = new DashboardPage(h.driver);
+    await h.driver.expect(dashboard.agenticHome).toBeVisible();
+    await h.driver.expect(h.driver.getByTestId('chat-input')).toBeVisible();
+    await h.driver.expect(dashboard.adminChecklist).toHaveCount(0);
   });
 });

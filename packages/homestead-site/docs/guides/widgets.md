@@ -1,6 +1,6 @@
 # Dashboard Widgets
 
-A widget is a small React component your app shows on the home dashboard
+A widget is a small React component your app shows on the home
 (`/dashboard`) — a compact, read-only summary of your app's data (items left
 to buy, upcoming events, perks due soon) with a link into the full app. Add
 one when your app has an at-a-glance number or list worth surfacing on the
@@ -21,11 +21,16 @@ This page covers:
 You declare a widget in your app's `app.config.ts`, and the dashboard renders
 it automatically — no dashboard or registry edits needed.
 
-Each widget takes **no props** and fetches its own data. The dashboard
+Each widget takes **no props** and fetches its own data. The home
 collects the widgets from every installed app, drops widgets for apps the
-viewer can't access, and stacks the rest vertically. It orders them by each
-widget's `order` value (lower first), then applies the viewer's saved
-ordering and hidden-widget choices from the dashboard customization UI.
+viewer can't access, and shows the rest as **chips** on a strip above the
+assistant's conversation; tapping a chip opens the widget under the strip. It
+orders them by each widget's `order` value (lower first), then applies the
+viewer's saved ordering and hidden-widget choices from the dashboard
+customization UI. A chip carries the widget's one-line `summary` when it has
+one ([Widget summaries](./app-config#widget-summaries)), which also decides
+whether it's urgent enough to lead the strip or has nothing to say and drops
+off it.
 
 ---
 
@@ -146,8 +151,8 @@ Start the dev stack:
 make dev
 ```
 
-Visit `/dashboard` and confirm the widget appears in the expected slot
-relative to other widgets. Then run the gate:
+Visit `/dashboard`, confirm the widget's chip appears in the expected slot
+relative to other chips, and tap it to open the widget. Then run the gate:
 
 ```bash
 make ci && make test
@@ -223,7 +228,8 @@ guarantee.
 **Visuals**
 
 - Wrap the body in `<WidgetCard>`, not a custom container.
-- Keep widgets compact. The dashboard column is `max-w-3xl`; link out via the
+- Keep widgets compact. A widget opens under the strip in a column about
+  `max-w-md` wide that scrolls past about half the screen; link out via the
   title `href` for anything that needs more space.
 - Use the project palette (`text-text-main`, `text-text-muted`,
   `font-display`, `font-body`, `bg-surface-white`, `text-brand-navy`).

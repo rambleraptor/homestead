@@ -372,17 +372,16 @@ SPA and apps share:
   `chat/hooks/useConversation.ts`), rendered with AI Elements. `notifications` owns the
   web-push inbox + subscription management; its server half lives in
   `server/notifications.ts`)
-  `dashboard` renders the widget stack, or — behind the `dashboard.agentic_home`
-  flag — the assistant-first home (`dashboard/components/agentic/`): a strip of
-  widget chips built from each widget's optional `summary` hook (tap one to open
-  the widget), over a conversation rendered with the shared
+  `dashboard` is the home, and the assistant's (`dashboard/components/agentic/`):
+  a strip of widget chips built from each widget's optional `summary` hook (tap
+  one to open the widget), over a conversation rendered with the shared
   `chat/components/ChatThread`, held in the address (`/dashboard/c/:id`) with
   past ones in a drawer (`chat/components/ConversationList`). It fills the main
-  area via `layout/pageFill`, and falls back to the widget stack when the AI
-  isn't configured or the viewer can't use Chat. That rule is
-  `dashboard/homeMode.ts` (`useHomeMode`); the Chat screen redirects people on
-  the agentic home to it, and hides its top-bar icon from them
-  (`web.topBarVisible`).
+  area via `layout/pageFill`. When the AI isn't configured or the viewer can't
+  use Chat, a note takes the conversation's place and the chips stay — that rule
+  is `dashboard/home.ts` (`useAssistantAvailability`). `chat` has no screen of
+  its own: its app gates access to the assistant, and its `/chat` routes only
+  redirect old links to the home.
 - `layout/`, `shared/`, `resources/`, `app-flags/`, `user-settings/` —
   shared chrome, components, and schema/sync plumbing. `shared/components/ui/`
   holds vendored shadcn primitives and `shared/components/ai-elements/` the

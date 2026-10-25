@@ -1,8 +1,9 @@
 /**
  * Chat Page Object Model.
  *
- * The built-in assistant at `/chat` (a new conversation) and `/chat/<id>` (a
- * stored one). With the AI provider pointed at the stub
+ * The assistant, on the home: `/dashboard` (a new conversation) and
+ * `/dashboard/c/<id>` (a stored one), with past conversations in the home's
+ * history drawer. With the AI provider pointed at the stub
  * (tests/e2e/config/ai-stub.ts), a message carrying a script marker from
  * `config/ai-scripts.ts` gets a scripted turn: tool calls that really run
  * against the server, then a scripted reply, streamed.
@@ -17,7 +18,7 @@ export class ChatPage {
   constructor(readonly driver: Driver) {}
 
   async goto(conversationId?: string) {
-    await this.driver.goto(conversationId ? `/chat/${conversationId}` : '/chat');
+    await this.driver.goto(conversationId ? `/dashboard/c/${conversationId}` : '/dashboard');
   }
 
   get input(): Locator {
@@ -98,9 +99,24 @@ export class ChatPage {
     return this.driver.getByTestId('chat-suggestions').getByRole('button', { name: text });
   }
 
-  /** The conversation list. */
+  /** The past-conversations drawer (open it with {@link openHistory}). */
+  get historyDrawer(): Locator {
+    return this.driver.getByTestId('agentic-history-drawer');
+  }
+
+  async openHistory() {
+    await this.driver.getByTestId('agentic-history').click();
+    await this.historyDrawer.waitFor({ state: 'visible' });
+  }
+
+  async closeHistory() {
+    await this.historyDrawer.getByRole('button', { name: 'Close' }).click();
+    await this.historyDrawer.waitFor({ state: 'detached' });
+  }
+
+  /** The conversations listed in the open drawer. */
   get conversations(): Locator {
-    return this.driver.getByTestId('chat-conversation');
+    return this.historyDrawer.getByTestId('chat-conversation');
   }
 
   conversation(title: string | RegExp): Locator {
@@ -109,18 +125,23 @@ export class ChatPage {
 
   /**
    * Wait until no turn is running in the conversation: the server has
-   * recorded how it ended, not just finished streaming it.
+   * recorded how it ended, not just finished streaming it. Looks in the
+   * history drawer, and closes it again.
    */
   async expectSettled(title: string | RegExp) {
+    await this.openHistory();
     await this.driver.expect(this.conversation(title)).toHaveAttribute('data-status', 'idle');
+    await this.closeHistory();
   }
 
+  /** Start over from an open conversation. */
   async newChat() {
-    await this.driver.getByTestId('chat-new').click();
+    await this.driver.getByTestId('agentic-new-chat').click();
   }
 
-  /** Delete a conversation from the list, confirming the prompt. */
+  /** Delete a conversation from the drawer, confirming the prompt. */
   async deleteConversation(title: string | RegExp) {
+    await this.openHistory();
     await this.conversation(title).getByTestId('chat-conversation-delete').click();
     await this.driver.getByRole('button', { name: 'Delete', exact: true }).click();
   }

@@ -138,8 +138,8 @@ API by running `homestead resources`.
 
 Chat is a built-in assistant that looks up and changes your household data in
 plain language — "how much is left on my Visa gift card?", "add milk to the
-grocery list", "what events are coming up?". It's always installed; find it in
-the top navigation.
+grocery list", "what events are coming up?". It's always installed, and it's the home: the
+first page you land on is a conversation with it ([below](#the-home)).
 
 Chat works with **any** app you've added, with no per-app setup. It acts
 with **your** permissions — it's only offered the apps you can use, and only
@@ -153,12 +153,10 @@ the map service you picked in your People settings, a phone number dials, and
 an email address starts a message. Apps can add their own
 ([Typed values in replies](./app-config#typed-values-in-replies)).
 
-### The agentic home
+### The home
 
-Behind the `dashboard.agentic_home` flag (off by default; see
-[App Flags](./app-flags#rolling-a-flag-out-to-a-group) to try it on one group
-first), the dashboard becomes the assistant's home: the **conversation** fills
-the screen, with a strip of **chips** along the top for the widgets that matter
+The home (`/dashboard`) is the assistant's: the **conversation** fills the
+screen, with a strip of **chips** along the top for the widgets that matter
 now.
 
 - Each chip is a widget's one-line summary ("Groceries · 4 items left to buy",
@@ -170,33 +168,31 @@ now.
   nothing to say stays off the strip.
 - The conversation stays on the home as it grows. Its first message gives it
   its own address (`/dashboard/c/<id>`), so a reload or a shared link brings it
-  back, while going Home or tapping **New chat** starts a fresh one (your
+  back, while going Home or tapping **New chat** starts a fresh one (a
   greeting is its empty state).
 - The **history** button beside the chips opens your past conversations in a
   drawer: pick one to carry on with it on the home, or delete it.
-- The home needs the assistant: if no AI provider is configured, or you can't
-  use Chat, you get the classic dashboard instead.
-- With the home, the home *is* the chat: the top bar's Chat icon goes away, and
-  a Chat link (`/chat`, `/chat/<id>`, an old bookmark) opens the same
-  conversation on the home. Everyone else keeps the Chat screen.
+- Old Chat links (`/chat`, `/chat/<id>`, a bookmark) open the same
+  conversation on the home.
+- For an admin, a new conversation sits under the setup checklist (invite your
+  household, configure the assistant) until it's dismissed.
 
 On a phone the strip sits under the top bar, the thread takes the rest of the
 screen, and the composer is docked at the bottom.
 
-You can also start from the dashboard: the **Ask Homestead** box at the top
-takes a question (and photos or PDFs) and opens it as a new chat, with the
-answer coming in there. Like any dashboard widget it can be moved or hidden
-from your dashboard settings, and it only shows when the assistant is
-configured and you can use Chat.
+Without the assistant the home keeps its chips, and a note takes the
+conversation's place saying why: no AI provider is configured yet (see
+[Enable Chat](#enable-chat)), or the person can't use the Chat app (its
+[app access](./access)). Their apps are in the menu either way.
 
 It knows your local date and time: your browser sends its timezone with each
 message, so "tomorrow", "this weekend" and "at 6pm" mean yours. Nothing about
 it is stored.
 
-Conversations are kept. The list beside the chat (behind **Conversations** on
-a phone) holds your past threads, most recent first; open one to carry on where
-you left off. Each conversation has its own address (`/chat/<id>`), so a
-reload — or another device — picks it back up, and a reply that's still being
+Conversations are kept. The history drawer holds your past threads, most
+recent first; open one to carry on where you left off. Each conversation has
+its own address (`/dashboard/c/<id>`), so a reload — or another device — picks
+it back up, and a reply that's still being
 written on one device appears on the other as it lands. **Stop** ends a reply
 early and keeps what was written so far. Delete a conversation from the list;
 otherwise it's removed 60 days after its last message.
@@ -242,7 +238,7 @@ such as setting a reminder for one of them.
 
 ### Stored conversations
 
-Under the Chat screen is one endpoint, which you can call yourself.
+Under the home's conversation is one endpoint, which you can call yourself.
 `POST /api/chat` runs one **stored, streamed** turn. Send only the new message;
 the server keeps the history:
 
@@ -293,9 +289,9 @@ A resource can be left out of the assistant's tools, or out of MCP's, with
 Chat runs on whichever model you [configure as your AI
 provider](#configure-your-ai-provider) — OpenAI, Anthropic, or Gemini. Set the
 `ai` block in `homestead.config.ts`, supply `AI_API_KEY`, and restart the
-server; the Chat screen then answers questions instead of reporting that the
-assistant isn't configured. Without an `ai` block, Chat reports that it isn't
-configured and the rest of Homestead works as normal.
+server; the home then holds a conversation instead of noting that the
+assistant isn't set up. Without an `ai` block the home shows its widget chips
+and that note, and the rest of Homestead works as normal.
 
 ---
 

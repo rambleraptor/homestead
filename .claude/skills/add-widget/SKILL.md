@@ -7,9 +7,12 @@ description: Add a dashboard widget to an existing Homestead app — a self-cont
 
 Apps contribute widgets to the dashboard through the `widgets` array on
 their `AppConfig`. Each widget is an independent React component that
-owns its own data fetching and chrome; the dashboard just lays widgets
-out in `order`. Users can hide and reorder widgets from the dashboard
-customization UI, so a widget must work standalone with zero props.
+owns its own data fetching and chrome; the home shows each as a chip on
+its strip (in `order`) and opens the widget when the chip is tapped. Give it
+a `summary` hook so its chip carries a one-line headline (see the Widget
+summaries section of `docs/guides/app-config.md`). Users can hide and reorder
+widgets from the dashboard customization UI, so a widget must work
+standalone with zero props.
 
 ## The contract
 
@@ -70,8 +73,8 @@ Pick `order` relative to the existing dashboard (grep `order:` across
   the mocked aepbase client (see `src/test/setup.ts` conventions) —
   cover the data, loading, and empty states.
 - `make ci && make test`.
-- Visual check: boot the dev server and confirm the widget appears on
-  the dashboard and can be hidden/reordered from the customization UI
+- Visual check: boot the dev server and confirm the widget's chip appears
+  on the home, opens the widget, and can be hidden/reordered from the customization UI
   (it's picked up automatically — registration is just the config entry).
 
 ## Notes

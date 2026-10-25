@@ -47,8 +47,7 @@ describe('getAllAppFlagDefs', () => {
   it('leaves flag-less apps with an empty flag map', () => {
     const defs = getAllAppFlagDefs();
     expect(defs.notifications).toEqual({});
-    // The dashboard now declares the agentic-home switch.
-    expect(Object.keys(defs.dashboard)).toEqual(['agentic_home']);
+    expect(defs.dashboard).toEqual({});
   });
 });
 
@@ -56,17 +55,19 @@ describe('top-bar placement', () => {
   it('keeps topbar apps out of the sidebar navigation', () => {
     const navIds = getNavigationApps().map((m) => m.id);
     expect(navIds).not.toContain('notifications');
-    expect(navIds).not.toContain('chat');
     expect(navIds).toContain('groceries');
   });
 
   it('returns topbar apps in navOrder', () => {
     const topBarIds = getTopBarApps().map((m) => m.id);
-    expect(topBarIds).toEqual(['notifications', 'chat']);
+    expect(topBarIds).toEqual(['notifications']);
   });
 
-  it('registers chat as an always-installed core app', () => {
+  it('registers chat as an always-installed core app, out of navigation', () => {
+    // Its conversations are on the home; `/chat` only redirects there.
     expect(getAppById('chat')?.web?.basePath).toBe('/chat');
+    expect(getNavigationApps().map((m) => m.id)).not.toContain('chat');
+    expect(getTopBarApps().map((m) => m.id)).not.toContain('chat');
   });
 });
 

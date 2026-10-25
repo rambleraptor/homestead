@@ -8,6 +8,10 @@
  * The backend lives in `core/server/chat/` behind `POST /api/chat`.
  * Conversations are stored (`./resources`) and run server-side, streamed back
  * to the client (`core/server/chat/turns.ts`).
+ *
+ * Its conversations are held on the home (`dashboard`), so it has no screen of
+ * its own: `/chat` addresses redirect there, and it stays out of navigation.
+ * It is still an app — its collections gate who can use the assistant.
  */
 
 import type { AppConfig } from '../apps/types';
@@ -21,31 +25,18 @@ export const chatApp: AppConfig = {
   web: {
     icon: () => import('lucide-react').then((m) => m.MessageCircle),
     basePath: '/chat',
-    homeScreenIcon: '/app-icons/chat.png',
     routes: [
       {
         path: '',
         index: true,
-        component: () => import('./components/ChatHome').then((m) => m.ChatHome),
+        component: () => import('./components/ChatRedirect').then((m) => m.ChatRedirect),
       },
       {
         path: ':id',
-        component: () => import('./components/ChatHome').then((m) => m.ChatHome),
+        component: () => import('./components/ChatRedirect').then((m) => m.ChatRedirect),
         dynamic: true,
       },
     ],
-    placement: 'topbar',
-    // Not for someone whose home is the assistant: the home holds their chats.
-    topBarVisible: () => import('../dashboard/homeMode'),
-    navOrder: 5,
-    widgets: [
-      {
-        id: 'chat-ask',
-        label: 'Ask Homestead',
-        component: () => import('./components/AskWidget').then((m) => m.AskWidget),
-        // Above every app's widget: the way into everything else.
-        order: 0,
-      },
-    ],
+    showInNav: false,
   },
 };
