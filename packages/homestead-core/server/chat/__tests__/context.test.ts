@@ -87,4 +87,12 @@ describe('buildSystemPrompt', () => {
     expect(prompt).not.toContain('personal_todos');
     expect(prompt).not.toContain('App notes:');
   });
+
+  it('asks for Markdown replies: lists for several records, tables to compare', () => {
+    const prompt = buildSystemPrompt(user, { now: 'x', hasDocSearch: false });
+    expect(prompt).toContain('Replies are rendered as Markdown');
+    expect(prompt).toContain('a bulleted (or numbered) list');
+    expect(prompt).toContain('a table');
+    expect(prompt).not.toContain('plain text');
+  });
 });
