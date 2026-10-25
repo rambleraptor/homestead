@@ -110,9 +110,17 @@ test.describe('Groceries — offline support', () => {
       ['Offline bread', 'Offline cheese', 'Offline milk', 'Pre-existing item'].sort(),
     );
 
-    // The toggle should have flushed too.
-    const milk = serverItems.find((i) => i.name === 'Offline milk');
-    expect(milk?.checked).toBe(true);
+    // The toggle flushed too. It replays after the creates (FIFO), so it can
+    // land a moment after the fourth item appears: wait for it, don't read once.
+    await expect
+      .poll(
+        async () =>
+          (await listOrEmpty<GroceryItemRecord>(userToken, 'groceries')).find(
+            (i) => i.name === 'Offline milk',
+          )?.checked,
+        { timeout: 15000 },
+      )
+      .toBe(true);
 
     // Offline badge clears once we're back online.
     await expect(page.getByTestId('groceries-offline-badge')).toBeHidden();
