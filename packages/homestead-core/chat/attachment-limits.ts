@@ -19,3 +19,10 @@ export const ATTACHMENT_TYPES: readonly string[] = [
   'image/gif',
   'application/pdf',
 ];
+
+/** What a composer says when it turns a file away, by the reason it gives. */
+export const ATTACHMENT_ERRORS = {
+  accept: 'Only photos (JPEG, PNG, WebP, GIF) and PDFs can be attached.',
+  max_file_size: `Files can be at most ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB each.`,
+  max_files: `A message can carry at most ${MAX_ATTACHMENTS} files.`,
+} as const;

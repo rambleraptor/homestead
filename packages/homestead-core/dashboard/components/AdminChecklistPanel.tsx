@@ -13,7 +13,7 @@
 
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useAiConfigured } from '@rambleraptor/homestead-core/chat/hooks/useAiConfigured';
 import { CheckCircle2, Circle, ArrowRight } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
@@ -29,25 +29,6 @@ interface ChecklistItem {
   linkLabel?: string;
   /** Guidance shown under the label when the step isn't done in-app. */
   hint?: string;
-}
-
-/** Reports whether the server has an AI provider configured (no model call). */
-function useAiConfigured(): boolean | undefined {
-  const { data } = useQuery({
-    queryKey: ['chat', 'status'],
-    queryFn: async () => {
-      try {
-        const res = await fetch('/api/chat');
-        if (!res.ok) return false;
-        const body = (await res.json()) as { configured?: boolean };
-        return !!body.configured;
-      } catch {
-        return false;
-      }
-    },
-    staleTime: 60_000,
-  });
-  return data;
 }
 
 export function AdminChecklistPanel() {
