@@ -34,6 +34,9 @@ export type LazyComponent<P = unknown> = () => Promise<
   { default: ComponentType<P> } | ComponentType<P>
 >;
 
+/** A lazily-imported hook (default export, or the hook itself) answering yes/no. */
+export type LazyVisibilityHook = () => Promise<{ default: () => boolean } | (() => boolean)>;
+
 /**
  * A lazily-loaded Lucide icon. Resolves directly to the icon component,
  * e.g. `() => import('lucide-react').then(m => m.ShoppingCart)`.
@@ -195,6 +198,14 @@ export interface AppWebConfig {
    * standard count pill.
    */
   topBarBadge?: LazyComponent;
+
+  /**
+   * For a top-bar app: a lazily-imported hook saying whether this viewer sees
+   * its button (default: everyone the app is visible to). Chat uses it to step
+   * aside for people whose home is the assistant. The button appears once the
+   * hook has loaded and said yes.
+   */
+  topBarVisible?: LazyVisibilityHook;
 
   /**
    * Navigation order (lower numbers appear first)

@@ -132,6 +132,7 @@ Everything about how the app surfaces in the browser. Lives under the required
 | `showInNav`        | `boolean`                                   | `true`      | `false` hides the app from nav but keeps routes reachable.            |
 | `placement`        | `'sidebar' \| 'topbar'`                     | `'sidebar'` | Where the nav entry renders. Topbar apps are icon-only.              |
 | `topBarBadge`      | `LazyComponent`                             | —           | Badge inside a topbar app's button (fetches its own data).          |
+| `topBarVisible`    | `() => import(hook)`                        | —           | Lazily-imported hook: does this viewer see the topbar button?       |
 | `navOrder`         | `number`                                    | `100`       | Sort order within a section (lower first).                          |
 | `section`          | `string`                                    | —           | Grouping header in the sidebar. Unsectioned apps render last.       |
 | `filters`          | `AppFilterDecl[]`                           | —           | Client-side, in-memory list filters.                               |

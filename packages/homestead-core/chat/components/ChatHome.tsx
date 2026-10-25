@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { History, MessageCircle } from 'lucide-react';
 import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
@@ -7,6 +7,11 @@ import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageH
 import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { useFillPage } from '@rambleraptor/homestead-core/layout/pageFill';
+import {
+  HOME_PATH,
+  homeConversationPath,
+  useHomeMode,
+} from '@rambleraptor/homestead-core/dashboard/homeMode';
 import { useConversation } from '../hooks/useConversation';
 import { useConversations } from '../hooks/useConversations';
 import { takeHandOff } from '../handoff';
@@ -31,8 +36,23 @@ function NotConfigured() {
   );
 }
 
-/** `/chat` (a new conversation) and `/chat/:id` (an existing one). */
+/**
+ * `/chat` (a new conversation) and `/chat/:id` (an existing one). Someone whose
+ * home is the assistant (`useHomeMode`) holds their conversations there, so
+ * they're sent to the same conversation on the home instead. Decided before
+ * the screen mounts, so nothing here (a handed-off message) runs for them.
+ */
 export function ChatHome({ params }: AppRouteProps) {
+  const mode = useHomeMode();
+  if (mode === undefined) return null;
+  if (mode === 'agentic') {
+    const id = params?.id;
+    return <Navigate to={id ? homeConversationPath(id) : HOME_PATH} replace />;
+  }
+  return <ChatScreen params={params} />;
+}
+
+function ChatScreen({ params }: AppRouteProps) {
   // The screen fills the main area, so the text bar is docked at the bottom
   // and only the conversation scrolls.
   useFillPage();

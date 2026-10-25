@@ -47,17 +47,13 @@ import { availableStarters } from '@rambleraptor/homestead-core/chat/starters';
 import { useFillPage } from '@rambleraptor/homestead-core/layout/pageFill';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { useGreeting } from '../../greeting';
+import { HOME_PATH, homeConversationPath } from '../../homeMode';
 import { useWidgetSummaries, type SummaryState } from './WidgetSummaries';
 
 /** The dashboard's own way into chat; redundant when the chat *is* the home. */
 const ASK_WIDGET_ID = 'chat-ask';
 
 const EMPTY_DESCRIPTION = 'Ask about anything in your household, or have me change it.';
-
-/** The home's address for a conversation; `/dashboard` itself is a new one. */
-export const HOME_PATH = '/dashboard';
-export const homeConversationPath = (conversationId: string) =>
-  `${HOME_PATH}/c/${conversationId}`;
 
 export interface AgenticHomeProps {
   /** The conversation in the address, or null for a new one. */
