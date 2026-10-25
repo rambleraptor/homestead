@@ -19,7 +19,11 @@ test.describe('Chat text bar', () => {
   }) => {
     const chat = new ChatPage(playwrightDriver(authenticatedPage));
     await chat.goto();
-    await chat.send(`Tell me everything about the plans for next week ${CHAT_MARKERS.longReply}`);
+    // Sent with Enter: at phone width the dev-only query devtools button sits
+    // over the send button, and this spec is about layout, not that button.
+    const input = page.getByTestId('chat-input');
+    await input.fill(`Tell me everything about the plans for next week ${CHAT_MARKERS.longReply}`);
+    await input.press('Enter');
     await expect(
       page.getByTestId('chat-messages').getByText(LONG_REPLY_TEXT.split(' ').slice(-3).join(' ')),
     ).toBeVisible({ timeout: 20_000 });
