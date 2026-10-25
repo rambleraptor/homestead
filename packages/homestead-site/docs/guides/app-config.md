@@ -116,6 +116,7 @@ The app's identity, its data, and the `web` object.
 | `resources`      | `ResourceDefinition[]`           | —       | aepbase collections the app owns — see [Resources](./resources).   |
 | `crons`          | `CronHook[]`                     | —       | Periodic server-side hooks ([below](#scheduling-background-work)).  |
 | `children`       | `AppConfig[]`                    | —       | Sub-apps; makes this a container app ([below](#nesting-apps)).     |
+| `chat`           | `AppChatConfig`                  | —       | Notes for the AI chat about using this app's tools ([below](#guiding-the-ai-chat)). |
 
 ### `web` fields
 
@@ -318,6 +319,28 @@ the process down. A hook with a duplicate `id` or a non-positive
 > Scheduling is **interval-based** (every N seconds), not wall-clock cron
 > (“3am daily”). For a fixed time of day, pick a modest interval and have the
 > handler check the clock.
+
+## Guiding the AI chat
+
+The chat already describes each of your resources to the model from its
+definition (its `description`, fields, enums and references). `chat.instructions`
+covers what no single tool can say: which tool to pick when two fit, a habit to
+keep, a convention between resources. One note per entry:
+
+```ts
+chat: {
+  instructions: [
+    'When someone mentions a person by name, look them up with the "people" ' +
+      "tool's list action first, matching on name or aliases.",
+    'If more than one person matches, ask which one they mean.',
+  ],
+},
+```
+
+The notes go into the chat's system prompt under the app's name, but only for
+people offered at least one of the app's tools — so they never describe a tool
+someone doesn't have. They describe how the app works; never put household data
+in them, since they live in your code. MCP clients don't receive them.
 
 ## Nesting apps
 

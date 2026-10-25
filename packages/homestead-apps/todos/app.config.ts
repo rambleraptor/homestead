@@ -10,6 +10,15 @@ export const todosApp: AppConfig = {
   name: 'Todos',
   description: 'Daily todo list, with shared and private items.',
   resources: todosResources,
+  chat: {
+    instructions: [
+      'Todos come in two kinds: personal (private to the signed-in person; the ' +
+        '"personal_todos" tool, user-scoped via user_id) and family (shared with the ' +
+        'whole household; the "todos" tool).',
+      'When someone asks to add or list todos without saying which, use personal. ' +
+        'Use family todos only when they say shared, family or household.',
+    ],
+  },
   migrations: [
     {
       id: 'todos-drop-in-progress-status',

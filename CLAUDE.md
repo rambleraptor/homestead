@@ -360,7 +360,11 @@ SPA and apps share:
   `server/chat/attachments.ts`) and can be filed into a top-level file field
   by attachment id, only from the same conversation (`attachmentSource`);
   stored history is untrusted, so only parts
-  the runner writes reach the model. Its SPA half is
+  the runner writes reach the model. The system prompt carries the person's
+  local clock (the SPA sends its timezone with each turn) and the
+  `chat.instructions` of apps whose tools they're offered
+  (`server/chat/context.ts`) — app-specific guidance belongs there, not in
+  core's prompt. Its SPA half is
   the AI SDK's `useChat` over a stored-turn transport (`chat/api.ts`,
   `chat/hooks/useConversation.ts`), rendered with AI Elements. `notifications` owns the
   web-push inbox + subscription management; its server half lives in

@@ -204,6 +204,12 @@ export interface AppWebConfig {
   widgets?: DashboardWidget[];
 }
 
+/** An app's guidance for the AI chat (see `AppConfig.chat`). */
+export interface AppChatConfig {
+  /** One note per entry, each a sentence or two of plain guidance. */
+  instructions: readonly string[];
+}
+
 /**
  * Core App Configuration
  * Every app must export a config object that implements this interface
@@ -225,6 +231,14 @@ export interface AppConfig {
    * Short description of app functionality
    */
   description: string;
+
+  /**
+   * Guidance for the AI chat about using this app's tools — what no single
+   * tool description can say: which tool to pick when two fit, a habit to
+   * keep, a convention between resources. Shown only to people offered at
+   * least one of the app's tools. Describes the app, never data in it.
+   */
+  chat?: AppChatConfig;
 
   /**
    * Additional app-specific metadata

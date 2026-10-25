@@ -147,6 +147,10 @@ the changes you're allowed to make — confirms before deleting, and shows you w
 actions it took — each tool call is a card you can open to see what it sent and
 what came back. Replies stream in as they're written, and render as Markdown.
 
+It knows your local date and time: your browser sends its timezone with each
+message, so "tomorrow", "this weekend" and "at 6pm" mean yours. Nothing about
+it is stored.
+
 Conversations are kept. The list beside the chat (behind **Conversations** on
 a phone) holds your past threads, most recent first; open one to carry on where
 you left off. Each conversation has its own address (`/chat/<id>`), so a
@@ -193,9 +197,11 @@ POST /api/chat
 Authorization: Bearer <token>
 Content-Type: application/json
 
-{ "conversation_id": "…", "message": { "id": "<your id>", "text": "Add milk" } }
+{ "conversation_id": "…", "message": { "id": "<your id>", "text": "Add milk" }, "timezone": "America/Chicago" }
 ```
 
+- `timezone` (an IANA name) is optional; the assistant reads dates and times in
+  it, and in UTC when it's left out or not recognized.
 - Leave out `conversation_id` to start a new conversation; its id comes back in
   the `X-Conversation-Id` header and the stream's first event. The streamed
   reply carries the id it's stored under (`<your id>-reply`).

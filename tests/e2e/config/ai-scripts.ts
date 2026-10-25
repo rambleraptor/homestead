@@ -61,6 +61,13 @@ export const ATTACHMENTS_PLACEHOLDER = '{attachments}';
 export const TOOLS_PLACEHOLDER = '{tools}';
 
 /**
+ * In a script's reply text, replaced by what the system prompt told the model
+ * about its situation: `now=<its Now line> | notes=<app note headings>`, e.g.
+ * `now=Saturday 2026-10-24, 7:42 PM (America/Chicago) | notes=People, Todos`.
+ */
+export const CONTEXT_PLACEHOLDER = '{context}';
+
+/**
  * In a tool call's arguments, replaced by the attachment id of the first file
  * the message carried (the model is shown `attachment id: …` beside each) — so
  * a script can file an attachment whose id it can't know in advance.
@@ -89,6 +96,8 @@ export const CHAT_MARKERS = {
   fileGiftCard: 'e2e-chat-file-gift-card',
   /** Reply with the tools the model was offered (see TOOLS_PLACEHOLDER). */
   listTools: 'e2e-chat-list-tools',
+  /** Reply with the prompt's clock and app notes (see CONTEXT_PLACEHOLDER). */
+  describeContext: 'e2e-chat-describe-context',
 } as const;
 
 /** The long reply's text, exported so a spec can check the whole of it arrived. */
@@ -131,6 +140,10 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
   {
     marker: CHAT_MARKERS.listTools,
     steps: [{ text: TOOLS_PLACEHOLDER }],
+  },
+  {
+    marker: CHAT_MARKERS.describeContext,
+    steps: [{ text: CONTEXT_PLACEHOLDER }],
   },
   {
     marker: CHAT_MARKERS.fileGiftCard,

@@ -36,6 +36,8 @@ import { CHAT_MESSAGES, CONVERSATIONS } from '../../chat/resources';
 import type { ChatTurnRequest } from '../../chat/types';
 import type { ResourceDefinition } from '../../resources/types';
 import { buildChatToolSet, buildSystemPrompt } from './handler';
+import { appNotes, localNow, resolveTimezone } from './context';
+import { getAllApps } from '../../apps/registry';
 import { modelResourcesFor } from '../collection-access';
 import { attachmentSource, attachmentsTitle, checkAttachments, withAttachments } from './attachments';
 
@@ -241,10 +243,11 @@ function engineFailure(err: unknown): Response {
 /** A well-formed request. The text may be empty only when files come with it. */
 function isValidRequest(body: unknown, hasAttachments: boolean): body is ChatTurnRequest {
   if (typeof body !== 'object' || body === null) return false;
-  const { conversation_id, message } = body as Record<string, unknown>;
+  const { conversation_id, message, timezone } = body as Record<string, unknown>;
   if (conversation_id !== undefined && (typeof conversation_id !== 'string' || !conversation_id)) {
     return false;
   }
+  if (timezone !== undefined && typeof timezone !== 'string') return false;
   if (typeof message !== 'object' || message === null) return false;
   const { id, text } = message as Record<string, unknown>;
   return (
@@ -272,7 +275,7 @@ export async function handleTurn(
   if (!isValidRequest(body, uploads.length > 0)) {
     return problem(
       400,
-      'expected { conversation_id?, message: { id, text } } with a non-empty id, and text ' +
+      'expected { conversation_id?, message: { id, text }, timezone? } with a non-empty id, and text ' +
         `of 1–${MAX_MESSAGE_CHARS} characters (it may be empty when files are attached)`,
     );
   }
@@ -393,7 +396,11 @@ export async function handleTurn(
   let result: ReturnType<typeof aiStreamAgent>;
   try {
     result = aiStreamAgent({
-      system: buildSystemPrompt(auth.user, hasDocSearch),
+      system: buildSystemPrompt(auth.user, {
+        now: localNow(resolveTimezone(body.timezone)),
+        hasDocSearch,
+        appNotes: appNotes(getAllApps(), new Set(reachable.defs.map((d) => d.singular))),
+      }),
       messages: modelMessages,
       tools: toolSet,
       maxRounds: MAX_TOOL_ROUNDS,

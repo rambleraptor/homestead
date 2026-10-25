@@ -95,6 +95,15 @@ export function dataUrlBytes(url: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+/** The browser's IANA timezone, so the assistant reads "today" as the person does. */
+function browserTimezone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The transport for one chat: sends only the newest message (the server owns
  * the history), with its files, and learns a new conversation's id from the
@@ -118,9 +127,11 @@ export function createChatTransport(
         .join('\n');
       outgoing = last.parts.filter((p): p is FileUIPart => p.type === 'file');
       const conversationId = options.conversationId();
+      const timezone = browserTimezone();
       const body: ChatTurnRequest = {
         ...(conversationId ? { conversation_id: conversationId } : {}),
         message: { id: last.id, text },
+        ...(timezone ? { timezone } : {}),
       };
       return { headers, body };
     },

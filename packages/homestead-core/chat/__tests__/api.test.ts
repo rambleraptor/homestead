@@ -58,6 +58,8 @@ describe('createChatTransport', () => {
     expect(JSON.parse(init.body as string)).toEqual({
       conversation_id: 'c1',
       message: { id: 'm2', text: 'add milk' },
+      // So the assistant reads "today" as the person does.
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(init.headers).toMatchObject({ authorization: 'Bearer tok', 'x-user-id': 'u1' });
   });
@@ -71,6 +73,7 @@ describe('createChatTransport', () => {
 
     expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({
       message: { id: 'm1', text: 'hello' },
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(onConversation).toHaveBeenCalledWith('c9');
   });
