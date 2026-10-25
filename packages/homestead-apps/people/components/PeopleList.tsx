@@ -65,7 +65,7 @@ function PeopleListInner({ hasAny }: { hasAny: boolean }) {
     }
 
     try {
-      await updatePerson.mutateAsync({ id: editingPerson.id, data });
+      await updatePerson.mutateAsync({ id: editingPerson.id, data, previousUserId: editingPerson.user });
       setEditingPerson(null);
       toast.success('Person updated successfully!');
     } catch {

@@ -42,10 +42,12 @@ export interface PromptContext {
   valueTypes?: string[];
   /** Everyone else in the household, one line each (`householdLines`). */
   household?: string[];
+  /** What the apps know about the speaker, under each app's name (`appContext`). */
+  appContext?: string[];
 }
 
 export function buildSystemPrompt(user: AuthedUser, context: PromptContext): string {
-  const { now, hasDocSearch, appNotes = [], valueTypes = [], household = [] } = context;
+  const { now, hasDocSearch, appNotes = [], valueTypes = [], household = [], appContext = [] } = context;
   return [
     'You are the Homestead household assistant. You help members of the',
     'household look up and manage their data (todos, groceries, recipes,',
@@ -64,6 +66,9 @@ export function buildSystemPrompt(user: AuthedUser, context: PromptContext): str
           'or the signed-in user: say their name, never the id.',
           '',
         ]
+      : []),
+    ...(appContext.length > 0
+      ? ['What the apps know about the signed-in user:', ...appContext, '']
       : []),
     'Tools:',
     resourceInstructions(),

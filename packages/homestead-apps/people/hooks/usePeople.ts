@@ -6,11 +6,13 @@ import type { Household, Person, PersonRelationship } from '../types';
 import { relativesFor, type Relatives } from '../utils/relationships';
 import { householdsFor } from '../utils/households';
 import { listHouseholds } from '../utils/householdSync';
+import { accountIdOf } from '../utils/accounts';
 
 export interface PersonRecord {
   id: string;
   name: string;
   aliases?: string[];
+  user?: string | null;
   created_by?: string;
   create_time?: string;
   update_time?: string;
@@ -24,6 +26,7 @@ export function toPerson(
   return {
     ...record,
     aliases: record.aliases ?? [],
+    user: accountIdOf(record.user),
     created: record.create_time || '',
     updated: record.update_time || '',
     created_by: record.created_by || '',

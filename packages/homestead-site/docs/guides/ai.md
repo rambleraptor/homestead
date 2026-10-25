@@ -196,6 +196,15 @@ shared. A guest isn't part of the household and isn't told anyone's name. The
 same list is at `GET /api/household` for any household member, and the Share
 dialog uses it to offer members the people they live with.
 
+It knows your family, too, once People knows which person you are. A person's
+**Homestead account** (in the person form) links them to the account they use;
+the People screen asks "Which one is you?" until your own is linked, or tell the
+assistant ("I'm Alex in People"). Then it's told who you are, your partner,
+parents, children and siblings, and anyone else in the household, each with the
+account they use — so "remind the kids" or "Sam's birthday" needs no follow-up
+question. An account belongs to one person: linking it moves it off whoever had
+it. A link is only a label; it grants no access.
+
 Conversations are kept. The history drawer holds your past threads, most
 recent first; open one to carry on where you left off. Each conversation has
 its own address (`/dashboard/c/<id>`), so a reload — or another device — picks

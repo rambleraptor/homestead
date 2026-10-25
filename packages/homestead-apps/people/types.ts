@@ -54,6 +54,7 @@ export interface Person {
   id: string;
   name: string;
   aliases: string[]; // Alternate names (maiden name, nickname); can be empty
+  user?: string; // Bare id of this person's Homestead account, when linked
   households: Household[]; // Can be empty
   partner?: RelatedPerson;
   parents: RelatedPerson[];
@@ -67,6 +68,7 @@ export interface Person {
 export interface PersonFormData {
   name: string;
   aliases: string[]; // Alternate names (maiden name, nickname)
+  user_id?: string; // Bare id of their Homestead account; '' for none
   household_ids?: string[]; // Bare household ids
   // "New household" shortcut: created with this person as a member.
   new_household?: Omit<HouseholdFormData, 'members'>;

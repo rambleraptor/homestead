@@ -9,7 +9,7 @@
 
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, FileText, Loader2, Users } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, UserCheck, Users } from 'lucide-react';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { DocumentListItem } from '../../documents/components/DocumentListItem';
@@ -53,6 +53,16 @@ export function PersonDetail({ personId }: { personId: string }) {
         title={person.name}
         subtitle={person.aliases.length > 0 ? `aka ${person.aliases.join(', ')}` : undefined}
       />
+
+      {person.user && (
+        <p
+          className="inline-flex items-center gap-1.5 rounded-full bg-bg-pearl px-3 py-1 text-xs font-medium text-brand-navy"
+          data-testid="person-has-account"
+        >
+          <UserCheck className="h-3.5 w-3.5" aria-hidden />
+          Has a Homestead account
+        </p>
+      )}
 
       {(person.partner || person.households.length > 0) && (
         <Card>

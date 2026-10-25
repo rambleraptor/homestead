@@ -9,6 +9,7 @@ import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import type { PersonFormData } from '../types';
 import { syncRelationships } from '../utils/relationshipSync';
 import { createHousehold, syncPersonHouseholds } from '../utils/householdSync';
+import { setAccountLink } from '../utils/accountSync';
 
 interface PersonRecord {
   id: string;
@@ -52,6 +53,7 @@ export function useCreatePerson() {
         created_by: userId ? `users/${userId}` : undefined,
       });
 
+      if (data.user_id) await setAccountLink(personRecord.id, data.user_id);
       await applyHouseholds(personRecord.id, data);
       await syncRelationships(personRecord.id, relativesFromForm(data));
 

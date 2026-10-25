@@ -340,19 +340,28 @@ describe('the tools a turn offers', () => {
 });
 
 describe('what a turn tells the model', () => {
-  /** The prompt's clock, app notes and household, as the model received them. */
+  /** The prompt's clock, app notes, household and app context, as the model received them. */
   async function context(
     as: string,
     timezone?: string,
-  ): Promise<{ now: string; notes: string; household: string }> {
+  ): Promise<{ now: string; notes: string; household: string; known: string }> {
     const res = await send(as, `Where am I? ${CHAT_MARKERS.describeContext}`, { timezone });
     expect(res.status).toBe(200);
     const conversationId = res.headers.get('x-conversation-id')!;
     const summary = replyText(await events(res));
     await eventually(() => conversations(as).get(conversationId), (c) => c.status === 'idle');
-    const [, now = '', notes = '', household = ''] =
-      /^now=(.*) \| notes=(.*) \| household=(.*)$/.exec(summary) ?? [];
-    return { now, notes, household };
+    const fields = new Map(
+      summary.split(' | ').map((part) => {
+        const eq = part.indexOf('=');
+        return [part.slice(0, eq), part.slice(eq + 1)] as const;
+      }),
+    );
+    return {
+      now: fields.get('now') ?? '',
+      notes: fields.get('notes') ?? '',
+      household: fields.get('household') ?? '',
+      known: fields.get('known') ?? '',
+    };
   }
 
   const CLOCK = /^[A-Z][a-z]+day \d{4}-\d{2}-\d{2}, \d{1,2}:\d{2} [AP]M /;
@@ -411,6 +420,30 @@ describe('what a turn tells the model', () => {
     expect((await context(guestToken)).household).toBe('(none)');
     // Nor does the household gain them: members still see the same people.
     expect((await context(token)).household).toBe('Admin, Sam');
+  });
+
+  test('People tells the model who the speaker is, and their family', async () => {
+    expect((await context(token)).known).toContain("The signed-in user isn't linked to a person yet.");
+
+    const sam = h.householdMember;
+    const people = e2eClient(token).collection<{ id: string }>('people');
+    const alex = await people.create({ name: 'Alex', user: `users/${h.member.id}` });
+    const partner = await people.create({ name: 'Sam', user: `users/${sam.id}` });
+    const kid = await people.create({ name: 'Jordan' });
+    const links = e2eClient(token).collection('person-relationships');
+    await links.create({ kind: 'partner', person_a: alex.id, person_b: partner.id });
+    await links.create({ kind: 'parent', person_a: alex.id, person_b: kid.id });
+
+    expect((await context(token)).known).toBe(
+      [
+        `You are "Alex" (person id "${alex.id}", user id "${h.member.id}").`,
+        `Your partner: "Sam" (person id "${partner.id}", user id "${sam.id}").`,
+        `Your children: "Jordan" (person id "${kid.id}").`,
+      ].join(' / '),
+    );
+    expect((await context(sam.token)).known).toContain(
+      `Your partner: "Alex" (person id "${alex.id}", user id "${h.member.id}").`,
+    );
   });
 });
 

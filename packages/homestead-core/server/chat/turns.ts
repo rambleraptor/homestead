@@ -36,7 +36,7 @@ import { CHAT_MESSAGES, CONVERSATIONS } from '../../chat/resources';
 import type { ChatTurnRequest } from '../../chat/types';
 import type { ResourceDefinition } from '../../resources/types';
 import { buildChatToolSet, buildSystemPrompt } from './handler';
-import { appNotes, householdLines, localNow, resolveTimezone } from './context';
+import { appContext, appNotes, householdLines, localNow, resolveTimezone } from './context';
 import { householdFor } from '../household';
 import { valueTypeLines } from '../../chat/values';
 import { getAllApps } from '../../apps/registry';
@@ -389,6 +389,14 @@ export async function handleTurn(
     attachments: attachmentSource(history, readAttachment),
     write: reachable.writable,
   });
+  // What the apps know about the speaker. Bounded: a slow app is left out.
+  const offered = new Set(reachable.defs.map((d) => d.singular));
+  const household = householdFor(auth.user.id);
+  const speakerContext = await appContext(getAllApps(), offered, {
+    token: auth.token,
+    userId: auth.user.id,
+    household,
+  });
   const parts: UIMessage['parts'] = [];
   // The reply text of the step in flight. Steps are stored when they end, so
   // without this a stopped turn would lose the words the reader already saw.
@@ -397,14 +405,14 @@ export async function handleTurn(
     stepText ? [...parts, { type: 'text', text: stepText, state: 'done' }] : parts;
   let result: ReturnType<typeof aiStreamAgent>;
   try {
-    const offered = new Set(reachable.defs.map((d) => d.singular));
     result = aiStreamAgent({
       system: buildSystemPrompt(auth.user, {
         now: localNow(resolveTimezone(body.timezone)),
         hasDocSearch,
         appNotes: appNotes(getAllApps(), offered),
         valueTypes: valueTypeLines(getAllApps(), offered),
-        household: householdLines(householdFor(auth.user.id), auth.user.id),
+        household: householdLines(household, auth.user.id),
+        appContext: speakerContext,
       }),
       messages: modelMessages,
       tools: toolSet,

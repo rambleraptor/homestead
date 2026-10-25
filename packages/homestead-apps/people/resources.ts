@@ -21,6 +21,14 @@ export const peopleResources: ResourceDefinition[] = [
       // middle name). Used to match a printed name back to one person when
       // capturing receipts and importing records.
       aliases: { type: 'array', items: { type: 'string' } },
+      // This person's own Homestead account, so the assistant knows who is who
+      // ("your partner Sam"). A label only — it grants nothing. One person per
+      // account: linking an account moves it off any other person.
+      user: {
+        type: 'string',
+        reference: { resource: 'user' },
+        description: "This person's Homestead account, when they have one.",
+      },
       created_by: { type: 'string', reference: { resource: 'user' } },
     },
     bulkImport: {

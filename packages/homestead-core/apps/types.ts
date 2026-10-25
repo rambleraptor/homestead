@@ -12,6 +12,7 @@ import type { ResourceDefinition } from '../resources/types';
 import type { CronHook } from './cron';
 import type { Migration } from './migrations';
 import type { ResourceSync } from './sync';
+import type { HouseholdMember } from '../household/types';
 
 export type { CronContext, CronHandler, CronHook } from './cron';
 export type { MigrationContext, MigrationHandler, Migration } from './migrations';
@@ -254,10 +255,31 @@ export interface ChatValueType {
   component: LazyComponent<ChatValueProps>;
 }
 
+/** What a chat context provider is given for one turn (see `AppChatConfig.context`). */
+export interface ChatContextInput {
+  /** The speaker's bearer token: read with it, so they see only their own. */
+  token: string;
+  /** The speaker's user id. */
+  userId: string;
+  /** Everyone who shares the Homestead, the speaker included. */
+  household: readonly HouseholdMember[];
+}
+
+/** Lines about the speaker the app knows, for one turn's prompt. */
+export type ChatContextProvider = (input: ChatContextInput) => Promise<string[]>;
+
 /** An app's guidance for the AI chat (see `AppConfig.chat`). */
 export interface AppChatConfig {
   /** One note per entry, each a sentence or two of plain guidance. */
   instructions?: readonly string[];
+  /**
+   * What the app knows about the person talking, worked out for each turn
+   * (the People app: who they are, and their family). Server-only and lazily
+   * imported; run, like `instructions`, only when the person is offered one of
+   * the app's tools. A provider that fails or is slow is skipped, and its lines
+   * are capped — the turn never waits on it for long.
+   */
+  context?: () => Promise<{ default: ChatContextProvider }>;
   /**
    * Typed values the app's data holds, by type name (lowercase, e.g.
    * `address`). Offered to the model, like `instructions`, only when the

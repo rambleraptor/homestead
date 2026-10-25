@@ -1,6 +1,8 @@
 /**
  * Person form. State/validation/submission run through the shared
- * `useSchemaForm` engine. `partner_id`, the relative lists, the household
+ * `useSchemaForm` engine. `user_id` is the person's account link, picked from
+ * the household directory and written through `setAccountLink` (which moves
+ * it off anyone else). `partner_id`, the relative lists, the household
  * picker and the "New household" shortcut aren't fields on the person resource
  * (relatives and households live in sibling collections), so they are managed
  * as extra fields and folded into `PersonFormData` in `buildPayload`.
@@ -12,6 +14,7 @@ import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import { TagInput } from '@rambleraptor/homestead-core/shared/components/TagInput';
 import { ReferenceField } from '@rambleraptor/homestead-core/shared/components/ReferenceField';
 import { useFavorites } from '@rambleraptor/homestead-core/shared/favorites';
+import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehold';
 import { Plus, X } from 'lucide-react';
 import type { Person, PersonFormData } from '../types';
 import { usePeople } from '../hooks/usePeople';
@@ -44,6 +47,7 @@ export function PersonForm({
   isSubmitting,
 }: PersonFormProps) {
   const { data: people = [] } = usePeople();
+  const household = useHousehold();
   const favorites = useFavorites('person');
 
   const form = useSchemaForm<PersonFormData>({
@@ -51,6 +55,7 @@ export function PersonForm({
     initialData: {
       name: initialData?.name || '',
       aliases: initialData?.aliases || [],
+      user_id: initialData?.user || '',
       household_ids: (initialData?.households ?? []).map((h) => `${HOUSEHOLDS}/${h.id}`),
       partner_id: initialData?.partner?.id || '',
       parent_ids: toPaths(initialData?.parents ?? []),
@@ -60,6 +65,7 @@ export function PersonForm({
     onSubmit,
     fields: { name: { id: 'name' }, aliases: { id: 'aliases' } },
     extraFields: {
+      user_id: { type: 'string' },
       household_ids: { type: 'array' },
       new_household_open: { type: 'boolean' },
       new_household_name: {
@@ -78,6 +84,7 @@ export function PersonForm({
     buildPayload: (v) => ({
       name: v.name as string,
       aliases: v.aliases as string[],
+      user_id: (v.user_id as string) ?? '',
       household_ids: ((v.household_ids as string[]) ?? []).map(householdIdOf),
       new_household: v.new_household_open
         ? {
@@ -101,6 +108,10 @@ export function PersonForm({
   const newHouseholdOpen = !!form.values.new_household_open;
   // Filter out the current person from partner options.
   const availablePartners = people.filter((p) => p.id !== initialData?.id);
+  // Who each account is linked to now, so picking one shows it will move.
+  const linkedTo = new Map(
+    people.filter((p) => p.user && p.id !== initialData?.id).map((p) => [p.user!, p.name]),
+  );
 
   return (
     <form onSubmit={form.handleSubmit} className="space-y-6">
@@ -133,6 +144,39 @@ export function PersonForm({
           Alternate names (maiden name, nickname, middle name) used to match
           this person on receipts and imports.
         </p>
+      </div>
+
+      {/* Account link */}
+      <div>
+        <label htmlFor="person-account" className="block text-sm font-medium text-gray-700 mb-1">
+          Homestead account
+        </label>
+        <select
+          id="person-account"
+          data-testid="person-account-select"
+          value={(form.values.user_id as string) ?? ''}
+          onChange={(e) => form.setValue('user_id', e.target.value)}
+          disabled={!household.data}
+          className="w-full rounded-md border border-gray-300 px-3 py-2"
+        >
+          <option value="">No account</option>
+          {(household.data ?? []).map((member) => (
+            <option key={member.id} value={member.id}>
+              {linkedTo.has(member.id)
+                ? `${member.name} (now linked to ${linkedTo.get(member.id)})`
+                : member.name}
+            </option>
+          ))}
+        </select>
+        {household.isError ? (
+          <p className="text-sm text-red-600 mt-1" data-testid="person-account-error">
+            The household couldn't be loaded, so the account can't be changed right now.
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500 mt-1">
+            When this person uses Homestead, link their account so the assistant knows who is who.
+          </p>
+        )}
       </div>
 
       {/* Partner selection */}
