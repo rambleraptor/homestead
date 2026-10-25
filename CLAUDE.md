@@ -364,7 +364,10 @@ SPA and apps share:
   local clock (the SPA sends its timezone with each turn) and the
   `chat.instructions` of apps whose tools they're offered
   (`server/chat/context.ts`) — app-specific guidance belongs there, not in
-  core's prompt. Its SPA half is
+  core's prompt. Replies are Markdown; an app's `chat.values` teaches the model
+  a typed value (`[12 Oak St](homestead:address)`) that the SPA renders with
+  the app's component (`chat/values.ts`, `chat/components/ChatValue.tsx`), the
+  link built from the value's text, never from the reply. Its SPA half is
   the AI SDK's `useChat` over a stored-turn transport (`chat/api.ts`,
   `chat/hooks/useConversation.ts`), rendered with AI Elements. `notifications` owns the
   web-push inbox + subscription management; its server half lives in

@@ -232,10 +232,39 @@ export interface AppWebConfig {
   widgets?: DashboardWidget[];
 }
 
+/** What a typed-value renderer is given (see `ChatValueType`). */
+export interface ChatValueProps {
+  /** The value as the reply wrote it: the link text, which is also what's shown. */
+  text: string;
+}
+
+/**
+ * A kind of value the assistant can mark in a reply so the chat renders it
+ * with its own behavior: an address that opens the person's map service, a
+ * phone number that dials. The model writes `[<value>](homestead:<type>)`;
+ * the renderer gets only the value's text and builds any link from it, so a
+ * reply can never choose where one points.
+ */
+export interface ChatValueType {
+  /** What to mark with this type, for the model: "a postal address". */
+  description: string;
+  /** A sample value, shown to the model in the syntax example. */
+  example: string;
+  /** The renderer, lazily imported (a default export or a component). */
+  component: LazyComponent<ChatValueProps>;
+}
+
 /** An app's guidance for the AI chat (see `AppConfig.chat`). */
 export interface AppChatConfig {
   /** One note per entry, each a sentence or two of plain guidance. */
-  instructions: readonly string[];
+  instructions?: readonly string[];
+  /**
+   * Typed values the app's data holds, by type name (lowercase, e.g.
+   * `address`). Offered to the model, like `instructions`, only when the
+   * person is offered one of the app's tools. A name is global: the first
+   * declaration wins, and core's own types (`phone`, `email`) come first.
+   */
+  values?: Readonly<Record<string, ChatValueType>>;
 }
 
 /**

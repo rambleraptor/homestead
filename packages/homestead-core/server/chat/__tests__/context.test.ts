@@ -88,6 +88,17 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Ask only before creating, changing or deleting something');
   });
 
+  it('teaches the typed values it is given, and none when there are none', () => {
+    const prompt = buildSystemPrompt(user, {
+      now: 'x',
+      hasDocSearch: false,
+      valueTypes: ['- address: a postal address, e.g. [12 Oak St](homestead:address)'],
+    });
+    expect(prompt).toContain('Typed values');
+    expect(prompt).toContain('  - address: a postal address, e.g. [12 Oak St](homestead:address)');
+    expect(buildSystemPrompt(user, { now: 'x', hasDocSearch: false })).not.toContain('Typed values');
+  });
+
   it('names no app-specific tool on its own', () => {
     const prompt = buildSystemPrompt(user, { now: 'x', hasDocSearch: false });
     expect(prompt).not.toContain('personal_todos');

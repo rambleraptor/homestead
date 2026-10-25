@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, test, expect } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { ChatPage } from '../e2e/pages/ChatPage';
+import { SettingsPage } from '../e2e/pages/SettingsPage';
 import { e2eClient } from '../e2e/utils/aepbase-helpers';
 import { CHAT_MARKERS, LONG_REPLY_TEXT } from '../e2e/config/ai-scripts';
 
@@ -137,6 +138,44 @@ describe('Chat', () => {
     await d.expect(reply).not.toContainText('**');
     await d.expect(reply).not.toContainText('| --- |');
     await chat.expectSettled(/Where do the Jakes live/);
+  });
+
+  test('typed values in a reply become links that do the right thing', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Jake's details ${CHAT_MARKERS.typedValues}`);
+
+    const reply = chat.assistantMessages.first();
+    await d
+      .expect(reply.getByTestId('chat-value-address'))
+      .toHaveAttribute(
+        'href',
+        'https://www.google.com/maps/search/?api=1&query=12%20Oak%20St%2C%20Springfield%2C%20IL%2062704',
+      );
+    await d.expect(reply.getByTestId('chat-value-address')).toContainText('12 Oak St, Springfield, IL 62704');
+    await d.expect(reply.getByTestId('chat-value-phone')).toHaveAttribute('href', 'tel:5551234567');
+    await d.expect(reply.getByTestId('chat-value-email')).toHaveAttribute('href', 'mailto:jake@example.com');
+    // An unknown type, a malformed one, and an unsafe link are only text.
+    await d.expect(reply).toContainText('Ship: a spaceship');
+    await d.expect(reply).toContainText('Odd: sneaky');
+    await d.expect(reply.getByRole('link')).toHaveCount(3);
+    await chat.expectSettled(/Jake's details/);
+  });
+
+  test("an address opens in the person's own map service", async () => {
+    const d = h.driver;
+    const settings = new SettingsPage(d);
+    await settings.goto();
+    await settings.selectMapProvider('apple');
+
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Jake's details ${CHAT_MARKERS.typedValues}`);
+    await d
+      .expect(chat.assistantMessages.first().getByTestId('chat-value-address'))
+      .toHaveAttribute('href', 'https://maps.apple.com/?q=12%20Oak%20St%2C%20Springfield%2C%20IL%2062704');
+    await chat.expectSettled(/Jake's details/);
   });
 
   test('a plain reply needs no tool at all', async () => {

@@ -17,6 +17,8 @@ import {
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { MessageAttachments } from './MessageAttachments';
+import { ReplyLink, replyRehypePlugins, replyUrlTransform } from './ChatValue';
+import { plainReplyText } from '../values';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
 
 /**
@@ -29,14 +31,19 @@ const replyComponents = {
   img: ({ alt }: { alt?: string }) => (
     <span className="text-muted-foreground">[{alt || 'image'}]</span>
   ),
+  // Typed values (`[12 Oak St](homestead:address)`) render by type; the rest
+  // are ordinary links. See `../values`.
+  a: ReplyLink,
 };
 
-/** The text of a message, for copying. */
+/** The text of a message, for copying: typed values read as plain values. */
 function messageText(message: HomesteadUIMessage): string {
-  return message.parts
-    .filter((p) => p.type === 'text')
-    .map((p) => p.text)
-    .join('\n\n');
+  return plainReplyText(
+    message.parts
+      .filter((p) => p.type === 'text')
+      .map((p) => p.text)
+      .join('\n\n'),
+  );
 }
 
 /**
@@ -102,7 +109,13 @@ export function ChatMessage({ conversationId, message, stored, streaming }: Chat
                 {part.text}
               </p>
             ) : (
-              <MessageResponse key={i} isAnimating={streaming} components={replyComponents}>
+              <MessageResponse
+                key={i}
+                isAnimating={streaming}
+                components={replyComponents}
+                rehypePlugins={replyRehypePlugins}
+                urlTransform={replyUrlTransform}
+              >
                 {part.text}
               </MessageResponse>
             );

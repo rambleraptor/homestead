@@ -28,6 +28,7 @@ import type { WriteAccess } from './surface';
 import { handleTurn } from './turns';
 import { MAX_TURN_REQUEST_BYTES } from './attachments';
 import { makeSearchTool, SEARCH_TOOL_NAME } from './search-tool';
+import { VALUE_SCHEME } from '../../chat/values';
 
 /** What a turn's system prompt is built from, besides the person. */
 export interface PromptContext {
@@ -37,10 +38,12 @@ export interface PromptContext {
   hasDocSearch: boolean;
   /** Notes from the apps whose tools are offered (`appNotes` in `./context`). */
   appNotes?: string[];
+  /** The typed values replies can mark, one line each (`valueTypeLines`). */
+  valueTypes?: string[];
 }
 
 export function buildSystemPrompt(user: AuthedUser, context: PromptContext): string {
-  const { now, hasDocSearch, appNotes = [] } = context;
+  const { now, hasDocSearch, appNotes = [], valueTypes = [] } = context;
   return [
     'You are the Homestead household assistant. You help members of the',
     'household look up and manage their data (todos, groceries, recipes,',
@@ -91,6 +94,15 @@ export function buildSystemPrompt(user: AuthedUser, context: PromptContext): str
     '  - A single fact: one short sentence, not a list.',
     '  - Headings only to separate the parts of a long answer.',
     '- Be concise. After a change, say what changed (a list when several did).',
+    ...(valueTypes.length > 0
+      ? [
+          '- Typed values: write each value of these kinds as a Markdown link to',
+          `  ${VALUE_SCHEME}:<type>, with the value itself as the link text, and the`,
+          '  chat makes it do the right thing (open a map, dial). Use them for values',
+          '  read from records, in lists and tables too; never put a URL in one.',
+          ...valueTypes.map((line) => `  ${line}`),
+        ]
+      : []),
   ].join('\n');
 }
 

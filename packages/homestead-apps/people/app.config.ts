@@ -24,6 +24,13 @@ export const peopleApp: AppConfig = {
         '(both Jakes\' addresses, say). Ask which one only before changing ' +
         'something for one of them.',
     ],
+    values: {
+      address: {
+        description: 'a postal address, written on one line',
+        example: '12 Oak St, Springfield, IL 62704',
+        component: () => import('./components/AddressValue'),
+      },
+    },
   },
   // Partnership moved from person-shared-data's person_b to partner
   // relationship rows. One-shot and idempotent.

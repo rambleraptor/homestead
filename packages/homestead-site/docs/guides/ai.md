@@ -148,7 +148,10 @@ actions it took — each tool call is a card you can open to see what it sent an
 what came back. Replies stream in as they're written, and render as Markdown:
 several records come back as a list with each name in bold, records compared
 side by side as a table, and the values you asked for (dates, amounts,
-addresses) in bold.
+addresses) in bold. Some values are links you can act on: an address opens in
+the map service you picked in your People settings, a phone number dials, and
+an email address starts a message. Apps can add their own
+([Typed values in replies](./app-config#typed-values-in-replies)).
 
 ### The agentic home
 
