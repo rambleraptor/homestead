@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { ChatPage } from '../e2e/pages/ChatPage';
 import { DashboardPage } from '../e2e/pages/DashboardPage';
-import { e2eClient } from '../e2e/utils/aepbase-helpers';
+import { createUser, e2eClient } from '../e2e/utils/aepbase-helpers';
+import { getAepbaseUrl } from '../e2e/config/aepbase.setup';
 import { CHAT_MARKERS } from '../e2e/config/ai-scripts';
 
 interface ConversationRecord {
@@ -68,26 +69,32 @@ describe('Agentic home', () => {
     await h.driver.expect(dashboard.agenticHome).toHaveCount(0);
   });
 
-  test('the conversation runs in place, with a way to the Chat screen', async () => {
+  test('the first message moves the conversation into the address; a reload keeps it', async () => {
     await enableFor('everyone');
     const { token } = await h.loginAs(h.member);
     const d = h.driver;
     const dashboard = new DashboardPage(d);
     const chat = new ChatPage(d);
     await d.expect(dashboard.agenticHome).toBeVisible();
+    await d.expect(dashboard.newChat).toHaveCount(0);
 
     await chat.send(`Hi there ${CHAT_MARKERS.hello}`);
     await d.expect(chat.messages).toContainText('Hello from the scripted assistant. How can I help?');
-    // Still the home: the thread stays here, with a way to the Chat screen.
-    await d.expectURL(/\/dashboard$/);
     const conversations = e2eClient(token).collection<ConversationRecord>('conversations');
     const [conversation] = await conversations.listAll();
     expect(conversation).toBeTruthy();
-    await d.expect(dashboard.openInChat).toHaveAttribute('href', `/chat/${conversation!.id}`);
+    // Still the home, now at the conversation's own address.
+    await d.expectURL(new RegExp(`/dashboard/c/${conversation!.id}$`));
+    await d.expect(dashboard.agenticHome).toBeVisible();
     await eventually(() => conversations.get(conversation!.id), (c) => c.status === 'idle');
+
+    await d.reload();
+    await d.expect(dashboard.agenticHome).toBeVisible();
+    await d.expect(chat.userMessages).toHaveCount(1);
+    await d.expect(chat.assistantMessages).toHaveCount(1);
   });
 
-  test('a new visit starts a new conversation; the old one is in Chat', async () => {
+  test('New chat starts over; the drawer brings the old one back', async () => {
     await enableFor('everyone');
     const { token } = await h.loginAs(h.member);
     const d = h.driver;
@@ -100,12 +107,56 @@ describe('Agentic home', () => {
     const [conversation] = await conversations.listAll();
     await eventually(() => conversations.get(conversation!.id), (c) => c.status === 'idle');
 
-    await d.reload();
-    await d.expect(dashboard.agenticHome).toBeVisible();
+    await dashboard.newChat.click();
+    await d.expectURL(/\/dashboard$/);
     await d.expect(chat.userMessages).toHaveCount(0);
-    await d.expect(dashboard.openInChat).toHaveCount(0);
-    await chat.goto();
-    await d.expect(chat.conversation(/Hi there/)).toHaveCount(1);
+
+    await dashboard.openPastConversation(/Hi there/);
+    await d.expectURL(new RegExp(`/dashboard/c/${conversation!.id}$`));
+    await d.expect(dashboard.historyDrawer).toHaveCount(0);
+    await d.expect(dashboard.agenticHome).toBeVisible();
+    await d.expect(chat.assistantMessages).toHaveCount(1);
+  });
+
+  test('deleting the open conversation from the drawer starts a new one', async () => {
+    await enableFor('everyone');
+    const { token } = await h.loginAs(h.member);
+    const d = h.driver;
+    const dashboard = new DashboardPage(d);
+    const chat = new ChatPage(d);
+    await d.expect(dashboard.agenticHome).toBeVisible();
+    await chat.send(`Hi there ${CHAT_MARKERS.hello}`);
+    await d.expect(chat.assistantMessages).toHaveCount(1);
+    const conversations = e2eClient(token).collection<ConversationRecord>('conversations');
+    const [conversation] = await conversations.listAll();
+    await eventually(() => conversations.get(conversation!.id), (c) => c.status === 'idle');
+
+    await dashboard.historyButton.click();
+    await dashboard.historyConversation(/Hi there/).getByTestId('chat-conversation-delete').click();
+    await d.getByRole('button', { name: 'Delete', exact: true }).click();
+
+    await d.expectURL(/\/dashboard$/);
+    await d.expect(dashboard.historyConversation(/Hi there/)).toHaveCount(0);
+    expect(await conversations.listAll()).toEqual([]);
+  });
+
+  test("someone who can't use Chat gets the classic dashboard", async () => {
+    await enableFor('everyone');
+    // A guest with no household role: no grant reaches Chat's conversations.
+    const email = `guest-${Date.now()}@example.com`;
+    const password = 'guest-vm-password';
+    const guest = await createUser(h.admin.token, { email, password, display_name: 'Guest', noRole: true });
+    const res = await fetch(`${getAepbaseUrl()}/users/:login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const { token: guestToken } = (await res.json()) as { token: string };
+    await h.loginAs({ id: guest.id, email, password, token: guestToken });
+
+    const dashboard = new DashboardPage(h.driver);
+    await h.driver.expect(dashboard.welcomePanel).toBeVisible();
+    await h.driver.expect(dashboard.agenticHome).toHaveCount(0);
   });
 
   test('the strip follows the widgets\' summaries, and a chip opens its widget', async () => {

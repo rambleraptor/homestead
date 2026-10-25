@@ -9,6 +9,10 @@
  */
 
 import { Suspense } from 'react';
+import { Navigate } from 'react-router-dom';
+import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
+import { useAiConfigured } from '@rambleraptor/homestead-core/chat/hooks/useAiConfigured';
+import { CHAT_APP_ID } from '@rambleraptor/homestead-core/chat/hooks/useConversations';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { getTodaysHoliday } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
@@ -23,11 +27,32 @@ import { WelcomePanel } from './WelcomePanel';
 import { AdminChecklistPanel } from './AdminChecklistPanel';
 import { NoAppsPanel } from './NoAppsPanel';
 
-export function DashboardHome() {
+/** `/dashboard`, and `/dashboard/c/:id` (a conversation on the agentic home). */
+export function DashboardHome({ params }: AppRouteProps) {
+  const conversationId = params?.id ?? null;
   // Behind a flag whose audience can be one group, so the assistant-first
   // home can be tried by a few people while everyone else keeps this one.
   const agentic = useAppFlag<boolean>('dashboard', 'agentic_home');
-  if (agentic.value === true) return <AgenticHome />;
+  // The assistant-first home is only for someone the assistant can serve: an
+  // AI provider configured, and Chat among the apps they can use. Anyone else
+  // gets the classic dashboard rather than a text bar that can only fail.
+  const configured = useAiConfigured();
+  const isVisible = useAppVisible();
+  const chatApp = getAppById(CHAT_APP_ID);
+  const canChat = !!chatApp && isVisible(chatApp);
+
+  if (agentic.value === true && canChat) {
+    // Still asking the server: show neither home rather than flash the wrong one.
+    if (configured === undefined) return null;
+    if (configured) return <AgenticHome conversationId={conversationId} />;
+  }
+  if (conversationId) {
+    // Until the flag has loaded it reads as off: wait rather than send a
+    // conversation on the agentic home away to the Chat screen on a reload.
+    if (agentic.isLoading) return null;
+    // The classic dashboard holds no conversation; one in the address is Chat's.
+    return <Navigate to={`/chat/${conversationId}`} replace />;
+  }
   return <ClassicHome />;
 }
 
