@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { visibleToModel } from '../model-tools';
+import { reachableBy, visibleToModel, type CollectionAccess } from '../model-tools';
 import type { ResourceDefinition } from '../types';
 
 const def = (singular: string, extra: Partial<ResourceDefinition> = {}): ResourceDefinition => ({
@@ -46,5 +46,26 @@ describe('visibleToModel', () => {
 
   it('keeps children of the built-in user root, which is never a declared def', () => {
     expect(names(visibleToModel([def('note', { parents: ['user'] })], 'chat'))).toEqual(['note']);
+  });
+});
+
+describe('reachableBy', () => {
+  const access = (entries: Record<string, Partial<CollectionAccess>>) =>
+    new Map(Object.entries(entries).map(([k, v]) => [k, { read: false, write: false, ...v }]));
+
+  it('keeps what the caller can read, read-only or not', () => {
+    const defs = [def('book'), def('audit'), def('note', { parents: ['user'] })];
+    const reach = access({ book: { read: true, write: true }, audit: { read: true }, note: { read: true } });
+    expect(names(reachableBy(defs, reach))).toEqual(['book', 'audit', 'note']);
+  });
+
+  it("drops what they can't read, with its descendants", () => {
+    const defs = [def('conversation'), def('message', { parents: ['conversation'] }), def('book')];
+    const reach = access({ conversation: {}, message: { read: true }, book: { read: true } });
+    expect(names(reachableBy(defs, reach))).toEqual(['book']);
+  });
+
+  it('drops a resource the engine did not report', () => {
+    expect(names(reachableBy([def('book'), def('ghost')], access({ book: { read: true } })))).toEqual(['book']);
   });
 });

@@ -312,6 +312,16 @@ describe('MCP tool registration (over an in-memory client)', () => {
     await client.close();
   });
 
+  it('a per-resource write gate drops only the read-only resource’s writers', async () => {
+    const SHELF: ResourceDefinition = { singular: 'shelf', plural: 'shelves', fields: { name: { type: 'string' } } };
+    const client = await connectClient([BOOK, SHELF], { write: (def) => def.singular === 'shelf' });
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+    expect(names).toEqual(expect.arrayContaining(['read_book', 'read_shelf', 'create_shelf', 'delete_shelf']));
+    expect(names).not.toContain('create_book');
+    expect(names).not.toContain('reshelve_book');
+    await client.close();
+  });
+
   it('read-only narrows the generic surface to describe + read', async () => {
     const client = await connectClient([BOOK], generic({ write: false }));
     const names = (await client.listTools()).tools.map((tool) => tool.name);

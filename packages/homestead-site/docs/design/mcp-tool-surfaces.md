@@ -230,6 +230,18 @@ read-only token (defense in depth, matching `generic`'s
 `:bulk-import` / `:bulk-export` stay unexposed on this surface too — they move
 files, not model-composable JSON.
 
+The same narrowing applies **per resource** to what the caller can reach, on
+every surface and in the chat. Before building tools, the route asks the
+engine (`Engine.collectionAccess`, through the core seam in
+`core/server/collection-access.ts`) whether the caller could read and could
+write each collection, following the router's own rules — grants, filtered
+grants, shared records, owned rows, inheritance from the governing ancestor,
+the user subtree, and the credential ceiling. A collection they can't read is
+dropped with its descendants; one they can't write gets the read-only enum
+here, loses its write tools on `typed`, and is marked `read_only` in
+`generic`'s catalog, whose write tools refuse it. "Could" errs toward yes —
+it's a courtesy to the model, not a boundary; the engine decides each call.
+
 ---
 
 ## 4. Execution: no new paths

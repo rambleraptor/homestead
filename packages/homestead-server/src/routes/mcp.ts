@@ -19,6 +19,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import type { AuthServerConfig } from '@rambleraptor/homestead-core/apps/config';
 import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
 import { visibleToModel } from '@rambleraptor/homestead-core/resources/model-tools';
+import { modelResourcesFor } from '@rambleraptor/homestead-core/server/collection-access';
 import type { Engine } from '../engine/engine';
 import { verifyAccessToken, unauthorizedResponse } from '../auth/oauth/verify';
 import { accessJwtLog } from '../auth/access-jwt';
@@ -137,9 +138,14 @@ export function makeMcpRoute(
     const caller = await resolveCaller(c.req.raw);
     if (caller instanceof Response) return caller;
 
-    // Less any resource a definition hides from MCP (`modelTools.mcp: false`).
-    const defs = visibleToModel(resolveDefs(), 'mcp');
-    const write = scopeAllowsWrite(caller.scope);
+    // Less any resource a definition hides from MCP (`modelTools.mcp: false`),
+    // and narrowed to what this caller can reach: a tool they can't use costs
+    // the client's context on every turn and only ever earns a 403.
+    const { defs, writable } = await modelResourcesFor(
+      visibleToModel(resolveDefs(), 'mcp'),
+      caller.token,
+    );
+    const write = scopeAllowsWrite(caller.scope) ? writable : false;
     // Read per request (not at mount) so flipping the flag in Flag Management
     // takes effect on the client's next tools/list, with no restart.
     const mode = toolMode(readAppFlag(engine, 'settings', 'mcp_tools'));

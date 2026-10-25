@@ -53,6 +53,14 @@ export const SCRIPT_EXHAUSTED_TEXT = '[ai-stub] script exhausted';
 export const ATTACHMENTS_PLACEHOLDER = '{attachments}';
 
 /**
+ * In a script's reply text, replaced by the tools the request offered the
+ * model, sorted, each with the `action` values it accepts:
+ * `gift_cards(list get create update delete) | todos(list get)` — so a test can
+ * check what the model was allowed to try, not just what it did.
+ */
+export const TOOLS_PLACEHOLDER = '{tools}';
+
+/**
  * In a tool call's arguments, replaced by the attachment id of the first file
  * the message carried (the model is shown `attachment id: …` beside each) — so
  * a script can file an attachment whose id it can't know in advance.
@@ -79,6 +87,8 @@ export const CHAT_MARKERS = {
   describeAttachments: 'e2e-chat-describe-attachments',
   /** Save the attached photo as a new gift card's front image, then confirm. */
   fileGiftCard: 'e2e-chat-file-gift-card',
+  /** Reply with the tools the model was offered (see TOOLS_PLACEHOLDER). */
+  listTools: 'e2e-chat-list-tools',
 } as const;
 
 /** The long reply's text, exported so a spec can check the whole of it arrived. */
@@ -117,6 +127,10 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
   {
     marker: CHAT_MARKERS.describeAttachments,
     steps: [{ text: ATTACHMENTS_PLACEHOLDER }],
+  },
+  {
+    marker: CHAT_MARKERS.listTools,
+    steps: [{ text: TOOLS_PLACEHOLDER }],
   },
   {
     marker: CHAT_MARKERS.fileGiftCard,

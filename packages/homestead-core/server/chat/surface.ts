@@ -23,6 +23,7 @@
  * `register.ts` registers either through one loop.
  */
 
+import type { ResourceDefinition } from '../../resources/types';
 import type { ToolSpec } from './tools';
 
 /** Which tool surface `/api/mcp` exposes. */
@@ -46,4 +47,16 @@ export interface ToolSurface {
   instructions: string;
   /** The plurals exposed, in declaration order. */
   resources: string[];
+}
+
+/**
+ * Whether a surface offers writes: on every resource, on none (a read-only
+ * credential), or per resource (what one caller can change — see
+ * `../collection-access`).
+ */
+export type WriteAccess = boolean | ((def: ResourceDefinition) => boolean);
+
+/** {@link WriteAccess} as a per-resource predicate. */
+export function writeGate(write: WriteAccess): (def: ResourceDefinition) => boolean {
+  return typeof write === 'function' ? write : () => write;
 }

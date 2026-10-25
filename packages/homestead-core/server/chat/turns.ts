@@ -36,6 +36,7 @@ import { CHAT_MESSAGES, CONVERSATIONS } from '../../chat/resources';
 import type { ChatTurnRequest } from '../../chat/types';
 import type { ResourceDefinition } from '../../resources/types';
 import { buildChatToolSet, buildSystemPrompt } from './handler';
+import { modelResourcesFor } from '../collection-access';
 import { attachmentSource, attachmentsTitle, checkAttachments, withAttachments } from './attachments';
 
 /** Max rounds of tool execution per turn before forcing a text answer. */
@@ -369,10 +370,19 @@ export async function handleTurn(
   }
 
   // 5. Stream the model, writing the assistant message at each step boundary.
-  // File fields take this conversation's attachments — every message's, not
-  // only those the model is shown — and nothing else.
-  const { toolSet, hasDocSearch } = buildChatToolSet(defs, auth.token, {
+  // The tools are what this person can reach, and file fields take this
+  // conversation's attachments — every message's, not only those the model is
+  // shown — and nothing else.
+  let reachable;
+  try {
+    reachable = await modelResourcesFor(defs, auth.token);
+  } catch (err) {
+    await finish({ status: 'error', error: `could not resolve access: ${String(err)}` });
+    return problem(500, 'could not resolve what this account can reach');
+  }
+  const { toolSet, hasDocSearch } = buildChatToolSet(reachable.defs, auth.token, {
     attachments: attachmentSource(history, readAttachment),
+    write: reachable.writable,
   });
   const parts: UIMessage['parts'] = [];
   // The reply text of the step in flight. Steps are stored when they end, so

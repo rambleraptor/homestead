@@ -24,6 +24,7 @@ import { isAiConfigured } from '../ai/config';
 import { tool, type ToolSet } from '../ai/generate';
 import { buildResourceTools, resourceInstructions } from './per-resource';
 import type { AttachmentSource } from './execute';
+import type { WriteAccess } from './surface';
 import { handleTurn } from './turns';
 import { MAX_TURN_REQUEST_BYTES } from './attachments';
 import { makeSearchTool, SEARCH_TOOL_NAME } from './search-tool';
@@ -80,14 +81,15 @@ export function buildSystemPrompt(user: AuthedUser, hasDocSearch: boolean): stri
  * each tool executing under `token`, plus the semantic document search when
  * embeddings are configured. A failed call goes back to the model as
  * `{ error }` for it to correct, never thrown. `attachments` resolves the
- * conversation's attached files, which file fields then accept by id.
+ * conversation's attached files, which file fields then accept by id; `write`
+ * says which resources are offered write actions.
  */
 export function buildChatToolSet(
   defs: ResourceDefinition[],
   token: string,
-  { attachments }: { attachments?: AttachmentSource } = {},
+  { attachments, write = true }: { attachments?: AttachmentSource; write?: WriteAccess } = {},
 ): { toolSet: ToolSet; hasDocSearch: boolean } {
-  const surface = buildResourceTools(defs, { attachments });
+  const surface = buildResourceTools(defs, { attachments, write });
   const toolSet: ToolSet = {};
   for (const [name, spec] of Object.entries(surface.tools)) {
     toolSet[name] = tool({

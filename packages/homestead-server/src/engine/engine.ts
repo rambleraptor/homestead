@@ -28,6 +28,8 @@ import { PermissionStore, permissionCacheTtlMs } from './permission-store';
 import { type Grant } from './permissions';
 import type { EnforceContext } from './enforce';
 import { collectionsWithVisibleRows } from './visible-rows';
+import { collectionAccess } from './collection-access';
+import type { CollectionAccess } from '@rambleraptor/homestead-core/resources/model-tools';
 import { TYPE_SUPERUSER, type User } from './types';
 import type { SyncDispatcher } from '../sync';
 import {
@@ -177,6 +179,16 @@ export class Engine {
         getUserById(this.db, userId)?.user ?? null,
       ),
     };
+  }
+
+  /**
+   * Whether `caller` could read, and could write, each collection — for the
+   * model-facing tool surfaces, which offer only what the caller can use. Not
+   * an authorization: every request is still decided as it arrives. See
+   * `./collection-access`.
+   */
+  collectionAccess(caller: User): Map<string, CollectionAccess> {
+    return collectionAccess(this.enforceContext(), this.db, this.registry, caller);
   }
 
   /**

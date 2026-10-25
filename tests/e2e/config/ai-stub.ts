@@ -28,6 +28,7 @@ import type { AddressInfo } from 'net';
 import {
   ATTACHMENT_ID_PLACEHOLDER,
   ATTACHMENTS_PLACEHOLDER,
+  TOOLS_PLACEHOLDER,
   SCRIPT_EXHAUSTED_TEXT,
   scriptFor,
   type ScriptStep,
@@ -185,6 +186,22 @@ function attachmentSummary(item: InputItem): string {
   return `I can see ${plural(images, 'image')} and ${plural(pdfs, 'PDF')}.`;
 }
 
+/**
+ * The tools a Responses request offers, as {@link TOOLS_PLACEHOLDER} reads:
+ * each name with the `action` values its parameters accept.
+ */
+function toolSummary(body: unknown): string {
+  const tools = (body as { tools?: unknown })?.tools;
+  if (!Array.isArray(tools)) return '(no tools)';
+  return (tools as Array<{ name?: string; parameters?: { properties?: { action?: { enum?: string[] } } } }>)
+    .map((tool) => {
+      const actions = tool.parameters?.properties?.action?.enum;
+      return actions ? `${tool.name}(${actions.join(' ')})` : `${tool.name}`;
+    })
+    .sort()
+    .join(' | ');
+}
+
 /** The text of an input item's content, however the provider shaped it. */
 function textOf(item: InputItem): string {
   if (typeof item.content === 'string') return item.content;
@@ -213,6 +230,9 @@ export function scriptedStep(body: unknown): ScriptStep | null {
 
   const round = items.slice(lastUser + 1).filter((item) => item.type === 'function_call_output').length;
   let step = script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT };
+  if (step.text?.includes(TOOLS_PLACEHOLDER)) {
+    step = { ...step, text: step.text.replace(TOOLS_PLACEHOLDER, toolSummary(body)) };
+  }
   if (step.text?.includes(ATTACHMENTS_PLACEHOLDER)) {
     step = { ...step, text: step.text.replace(ATTACHMENTS_PLACEHOLDER, attachmentSummary(items[lastUser]!)) };
   }

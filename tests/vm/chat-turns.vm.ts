@@ -10,7 +10,8 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
-import { e2eClient } from '../e2e/utils/aepbase-helpers';
+import { createUser, e2eClient } from '../e2e/utils/aepbase-helpers';
+import { getAepbaseUrl } from '../e2e/config/aepbase.setup';
 import { CHAT_MARKERS, LONG_REPLY_TEXT } from '../e2e/config/ai-scripts';
 
 const APP = process.env.HOMESTEAD_E2E_APP_URL!;
@@ -62,6 +63,21 @@ async function events(res: Response): Promise<Array<Record<string, unknown>>> {
     .filter((data) => data && data !== '[DONE]')
     .map((data) => JSON.parse(data) as Record<string, unknown>);
 }
+
+/** A fresh session for an account, as its login form would get one. */
+async function login(email: string, password: string): Promise<string> {
+  const res = await fetch(`${getAepbaseUrl()}/users/:login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  expect(res.status).toBe(200);
+  return ((await res.json()) as { token: string }).token;
+}
+
+/** The reply's text, from a stream's deltas. */
+const replyText = (stream: Array<Record<string, unknown>>) =>
+  stream.filter((e) => e.type === 'text-delta').map((e) => e.delta).join('');
 
 const conversations = (as = token) => e2eClient(as).collection<Conversation>('conversations');
 const messagesOf = (id: string, as = token) =>
@@ -269,6 +285,59 @@ describe('a conversation is its starter’s alone', () => {
   });
 });
 
+describe('the tools a turn offers', () => {
+  /** The tools the model was offered, by name, each with its actions. */
+  async function offered(as: string): Promise<Map<string, string>> {
+    const res = await send(as, `What can you do? ${CHAT_MARKERS.listTools}`);
+    expect(res.status).toBe(200);
+    const conversationId = res.headers.get('x-conversation-id')!;
+    const summary = replyText(await events(res));
+    await eventually(() => conversations(as).get(conversationId), (c) => c.status === 'idle');
+    return new Map(
+      summary.split(' | ').map((tool) => {
+        const [, name, actions = ''] = /^([^(]+)(?:\((.*)\))?$/.exec(tool)!;
+        return [name!, actions];
+      }),
+    );
+  }
+
+  test('are what the person can reach', async () => {
+    const before = await offered(token);
+    expect(before.get('gift_cards')).toMatch(/^list get create update delete/);
+    expect(before.has('transactions')).toBe(true);
+
+    await e2eClient(h.admin.token).collection('access-grants').create({
+      subject_type: 'user',
+      subject_id: h.member.id,
+      target_scope: 'collection',
+      resource_type: 'gift-card',
+      capability: 'read',
+      effect: 'deny',
+    });
+    const after = await offered(token);
+    // Gone, with the transactions beneath it; everything else stays.
+    expect(after.has('gift_cards')).toBe(false);
+    expect(after.has('transactions')).toBe(false);
+    expect(after.get('groceries')).toMatch(/^list get create update delete/);
+  });
+
+  test("offer reads alone where the person can't write", async () => {
+    // A guest: no household role. They may use chat, and read gift cards.
+    const email = `guest-${Date.now()}@example.com`;
+    const password = 'guest-vm-password';
+    const guest = await createUser(h.admin.token, { email, password, display_name: 'Guest', noRole: true });
+    const grants = e2eClient(h.admin.token).collection('access-grants');
+    const allow = { subject_type: 'user', subject_id: guest.id, effect: 'allow' };
+    await grants.create({ ...allow, target_scope: 'collection', resource_type: 'conversation', capability: 'write' });
+    await grants.create({ ...allow, target_scope: 'collection', resource_type: 'gift-card', capability: 'read' });
+
+    const tools = await offered(await login(email, password));
+    expect(tools.get('gift_cards')).toBe('list get');
+    expect(tools.get('transactions')).toBe('list get');
+    expect(tools.has('groceries')).toBe(false);
+  });
+});
+
 describe('attachments', () => {
   const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
   const PDF = new TextEncoder().encode('%PDF-1.7 tickets');
@@ -297,9 +366,6 @@ describe('attachments', () => {
       body: form,
     });
   }
-
-  const replyText = (stream: Array<Record<string, unknown>>) =>
-    stream.filter((e) => e.type === 'text-delta').map((e) => e.delta).join('');
 
   test('files reach the model and are stored on the message', async () => {
     const res = await sendWithFiles(`What are these? ${CHAT_MARKERS.describeAttachments}`, [

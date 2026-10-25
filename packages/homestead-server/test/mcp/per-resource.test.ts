@@ -206,6 +206,26 @@ describe('a read-only authorization', () => {
   });
 });
 
+describe('writes gated per resource', () => {
+  const onlyTransactions = { write: (def: { singular: string }) => def.singular === 'transaction' };
+
+  it('narrows only the resources the caller cannot change', () => {
+    const { tools } = buildResourceTools(DEFS, onlyTransactions);
+    expect(shapeOf(tools.gift_cards.inputSchema).action.safeParse('create').success).toBe(false);
+    expect(tools.gift_cards.description).toContain('read-only');
+    expect(shapeOf(tools.transactions.inputSchema).action.safeParse('create').success).toBe(true);
+    expect(tools.transactions.description).not.toContain('read-only');
+  });
+
+  it('refuses a write on a read-only resource', async () => {
+    const { execute } = buildResourceTools(DEFS, onlyTransactions);
+    const { calls } = stubFetch();
+    const out = await execute('gift_cards', { action: 'delete', id: 'g1' }, 'tok');
+    expect(out.ok).toBe(false);
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe('executing a call', () => {
   it('lists without an id and gets one record with it', async () => {
     const { execute } = buildResourceTools(DEFS);
