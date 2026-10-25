@@ -10,7 +10,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
+import { aepbase, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
 import { ACCESS_GRANTS } from '../../resources';
 import type { AccessGrantRecord } from '../../hooks';
 import { ShareRecordDialog } from '../ShareRecordDialog';
@@ -72,6 +72,27 @@ describe('ShareRecordDialog', () => {
     expect(values).toContain('user:bob');
     expect(values).not.toContain('user:alice'); // owner excluded
     expect(values).toContain('group:g1');
+  });
+
+  it("offers a member the household when they can't list every account", async () => {
+    vi.mocked(aepbase.list).mockImplementation((async (collection: string) => {
+      if (collection === 'users') throw new AepbaseError(403, 'only superusers can list users', '/users');
+      if (collection === 'groups') return GROUPS;
+      return [];
+    }) as never);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ members: [{ id: 'sam', name: 'Sam', admin: false }] }),
+    );
+    try {
+      renderDialog();
+      const select = (await screen.findByTestId('share-record-subject')) as HTMLSelectElement;
+      await waitFor(() =>
+        expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toContain('Sam'),
+      );
+      expect(fetchSpy).toHaveBeenCalledWith('/api/household', expect.anything());
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it('shares a record with a user at the chosen capability', async () => {

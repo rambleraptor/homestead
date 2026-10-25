@@ -361,7 +361,10 @@ SPA and apps share:
   by attachment id, only from the same conversation (`attachmentSource`);
   stored history is untrusted, so only parts
   the runner writes reach the model. The system prompt carries the person's
-  local clock (the SPA sends its timezone with each turn) and the
+  local clock (the SPA sends its timezone with each turn), the rest of the
+  household by name (`household/`: superusers plus Admin/Member role holders,
+  from the engine through the `server/household.ts` seam; also served to
+  members at `GET /api/household`), and the
   `chat.instructions` of apps whose tools they're offered
   (`server/chat/context.ts`) — app-specific guidance belongs there, not in
   core's prompt. Replies are Markdown; an app's `chat.values` teaches the model
@@ -410,7 +413,8 @@ The whole backend in one Bun process:
   middleware/plugin layer.
 - `src/routes/` — the API routes the SPA can't serve itself:
   `POST /api/notifications/send-test`, `POST /api/chat` (the AI chat;
-  requires an `ai` block in `homestead.config.ts`), `GET /api/custom-methods`,
+  requires an `ai` block in `homestead.config.ts`), `GET /api/household` (who
+  shares the Homestead, by name — members only), `GET /api/custom-methods`,
   `GET /api/events` (the SSE change feed),
   and the
   `/api/aep` gateway (`aep-gateway.ts`) that dispatches AEP-136 custom

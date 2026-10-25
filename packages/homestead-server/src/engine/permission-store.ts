@@ -221,6 +221,24 @@ export class PermissionStore {
   }
 
   /**
+   * The ids of the roles each user holds through their groups, for the users
+   * holding any. Feeds the household directory (`./household`).
+   */
+  roleIdsByUser(): Map<string, Set<string>> {
+    this.load();
+    const out = new Map<string, Set<string>>();
+    for (const m of this.memberships ?? []) {
+      const roleId = this.groupRoleById?.get(bareId(m.group_id));
+      if (!roleId) continue;
+      const userId = bareId(m.user);
+      const roles = out.get(userId) ?? new Set<string>();
+      roles.add(roleId);
+      out.set(userId, roles);
+    }
+    return out;
+  }
+
+  /**
    * The names of the groups a user belongs to. Feeds the client's app-gating
    * mirror (`tagged` visibility, §9.2), which resolves against group names.
    */

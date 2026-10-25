@@ -119,6 +119,12 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
     return caller ? engine.collectionAccess(caller) : null;
   });
 
+  // Who shares this Homestead, by name — the assistant addresses people by it.
+  const { setHouseholdDirectory } = await import(
+    '@rambleraptor/homestead-core/server/household'
+  );
+  setHouseholdDirectory(() => engine.householdMembers());
+
   // Wire the post-commit resource-sync dispatcher. Built from the aggregated
   // app- and config-declared syncs, the engine's db, and the same shared
   // OperationStore the cron scheduler uses (so sync firings appear as operations
@@ -184,6 +190,7 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   const { makePermissionsRoute } = await import('./routes/permissions');
   const { makeTokensRoute } = await import('./routes/tokens');
   const { makeSecurityRoute } = await import('./routes/security');
+  const { makeHouseholdRoute } = await import('./routes/household');
   const { makeSetupRoute } = await import('./routes/setup');
   const { bulkImportTemplateRoute } = await import('./routes/bulk-import-template');
   const { makeAuthRoutes } = await import('./routes/auth');
@@ -223,6 +230,7 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   publicApp.route('/api/permissions', makePermissionsRoute(engine));
   publicApp.route('/api/tokens', makeTokensRoute(engine));
   publicApp.route('/api/security', makeSecurityRoute());
+  publicApp.route('/api/household', makeHouseholdRoute());
   publicApp.route('/api/chat', chatRoute);
   publicApp.route('/api/events', makeEventsRoute(changeFeed, (token) => engine.authenticateToken(token)));
   publicApp.route('/api/aep', makeAepGateway(engine, loopbackOrigin));

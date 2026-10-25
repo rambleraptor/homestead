@@ -21,7 +21,7 @@ import type { Capability, Effect } from '../resolve';
 import { useCan } from '../useCan';
 import {
   useAccessGrants,
-  useAllUsers,
+  useShareableUsers,
   useGroups,
   useRevokeGrant,
   useShareRecord,
@@ -106,7 +106,7 @@ export function ShareRecordDialog({
   });
 
   const { data: grants, isLoading } = useAccessGrants({ resourceType, recordId });
-  const { data: users } = useAllUsers();
+  const { data: users } = useShareableUsers();
   const { data: groups } = useGroups();
   const share = useShareRecord();
   const revoke = useRevokeGrant();

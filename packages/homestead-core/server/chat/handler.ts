@@ -40,10 +40,12 @@ export interface PromptContext {
   appNotes?: string[];
   /** The typed values replies can mark, one line each (`valueTypeLines`). */
   valueTypes?: string[];
+  /** Everyone else in the household, one line each (`householdLines`). */
+  household?: string[];
 }
 
 export function buildSystemPrompt(user: AuthedUser, context: PromptContext): string {
-  const { now, hasDocSearch, appNotes = [], valueTypes = [] } = context;
+  const { now, hasDocSearch, appNotes = [], valueTypes = [], household = [] } = context;
   return [
     'You are the Homestead household assistant. You help members of the',
     'household look up and manage their data (todos, groceries, recipes,',
@@ -54,6 +56,15 @@ export function buildSystemPrompt(user: AuthedUser, context: PromptContext): str
       (user.display_name ? `, name "${user.display_name}"` : '') +
       '.',
     '',
+    ...(household.length > 0
+      ? [
+          'Household (the other people who share this Homestead):',
+          ...household,
+          'A user id in a record (created_by, an assignee) is one of these people',
+          'or the signed-in user: say their name, never the id.',
+          '',
+        ]
+      : []),
     'Tools:',
     resourceInstructions(),
     '',

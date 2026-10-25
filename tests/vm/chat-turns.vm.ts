@@ -340,15 +340,19 @@ describe('the tools a turn offers', () => {
 });
 
 describe('what a turn tells the model', () => {
-  /** The prompt's clock and app notes, as the model received them. */
-  async function context(as: string, timezone?: string): Promise<{ now: string; notes: string }> {
+  /** The prompt's clock, app notes and household, as the model received them. */
+  async function context(
+    as: string,
+    timezone?: string,
+  ): Promise<{ now: string; notes: string; household: string }> {
     const res = await send(as, `Where am I? ${CHAT_MARKERS.describeContext}`, { timezone });
     expect(res.status).toBe(200);
     const conversationId = res.headers.get('x-conversation-id')!;
     const summary = replyText(await events(res));
     await eventually(() => conversations(as).get(conversationId), (c) => c.status === 'idle');
-    const [, now = '', notes = ''] = /^now=(.*) \| notes=(.*)$/.exec(summary) ?? [];
-    return { now, notes };
+    const [, now = '', notes = '', household = ''] =
+      /^now=(.*) \| notes=(.*) \| household=(.*)$/.exec(summary) ?? [];
+    return { now, notes, household };
   }
 
   const CLOCK = /^[A-Z][a-z]+day \d{4}-\d{2}-\d{2}, \d{1,2}:\d{2} [AP]M /;
@@ -385,6 +389,28 @@ describe('what a turn tells the model', () => {
     await grants.create({ ...allow, target_scope: 'collection', resource_type: 'conversation', capability: 'write' });
     await grants.create({ ...allow, target_scope: 'collection', resource_type: 'gift-card', capability: 'read' });
     expect((await context(await login(email, password))).notes).toBe('Todos');
+  });
+
+  test('the household is everyone else who shares the Homestead, by name', async () => {
+    expect((await context(token)).household).toBe('Admin, Sam');
+    expect((await context(h.householdMember.token)).household).toBe('Admin, VM Member');
+
+    // A guest is told no one's name.
+    const email = `guest-${Date.now()}@example.com`;
+    const password = 'guest-vm-password';
+    const guest = await createUser(h.admin.token, { email, password, display_name: 'Guest', noRole: true });
+    await e2eClient(h.admin.token).collection('access-grants').create({
+      subject_type: 'user',
+      subject_id: guest.id,
+      effect: 'allow',
+      target_scope: 'collection',
+      resource_type: 'conversation',
+      capability: 'write',
+    });
+    const guestToken = await login(email, password);
+    expect((await context(guestToken)).household).toBe('(none)');
+    // Nor does the household gain them: members still see the same people.
+    expect((await context(token)).household).toBe('Admin, Sam');
   });
 });
 

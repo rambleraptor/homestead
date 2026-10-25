@@ -205,8 +205,8 @@ function toolSummary(body: unknown): string {
 
 /**
  * What the system prompt says about the model's situation, as
- * {@link CONTEXT_PLACEHOLDER} reads: its `Now:` line and the app names under
- * `App notes:`.
+ * {@link CONTEXT_PLACEHOLDER} reads: its `Now:` line, the app names under
+ * `App notes:`, and the names under `Household`.
  */
 function contextSummary(items: InputItem[]): string {
   const system = items
@@ -217,7 +217,9 @@ function contextSummary(items: InputItem[]): string {
   const notes: string[] = [];
   const section = /^App notes:\n([\s\S]*?)\n\n/m.exec(system)?.[1] ?? '';
   for (const line of section.split('\n')) if (line && !line.startsWith('- ')) notes.push(line);
-  return `now=${now} | notes=${notes.sort().join(', ') || '(none)'}`;
+  const household = /^Household \(.*\):\n((?:- .*\n)+)/m.exec(system)?.[1] ?? '';
+  const names = [...household.matchAll(/^- "(.*?)":/gm)].map((m) => m[1]);
+  return `now=${now} | notes=${notes.sort().join(', ') || '(none)'} | household=${names.join(', ') || '(none)'}`;
 }
 
 /** The text of an input item's content, however the provider shaped it. */

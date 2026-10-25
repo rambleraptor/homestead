@@ -1,13 +1,15 @@
 /**
  * What a chat turn tells the model about its situation, beyond the tools: the
- * person's local date and time, and the notes the apps they can use give it.
+ * person's local date and time, who else shares the Homestead, and the notes
+ * the apps they can use give it.
  *
- * Nothing here is stored or read from household data. The timezone comes with
- * each turn from the browser; the notes are the apps' own guidance, written in
+ * The timezone comes with each turn from the browser; the household from the
+ * directory (`../household`); the notes are the apps' own guidance, written in
  * their configs (`AppConfig.chat.instructions`).
  */
 
 import type { AppConfig } from '../../apps/types';
+import type { HouseholdMember } from '../../household/types';
 import { resolveResources } from '../../apps/registry';
 
 /** The longest timezone name a turn may carry. IANA names stay well under it. */
@@ -75,4 +77,22 @@ export function appNotes(apps: readonly AppConfig[], offered: ReadonlySet<string
   };
   for (const app of apps) visit(app);
   return lines;
+}
+
+/** The longest name the prompt carries for one household member. */
+export const MAX_MEMBER_NAME_CHARS = 60;
+
+/**
+ * One line per household member other than `selfId`, e.g.
+ * `- "Sam": user id "u2" (admin)`. A name is whatever its owner typed, so it is
+ * held to one line, cut to {@link MAX_MEMBER_NAME_CHARS} and quoted — data, not
+ * instructions.
+ */
+export function householdLines(members: readonly HouseholdMember[], selfId: string): string[] {
+  return members
+    .filter((m) => m.id !== selfId)
+    .map((m) => {
+      const name = m.name.replace(/\s+/g, ' ').trim().slice(0, MAX_MEMBER_NAME_CHARS);
+      return `- ${JSON.stringify(name)}: user id ${JSON.stringify(m.id)}${m.admin ? ' (admin)' : ''}`;
+    });
 }
