@@ -201,6 +201,56 @@ describe('compileFilter', () => {
     expect(() => compileFilter('has(nope)', schema)).toThrow(/invalid filter/);
   });
 
+  test('string functions match part of a text field, as LIKE patterns', () => {
+    expect(compileFilter('title.contains("une")', schema)).toEqual({
+      sql: "title LIKE ? ESCAPE '\\'",
+      params: ['%une%'],
+    });
+    expect(compileFilter('title.startsWith("Du")', schema).params).toEqual(['Du%']);
+    expect(compileFilter('title.endsWith("ne")', schema).params).toEqual(['%ne']);
+  });
+
+  test("a string function's value can't smuggle in a wildcard", () => {
+    expect(compileFilter('title.contains("50%_off\\")', schema).params).toEqual([
+      '%50\\%\\_off\\\\%',
+    ]);
+  });
+
+  test('string functions compose with other predicates, parameters in order', () => {
+    const f = compileFilter('title.contains("a") && pages > 10 || title.startsWith("Z")', schema);
+    expect(f.sql).toBe("(title LIKE ? ESCAPE '\\' AND pages > ? OR title LIKE ? ESCAPE '\\')");
+    expect(f.params).toEqual(['%a%', 10, 'Z%']);
+  });
+
+  test('string functions need a text field and a string value', () => {
+    expect(() => compileFilter('pages.contains("1")', schema)).toThrow(/needs a text field/);
+    expect(() => compileFilter('tags.contains("x")', schema)).toThrow(/needs a text field/);
+    expect(() => compileFilter('title.contains(3)', schema)).toThrow(/one string value/);
+    expect(() => compileFilter('title.contains(pages)', schema)).toThrow(/one string value/);
+    expect(() => compileFilter('nope.contains("x")', schema)).toThrow(/unknown field/);
+    expect(() => compileFilter('title.matches("x")', schema)).toThrow(/unknown function/);
+  });
+
+  test('exists() searches the elements of an array field', () => {
+    expect(compileFilter('tags.exists(t, t.contains("sci"))', schema)).toEqual({
+      sql: "EXISTS (SELECT 1 FROM json_each(tags) WHERE value LIKE ? ESCAPE '\\')",
+      params: ['%sci%'],
+    });
+    expect(compileFilter('tags.exists(t, t == "scifi")', schema)).toEqual({
+      sql: 'EXISTS (SELECT 1 FROM json_each(tags) WHERE value = ?)',
+      params: ['scifi'],
+    });
+    const f = compileFilter('title.contains("Jake") || tags.exists(t, t.startsWith("Jake"))', schema);
+    expect(f.params).toEqual(['%Jake%', 'Jake%']);
+  });
+
+  test('exists() takes one simple test on its own variable', () => {
+    expect(() => compileFilter('title.exists(t, t == "x")', schema)).toThrow(/needs an array field/);
+    expect(() => compileFilter('tags.exists(t, x.contains("a"))', schema)).toThrow(/supports one test/);
+    expect(() => compileFilter('tags.exists(t, t > 3)', schema)).toThrow(/invalid filter/);
+    expect(() => compileFilter('tags.exists("t", t == "x")', schema)).toThrow(/variable name/);
+  });
+
   test('values only travel as parameters', () => {
     const f = compileFilter(`title == "'; DROP TABLE books; --"`, schema);
     expect(f.sql).toBe('title = ?');

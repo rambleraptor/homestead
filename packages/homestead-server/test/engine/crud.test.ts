@@ -244,6 +244,32 @@ describe('list + pagination', () => {
     expect((await bad.json()).error.message).toContain('invalid filter');
   });
 
+  test('string functions find part of a value, ignoring case', async () => {
+    const book = (id: string, body: Record<string, unknown>) =>
+      call(t.engine, 'POST', `/books?id=${id}`, { token: t.adminToken, body });
+    await book('a', { title: 'Jake Miller', tags: ['Jakey', 'neighbor'] });
+    await book('b', { title: 'Sam Jacobs', tags: ['Sammy'] });
+    await book('c', { title: '50% off sale' });
+    await book('d', { title: '500 off' });
+    const ids = async (filter: string) => {
+      const res = await call(t.engine, 'GET', `/books?filter=${encodeURIComponent(filter)}`, {
+        token: t.adminToken,
+      });
+      expect(res.status).toBe(200);
+      return ((await res.json()).results as { id: string }[]).map((r) => r.id).sort();
+    };
+
+    // A first name alone, in any case, finds the full name.
+    expect(await ids('title.contains("jake")')).toEqual(['a']);
+    expect(await ids('title.startsWith("SAM")')).toEqual(['b']);
+    expect(await ids('title.endsWith("miller")')).toEqual(['a']);
+    // A nickname in an array field, matched the same way.
+    expect(await ids('tags.exists(t, t.contains("jake"))')).toEqual(['a']);
+    expect(await ids('title.contains("Jake") || tags.exists(t, t.startsWith("sam"))')).toEqual(['a', 'b']);
+    // A `%` in the value is a percent sign, not a wildcard.
+    expect(await ids('title.contains("50%")')).toEqual(['c']);
+  });
+
   test('order_by sorts server-side; - prefix descends; bad field is a 400', async () => {
     // Insert out of natural (insertion/id) order so a real sort is observable.
     await call(t.engine, 'POST', '/books?id=c', { token: t.adminToken, body: { title: 'Cherry', pages: 300 } });

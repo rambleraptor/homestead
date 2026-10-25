@@ -214,6 +214,13 @@ a dump of the whole collection. Filters can use every record's `create_time`
 and `update_time` too, so "what changed since Friday" works on any
 resource.
 
+Filters can also match part of a value, ignoring case:
+`name.contains("jake")`, `title.startsWith("Tax")`, `merchant.endsWith("co")`,
+and, for a list of strings, `aliases.exists(a, a.contains("jake"))`. So "Jake's
+address" finds Jake Miller, or the friend whose nickname is Jakey, without a
+full name. The assistant is told to look things up this way. The same filters
+work over MCP and on the REST API's `?filter=`.
+
 ### Stored conversations
 
 Under the Chat screen is one endpoint, which you can call yourself.
