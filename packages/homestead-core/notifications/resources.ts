@@ -26,9 +26,12 @@ export const notificationsResources: ResourceDefinition[] = [
       message: { type: 'string', required: true },
       notification_type: {
         type: 'string',
-        enum: ['day_of', 'day_before', 'week_before', 'reminder', 'system'],
+        enum: ['day_of', 'day_before', 'week_before', 'reminder', 'system', 'message'],
         required: true,
       },
+      // Who sent it, for a `message` from another household member
+      // (`:send`); empty for anything Homestead sent itself.
+      from_user: { type: 'string', reference: { resource: 'user' } },
       scheduled_for: { type: 'string', format: 'date-time' },
       // Where tapping this notification lands. Previously the click-through
       // existed only in the transient push payload, so an inbox row couldn't
@@ -39,6 +42,39 @@ export const notificationsResources: ResourceDefinition[] = [
       read_at: { type: 'string', format: 'date-time' },
       source_collection: { type: 'string' },
       source_id: { type: 'string' },
+    },
+    // POST /api/aep/users/{id}/notifications:send — message a household member.
+    customMethods: {
+      send: {
+        target: 'collection',
+        // The assistant gets it once it can ask before sending (an approval
+        // card); until then a person composes every message it would send.
+        modelTools: { chat: false },
+        description:
+          'Send this user a message from you: a push to their devices and a row in their ' +
+          'inbox. They must be in your household. At most 10 messages an hour.',
+        request: {
+          type: 'object',
+          required: ['title'],
+          properties: {
+            title: { type: 'string', description: 'The message, in a few words (at most 80 characters).' },
+            body: { type: 'string', description: 'More detail (at most 500 characters).' },
+            url: {
+              type: 'string',
+              description: 'A path in this Homestead opened when it is tapped, e.g. /groceries.',
+            },
+          },
+        },
+        response: {
+          type: 'object',
+          properties: {
+            notification: { type: 'string', description: 'The inbox row written: users/{id}/notifications/{id}.' },
+            delivered: { type: 'integer', description: 'Devices the push reached.' },
+            failed: { type: 'integer', description: 'Devices the push failed on.' },
+          },
+        },
+        load: () => import('./methods/send-message'),
+      },
     },
   },
   {

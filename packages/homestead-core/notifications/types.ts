@@ -4,7 +4,9 @@ export type NotificationType =
   | 'week_before'
   /** A scheduled notification came due and the dispatcher delivered it. */
   | 'reminder'
-  | 'system';
+  | 'system'
+  /** Sent by another household member (`from_user`), through `notifications:send`. */
+  | 'message';
 
 export interface Notification {
   id: string;
@@ -24,6 +26,8 @@ export interface Notification {
   source_id?: string;
   /** Path opened when the notification is tapped. */
   url?: string;
+  /** The sender of a `message` (`users/{id}`). */
+  from_user?: string;
 }
 
 /**

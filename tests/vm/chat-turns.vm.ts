@@ -302,6 +302,12 @@ describe('the tools a turn offers', () => {
     );
   }
 
+  test("leave out a method hidden from chat: messages wait for the approval card", async () => {
+    const tools = await offered(token);
+    expect(tools.get('notifications')).toMatch(/\blist\b/);
+    expect(tools.get('notifications')).not.toMatch(/\bsend\b/);
+  });
+
   test('are what the person can reach', async () => {
     const before = await offered(token);
     expect(before.get('gift_cards')).toMatch(/^list get create update delete/);

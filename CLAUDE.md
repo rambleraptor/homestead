@@ -376,7 +376,12 @@ SPA and apps share:
   the AI SDK's `useChat` over a stored-turn transport (`chat/api.ts`,
   `chat/hooks/useConversation.ts`), rendered with AI Elements. `notifications` owns the
   web-push inbox + subscription management; its server half lives in
-  `server/notifications.ts`)
+  `server/notifications.ts`. Household members message each other through
+  `POST users/{id}/notifications:send` (the one API every caller uses — SPA,
+  scripts, CLI, MCP — wrapping `server/messages.ts`'s `sendMessage`, which
+  writes the recipient's inbox with a system token from
+  `server/system-token.ts`; rate-limited, household-only, hidden from the
+  assistant until it can ask before sending))
   `dashboard` is the home, and the assistant's (`dashboard/components/agentic/`):
   a strip of widget chips built from each widget's optional `summary` hook (tap
   one to open the widget), over a conversation rendered with the shared

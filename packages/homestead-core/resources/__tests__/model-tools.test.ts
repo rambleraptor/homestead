@@ -33,6 +33,17 @@ describe('visibleToModel', () => {
     ]);
   });
 
+  it('drops a custom method hidden from the surface, and keeps the resource', () => {
+    const load = async () => ({ default: async () => new Response() });
+    const inbox = def('notification', {
+      customMethods: { send: { modelTools: { chat: false }, load }, archive: { load } },
+    });
+    const [chat] = visibleToModel([inbox], 'chat');
+    expect(Object.keys(chat!.customMethods ?? {})).toEqual(['archive']);
+    const [mcp] = visibleToModel([inbox], 'mcp');
+    expect(mcp).toBe(inbox);
+  });
+
   it('takes a hidden resource’s whole subtree with it', () => {
     const chat = names(visibleToModel(DEFS, 'chat'));
     expect(chat).not.toContain('message');

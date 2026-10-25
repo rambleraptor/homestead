@@ -52,7 +52,7 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
 
   // Importing the registry module initializes the app registry (side effect).
   const registry = await import('./app-registry');
-  const { ensureSuperuser } = await import('./bootstrap');
+  const { ensureSuperuser, mintAdminToken } = await import('./bootstrap');
 
   // Push the operator's AI config into core before any route handles a request
   // (core can't import the server's registry — the dependency direction is
@@ -124,6 +124,14 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
     '@rambleraptor/homestead-core/server/household'
   );
   setHouseholdDirectory(() => engine.householdMembers());
+
+  // Server code that has already decided a write is allowed, but can't make it
+  // with its caller's token (a message into someone else's inbox), borrows a
+  // short-lived admin token — the one a cron firing gets.
+  const { setSystemTokenIssuer } = await import(
+    '@rambleraptor/homestead-core/server/system-token'
+  );
+  setSystemTokenIssuer(() => mintAdminToken(engine.db));
 
   // Wire the post-commit resource-sync dispatcher. Built from the aggregated
   // app- and config-declared syncs, the engine's db, and the same shared
