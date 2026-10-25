@@ -370,9 +370,10 @@ devices, so a message is never lost. It carries `notification_type: 'message'`
 and `from_user`, and the inbox shows "From Sam" on it; the push reads
 "Sam: Running late".
 
-The built-in assistant doesn't get `send` yet: it will once it can ask you
-before sending. Until then the method is marked `modelTools: { chat: false }`
-(see [Hiding a Resource from AI Tools](./resources#hiding-a-resource-from-ai-tools)).
+The built-in assistant can send messages too — "tell Sam I'm running late" —
+but the method is marked `confirm: true`, so each one waits on an approval card
+until you tap **Approve** (see
+[Asking before a model acts](./resources#asking-before-a-model-acts)).
 
 ---
 

@@ -74,6 +74,17 @@ export class ChatPage {
     return this.driver.getByTestId('chat-message-assistant');
   }
 
+  /** The card a tool call waiting on the person shows. */
+  get approvalCard(): Locator {
+    return this.driver.getByTestId('chat-approval');
+  }
+
+  /** Answer the waiting tool call. */
+  async answerApproval(approved: boolean) {
+    await this.driver.getByTestId(approved ? 'chat-approval-approve' : 'chat-approval-deny').click();
+    await this.approvalCard.waitFor({ state: 'detached' });
+  }
+
   /** Every tool card in the transcript, oldest first. */
   get toolCalls(): Locator {
     return this.driver.getByTestId('chat-tool-call');

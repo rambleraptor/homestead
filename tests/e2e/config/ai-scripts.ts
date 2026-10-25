@@ -75,6 +75,13 @@ export const CONTEXT_PLACEHOLDER = '{context}';
 export const ATTACHMENT_ID_PLACEHOLDER = '{attachment}';
 
 /**
+ * In a step's tool-call args, `{user-id:Sam}` is replaced by the user id the
+ * prompt's Household section gives that name — so a script can message
+ * someone whose id it can't know in advance.
+ */
+export const USER_ID_PLACEHOLDER = /\{user-id:([^}]+)\}/g;
+
+/**
  * Markers, exported so a spec names its script by constant. Kept distinctive
  * so ordinary test text can never select one by accident.
  */
@@ -104,6 +111,8 @@ export const CHAT_MARKERS = {
   typedValues: 'e2e-chat-typed-values',
   /** Look a person up by a first name, loosely (name or alias), then answer. */
   findPerson: 'e2e-chat-find-person',
+  /** Message Sam (an approval-gated `:send`), then say so. */
+  messageSam: 'e2e-chat-message-sam',
 } as const;
 
 /** The long reply's text, exported so a spec can check the whole of it arrived. */
@@ -223,6 +232,26 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
         ],
       },
       { text: 'Saved the REI gift card with its photo.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.messageSam,
+    steps: [
+      {
+        toolCalls: [
+          {
+            name: 'notifications',
+            args: {
+              action: ':send',
+              user_id: '{user-id:Sam}',
+              body: { title: 'Running late', body: 'Be there by 6:30' },
+            },
+          },
+        ],
+      },
+      // After the person's answer: the call ran (or was denied), and the
+      // model has its outcome.
+      { text: 'Done.' },
     ],
   },
 ];

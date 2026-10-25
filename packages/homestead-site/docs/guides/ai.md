@@ -252,6 +252,17 @@ of them: "Jake's address" with two Jakes gives both addresses, each labelled
 with its person. It asks which one you mean only before it changes something,
 such as setting a reminder for one of them.
 
+Some things wait for your **Approve**. "Tell Sam I'm running late" sends Sam a
+message ([household messages](./notifications#message-a-household-member)),
+so the reply stops on a card — who it's to, what it says — with **Approve** and
+**Deny**. Nothing goes out until you answer; then the reply carries on, and the
+assistant hears whether it was sent. The card is stored with the reply, so you
+can answer it after a reload or from another device. Send a new message
+instead and it counts as **Deny**. Which actions ask is up to each app (a
+custom method's `confirm: true`, see
+[Asking before a model acts](./resources#asking-before-a-model-acts)), not the
+model.
+
 ### Stored conversations
 
 Under the home's conversation is one endpoint, which you can call yourself.
@@ -289,6 +300,11 @@ Content-Type: application/json
   [Files in lists and objects](../design/nested-files)).
 - A conversation is private to whoever started it, and is deleted 60 days
   after its last message.
+- A reply that stopped on an approval (a tool part in `approval-requested`, with
+  an `approval.id`) is answered with
+  `{ "conversation_id": "…", "approval": { "id": "<approval id>", "approved": true } }`.
+  The same reply message carries on and streams like any turn. An answer
+  nothing is waiting for is `409`.
 
 - The tools are built for each person, from what they can reach: a collection
   they can't read is left out (with everything nested under it), and one they

@@ -85,6 +85,60 @@ describe('Chat', () => {
     await d.expect(d.getByText('Milk')).toBeVisible();
   });
 
+  describe('a message to a household member waits for Approve', () => {
+    const samInbox = () =>
+      e2eClient(h.householdMember.token)
+        .collection('users')
+        .record(h.householdMember.id)
+        .collection<{ title: string; from_user?: string }>('notifications')
+        .listAll();
+
+    async function ask(chat: ChatPage) {
+      await chat.goto();
+      await chat.send(`Tell Sam I'm running late ${CHAT_MARKERS.messageSam}`);
+      await h.driver.expect(chat.approvalCard).toBeVisible();
+      await h.driver.expect(h.driver.getByTestId('chat-approval-to')).toHaveText('Sam');
+      await h.driver.expect(chat.approvalCard).toContainText('Running late');
+      await h.driver.expect(chat.approvalCard).toContainText('Be there by 6:30');
+      expect(await samInbox()).toEqual([]);
+    }
+
+    test('Approve sends it, and the reply carries on', async () => {
+      const d = h.driver;
+      const chat = new ChatPage(d);
+      await ask(chat);
+      await chat.answerApproval(true);
+      await d.expect(chat.messages).toContainText('Done.');
+      await d.expect(chat.toolCalls.first()).toContainText('notifications · :send');
+      await d.expect(chat.toolCalls.first()).toContainText('Completed');
+      expect(await samInbox()).toEqual([
+        expect.objectContaining({ title: 'Running late', from_user: `users/${h.member.id}` }),
+      ]);
+    });
+
+    test('Deny sends nothing', async () => {
+      const d = h.driver;
+      const chat = new ChatPage(d);
+      await ask(chat);
+      await chat.answerApproval(false);
+      await d.expect(chat.messages).toContainText('Done.');
+      await d.expect(chat.toolCalls.first()).toContainText('Denied');
+      expect(await samInbox()).toEqual([]);
+    });
+
+    test('it waits in storage, so it can be answered after a reload (or on another device)', async () => {
+      const d = h.driver;
+      const chat = new ChatPage(d);
+      await ask(chat);
+      await openConversationId(d);
+      await d.reload();
+      await d.expect(chat.approvalCard).toBeVisible();
+      await chat.answerApproval(true);
+      await d.expect(chat.messages).toContainText('Done.');
+      await expect.poll(async () => (await samInbox()).length).toBe(1);
+    });
+  });
+
   test('a filtered list read runs as the scripted query and reads nothing it should not', async () => {
     const d = h.driver;
     const groceries = e2eClient(token).collection<GroceryItemRecord>('groceries');

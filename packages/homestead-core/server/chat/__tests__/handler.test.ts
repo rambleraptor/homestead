@@ -5,7 +5,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { z } from 'zod';
-import { buildChatToolSet } from '../handler';
+import { buildChatToolSet, confirmActions } from '../handler';
 import type { ResourceDefinition } from '../../../resources/types';
 
 vi.mock('../../ai/config', () => ({
@@ -145,5 +145,29 @@ describe('buildChatToolSet', () => {
     expect(calls[0].url).toMatch(/\/gift-cards\/gc1:redeem$/);
     expect(calls[0].init.method).toBe('POST');
     expect(JSON.parse(calls[0].init.body as string)).toEqual({ amount: 25 });
+  });
+});
+
+describe('confirm methods', () => {
+  const load = async () => ({ default: async () => new Response() });
+  const INBOX: ResourceDefinition = {
+    singular: 'notification',
+    plural: 'notifications',
+    parents: ['user'],
+    fields: { title: { type: 'string' } },
+    customMethods: { send: { confirm: true, load }, archive: { load } },
+  };
+
+  it('are the actions that ask first, by tool', () => {
+    expect(confirmActions([INBOX, GIFT_CARD])).toEqual(new Map([['notifications', new Set([':send'])]]));
+  });
+
+  it("make the tool need approval for that action only", async () => {
+    const { toolSet } = buildChatToolSet([INBOX], 't');
+    const needs = toolSet.notifications!.needsApproval as (input: unknown) => boolean;
+    expect(needs({ action: ':send' })).toBe(true);
+    expect(needs({ action: ':archive' })).toBe(false);
+    expect(needs({ action: 'list' })).toBe(false);
+    expect(buildChatToolSet([GIFT_CARD], 't').toolSet.gift_cards!.needsApproval).toBeUndefined();
   });
 });

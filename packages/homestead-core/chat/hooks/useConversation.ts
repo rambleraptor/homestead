@@ -149,9 +149,8 @@ export function useConversation(conversationId: string | null, options: UseConve
   const toast = useToast();
   const userId = authStore.model?.id ?? '';
   const session = useMemo(() => sessionFor(userId, conversationId), [userId, conversationId]);
-  const { messages, status, error, sendMessage, setMessages, clearError, stop } = useChat({
-    chat: session.chat,
-  });
+  const { messages, status, error, sendMessage, setMessages, clearError, stop, addToolApprovalResponse } =
+    useChat({ chat: session.chat });
   const { onCreated } = options;
 
   useEffect(() => {
@@ -234,6 +233,23 @@ export function useConversation(conversationId: string | null, options: UseConve
     [session, sendMessage, remoteRunning],
   );
 
+  /**
+   * Approve or deny the tool call a reply is waiting on. The reply carries on
+   * — the call runs, or the assistant hears it was denied — in this tab, and
+   * any other showing the conversation picks it up from storage.
+   */
+  const answerApproval = useCallback(
+    async (approvalId: string, approved: boolean) => {
+      if (isBusy(session.chat) || remoteRunning) {
+        throw new Error('wait for the current reply to finish');
+      }
+      await addToolApprovalResponse({ id: approvalId, approved });
+      await sendMessage();
+      if (session.chat.status === 'error') throw session.chat.error;
+    },
+    [session, addToolApprovalResponse, sendMessage, remoteRunning],
+  );
+
   /** Stop the running turn: here, and on the server, where it would otherwise finish. */
   const stopTurn = useCallback(async () => {
     void stop();
@@ -259,6 +275,7 @@ export function useConversation(conversationId: string | null, options: UseConve
     history,
     notConfigured,
     send,
+    answerApproval,
     stop: stopTurn,
   };
 }

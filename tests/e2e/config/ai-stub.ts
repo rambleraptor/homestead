@@ -27,6 +27,7 @@ import { createServer, type Server } from 'http';
 import type { AddressInfo } from 'net';
 import {
   ATTACHMENT_ID_PLACEHOLDER,
+  USER_ID_PLACEHOLDER,
   ATTACHMENTS_PLACEHOLDER,
   TOOLS_PLACEHOLDER,
   CONTEXT_PLACEHOLDER,
@@ -269,6 +270,24 @@ export function scriptedStep(body: unknown): ScriptStep | null {
   }
   if (step.text?.includes(ATTACHMENTS_PLACEHOLDER)) {
     step = { ...step, text: step.text.replace(ATTACHMENTS_PLACEHOLDER, attachmentSummary(items[lastUser]!)) };
+  }
+  if (step.toolCalls && JSON.stringify(step.toolCalls).includes('{user-id:')) {
+    const system = items
+      .filter((item) => item.role === 'system' || item.role === 'developer')
+      .map(textOf)
+      .join('\n');
+    const ids = new Map(
+      [...system.matchAll(/^- "(.*?)": user id "([^"]+)"/gm)].map((m) => [m[1]!, m[2]!] as const),
+    );
+    step = {
+      ...step,
+      toolCalls: JSON.parse(
+        JSON.stringify(step.toolCalls).replace(
+          USER_ID_PLACEHOLDER,
+          (_, name: string) => ids.get(name) ?? 'no-such-user',
+        ),
+      ),
+    };
   }
   if (step.toolCalls && JSON.stringify(step.toolCalls).includes(ATTACHMENT_ID_PLACEHOLDER)) {
     const id = /attachment id: ([A-Za-z0-9_-]+)/.exec(textOf(items[lastUser]!))?.[1] ?? 'no-attachment';

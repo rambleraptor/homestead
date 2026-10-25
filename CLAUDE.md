@@ -380,8 +380,13 @@ SPA and apps share:
   `POST users/{id}/notifications:send` (the one API every caller uses — SPA,
   scripts, CLI, MCP — wrapping `server/messages.ts`'s `sendMessage`, which
   writes the recipient's inbox with a system token from
-  `server/system-token.ts`; rate-limited, household-only, hidden from the
-  assistant until it can ask before sending))
+  `server/system-token.ts`; rate-limited, household-only). A custom method
+  marked `confirm: true` (`send` is) makes the chat tool `needsApproval` for
+  that action: the turn stops with the tool part in `approval-requested`, the
+  SPA shows `chat/components/ApprovalCard`, and `POST /api/chat` with
+  `{ conversation_id, approval: { id, approved } }` resumes the same reply —
+  the approved call runs, a denied one is reported to the model; a new message
+  instead denies anything still waiting)
   `dashboard` is the home, and the assistant's (`dashboard/components/agentic/`):
   a strip of widget chips built from each widget's optional `summary` hook (tap
   one to open the widget), over a conversation rendered with the shared

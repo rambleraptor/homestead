@@ -274,12 +274,36 @@ resource in place:
 
 ```ts
 customMethods: {
+  rebuild: {
+    modelTools: { chat: false }, // people run this, the assistant doesn't
+    load: () => import('./methods/rebuild'),
+  },
+},
+```
+
+---
+
+## Asking before a model acts
+
+A custom method whose effect reaches beyond the household's data — a message
+someone gets, an email that goes out — can require the person's say-so when a
+model calls it:
+
+```ts
+customMethods: {
   send: {
-    modelTools: { chat: false }, // the assistant can't send messages yet
+    confirm: true,
     load: () => import('./methods/send-message'),
   },
 },
 ```
+
+The assistant then stops on an approval card showing the call (who it's to,
+what it says) with **Approve** and **Deny**, and runs it only on Approve. The
+wait is stored with the reply, so it can be answered later or from another
+device. MCP clients already ask before each tool call, so nothing changes
+there; nor for people calling the method themselves (the SPA, scripts, the
+CLI), who are already deciding.
 
 ---
 

@@ -302,10 +302,8 @@ describe('the tools a turn offers', () => {
     );
   }
 
-  test("leave out a method hidden from chat: messages wait for the approval card", async () => {
-    const tools = await offered(token);
-    expect(tools.get('notifications')).toMatch(/\blist\b/);
-    expect(tools.get('notifications')).not.toMatch(/\bsend\b/);
+  test('include messaging a household member (it asks first)', async () => {
+    expect((await offered(token)).get('notifications')).toMatch(/:send\b/);
   });
 
   test('are what the person can reach', async () => {
@@ -580,5 +578,115 @@ describe('stored history is untrusted', () => {
     const stored = await ordered(conversationId);
     const reply = stored.at(-1)!;
     expect(reply.status).toBe('complete');
+  });
+});
+
+describe('approvals', () => {
+  interface InboxRow {
+    title: string;
+    from_user?: string;
+  }
+  const samInbox = () =>
+    e2eClient(h.householdMember.token)
+      .collection('users')
+      .record(h.householdMember.id)
+      .collection<InboxRow>('notifications')
+      .listAll();
+
+  /** The tool part a reply holds for the `:send` call. */
+  const sendPart = (m: ChatMessage | undefined) =>
+    m?.parts?.find((p) => p.type === 'tool-notifications') as
+      | { state: string; approval?: { id: string; approved?: boolean }; output?: unknown }
+      | undefined;
+
+  /** Ask to message Sam; the reply ends waiting on the person. */
+  async function askToMessageSam(): Promise<{ conversationId: string; approvalId: string }> {
+    const res = await send(token, `Tell Sam I'm running late ${CHAT_MARKERS.messageSam}`);
+    expect(res.status).toBe(200);
+    const conversationId = res.headers.get('x-conversation-id')!;
+    await res.text();
+    const [, reply] = await eventually(
+      () => ordered(conversationId),
+      (ms) => ms[1]?.status === 'complete',
+    );
+    const part = sendPart(reply);
+    expect(part?.state).toBe('approval-requested');
+    return { conversationId, approvalId: part!.approval!.id };
+  }
+
+  function answer(conversationId: string, id: string, approved: boolean): Promise<Response> {
+    return fetch(`${APP}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ conversation_id: conversationId, approval: { id, approved } }),
+    });
+  }
+
+  test('a confirm method waits for the person; nothing is sent until they approve', async () => {
+    const { conversationId, approvalId } = await askToMessageSam();
+    expect(await samInbox()).toEqual([]);
+    expect((await conversations().get(conversationId)).status).toBe('idle');
+
+    const res = await answer(conversationId, approvalId, true);
+    expect(res.status).toBe(200);
+    expect(replyText(await events(res))).toBe('Done.');
+
+    const messages = await eventually(
+      () => ordered(conversationId),
+      (ms) => ms[1]?.status === 'complete' && sendPart(ms[1])?.state === 'output-available',
+    );
+    // The same reply carries on: no third message, the card took the result.
+    expect(messages).toHaveLength(2);
+    expect(sendPart(messages[1])?.approval).toMatchObject({ id: approvalId, approved: true });
+    expect(messages[1]!.content).toContain('Done.');
+    expect(await samInbox()).toEqual([
+      expect.objectContaining({ title: 'Running late', from_user: `users/${h.member.id}` }),
+    ]);
+  });
+
+  test('deny: the call never runs', async () => {
+    const { conversationId, approvalId } = await askToMessageSam();
+    const res = await answer(conversationId, approvalId, false);
+    expect(res.status).toBe(200);
+    await res.text();
+    const messages = await eventually(
+      () => ordered(conversationId),
+      (ms) => ms[1]?.status === 'complete' && sendPart(ms[1])?.state === 'output-denied',
+    );
+    expect(sendPart(messages[1])?.approval).toMatchObject({ id: approvalId, approved: false });
+    expect(await samInbox()).toEqual([]);
+  });
+
+  test('moving on without answering denies it', async () => {
+    const { conversationId, approvalId } = await askToMessageSam();
+    const res = await send(token, `Never mind ${CHAT_MARKERS.hello}`, { conversationId });
+    expect(res.status).toBe(200);
+    await res.text();
+    const messages = await eventually(() => ordered(conversationId), (ms) => ms[3]?.status === 'complete');
+    expect(sendPart(messages[1])?.state).toBe('output-denied');
+    expect((await answer(conversationId, approvalId, true)).status).toBe(409);
+    expect(await samInbox()).toEqual([]);
+  });
+
+  test('an answer nothing is waiting for is refused', async () => {
+    const { conversationId, approvalId } = await askToMessageSam();
+    expect((await answer(conversationId, 'not-an-approval', true)).status).toBe(409);
+    const ok = await answer(conversationId, approvalId, true);
+    expect(ok.status).toBe(200);
+    await ok.text();
+    await eventually(() => ordered(conversationId), (ms) => ms[1]?.status === 'complete');
+    // Answered once: a second answer finds nothing waiting.
+    expect((await answer(conversationId, approvalId, false)).status).toBe(409);
+  });
+
+  test("someone who can't see the conversation can't answer for it", async () => {
+    const { conversationId, approvalId } = await askToMessageSam();
+    const res = await fetch(`${APP}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${h.householdMember.token}` },
+      body: JSON.stringify({ conversation_id: conversationId, approval: { id: approvalId, approved: true } }),
+    });
+    expect([403, 404]).toContain(res.status);
+    expect(await samInbox()).toEqual([]);
   });
 });

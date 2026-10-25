@@ -17,6 +17,7 @@ import {
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { MessageAttachments } from './MessageAttachments';
+import { ApprovalCard } from './ApprovalCard';
 import { ReplyLink, replyRehypePlugins, replyUrlTransform } from './ChatValue';
 import { plainReplyText } from '../values';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
@@ -76,9 +77,20 @@ export interface ChatMessageProps {
   stored?: StoredChatMessage;
   /** This message is the one streaming now. */
   streaming: boolean;
+  /** Answer a tool call waiting on the person; without it, the wait just shows. */
+  onAnswerApproval?: (approvalId: string, approved: boolean) => Promise<void>;
+  /** A turn is running, so a waiting call can't be answered yet. */
+  busy?: boolean;
 }
 
-export function ChatMessage({ conversationId, message, stored, streaming }: ChatMessageProps) {
+export function ChatMessage({
+  conversationId,
+  message,
+  stored,
+  streaming,
+  onAnswerApproval,
+  busy,
+}: ChatMessageProps) {
   const toast = useToast();
   const isUser = message.role === 'user';
   const text = messageText(message);
@@ -120,7 +132,14 @@ export function ChatMessage({ conversationId, message, stored, streaming }: Chat
               </MessageResponse>
             );
           }
-          if (isStaticToolUIPart(part)) return <ToolCall key={part.toolCallId} part={part} />;
+          if (isStaticToolUIPart(part)) {
+            if (part.state === 'approval-requested' && onAnswerApproval) {
+              return (
+                <ApprovalCard key={part.toolCallId} part={part} onAnswer={onAnswerApproval} disabled={busy} />
+              );
+            }
+            return <ToolCall key={part.toolCallId} part={part} />;
+          }
           return null;
         })}
         {stored?.status === 'error' && (
