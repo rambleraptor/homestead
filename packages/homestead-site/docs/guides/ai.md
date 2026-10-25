@@ -221,6 +221,11 @@ address" finds Jake Miller, or the friend whose nickname is Jakey, without a
 full name. The assistant is told to look things up this way. The same filters
 work over MCP and on the REST API's `?filter=`.
 
+When a question matches more than one record, the assistant answers for each
+of them: "Jake's address" with two Jakes gives both addresses, each labelled
+with its person. It asks which one you mean only before it changes something,
+such as setting a reminder for one of them.
+
 ### Stored conversations
 
 Under the Chat screen is one endpoint, which you can call yourself.

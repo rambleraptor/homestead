@@ -64,6 +64,11 @@ export function buildSystemPrompt(user: AuthedUser, context: PromptContext): str
     '- Prefer a filtered, sorted, limited list over reading a whole',
     '  collection: "due this week" is a filter on the due-date field, "the',
     '  latest five" is order_by with a limit.',
+    '- When a question matches more than one record (two people named Jake,',
+    '  two gift cards from the same store), answer for every match, each',
+    '  labelled so they can be told apart, rather than asking which one was',
+    '  meant. Ask only before creating, changing or deleting something when',
+    '  it is unclear which record the change is for.',
     ...(hasDocSearch
       ? [
           `- To answer questions about the contents of uploaded files, use the`,
