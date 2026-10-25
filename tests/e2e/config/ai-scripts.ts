@@ -98,6 +98,8 @@ export const CHAT_MARKERS = {
   listTools: 'e2e-chat-list-tools',
   /** Reply with the prompt's clock and app notes (see CONTEXT_PLACEHOLDER). */
   describeContext: 'e2e-chat-describe-context',
+  /** A Markdown reply: a bulleted list with bold names, then a table. */
+  formattedReply: 'e2e-chat-formatted-reply',
   /** Look a person up by a first name, loosely (name or alias), then answer. */
   findPerson: 'e2e-chat-find-person',
 } as const;
@@ -142,6 +144,24 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
         ],
       },
       { text: 'Here is who I found.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.formattedReply,
+    steps: [
+      {
+        text: [
+          'Two people match:',
+          '',
+          '- **Jake Miller**: 12 Oak St, Springfield',
+          '- **Jacob Stone**: 48 Elm Ave, Shelbyville',
+          '',
+          '| Card | Balance |',
+          '| --- | --- |',
+          '| REI | **$25.00** |',
+          '| Target | **$10.00** |',
+        ].join('\n'),
+      },
     ],
   },
   {

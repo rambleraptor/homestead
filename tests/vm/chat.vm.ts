@@ -122,6 +122,23 @@ describe('Chat', () => {
     await chat.expectSettled(/Jake's address/);
   });
 
+  test('a Markdown reply renders as a real list and table', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Where do the Jakes live? ${CHAT_MARKERS.formattedReply}`);
+
+    const reply = chat.assistantMessages.first();
+    await d.expect(reply.getByRole('listitem')).toHaveCount(2);
+    await d.expect(reply.getByRole('listitem').first()).toContainText('Jake Miller: 12 Oak St');
+    await d.expect(reply.getByRole('table')).toHaveCount(1);
+    await d.expect(reply.getByRole('row')).toHaveCount(3);
+    // No raw Markdown left showing.
+    await d.expect(reply).not.toContainText('**');
+    await d.expect(reply).not.toContainText('| --- |');
+    await chat.expectSettled(/Where do the Jakes live/);
+  });
+
   test('a plain reply needs no tool at all', async () => {
     const d = h.driver;
     const chat = new ChatPage(d);

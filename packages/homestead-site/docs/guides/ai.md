@@ -145,7 +145,10 @@ Chat works with **any** app you've added, with no per-app setup. It acts
 with **your** permissions — it's only offered the apps you can use, and only
 the changes you're allowed to make — confirms before deleting, and shows you which
 actions it took — each tool call is a card you can open to see what it sent and
-what came back. Replies stream in as they're written, and render as Markdown.
+what came back. Replies stream in as they're written, and render as Markdown:
+several records come back as a list with each name in bold, records compared
+side by side as a table, and the values you asked for (dates, amounts,
+addresses) in bold.
 
 ### The agentic home
 

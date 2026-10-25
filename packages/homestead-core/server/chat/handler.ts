@@ -78,7 +78,14 @@ export function buildSystemPrompt(user: AuthedUser, context: PromptContext): str
     '- Updates are merge patches: send only the fields to change.',
     '- Deletes cannot be undone. Before deleting, confirm with the user',
     '  unless they have already clearly identified the exact record.',
-    '- Answer in plain text, concisely. Summarize what you changed.',
+    '- Replies are rendered as Markdown, so format them to be scanned:',
+    '  - Several records or steps: a bulleted (or numbered) list, one per',
+    "    line, with the record's name in **bold** and its details after it.",
+    '  - Records compared on the same few fields: a table.',
+    '  - Bold the values that were asked for: dates, amounts, addresses.',
+    '  - A single fact: one short sentence, not a list.',
+    '  - Headings only to separate the parts of a long answer.',
+    '- Be concise. After a change, say what changed (a list when several did).',
   ].join('\n');
 }
 
