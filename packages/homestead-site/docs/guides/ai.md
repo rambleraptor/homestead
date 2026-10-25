@@ -176,6 +176,9 @@ now.
   drawer: pick one to carry on with it on the home, or delete it.
 - The home needs the assistant: if no AI provider is configured, or you can't
   use Chat, you get the classic dashboard instead.
+- With the home, the home *is* the chat: the top bar's Chat icon goes away, and
+  a Chat link (`/chat`, `/chat/<id>`, an old bookmark) opens the same
+  conversation on the home. Everyone else keeps the Chat screen.
 
 On a phone the strip sits under the top bar, the thread takes the rest of the
 screen, and the composer is docked at the bottom.

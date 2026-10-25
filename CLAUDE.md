@@ -379,7 +379,10 @@ SPA and apps share:
   `chat/components/ChatThread`, held in the address (`/dashboard/c/:id`) with
   past ones in a drawer (`chat/components/ConversationList`). It fills the main
   area via `layout/pageFill`, and falls back to the widget stack when the AI
-  isn't configured or the viewer can't use Chat.
+  isn't configured or the viewer can't use Chat. That rule is
+  `dashboard/homeMode.ts` (`useHomeMode`); the Chat screen redirects people on
+  the agentic home to it, and hides its top-bar icon from them
+  (`web.topBarVisible`).
 - `layout/`, `shared/`, `resources/`, `app-flags/`, `user-settings/` —
   shared chrome, components, and schema/sync plumbing. `shared/components/ui/`
   holds vendored shadcn primitives and `shared/components/ai-elements/` the

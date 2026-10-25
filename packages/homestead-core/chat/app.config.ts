@@ -35,6 +35,8 @@ export const chatApp: AppConfig = {
       },
     ],
     placement: 'topbar',
+    // Not for someone whose home is the assistant: the home holds their chats.
+    topBarVisible: () => import('../dashboard/homeMode'),
     navOrder: 5,
     widgets: [
       {

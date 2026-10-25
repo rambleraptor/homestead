@@ -140,6 +140,49 @@ describe('Agentic home', () => {
     expect(await conversations.listAll()).toEqual([]);
   });
 
+  test('the Chat screen sends someone with the agentic home to it', async () => {
+    await enableFor('everyone');
+    const { token } = await h.loginAs(h.member);
+    const d = h.driver;
+    const dashboard = new DashboardPage(d);
+    const chat = new ChatPage(d);
+    // A conversation from elsewhere (another device, through the API).
+    const res = await fetch(`${process.env.HOMESTEAD_E2E_APP_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ message: { id: 'elsewhere-1', text: `Hi ${CHAT_MARKERS.hello}` } }),
+    });
+    const id = res.headers.get('x-conversation-id')!;
+    await res.text();
+
+    await chat.goto();
+    await d.expectURL(/\/dashboard$/);
+    await d.expect(dashboard.agenticHome).toBeVisible();
+
+    await chat.goto(id);
+    await d.expectURL(new RegExp(`/dashboard/c/${id}$`));
+    await d.expect(chat.assistantMessages).toHaveCount(1);
+  });
+
+  test("the top bar's Chat icon is only for people on the classic home", async () => {
+    await enableFor(['members']);
+    const d = h.driver;
+    const chatIcon = d.getByTestId('topbar-app-chat');
+    const bell = d.getByTestId('topbar-app-notifications');
+
+    await h.loginAs(h.member);
+    await d.expect(new DashboardPage(d).agenticHome).toBeVisible();
+    await d.expect(bell).toBeVisible();
+    await d.expect(chatIcon).toHaveCount(0);
+
+    // The admin isn't in the audience: the icon, and the Chat screen itself.
+    await h.loginAs(h.admin);
+    await d.expect(chatIcon).toBeVisible();
+    await new ChatPage(d).goto();
+    await d.expectURL(/\/chat$/);
+    await d.expect(new ChatPage(d).input).toBeVisible();
+  });
+
   test("someone who can't use Chat gets the classic dashboard", async () => {
     await enableFor('everyone');
     // A guest with no household role: no grant reaches Chat's conversations.

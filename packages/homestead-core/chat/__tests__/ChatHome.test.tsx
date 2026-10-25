@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { ChatHome } from '../components/ChatHome';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
@@ -17,6 +17,13 @@ vi.mock('../hooks/useConversations', () => ({
     isError: false,
   }),
   useDeleteConversation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+// Which home the person has; the Chat screen is for the classic one.
+const homeModeMock = vi.fn(() => 'classic' as 'classic' | 'agentic' | undefined);
+vi.mock('@rambleraptor/homestead-core/dashboard/homeMode', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@rambleraptor/homestead-core/dashboard/homeMode')>()),
+  useHomeMode: () => homeModeMock(),
 }));
 
 type Chat = ReturnType<typeof import('../hooks/useConversation').useConversation>;
@@ -69,7 +76,45 @@ const reply: HomesteadUIMessage = {
   ],
 };
 
-beforeEach(() => useConversationMock.mockReset());
+beforeEach(() => {
+  useConversationMock.mockReset();
+  homeModeMock.mockReturnValue('classic');
+});
+
+describe('ChatHome for someone whose home is the assistant', () => {
+  const renderAt = (path: string, id?: string) =>
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/chat" element={<ChatHome params={{}} />} />
+          <Route path="/chat/:id" element={<ChatHome params={id ? { id } : {}} />} />
+          <Route path="/dashboard" element={<div data-testid="home-stub" />} />
+          <Route path="/dashboard/c/:id" element={<div data-testid="home-conversation-stub" />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+  it('sends a new chat to the home, and a conversation to the same one there', () => {
+    homeModeMock.mockReturnValue('agentic');
+    mockChat({});
+    const first = renderAt('/chat');
+    expect(screen.getByTestId('home-stub')).toBeInTheDocument();
+    first.unmount();
+
+    renderAt('/chat/c1', 'c1');
+    expect(screen.getByTestId('home-conversation-stub')).toBeInTheDocument();
+    // Decided before the screen mounts: it never opened the conversation.
+    expect(useConversationMock).not.toHaveBeenCalled();
+  });
+
+  it('shows nothing until it knows which home the person has', () => {
+    homeModeMock.mockReturnValue(undefined);
+    mockChat({});
+    renderChat();
+    expect(screen.queryByTestId('chat-input')).toBeNull();
+    expect(useConversationMock).not.toHaveBeenCalled();
+  });
+});
 
 describe('ChatHome', () => {
   it('opens on an empty conversation with the composer', () => {
