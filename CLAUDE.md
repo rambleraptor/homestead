@@ -728,7 +728,12 @@ the household-wide singleton; fields are flattened as
 
 Consumers: `useAppFlag(appId, key)` from
 `@rambleraptor/homestead-core/settings` is the one public hook for
-reading/writing a single flag from any component.
+reading/writing a single flag from any component. Each flag also has an
+**audience** (`<flag>__audience`, a sibling field the sync adds): everyone,
+nobody, or a JSON list of group names. `useAppFlag`'s `value` applies the
+stored value only to people in the audience and gives everyone else the
+default, so a feature can be tried on a "Beta" group first; Flag Management
+sets it. Server-side `readAppFlag` ignores audiences.
 
 ---
 

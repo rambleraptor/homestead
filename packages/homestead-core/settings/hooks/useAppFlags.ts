@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
 import { getAllAppFlagDefs } from '@rambleraptor/homestead-core/apps/registry';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
-import { unflatten, type AppFlagValues } from '../flags';
+import { unflatten, unflattenAudiences, type AppFlagAudiences, type AppFlagValues } from '../flags';
 
 export const APP_FLAGS_QUERY_KEY = ['app-flags'] as const;
 
@@ -22,7 +22,10 @@ export interface AppFlagsRecord {
 }
 
 export interface UseAppFlagsResult {
+  /** Every flag's stored value (or default) — before any audience is applied. */
   values: AppFlagValues;
+  /** Who each stored value applies to. */
+  audiences: AppFlagAudiences;
   record: AppFlagsRecord | null;
   isLoading: boolean;
   error: Error | null;
@@ -60,9 +63,11 @@ export function useAppFlags(): UseAppFlagsResult {
 
   const defs = getAllAppFlagDefs();
   const values = unflatten(query.data ?? null, defs);
+  const audiences = unflattenAudiences(query.data ?? null, defs);
 
   return {
     values,
+    audiences,
     record: query.data ?? null,
     isLoading: query.isLoading,
     error: (query.error as Error | null) ?? null,

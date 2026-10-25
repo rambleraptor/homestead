@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { aepbase, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
 import {
   APP_FLAG_SEPARATOR,
+  isAudienceField,
   parseFieldName,
   type AppFlagDefs,
 } from '@rambleraptor/homestead-core/settings/flags';
@@ -66,6 +67,8 @@ function parseSchema(def: ResourceDefinition): AppFlagDefs {
   const properties = def.schema?.properties ?? {};
   const out: AppFlagDefs = {};
   for (const [flat, prop] of Object.entries(properties)) {
+    // A flag's audience rides in a sibling field; it isn't a flag of its own.
+    if (isAudienceField(flat)) continue;
     const parsed = parseFieldName(flat);
     if (!parsed) continue;
     const flagDef = toFlagDef(parsed.key, prop);

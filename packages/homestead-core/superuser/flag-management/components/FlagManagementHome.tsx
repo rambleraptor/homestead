@@ -14,7 +14,12 @@ import {
 } from '@rambleraptor/homestead-core/apps/registry';
 import { useAppFlags } from '@rambleraptor/homestead-core/settings/hooks/useAppFlags';
 import { useUpdateAppFlag } from '@rambleraptor/homestead-core/settings/hooks/useUpdateAppFlag';
-import { unflatten } from '@rambleraptor/homestead-core/settings/flags';
+import {
+  unflatten,
+  unflattenAudiences,
+  type FlagAudience,
+} from '@rambleraptor/homestead-core/settings/flags';
+import { useGroups } from '@rambleraptor/homestead-core/permissions/hooks';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import {
   APP_FLAGS_DEFINITION_QUERY_KEY,
@@ -26,6 +31,7 @@ export function FlagManagementHome() {
   const { defs, isLoading: defsLoading, isMissing } = useAppFlagsDefinition();
   const { record, isLoading: valuesLoading } = useAppFlags();
   const values = unflatten(record, defs);
+  const audiences = unflattenAudiences(record, defs);
   const update = useUpdateAppFlag();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -67,6 +73,13 @@ export function FlagManagementHome() {
   ) => {
     try {
       await update.mutateAsync({ appId, key, value });
+    } catch {
+      // Error surfaced by the global mutation error toast (queryClient.ts).
+    }
+  };
+  const handleAudience = async (appId: string, key: string, audience: FlagAudience) => {
+    try {
+      await update.mutateAsync({ appId, key, audience });
     } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
@@ -114,17 +127,25 @@ export function FlagManagementHome() {
                     </h3>
                     {Object.entries(appDefs).map(([key, def]) => {
                       return (
-                        <FlagField
-                          key={key}
-                          appId={appId}
-                          flagKey={key}
-                          def={def}
-                          value={values[appId]?.[key]}
-                          onChange={(next) =>
-                            handleChange(appId, key, next)
-                          }
-                          isSaving={update.isPending}
-                        />
+                        <div key={key} className="space-y-2">
+                          <FlagField
+                            appId={appId}
+                            flagKey={key}
+                            def={def}
+                            value={values[appId]?.[key]}
+                            onChange={(next) =>
+                              handleChange(appId, key, next)
+                            }
+                            isSaving={update.isPending}
+                          />
+                          <AudienceField
+                            appId={appId}
+                            flagKey={key}
+                            audience={audiences[appId]?.[key] ?? 'everyone'}
+                            onChange={(next) => handleAudience(appId, key, next)}
+                            isSaving={update.isPending}
+                          />
+                        </div>
                       );
                     })}
                   </div>
@@ -244,3 +265,66 @@ function FlagField({
   }
 }
 
+interface AudienceFieldProps {
+  appId: string;
+  flagKey: string;
+  audience: FlagAudience;
+  onChange: (audience: FlagAudience) => void;
+  isSaving: boolean;
+}
+
+/**
+ * Who a flag's value applies to: everyone, nobody, or the members of chosen
+ * groups. Outside the audience a flag reads as its default, so this is how a
+ * change is tried on a "Beta" group before the whole household.
+ */
+function AudienceField({ appId, flagKey, audience, onChange, isSaving }: AudienceFieldProps) {
+  const groups = useGroups();
+  const testid = `flag-${appId}-${flagKey}-audience`;
+  const mode = audience === 'everyone' ? 'everyone' : audience.length === 0 ? 'nobody' : 'groups';
+  const chosen = audience === 'everyone' ? [] : audience;
+  const names = (groups.data ?? []).map((g) => g.name).sort();
+
+  return (
+    <div className="ml-7 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-gray-600">
+      <label htmlFor={testid}>Applies to</label>
+      <select
+        id={testid}
+        value={mode}
+        disabled={isSaving || groups.isPending}
+        data-testid={testid}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (next === 'everyone') onChange('everyone');
+          else if (next === 'nobody') onChange([]);
+          // "groups" with nothing ticked yet is nobody until a group is chosen.
+          else onChange(chosen.length > 0 ? chosen : names.slice(0, 1));
+        }}
+        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+      >
+        <option value="everyone">everyone</option>
+        <option value="groups">these groups</option>
+        <option value="nobody">nobody</option>
+      </select>
+      {mode === 'groups' &&
+        names.map((name) => {
+          const id = `${testid}-${name}`;
+          const on = chosen.includes(name);
+          return (
+            <label key={name} htmlFor={id} className="flex items-center gap-1.5">
+              <Checkbox
+                id={id}
+                checked={on}
+                disabled={isSaving}
+                data-testid={id}
+                onCheckedChange={(checked) =>
+                  onChange(checked ? [...chosen, name] : chosen.filter((g) => g !== name))
+                }
+              />
+              {name}
+            </label>
+          );
+        })}
+    </div>
+  );
+}

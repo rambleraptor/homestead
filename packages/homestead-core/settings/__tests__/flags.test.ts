@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  audienceFieldName,
   buildResourceSchema,
+  decodeAudience,
+  encodeAudience,
   fieldName,
+  inAudience,
   parseFieldName,
   unflatten,
+  unflattenAudiences,
   withDefaults,
   type AppFlagDefs,
 } from '../flags';
@@ -109,13 +114,16 @@ describe('withDefaults', () => {
 });
 
 describe('buildResourceSchema', () => {
-  it('produces one alphabetically-sorted property per declared flag', () => {
+  it('produces one alphabetically-sorted property per declared flag, each with its audience', () => {
     const schema = buildResourceSchema(defs);
     expect(schema.type).toBe('object');
     expect(Object.keys(schema.properties)).toEqual([
       'gift_cards__show_archived',
+      'gift_cards__show_archived__audience',
       'groceries__refill_threshold',
+      'groceries__refill_threshold__audience',
       'settings__theme',
+      'settings__theme__audience',
     ]);
   });
 
@@ -140,5 +148,43 @@ describe('buildResourceSchema', () => {
     expect(schema.properties.groceries__refill_threshold.description).toContain(
       '(default: 3)',
     );
+  });
+});
+
+describe('audiences', () => {
+  it('ride in a sibling field that the value readers skip', () => {
+    expect(audienceFieldName('gift-cards', 'show_archived')).toBe('gift_cards__show_archived__audience');
+    const record = {
+      gift_cards__show_archived: true,
+      gift_cards__show_archived__audience: '["Beta"]',
+    };
+    expect(unflatten(record, defs)['gift-cards']).toEqual({ show_archived: true });
+    expect(unflattenAudiences(record, defs)['gift-cards']).toEqual({ show_archived: ['Beta'] });
+    // Unset is everyone, for every declared flag.
+    expect(unflattenAudiences(record, defs).settings).toEqual({ theme: 'everyone' });
+  });
+
+  it('encode as empty for everyone and a JSON list otherwise', () => {
+    expect(encodeAudience('everyone')).toBe('');
+    expect(encodeAudience([])).toBe('[]');
+    expect(decodeAudience(encodeAudience(['Beta', 'Admins']))).toEqual(['Beta', 'Admins']);
+    expect(decodeAudience('')).toBe('everyone');
+    expect(decodeAudience(undefined)).toBe('everyone');
+    // Anything unreadable is everyone rather than locking the flag away.
+    expect(decodeAudience('not json')).toBe('everyone');
+    expect(decodeAudience('{"a":1}')).toBe('everyone');
+  });
+
+  it('include a person by any of their groups, and nobody by an empty list', () => {
+    expect(inAudience('everyone', [])).toBe(true);
+    expect(inAudience(['Beta'], ['Members', 'Beta'])).toBe(true);
+    expect(inAudience(['Beta'], ['Members'])).toBe(false);
+    expect(inAudience([], ['Members'])).toBe(false);
+  });
+
+  it('get a schema property beside each flag', () => {
+    const { properties } = buildResourceSchema(defs);
+    expect(properties.gift_cards__show_archived__audience).toMatchObject({ type: 'string' });
+    expect(Object.keys(properties)).toHaveLength(6);
   });
 });

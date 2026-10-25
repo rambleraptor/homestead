@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { buildResourceSchema } from '@rambleraptor/homestead-core/settings/flags';
 import { syncAppFlagsSchema } from '../sync';
 import type { AppFlagDefs } from '@rambleraptor/homestead-core/settings/flags';
 
@@ -66,16 +67,8 @@ describe('syncAppFlagsSchema', () => {
   });
 
   it('is a no-op when the existing schema already matches', async () => {
-    const existingSchema = {
-      type: 'object',
-      properties: {
-        settings__theme: {
-          type: 'string',
-          description:
-            'Color theme for the app. (default: light) (one of: light, dark)',
-        },
-      },
-    };
+    // What a previous boot would have registered: every flag and its audience.
+    const existingSchema = buildResourceSchema(defs);
     fetchMock.mockResolvedValueOnce(
       new Response(
         JSON.stringify({

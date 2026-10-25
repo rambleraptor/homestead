@@ -46,4 +46,21 @@ export class FlagManagementPage {
     const control = this.driver.getByTestId(`flag-${appId}-${key}`);
     await this.expect(control).toHaveValue(value);
   }
+
+  /** Who a flag applies to: `everyone`, `groups` (these groups), or `nobody`. */
+  async selectAudience(appId: string, key: string, mode: 'everyone' | 'groups' | 'nobody') {
+    const control = this.driver.getByTestId(`flag-${appId}-${key}-audience`);
+    // Disabled until the groups it offers have loaded.
+    await this.expect(control).toBeEnabled();
+    await control.selectOption(mode);
+  }
+
+  async expectAudience(appId: string, key: string, mode: 'everyone' | 'groups' | 'nobody') {
+    await this.expect(this.driver.getByTestId(`flag-${appId}-${key}-audience`)).toHaveValue(mode);
+  }
+
+  /** The checkbox for one group under a flag's "these groups" audience. */
+  audienceGroup(appId: string, key: string, groupName: string): Locator {
+    return this.driver.getByTestId(`flag-${appId}-${key}-audience-${groupName}`);
+  }
 }
