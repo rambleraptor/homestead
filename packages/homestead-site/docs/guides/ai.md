@@ -189,6 +189,13 @@ It knows your local date and time: your browser sends its timezone with each
 message, so "tomorrow", "this weekend" and "at 6pm" mean yours. Nothing about
 it is stored.
 
+It knows who else lives here: everyone holding the Admin or Member role (through
+any group), and every superuser. It gets their names and user ids, so a record
+that says `created_by: u_2` reads as "Sam added it", never the id. Emails aren't
+shared. A guest isn't part of the household and isn't told anyone's name. The
+same list is at `GET /api/household` for any household member, and the Share
+dialog uses it to offer members the people they live with.
+
 Conversations are kept. The history drawer holds your past threads, most
 recent first; open one to carry on where you left off. Each conversation has
 its own address (`/dashboard/c/<id>`), so a reload — or another device — picks

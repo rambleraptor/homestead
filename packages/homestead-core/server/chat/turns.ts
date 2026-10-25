@@ -36,7 +36,8 @@ import { CHAT_MESSAGES, CONVERSATIONS } from '../../chat/resources';
 import type { ChatTurnRequest } from '../../chat/types';
 import type { ResourceDefinition } from '../../resources/types';
 import { buildChatToolSet, buildSystemPrompt } from './handler';
-import { appNotes, localNow, resolveTimezone } from './context';
+import { appNotes, householdLines, localNow, resolveTimezone } from './context';
+import { householdFor } from '../household';
 import { valueTypeLines } from '../../chat/values';
 import { getAllApps } from '../../apps/registry';
 import { modelResourcesFor } from '../collection-access';
@@ -403,6 +404,7 @@ export async function handleTurn(
         hasDocSearch,
         appNotes: appNotes(getAllApps(), offered),
         valueTypes: valueTypeLines(getAllApps(), offered),
+        household: householdLines(householdFor(auth.user.id), auth.user.id),
       }),
       messages: modelMessages,
       tools: toolSet,

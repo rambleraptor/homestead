@@ -29,6 +29,8 @@ import { type Grant } from './permissions';
 import type { EnforceContext } from './enforce';
 import { collectionsWithVisibleRows } from './visible-rows';
 import { collectionAccess } from './collection-access';
+import { householdMembers } from './household';
+import type { HouseholdMember } from '@rambleraptor/homestead-core/household/types';
 import type { CollectionAccess } from '@rambleraptor/homestead-core/resources/model-tools';
 import { TYPE_SUPERUSER, type User } from './types';
 import type { SyncDispatcher } from '../sync';
@@ -189,6 +191,11 @@ export class Engine {
    */
   collectionAccess(caller: User): Map<string, CollectionAccess> {
     return collectionAccess(this.enforceContext(), this.db, this.registry, caller);
+  }
+
+  /** Who shares this Homestead, by name. See `./household`. */
+  householdMembers(): HouseholdMember[] {
+    return householdMembers(this.db, this.permissionStore);
   }
 
   /**

@@ -7,7 +7,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { aepbase } from '../api/aepbase';
+import { aepbase, AepbaseError } from '../api/aepbase';
+import { fetchHousehold } from '../household/useHousehold';
 import { fetchPermissionContextFor } from './client';
 import { ACCESS_GRANTS, GROUP_MEMBERSHIPS, GROUPS, ROLES } from './resources';
 import type { Capability, Effect } from './resolve';
@@ -287,6 +288,26 @@ export function useAllUsers() {
   return useQuery({
     queryKey: ['permissions', 'users'] as const,
     queryFn: () => aepbase.list<UserLite>('users'),
+  });
+}
+
+/**
+ * The people a record can be shared with. A superuser lists every account; for
+ * anyone else that list is refused (403), so they get the household directory
+ * instead — the people they share this Homestead with.
+ */
+export function useShareableUsers() {
+  return useQuery({
+    queryKey: ['permissions', 'shareable-users'] as const,
+    queryFn: async (): Promise<UserLite[]> => {
+      try {
+        return await aepbase.list<UserLite>('users');
+      } catch (err) {
+        if (!(err instanceof AepbaseError) || err.code !== 403) throw err;
+        const members = await fetchHousehold();
+        return members.map((m) => ({ id: m.id, display_name: m.name }));
+      }
+    },
   });
 }
 
