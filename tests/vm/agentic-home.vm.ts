@@ -1,8 +1,8 @@
 /**
- * The agentic home (`dashboard.agentic_home`): the assistant front and centre,
- * with a strip of chips for the widgets that matter now, each opening its
- * widget on tap. It sits behind a flag whose audience can be one group, so this
- * also proves the flag reaches only that group.
+ * The home: the assistant's conversation, held in the address with past ones
+ * in a drawer, under a strip of chips for the widgets that matter now. Old
+ * Chat links land here, and someone the assistant can't serve gets the home
+ * without the conversation.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -32,14 +32,6 @@ async function eventually<T>(read: () => Promise<T>, check: (v: T) => boolean): 
 describe('Agentic home', () => {
   let h: Harness;
 
-  /** Turn the flag on for the given groups (ids), as Flag Management would. */
-  async function enableFor(groupIds: string[] | 'everyone') {
-    await e2eClient(h.admin.token).collection('app-flags').create({
-      dashboard__agentic_home: true,
-      dashboard__agentic_home__audience: groupIds === 'everyone' ? '' : JSON.stringify(groupIds),
-    });
-  }
-
   beforeEach(async () => {
     h = await bootHomestead();
   });
@@ -48,29 +40,7 @@ describe('Agentic home', () => {
     await h.close();
   });
 
-  test('is off by default: the classic dashboard, ask box included', async () => {
-    await h.loginAs(h.member);
-    const dashboard = new DashboardPage(h.driver);
-    await h.driver.expect(dashboard.askBox).toBeVisible();
-    await h.driver.expect(dashboard.agenticHome).toHaveCount(0);
-  });
-
-  test('reaches only the flag\'s audience', async () => {
-    await enableFor(['members']);
-
-    await h.loginAs(h.member);
-    const dashboard = new DashboardPage(h.driver);
-    await h.driver.expect(dashboard.agenticHome).toBeVisible();
-    await h.driver.expect(dashboard.askBox).toHaveCount(0);
-
-    // The admin is in Admins, not Members: the classic dashboard, unchanged.
-    await h.loginAs(h.admin);
-    await h.driver.expect(dashboard.welcomePanel.or(dashboard.adminChecklist)).toBeVisible();
-    await h.driver.expect(dashboard.agenticHome).toHaveCount(0);
-  });
-
   test('the first message moves the conversation into the address; a reload keeps it', async () => {
-    await enableFor('everyone');
     const { token } = await h.loginAs(h.member);
     const d = h.driver;
     const dashboard = new DashboardPage(d);
@@ -95,7 +65,6 @@ describe('Agentic home', () => {
   });
 
   test('New chat starts over; the drawer brings the old one back', async () => {
-    await enableFor('everyone');
     const { token } = await h.loginAs(h.member);
     const d = h.driver;
     const dashboard = new DashboardPage(d);
@@ -119,7 +88,6 @@ describe('Agentic home', () => {
   });
 
   test('deleting the open conversation from the drawer starts a new one', async () => {
-    await enableFor('everyone');
     const { token } = await h.loginAs(h.member);
     const d = h.driver;
     const dashboard = new DashboardPage(d);
@@ -140,8 +108,7 @@ describe('Agentic home', () => {
     expect(await conversations.listAll()).toEqual([]);
   });
 
-  test('the Chat screen sends someone with the agentic home to it', async () => {
-    await enableFor('everyone');
+  test('old Chat links open the home, and the same conversation on it', async () => {
     const { token } = await h.loginAs(h.member);
     const d = h.driver;
     const dashboard = new DashboardPage(d);
@@ -155,36 +122,24 @@ describe('Agentic home', () => {
     const id = res.headers.get('x-conversation-id')!;
     await res.text();
 
-    await chat.goto();
+    await d.goto('/chat');
     await d.expectURL(/\/dashboard$/);
     await d.expect(dashboard.agenticHome).toBeVisible();
 
-    await chat.goto(id);
+    await d.goto(`/chat/${id}`);
     await d.expectURL(new RegExp(`/dashboard/c/${id}$`));
     await d.expect(chat.assistantMessages).toHaveCount(1);
   });
 
-  test("the top bar's Chat icon is only for people on the classic home", async () => {
-    await enableFor(['members']);
-    const d = h.driver;
-    const chatIcon = d.getByTestId('topbar-app-chat');
-    const bell = d.getByTestId('topbar-app-notifications');
-
+  test('the top bar has no Chat icon: the home is the chat', async () => {
     await h.loginAs(h.member);
+    const d = h.driver;
     await d.expect(new DashboardPage(d).agenticHome).toBeVisible();
-    await d.expect(bell).toBeVisible();
-    await d.expect(chatIcon).toHaveCount(0);
-
-    // The admin isn't in the audience: the icon, and the Chat screen itself.
-    await h.loginAs(h.admin);
-    await d.expect(chatIcon).toBeVisible();
-    await new ChatPage(d).goto();
-    await d.expectURL(/\/chat$/);
-    await d.expect(new ChatPage(d).input).toBeVisible();
+    await d.expect(d.getByTestId('topbar-app-notifications')).toBeVisible();
+    await d.expect(d.getByTestId('topbar-app-chat')).toHaveCount(0);
   });
 
-  test("someone who can't use Chat gets the classic dashboard", async () => {
-    await enableFor('everyone');
+  test("someone who can't use Chat gets the home without the conversation", async () => {
     // A guest with no household role: no grant reaches Chat's conversations.
     const email = `guest-${Date.now()}@example.com`;
     const password = 'guest-vm-password';
@@ -197,13 +152,15 @@ describe('Agentic home', () => {
     const { token: guestToken } = (await res.json()) as { token: string };
     await h.loginAs({ id: guest.id, email, password, token: guestToken });
 
-    const dashboard = new DashboardPage(h.driver);
-    await h.driver.expect(dashboard.welcomePanel).toBeVisible();
-    await h.driver.expect(dashboard.agenticHome).toHaveCount(0);
+    const d = h.driver;
+    const dashboard = new DashboardPage(d);
+    await d.expect(dashboard.assistantUnavailable).toHaveAttribute('data-reason', 'no-access');
+    await d.expect(dashboard.agenticHome).toBeVisible();
+    await d.expect(new ChatPage(d).input).toHaveCount(0);
+    await d.expect(dashboard.historyButton).toHaveCount(0);
   });
 
   test('the strip follows the widgets\' summaries, and a chip opens its widget', async () => {
-    await enableFor('everyone');
     const { token } = await h.loginAs(h.member);
     const d = h.driver;
     const dashboard = new DashboardPage(d);
@@ -230,7 +187,6 @@ describe('Agentic home', () => {
   });
 
   test('fills the screen: no shell padding around the thread', async () => {
-    await enableFor('everyone');
     await h.loginAs(h.member);
     const d = h.driver;
     await d.expect(new DashboardPage(d).agenticHome).toBeVisible();

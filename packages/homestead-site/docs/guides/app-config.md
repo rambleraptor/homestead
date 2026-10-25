@@ -132,7 +132,6 @@ Everything about how the app surfaces in the browser. Lives under the required
 | `showInNav`        | `boolean`                                   | `true`      | `false` hides the app from nav but keeps routes reachable.            |
 | `placement`        | `'sidebar' \| 'topbar'`                     | `'sidebar'` | Where the nav entry renders. Topbar apps are icon-only.              |
 | `topBarBadge`      | `LazyComponent`                             | —           | Badge inside a topbar app's button (fetches its own data).          |
-| `topBarVisible`    | `() => import(hook)`                        | —           | Lazily-imported hook: does this viewer see the topbar button?       |
 | `navOrder`         | `number`                                    | `100`       | Sort order within a section (lower first).                          |
 | `section`          | `string`                                    | —           | Grouping header in the sidebar. Unsectioned apps render last.       |
 | `filters`          | `AppFilterDecl[]`                           | —           | Client-side, in-memory list filters.                               |
@@ -239,8 +238,9 @@ gets an auto-injected `enabled` flag — don't declare your own.
 ## Adding dashboard widgets
 
 Dashboard cards declared under `web.widgets` with a lazy `component`. Each
-widget takes no props and fetches its own data. The dashboard lays widgets out
-by `order` (lower first; default `100`). See the
+widget takes no props and fetches its own data. The home shows each as a chip
+on its strip, opening the widget when tapped, in `order` (lower first; default
+`100`). See the
 [Dashboard Widgets](./widgets) guide.
 
 ```ts
@@ -260,7 +260,7 @@ web: {
 ### Widget summaries
 
 A widget can also say what it would say in one line, for the
-[agentic home](./ai#the-agentic-home): its headline on its chip, and whether
+[home](./ai#the-home): its headline on its chip, and whether
 it needs attention now. Declare `summary` as a lazily-imported **hook**
 (so it can use the app's data hooks, sharing their cache with the widget):
 

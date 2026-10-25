@@ -1,15 +1,13 @@
 /**
  * Dashboard App Configuration
  *
- * Main dashboard app providing an overview of the Homestead system.
- * Renders a first-run welcome guide (see {@link WelcomePanel}) plus the
- * widgets contributed by other apps.
+ * The home: the assistant's conversation, with a strip of chips for the
+ * widgets other apps contribute (see `components/agentic/AgenticHome`). The
+ * conversation needs an AI provider and access to Chat; without them the home
+ * keeps its chips and says why the assistant isn't there.
  *
- * The `show_welcome_guide` per-user setting drives the first-login
- * getting-started panel: it defaults to `true`, so brand-new users see
- * the guide, and the panel's dismiss button flips it to `false`. Because
- * it's declared here, it also surfaces as a "Show welcome guide" toggle
- * on the Settings page, letting users bring the guide back.
+ * The `show_welcome_guide` per-user setting dismisses the admin setup
+ * checklist shown on the home (the key predates the checklist).
  */
 
 import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
@@ -17,23 +15,27 @@ import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
 export const dashboardApp: AppConfig = {
   id: 'dashboard',
   name: 'Dashboard',
-  description: 'Overview of your Homestead system',
-  flags: {
-    agentic_home: {
-      type: 'boolean',
-      label: 'Agentic home',
-      description:
-        'Make the assistant the home screen: a conversation in place of the widget ' +
-        'stack, with a strip of chips for the widgets that need attention. ' +
-        'Limit its audience to try it on a group first.',
-      default: false,
+  description: 'Your home: the assistant, and what needs you today',
+  // The assistant-first home was tried behind a flag; it is now the only
+  // home. This authorizes dropping the flag's stored columns.
+  migrations: [
+    {
+      id: 'dashboard-drop-agentic-home-flag',
+      title: 'Retire the agentic-home flag',
+      drops: [
+        { resource: 'app-flag', field: 'dashboard__agentic_home' },
+        { resource: 'app-flag', field: 'dashboard__agentic_home__audience' },
+      ],
+      load: () => import('./migrations/drop-agentic-home-flag'),
     },
-  },
+  ],
   userSettings: {
+    // Key kept from the retired welcome guide (renaming it would drop a
+    // column that holds data); it now dismisses the admin setup checklist.
     show_welcome_guide: {
       type: 'boolean',
-      label: 'Show welcome guide',
-      description: 'Show the getting-started guide on your dashboard.',
+      label: 'Show setup checklist',
+      description: 'For admins: show the setup checklist on the home.',
       default: true,
     },
   },

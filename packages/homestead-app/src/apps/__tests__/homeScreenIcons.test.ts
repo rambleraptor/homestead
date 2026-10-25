@@ -3,7 +3,8 @@
  * points at ships in `public/`. Two deliberate exceptions:
  *
  *  - the dashboard *is* the Homestead home screen, so it keeps the brand icon
- *    the static manifest already declares;
+ *    the static manifest already declares, and Chat has no screen of its own
+ *    (its conversations are on the home);
  *  - the superuser tree is admin chrome nobody pins to a phone.
  *
  * Imports through the frontend's shim (`@/apps/registry`) so the check runs
@@ -25,7 +26,7 @@ function walk(apps: AppConfig[]): AppConfig[] {
 
 function isUserFacing(app: AppConfig): boolean {
   if (!app.web) return false;
-  if (app.id === 'dashboard') return false;
+  if (app.id === 'dashboard' || app.id === 'chat') return false;
   return !app.web.basePath.startsWith('/superuser');
 }
 
@@ -35,7 +36,7 @@ describe('home-screen icons', () => {
   it('covers the apps this instance serves', () => {
     // Guard against the filter silently matching nothing.
     expect(userFacing.map((a) => a.id)).toEqual(
-      expect.arrayContaining(['groceries', 'games', 'minigolf', 'chat', 'settings']),
+      expect.arrayContaining(['groceries', 'games', 'minigolf', 'settings']),
     );
   });
 

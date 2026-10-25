@@ -11,7 +11,7 @@
  * The chat behind each conversation lives outside React (a session, below), so
  * a turn keeps streaming across a route change. That matters on the first
  * message of a new conversation: the response names the conversation before
- * the reply arrives, the page moves to `/chat/<id>`, and the remounted page
+ * the reply arrives, the page moves to `/dashboard/c/<id>`, and the remounted page
  * picks up the same chat mid-stream.
  */
 

@@ -2,7 +2,7 @@
  * Navigation - Top-bar apps, on the VM tier.
  *
  * A port of tests/e2e/tests/navigation/topbar.spec.ts. Apps with
- * `placement: 'topbar'` (notifications, chat) render as icon buttons in the
+ * `placement: 'topbar'` (notifications) render as icon buttons in the
  * header instead of sidebar links.
  */
 
@@ -25,9 +25,8 @@ describe('Top-bar apps', () => {
     await h.close();
   });
 
-  test('header shows notifications and chat buttons', async () => {
+  test('header shows the notifications button', async () => {
     await h.driver.expect(h.driver.getByTestId('topbar-app-notifications')).toBeVisible();
-    await h.driver.expect(h.driver.getByTestId('topbar-app-chat')).toBeVisible();
   });
 
   test('topbar apps do not appear in the sidebar', async () => {
@@ -39,12 +38,5 @@ describe('Top-bar apps', () => {
   test('notifications button navigates to /notifications', async () => {
     await h.driver.getByTestId('topbar-app-notifications').click();
     await h.driver.expectURL(/\/notifications/);
-  });
-
-  test('chat button navigates to /chat and renders the app', async () => {
-    await h.driver.getByTestId('topbar-app-chat').click();
-    await h.driver.expectURL(/\/chat/);
-    // The page renders without a GEMINI key — the 503 only happens on send.
-    await h.driver.expect(h.driver.getByTestId('chat-input')).toBeVisible();
   });
 });

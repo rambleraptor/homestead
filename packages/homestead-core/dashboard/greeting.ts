@@ -1,25 +1,19 @@
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { getTodaysHoliday } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
-import { useUserSetting } from '@rambleraptor/homestead-core/user-settings/hooks/useUserSetting';
 
-/**
- * The dashboard's headline greeting. A holiday wins; otherwise a first visit
- * (the welcome guide still showing) is greeted rather than welcomed "back".
- */
-export function useGreeting(): { greeting: string; isFirstRun: boolean } {
+/** "Good morning" before noon, "Good afternoon" until six, "Good evening" after. */
+export function partOfDay(at: Date = new Date()): string {
+  const hour = at.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/** The home's greeting, in the person's local time. A holiday wins. */
+export function useGreeting(): string {
   const { user } = useAuth();
-  const { value: showWelcomeGuide } = useUserSetting<boolean>('dashboard', 'show_welcome_guide');
-  const isFirstRun = showWelcomeGuide !== false;
   const holiday = getTodaysHoliday();
-  const name = user?.name;
-  const greeting = holiday
-    ? holiday.message
-    : isFirstRun
-      ? name
-        ? `Welcome, ${name}`
-        : 'Welcome'
-      : name
-        ? `Welcome back, ${name}`
-        : 'Welcome back';
-  return { greeting, isFirstRun };
+  if (holiday) return holiday.message;
+  const part = partOfDay();
+  return user?.name ? `${part}, ${user.name}` : part;
 }

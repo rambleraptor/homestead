@@ -118,11 +118,8 @@ describe('AdminChecklistPanel', () => {
         '2 of 2 done',
       ),
     );
-    // AI configured → an "open the assistant" link to /chat.
-    expect(screen.getByTestId('checklist-link-ai')).toHaveAttribute(
-      'href',
-      '/chat',
-    );
+    // AI configured → nothing to open: the assistant is on the home itself.
+    expect(screen.queryByTestId('checklist-link-ai')).toBeNull();
     // All done → the dismiss button reads "Done".
     expect(screen.getByTestId('admin-checklist-dismiss')).toHaveTextContent(
       /done/i,

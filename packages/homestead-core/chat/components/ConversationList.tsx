@@ -20,23 +20,21 @@ export interface ConversationListProps {
   activeId: string | null;
   /** After the open conversation is deleted. */
   onDeletedActive: () => void;
-  /** Where a conversation opens. The Chat screen's own address by default. */
-  hrefFor?: (conversationId: string) => string;
+  /** Where a conversation opens. */
+  hrefFor: (conversationId: string) => string;
   /** Where "New chat" goes. */
-  newHref?: string;
+  newHref: string;
   /** After a link in the list is followed (a drawer closes itself). */
   onNavigate?: () => void;
   className?: string;
 }
 
-const chatHref = (conversationId: string) => `/chat/${conversationId}`;
-
 /** The user's conversations, newest activity first, with a way to start another. */
 export function ConversationList({
   activeId,
   onDeletedActive,
-  hrefFor = chatHref,
-  newHref = '/chat',
+  hrefFor,
+  newHref,
   onNavigate,
   className,
 }: ConversationListProps) {

@@ -5,37 +5,12 @@
  * placed on the top bar (`AppConfig.placement: 'topbar'`).
  */
 
-import { lazy, Suspense, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react';
-import type { LazyVisibilityHook } from '@rambleraptor/homestead-core/apps/types';
+import { Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { getTopBarApps } from '@rambleraptor/homestead-core/apps/registry';
 import { AppIcon, getLazyComponent } from '@rambleraptor/homestead-core/apps/lazy';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
-
-type GateProps = { children: ReactNode };
-const gateCache = new WeakMap<LazyVisibilityHook, LazyExoticComponent<ComponentType<GateProps>>>();
-
-/**
- * A component that shows its children only when the app's `topBarVisible`
- * hook says so. Hooks can't be called conditionally, so each one runs inside
- * its own lazily-loaded component, cached per hook so it never remounts.
- */
-function gateFor(loader: LazyVisibilityHook): LazyExoticComponent<ComponentType<GateProps>> {
-  const cached = gateCache.get(loader);
-  if (cached) return cached;
-  const Gate = lazy(() =>
-    loader().then((m) => {
-      const useVisible = 'default' in m ? m.default : m;
-      function TopBarGate({ children }: GateProps) {
-        return useVisible() ? <>{children}</> : null;
-      }
-      return { default: TopBarGate };
-    }),
-  );
-  gateCache.set(loader, Gate);
-  return Gate;
-}
 
 interface HeaderProps {
   /** Toggles the mobile drawer. */
@@ -97,7 +72,7 @@ export function Header({
             const Badge = web.topBarBadge
               ? getLazyComponent(web.topBarBadge)
               : null;
-            const button = (
+            return (
               <button
                 key={app.id}
                 onClick={() => navigate(web.basePath)}
@@ -112,13 +87,6 @@ export function Header({
                   </Suspense>
                 )}
               </button>
-            );
-            if (!web.topBarVisible) return button;
-            const Gate = gateFor(web.topBarVisible);
-            return (
-              <Suspense key={app.id} fallback={null}>
-                <Gate>{button}</Gate>
-              </Suspense>
             );
           })}
         </div>
