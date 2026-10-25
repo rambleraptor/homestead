@@ -369,6 +369,10 @@ SPA and apps share:
   `chat/hooks/useConversation.ts`), rendered with AI Elements. `notifications` owns the
   web-push inbox + subscription management; its server half lives in
   `server/notifications.ts`)
+  `dashboard` renders the widget stack, or — behind the `dashboard.agentic_home`
+  flag — the assistant-first home (`dashboard/components/agentic/`): a briefing
+  and carousel built from each widget's optional `summary` hook, over a fresh
+  in-place conversation rendered with the shared `chat/components/ChatThread`.
 - `layout/`, `shared/`, `resources/`, `app-flags/`, `user-settings/` —
   shared chrome, components, and schema/sync plumbing. `shared/components/ui/`
   holds vendored shadcn primitives and `shared/components/ai-elements/` the
@@ -730,10 +734,11 @@ Consumers: `useAppFlag(appId, key)` from
 `@rambleraptor/homestead-core/settings` is the one public hook for
 reading/writing a single flag from any component. Each flag also has an
 **audience** (`<flag>__audience`, a sibling field the sync adds): everyone,
-nobody, or a JSON list of group names. `useAppFlag`'s `value` applies the
+nobody, or a JSON list of group ids. `useAppFlag`'s `value` applies the
 stored value only to people in the audience and gives everyone else the
 default, so a feature can be tried on a "Beta" group first; Flag Management
-sets it. Server-side `readAppFlag` ignores audiences.
+sets it. Resolved client-side, so it chooses an experience, never guards
+data; server-side `readAppFlag` ignores audiences.
 
 ---
 

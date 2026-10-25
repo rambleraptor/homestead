@@ -47,20 +47,20 @@ describe('Superuser → Flag Management sub-page (superuser)', () => {
     await members.click();
     await d.expect(members).toBeChecked();
 
-    // Stored beside the flag as a JSON list of group names.
+    // Stored beside the flag as a JSON list of group ids, so a rename changes nothing.
     const [record] = await e2eClient(h.admin.token)
       .collection<Record<string, unknown>>('app-flags')
       .listAll();
     expect(JSON.parse(record!.groceries__default_store__audience as string).sort()).toEqual([
-      'Admins',
-      'Members',
+      'admins',
+      'members',
     ]);
   });
 
   test('the chosen audience is what a reload shows, and everyone clears it', async () => {
     const d = h.driver;
     await e2eClient(h.admin.token).collection('app-flags').create({
-      groceries__default_store__audience: JSON.stringify(['Members']),
+      groceries__default_store__audience: JSON.stringify(['members']),
     });
 
     await d.reload();

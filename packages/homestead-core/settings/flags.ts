@@ -59,9 +59,14 @@ export type AppFlagValues = Record<string, Record<string, AppFlagValue>>;
 
 /**
  * Who a flag's stored value applies to: `'everyone'`, or the members of the
- * named groups (an empty list: nobody). Anyone outside the audience reads the
- * flag's declared default, as if nothing had been set — so a feature can be
- * rolled out to a "Beta" group before the household.
+ * groups with these ids (an empty list: nobody). Anyone outside the audience
+ * reads the flag's declared default, as if nothing had been set — so a
+ * feature can be rolled out to a "Beta" group before the household.
+ *
+ * Ids, not names: renaming a group must not change who sees a flag, and a
+ * deleted group's id matches nobody rather than a later group of the same
+ * name. This decides which experience a person gets; it is resolved in the
+ * browser from a record every member can read, so it is not an access control.
  */
 export type FlagAudience = 'everyone' | string[];
 
@@ -86,7 +91,7 @@ export function isAudienceField(flatOrKey: string): boolean {
   return flatOrKey.endsWith(AUDIENCE_SUFFIX);
 }
 
-/** The stored form: empty for everyone, else a JSON list of group names. */
+/** The stored form: empty for everyone, else a JSON list of group ids. */
 export function encodeAudience(audience: FlagAudience): string {
   return audience === 'everyone' ? '' : JSON.stringify(audience);
 }
@@ -102,9 +107,9 @@ export function decodeAudience(raw: unknown): FlagAudience {
   }
 }
 
-/** Whether someone in `groupNames` is in `audience`. */
-export function inAudience(audience: FlagAudience, groupNames: readonly string[]): boolean {
-  return audience === 'everyone' || audience.some((g) => groupNames.includes(g));
+/** Whether someone in the groups `groupIds` is in `audience`. */
+export function inAudience(audience: FlagAudience, groupIds: readonly string[]): boolean {
+  return audience === 'everyone' || audience.some((g) => groupIds.includes(g));
 }
 
 export type AppFlagAudiences = Record<string, Record<string, FlagAudience>>;
@@ -246,6 +251,10 @@ export function buildResourceSchema(defs: AppFlagDefs): {
   const entries: Array<[string, Record<string, unknown>]> = [];
   for (const [appId, appDefs] of Object.entries(defs)) {
     for (const [key, def] of Object.entries(appDefs)) {
+      // Such a key would be read as another flag's audience field.
+      if (isAudienceField(key)) {
+        throw new Error(`app flag ${appId}.${key}: a flag key may not end in "${AUDIENCE_SUFFIX}"`);
+      }
       entries.push([fieldName(appId, key), propertyFor(def)]);
       entries.push([
         audienceFieldName(appId, key),
@@ -253,7 +262,7 @@ export function buildResourceSchema(defs: AppFlagDefs): {
           type: 'string',
           description:
             `Who "${def.label}" applies to: empty for everyone, else a JSON list of ` +
-            'group names (an empty list: nobody). Others read the default.',
+            'group ids (an empty list: nobody). Others read the default.',
         },
       ]);
     }

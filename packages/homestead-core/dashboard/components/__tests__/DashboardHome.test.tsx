@@ -10,6 +10,7 @@ import { DashboardHome } from '../DashboardHome';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useUserSetting } from '@rambleraptor/homestead-core/user-settings/hooks/useUserSetting';
 import { getTodaysHoliday } from '@rambleraptor/homestead-core/shared/utils/dateUtils';
+import { useAppFlag } from '@rambleraptor/homestead-core/settings/hooks/useAppFlag';
 
 vi.mock('../WelcomePanel', () => ({
   WelcomePanel: () => <div data-testid="welcome-panel-stub" />,
@@ -21,6 +22,15 @@ vi.mock('../AdminChecklistPanel', () => ({
 
 vi.mock('../NoAppsPanel', () => ({
   NoAppsPanel: () => <div data-testid="no-apps-stub" />,
+}));
+
+vi.mock('../agentic/AgenticHome', () => ({
+  AgenticHome: () => <div data-testid="agentic-home-stub" />,
+}));
+
+// The agentic-home flag, as it resolves for the signed-in person (off here).
+vi.mock('@rambleraptor/homestead-core/settings/hooks/useAppFlag', () => ({
+  useAppFlag: vi.fn(() => ({ value: false })),
 }));
 
 vi.mock('@rambleraptor/homestead-core/auth/useAuth', () => ({
@@ -120,5 +130,22 @@ describe('DashboardHome onboarding panel', () => {
     renderHome();
     expect(screen.getByTestId('welcome-panel-stub')).toBeInTheDocument();
     expect(screen.queryByTestId('admin-checklist-stub')).toBeNull();
+  });
+});
+
+describe('DashboardHome agentic flag', () => {
+  it('shows the agentic home when the flag is on for this person, and the classic one otherwise', () => {
+    mockShowGuide(false);
+    vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1', name: 'Alex', type: 'regular' } } as never);
+
+    vi.mocked(useAppFlag).mockReturnValue({ value: true } as never);
+    const on = renderHome();
+    expect(on.getByTestId('agentic-home-stub')).toBeInTheDocument();
+    on.unmount();
+
+    vi.mocked(useAppFlag).mockReturnValue({ value: false } as never);
+    renderHome();
+    expect(screen.queryByTestId('agentic-home-stub')).not.toBeInTheDocument();
+    expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
   });
 });

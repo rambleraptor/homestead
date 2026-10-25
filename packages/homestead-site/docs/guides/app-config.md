@@ -256,6 +256,37 @@ web: {
 },
 ```
 
+### Widget summaries
+
+A widget can also say what it would say in one line, for the
+[agentic home](./ai#the-agentic-home): its headline in the briefing, and
+whether it needs attention now. Declare `summary` as a lazily-imported **hook**
+(so it can use the app's data hooks, sharing their cache with the widget):
+
+```ts
+widgets: [
+  {
+    id: 'groceries-remaining',
+    component: () => import('./components/GroceriesWidget').then((m) => m.GroceriesWidget),
+    summary: () => import('./hooks/useGroceriesSummary'),
+  },
+],
+```
+
+```ts
+// hooks/useGroceriesSummary.ts
+export default function useGroceriesSummary(): WidgetSummary | null | undefined {
+  const { data, isLoading } = useGroceries();
+  if (isLoading) return undefined;          // not known yet
+  const left = data?.filter((i) => !i.checked).length ?? 0;
+  if (left === 0) return null;              // nothing to say: off the carousel unless urgent
+  return { headline: `${left} items left to buy` };   // `urgent: true` moves the card to the front
+}
+```
+
+Without `summary`, a widget shows on the carousel only when pinned and says
+nothing in the briefing.
+
 ## Scheduling background work
 
 `crons` declares periodic server-side hooks. Each `CronHook` names a handler the

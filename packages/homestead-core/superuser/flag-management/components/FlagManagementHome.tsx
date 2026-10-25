@@ -283,7 +283,11 @@ function AudienceField({ appId, flagKey, audience, onChange, isSaving }: Audienc
   const testid = `flag-${appId}-${flagKey}-audience`;
   const mode = audience === 'everyone' ? 'everyone' : audience.length === 0 ? 'nobody' : 'groups';
   const chosen = audience === 'everyone' ? [] : audience;
-  const names = (groups.data ?? []).map((g) => g.name).sort();
+  const known = [...(groups.data ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+  // A chosen id whose group has since been deleted: shown so it can be unticked.
+  const removed = chosen.filter((id) => !known.some((g) => g.id === id));
+  const toggle = (id: string, on: boolean) =>
+    onChange(on ? [...chosen, id] : chosen.filter((g) => g !== id));
 
   return (
     <div className="ml-7 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-gray-600">
@@ -297,34 +301,43 @@ function AudienceField({ appId, flagKey, audience, onChange, isSaving }: Audienc
           const next = e.target.value;
           if (next === 'everyone') onChange('everyone');
           else if (next === 'nobody') onChange([]);
-          // "groups" with nothing ticked yet is nobody until a group is chosen.
-          else onChange(chosen.length > 0 ? chosen : names.slice(0, 1));
+          // "These groups" starts with the first group, so it never silently means nobody.
+          else onChange(chosen.length > 0 ? chosen : known.slice(0, 1).map((g) => g.id));
         }}
         className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
       >
         <option value="everyone">everyone</option>
-        <option value="groups">these groups</option>
+        <option value="groups" disabled={known.length === 0}>
+          these groups
+        </option>
         <option value="nobody">nobody</option>
       </select>
+      {known.length === 0 && !groups.isPending && (
+        <span className="text-gray-400">No groups yet — make one under Permissions.</span>
+      )}
       {mode === 'groups' &&
-        names.map((name) => {
-          const id = `${testid}-${name}`;
-          const on = chosen.includes(name);
+        known.map((group) => {
+          const id = `${testid}-${group.name}`;
           return (
-            <label key={name} htmlFor={id} className="flex items-center gap-1.5">
+            <label key={group.id} htmlFor={id} className="flex items-center gap-1.5">
               <Checkbox
                 id={id}
-                checked={on}
+                checked={chosen.includes(group.id)}
                 disabled={isSaving}
                 data-testid={id}
-                onCheckedChange={(checked) =>
-                  onChange(checked ? [...chosen, name] : chosen.filter((g) => g !== name))
-                }
+                onCheckedChange={(checked) => toggle(group.id, checked === true)}
               />
-              {name}
+              {group.name}
             </label>
           );
         })}
+      {mode === 'groups' &&
+        removed.map((id) => (
+          <label key={id} className="flex items-center gap-1.5 text-gray-400">
+            <Checkbox checked disabled={isSaving} onCheckedChange={() => toggle(id, false)} />
+            {id} (removed)
+          </label>
+        ))}
     </div>
   );
 }
