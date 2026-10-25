@@ -69,7 +69,10 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <AuthGuard>
       <div
-        className="flex h-screen overflow-hidden bg-bg-pearl"
+        // `dvh`, not `vh`: on a phone, 100vh is the height with the browser's
+        // toolbars hidden, so a 100vh shell runs under them and the page has
+        // to scroll to reach whatever sits at the bottom (the chat's text bar).
+        className="flex h-dvh overflow-hidden bg-bg-pearl"
         data-testid="app-shell"
         data-chromeless={chromeless ? 'true' : undefined}
       >
@@ -105,7 +108,9 @@ export function AppShell({ children }: AppShellProps) {
             <div
               className={
                 fill
-                  ? 'flex min-h-0 flex-1 flex-col'
+                  ? // Clear of the home indicator: the viewport extends under it
+                    // (`viewport-fit=cover`), and a filling page docks things at the bottom.
+                    'flex min-h-0 flex-1 flex-col pb-[env(safe-area-inset-bottom)]'
                   : 'container mx-auto px-4 py-6 lg:px-6 lg:py-8 max-w-7xl'
               }
             >

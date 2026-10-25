@@ -364,4 +364,11 @@ describe('Chat', () => {
     // Gone, messages and all: the private record no longer answers at all.
     await expect(messagesOf(id).listAll()).rejects.toMatchObject({ code: 403 });
   });
+
+  test('the screen fills the main area, so the text bar is docked at the bottom', async () => {
+    const chat = new ChatPage(h.driver);
+    await chat.goto();
+    await h.driver.expect(chat.input).toBeVisible();
+    await h.driver.expect(h.driver.getByRole('main')).toHaveAttribute('data-fill', 'true');
+  });
 });
