@@ -11,6 +11,10 @@ import { collectionAt, serverClient } from '../client';
 import type { ChatToolCall } from '../../chat/types';
 import { referenceId } from '../../resources/references';
 import { LIST_CAP, parentIdParam, type ToolBinding } from './tools';
+import { householdMembers } from '../household';
+
+/** The built-in accounts collection a `user` reference points into. */
+const USERS = 'users';
 
 /** Alternating `[plural, id, plural, id, ...]` segments naming a parent chain. */
 type ParentPath = string[];
@@ -84,6 +88,9 @@ async function validateReferences(
     const ids = ref.isArray ? (Array.isArray(value) ? value : []) : [value];
     for (const id of ids) {
       if (typeof id !== 'string' || id.length === 0) continue;
+      // Only a superuser may read another account, so a member's own token
+      // can't confirm one; the household directory can.
+      if (ref.plural === USERS && householdMembers().some((m) => m.id === referenceId(id, USERS))) continue;
       try {
         await hs.collection(ref.plural).get(referenceId(id, ref.plural));
       } catch {

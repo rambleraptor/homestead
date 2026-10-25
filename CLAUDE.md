@@ -364,10 +364,12 @@ SPA and apps share:
   local clock (the SPA sends its timezone with each turn), the rest of the
   household by name (`household/`: superusers plus Admin/Member role holders,
   from the engine through the `server/household.ts` seam; also served to
-  members at `GET /api/household`), and the
-  `chat.instructions` of apps whose tools they're offered
-  (`server/chat/context.ts`) — app-specific guidance belongs there, not in
-  core's prompt. Replies are Markdown; an app's `chat.values` teaches the model
+  members at `GET /api/household`), the
+  `chat.instructions` of apps whose tools they're offered, and what those apps
+  know about the speaker from `chat.context` (server-side, per turn, bounded:
+  People's says who they are and who their family is, through `person.user`,
+  the person's account link) — all in `server/chat/context.ts`. App-specific
+  guidance belongs there, not in core's prompt. Replies are Markdown; an app's `chat.values` teaches the model
   a typed value (`[12 Oak St](homestead:address)`) that the SPA renders with
   the app's component (`chat/values.ts`, `chat/components/ChatValue.tsx`), the
   link built from the value's text, never from the reply. Its SPA half is

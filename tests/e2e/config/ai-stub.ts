@@ -206,7 +206,8 @@ function toolSummary(body: unknown): string {
 /**
  * What the system prompt says about the model's situation, as
  * {@link CONTEXT_PLACEHOLDER} reads: its `Now:` line, the app names under
- * `App notes:`, and the names under `Household`.
+ * `App notes:`, the names under `Household`, and what the apps know about the
+ * speaker (`known=`, one fact per ` / `).
  */
 function contextSummary(items: InputItem[]): string {
   const system = items
@@ -219,7 +220,17 @@ function contextSummary(items: InputItem[]): string {
   for (const line of section.split('\n')) if (line && !line.startsWith('- ')) notes.push(line);
   const household = /^Household \(.*\):\n((?:- .*\n)+)/m.exec(system)?.[1] ?? '';
   const names = [...household.matchAll(/^- "(.*?)":/gm)].map((m) => m[1]);
-  return `now=${now} | notes=${notes.sort().join(', ') || '(none)'} | household=${names.join(', ') || '(none)'}`;
+  const known = /^What the apps know about the signed-in user:\n([\s\S]*?)\n\n/m.exec(system)?.[1] ?? '';
+  const facts = known
+    .split('\n')
+    .filter((line) => line.startsWith('- '))
+    .map((line) => line.slice(2));
+  return [
+    `now=${now}`,
+    `notes=${notes.sort().join(', ') || '(none)'}`,
+    `household=${names.join(', ') || '(none)'}`,
+    `known=${facts.join(' / ') || '(none)'}`,
+  ].join(' | ');
 }
 
 /** The text of an input item's content, however the provider shaped it. */

@@ -8,8 +8,9 @@
  * their configs (`AppConfig.chat.instructions`).
  */
 
-import type { AppConfig } from '../../apps/types';
+import type { AppConfig, ChatContextInput } from '../../apps/types';
 import type { HouseholdMember } from '../../household/types';
+import { logger } from '../../utils/logger';
 import { resolveResources } from '../../apps/registry';
 
 /** The longest timezone name a turn may carry. IANA names stay well under it. */
@@ -79,20 +80,75 @@ export function appNotes(apps: readonly AppConfig[], offered: ReadonlySet<string
   return lines;
 }
 
-/** The longest name the prompt carries for one household member. */
+/** The longest name the prompt carries for one person. */
 export const MAX_MEMBER_NAME_CHARS = 60;
 
 /**
+ * A person's name as the prompt carries it. A name is whatever someone typed,
+ * so it is held to one line, cut to {@link MAX_MEMBER_NAME_CHARS} and quoted —
+ * data, not instructions.
+ */
+export function promptName(name: string): string {
+  return JSON.stringify(name.replace(/\s+/g, ' ').trim().slice(0, MAX_MEMBER_NAME_CHARS));
+}
+
+/**
  * One line per household member other than `selfId`, e.g.
- * `- "Sam": user id "u2" (admin)`. A name is whatever its owner typed, so it is
- * held to one line, cut to {@link MAX_MEMBER_NAME_CHARS} and quoted — data, not
- * instructions.
+ * `- "Sam": user id "u2" (admin)`.
  */
 export function householdLines(members: readonly HouseholdMember[], selfId: string): string[] {
   return members
     .filter((m) => m.id !== selfId)
-    .map((m) => {
-      const name = m.name.replace(/\s+/g, ' ').trim().slice(0, MAX_MEMBER_NAME_CHARS);
-      return `- ${JSON.stringify(name)}: user id ${JSON.stringify(m.id)}${m.admin ? ' (admin)' : ''}`;
-    });
+    .map((m) => `- ${promptName(m.name)}: user id ${JSON.stringify(m.id)}${m.admin ? ' (admin)' : ''}`);
+}
+
+/** How long one app's context provider may take before the turn goes on without it. */
+export const CONTEXT_TIMEOUT_MS = 2000;
+
+/** The most lines one app's context provider may add. */
+export const MAX_CONTEXT_LINES = 30;
+
+/**
+ * What the apps know about the person talking (`AppChatConfig.context`), as
+ * prompt lines under each app's name — for the apps that own at least one
+ * resource in `offered`, like {@link appNotes}. Providers run together; one that
+ * throws or outlasts {@link CONTEXT_TIMEOUT_MS} is logged and left out, and each
+ * keeps at most {@link MAX_CONTEXT_LINES} lines.
+ */
+export async function appContext(
+  apps: readonly AppConfig[],
+  offered: ReadonlySet<string>,
+  input: ChatContextInput,
+  timeoutMs: number = CONTEXT_TIMEOUT_MS,
+): Promise<string[]> {
+  const providers: AppConfig[] = [];
+  const visit = (app: AppConfig): void => {
+    if (app.chat?.context && resolveResources(app).some((def) => offered.has(def.singular))) {
+      providers.push(app);
+    }
+    for (const child of app.children ?? []) visit(child);
+  };
+  for (const app of apps) visit(app);
+
+  const sections = await Promise.all(
+    providers.map(async (app) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const run = app.chat!.context!().then((m) => m.default(input));
+        const timeout = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`took longer than ${timeoutMs}ms`)), timeoutMs);
+        });
+        const lines = (await Promise.race([run, timeout])).slice(0, MAX_CONTEXT_LINES);
+        return lines.length > 0 ? [app.name, ...lines.map((line) => `- ${line}`)] : [];
+      } catch (err) {
+        logger.warn(`chat: ${app.id}'s context was left out of the turn`, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return [];
+      } finally {
+        clearTimeout(timer);
+      }
+    }),
+  );
+  return sections.flat();
 }

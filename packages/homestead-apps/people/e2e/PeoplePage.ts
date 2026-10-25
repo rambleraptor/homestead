@@ -116,6 +116,33 @@ export class PeoplePage {
       .click();
   }
 
+  /** Pick the person's Homestead account in the open form, by its option label. */
+  async selectAccount(label: string) {
+    await this.driver.getByTestId('person-account-select').selectOption({ label });
+  }
+
+  /** The "Which one is you?" banner above the list. */
+  get whichOneIsYou() {
+    return this.driver.getByTestId('which-one-is-you');
+  }
+
+  /** Accept the banner's suggestion: "Yes, that's me". */
+  async confirmSuggestedSelf() {
+    await this.driver.getByTestId('which-one-is-you-yes').click();
+  }
+
+  /** Turn down the banner's suggestion and pick someone from its list instead. */
+  async pickSelf(name: string, { rejectSuggestion = false }: { rejectSuggestion?: boolean } = {}) {
+    if (rejectSuggestion) await this.driver.getByTestId('which-one-is-you-not-me').click();
+    await this.driver.getByTestId('which-one-is-you-select').selectOption({ label: name });
+    await this.driver.getByTestId('which-one-is-you-link').click();
+  }
+
+  async dismissWhichOneIsYou() {
+    await this.driver.getByTestId('which-one-is-you-dismiss').click();
+    await this.whichOneIsYou.waitFor({ state: 'detached' });
+  }
+
   /** Pick a partner in the open person form. */
   async selectPartner(partnerName: string) {
     await this.driver.getByTestId('person-partner-select').selectOption({ label: partnerName });

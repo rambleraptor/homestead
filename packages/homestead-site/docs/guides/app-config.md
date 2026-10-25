@@ -375,6 +375,41 @@ people offered at least one of the app's tools — so they never describe a tool
 someone doesn't have. They describe how the app works; never put household data
 in them, since they live in your code. MCP clients don't receive them.
 
+### What the app knows about the speaker
+
+For what *is* data — who the person talking is to your app — declare
+`chat.context`: a server-side function, lazily imported, that runs at the start
+of each turn and returns lines for the prompt. People uses it to tell the
+assistant who the speaker is and who their family is:
+
+```ts
+chat: {
+  context: () => import('./chat/context'),
+},
+```
+
+```ts
+// chat/context.ts
+import type { ChatContextInput } from '@rambleraptor/homestead-core/apps/types';
+import { serverClient } from '@rambleraptor/homestead-core/server/client';
+import { promptName } from '@rambleraptor/homestead-core/server/chat/context';
+
+export default async function context({ token, userId, household }: ChatContextInput) {
+  const people = await serverClient(token).collection<Person>('people').listAll();
+  const me = people.find((p) => p.user === `users/${userId}`);
+  return me ? [`You are ${promptName(me.name)} (person id "${me.id}").`] : [];
+}
+```
+
+- It gets the speaker's token (read with it, so they see only their own), their
+  user id, and the household directory.
+- It runs only for people offered one of the app's tools, alongside every other
+  app's. One that throws or takes over 2 seconds is logged and left out, and an
+  app's lines are capped at 30.
+- The lines go under the app's name in a "What the apps know about the
+  signed-in user" section. Anything a person typed is data, not instructions:
+  quote names with `promptName` (one line, 60 characters, quoted).
+
 ### Typed values in replies
 
 An app can also teach the chat a kind of value, so the assistant's replies show

@@ -67,6 +67,11 @@ export class PersonDetailPage {
     await this.expect(this.driver.getByTestId('person-households')).toContainText(text);
   }
 
+  /** Whether the page marks the person as having a Homestead account. */
+  async expectHasAccount(has: boolean) {
+    await this.expect(this.driver.getByTestId('person-has-account')).toHaveCount(has ? 1 : 0);
+  }
+
   async expectNoDocuments() {
     await this.expect(this.driver.getByTestId('person-documents-empty')).toBeVisible();
   }

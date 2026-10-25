@@ -7,6 +7,7 @@ import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastPr
 import { useCreatePerson } from '../hooks/useCreatePerson';
 import { PersonForm } from './PersonForm';
 import { PeopleList } from './PeopleList';
+import { WhichOneIsYou } from './WhichOneIsYou';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import type { PersonFormData } from '../types';
 
@@ -57,6 +58,8 @@ export function PeopleHome() {
           </>
         }
       />
+
+      <WhichOneIsYou />
 
       <PeopleList />
 

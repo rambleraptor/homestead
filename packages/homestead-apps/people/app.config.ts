@@ -15,6 +15,7 @@ export const peopleApp: AppConfig = {
   description: 'Manage contact information and important dates for people you know',
   resources: peopleResources,
   chat: {
+    context: () => import('./chat/context'),
     instructions: [
       'When someone mentions a person by name ("remind Sam", "Mom\'s birthday"), ' +
         'look them up with the "people" tool\'s list action first and use that record\'s ' +

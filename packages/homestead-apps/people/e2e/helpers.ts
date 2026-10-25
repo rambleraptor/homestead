@@ -11,11 +11,14 @@ interface CreatePersonInput {
   address?: string;
   /** Recorded as the household's `created_by` when `address` is set. */
   createdByUserId?: string;
+  /** Links the person to this account (`person.user`). */
+  userId?: string;
 }
 
 export interface PersonRecord {
   id: string;
   name: string;
+  user?: string | null;
 }
 
 export interface HouseholdRecord {
@@ -34,6 +37,7 @@ export async function createPerson(
 ): Promise<PersonRecord> {
   const person = await e2eClient(token).collection<PersonRecord>('people').create({
     name: data.name,
+    ...(data.userId ? { user: `users/${data.userId}` } : {}),
   });
 
   if (data.address) {
@@ -46,6 +50,10 @@ export async function createPerson(
   }
 
   return person;
+}
+
+export async function getPerson(token: string, id: string): Promise<PersonRecord> {
+  return e2eClient(token).collection<PersonRecord>('people').get(id);
 }
 
 export async function createHousehold(

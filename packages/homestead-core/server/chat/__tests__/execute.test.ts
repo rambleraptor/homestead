@@ -2,13 +2,14 @@
  * Tests for chat tool execution against the server-side aepbase client.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createFakeServerClient,
   fakeCollectionAt,
 } from '../../__tests__/fake-server-client';
 import { buildTools } from '../tools';
 import { executeToolCall } from '../execute';
+import { setHouseholdDirectory } from '../../household';
 import type { ResourceDefinition } from '../../../resources/types';
 
 const fake = createFakeServerClient();
@@ -295,5 +296,44 @@ describe('executeToolCall — reference validation', () => {
     );
     expect(out.ok).toBe(false);
     expect(updateFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('executeToolCall — user references', () => {
+  const contact: ResourceDefinition = {
+    singular: 'contact',
+    plural: 'contacts',
+    fields: {
+      name: { type: 'string', required: true },
+      user: { type: 'string', reference: { resource: 'user' } },
+    },
+  };
+  const { bindings: userBindings } = buildTools([contact]);
+
+  beforeEach(() => setHouseholdDirectory(() => [{ id: 'u2', name: 'Sam', admin: false }]));
+  afterEach(() => setHouseholdDirectory(null));
+
+  it("accepts a household member's account without reading it (a member can't)", async () => {
+    getFn.mockRejectedValue(new Error('403 you can only view your own user'));
+    for (const user of ['u2', 'users/u2']) {
+      const out = await executeToolCall(
+        { name: 'create_contact', args: { name: 'Sam', user } },
+        userBindings,
+        TOKEN,
+      );
+      expect(out.ok).toBe(true);
+    }
+    expect(getFn).not.toHaveBeenCalled();
+  });
+
+  it('still checks an account outside the household the usual way', async () => {
+    getFn.mockRejectedValueOnce(new Error('403'));
+    const out = await executeToolCall(
+      { name: 'create_contact', args: { name: 'X', user: 'u9' } },
+      userBindings,
+      TOKEN,
+    );
+    expect(getFn).toHaveBeenCalledWith('/users/u9');
+    expect(out).toMatchObject({ ok: false, error: expect.stringContaining('no users record with id "u9"') });
   });
 });
