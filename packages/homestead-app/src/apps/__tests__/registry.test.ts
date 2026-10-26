@@ -47,7 +47,10 @@ describe('getAllAppFlagDefs', () => {
   it('leaves flag-less apps with an empty flag map', () => {
     const defs = getAllAppFlagDefs();
     expect(defs.notifications).toEqual({});
-    expect(defs.dashboard).toEqual({});
+  });
+
+  it("declares the dashboard's classic-home flag, off by default", () => {
+    expect(getAllAppFlagDefs().dashboard.classic_home).toMatchObject({ type: 'boolean', default: false });
   });
 });
 

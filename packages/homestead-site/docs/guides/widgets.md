@@ -32,6 +32,10 @@ one ([Widget summaries](./app-config#widget-summaries)), which also decides
 whether it's urgent enough to lead the strip or has nothing to say and drops
 off it.
 
+People in the audience of the `dashboard.classic_home` flag (set in Flag
+Management) get the classic dashboard instead: every widget rendered in full,
+stacked in the same order, under an Ask box into the assistant.
+
 ---
 
 ## Add a widget to your app

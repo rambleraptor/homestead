@@ -1,15 +1,16 @@
 /**
- * The home: its addresses, and whether the assistant can serve the person on
- * it. The home is the same for everyone; what changes is whether its
- * conversation is there. An instance with no AI provider configured, or a
- * person who can't use Chat, gets the home without it — the chips, the
- * widgets, and a note saying why.
+ * The home: its addresses, which home a person gets, and whether the assistant
+ * can serve them on it. The assistant's home is the default; the
+ * `dashboard.classic_home` flag gives its audience the classic widget stack
+ * instead. Either way, an instance with no AI provider configured, or a person
+ * who can't use Chat, gets the home without the conversation.
  */
 
 import { getAppById } from '@rambleraptor/homestead-core/apps/registry';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
 import { useAiConfigured } from '@rambleraptor/homestead-core/chat/hooks/useAiConfigured';
 import { CHAT_APP_ID } from '@rambleraptor/homestead-core/chat/hooks/useConversations';
+import { useAppFlag } from '@rambleraptor/homestead-core/settings/hooks/useAppFlag';
 
 /** The home's address; it is a new conversation. */
 export const HOME_PATH = '/dashboard';
@@ -37,4 +38,22 @@ export function useAssistantAvailability(): AssistantAvailability | undefined {
   if (!chatApp || !isVisible(chatApp)) return 'no-access';
   if (configured === undefined) return undefined;
   return configured ? 'available' : 'not-configured';
+}
+
+/**
+ * - `agentic`: the assistant's conversation under a strip of widget chips.
+ * - `classic`: the widget stack, with an Ask box into a new conversation.
+ */
+export type HomeMode = 'agentic' | 'classic';
+
+/**
+ * Which home `/dashboard` shows the signed-in person, or `undefined` while the
+ * flag is still loading — callers show nothing until then, so neither home
+ * flashes before the other. A conversation's address shows the conversation
+ * whichever home this is.
+ */
+export function useHomeMode(): HomeMode | undefined {
+  const classic = useAppFlag<boolean>('dashboard', 'classic_home');
+  if (classic.isLoading) return undefined;
+  return classic.value === true ? 'classic' : 'agentic';
 }

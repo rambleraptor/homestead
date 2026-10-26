@@ -5,7 +5,7 @@
  * (`playwrightDriver(page)`) and the in-process VM tier (`tests/vm/`).
  */
 
-import type { Driver } from '../../../packages/homestead-test-harness/driver/Driver';
+import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
 export class DashboardPage {
   constructor(readonly driver: Driver) {}
@@ -36,6 +36,40 @@ export class DashboardPage {
 
   async navigateToApp(appName: string | RegExp) {
     await this.driver.getByRole('navigation').getByRole('link', { name: appName }).click();
+  }
+
+  /** The classic dashboard (the `dashboard.classic_home` flag's audience). */
+  get classicHome() {
+    return this.driver.getByTestId('classic-home');
+  }
+
+  /** A member's getting-started guide on the classic dashboard. */
+  get welcomePanel() {
+    return this.driver.getByTestId('welcome-panel');
+  }
+
+  async dismissWelcome() {
+    const dismiss = this.driver.getByTestId('welcome-dismiss');
+    await dismiss.waitFor({ state: 'visible' });
+    await dismiss.click();
+    // The panel unmounts as soon as the setting write resolves.
+    await this.welcomePanel.waitFor({ state: 'detached' });
+  }
+
+  /** The classic dashboard's "Ask Homestead" box, which starts a conversation. */
+  get askBox() {
+    return this.driver.getByTestId('ask-widget');
+  }
+
+  /** The suggestion chips under the ask box. */
+  get askSuggestions(): Locator {
+    return this.driver.getByTestId('ask-suggestions').getByRole('button');
+  }
+
+  /** Type into the ask box and send. */
+  async ask(text: string) {
+    await this.driver.getByTestId('ask-input').fill(text);
+    await this.driver.getByTestId('ask-send').click();
   }
 
   get adminChecklist() {
