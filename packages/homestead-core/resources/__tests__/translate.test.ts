@@ -1083,3 +1083,55 @@ describe('files below the top level', () => {
     ).toThrow(/only a top-level file may/);
   });
 });
+
+describe('encrypted fields', () => {
+  const def = (fields: Record<string, FieldDef>): ResourceDefinition => ({
+    singular: 'vault',
+    plural: 'vaults',
+    fields,
+  });
+
+  it('carry the engine marker and say so in the description', () => {
+    const { properties } = toWireSchema(
+      {
+        wifi_password: { type: 'string', encrypted: true, description: 'The network password' },
+        codes: { type: 'array', items: { type: 'string' }, encrypted: true },
+      },
+      'vault',
+    );
+    expect(properties.wifi_password).toMatchObject({
+      'x-aepbase-encrypted': true,
+      description: 'The network password (encrypted at rest; cannot be filtered or sorted)',
+    });
+    expect(properties.codes).toMatchObject({ 'x-aepbase-encrypted': true });
+  });
+
+  it('accept top-level strings, objects and arrays', () => {
+    expect(() =>
+      validateResourceDefinition(
+        def({
+          a: { type: 'string', encrypted: true },
+          b: { type: 'object', encrypted: true, properties: { c: { type: 'string' } } },
+          d: { type: 'array', items: { type: 'string' }, encrypted: true },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it("refuse what the engine can't encrypt", () => {
+    for (const [field, message] of [
+      [{ type: 'number', encrypted: true }, 'only string, object and array'],
+      [{ type: 'string', encrypted: true, enum: ['a'] }, 'enum'],
+      [{ type: 'string', encrypted: true, reference: { resource: 'user' } }, 'reference'],
+      [
+        { type: 'array', encrypted: true, items: { type: 'string', reference: { resource: 'user' } } },
+        'reference',
+      ],
+      [{ type: 'object', encrypted: true, properties: { scan: { type: 'file' } } }, 'file'],
+      [{ type: 'object', properties: { pin: { type: 'string', encrypted: true } } }, 'only top-level'],
+      [{ type: 'array', items: { type: 'string', encrypted: true } }, 'only top-level'],
+    ] as Array<[FieldDef, string]>) {
+      expect(() => validateResourceDefinition(def({ f: field }))).toThrow(message);
+    }
+  });
+});

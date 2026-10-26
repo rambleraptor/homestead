@@ -650,6 +650,13 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    [`docs/design/nested-files.md`](packages/homestead-site/docs/design/nested-files.md).
 7. **`singular` is globally unique.** The registry throws on
    duplicate declarations across apps.
+8. **`encrypted: true`** stores a top-level string/object/array field as
+   ciphertext with the master key (`x-aepbase-encrypted`;
+   `homestead-server/src/engine/encrypted-fields.ts`). Reads are unchanged; it
+   can't be filtered or sorted; a write that sets it on an instance with no
+   master key is a 400. Plaintext already in the column is encrypted when the
+   definition is applied and at boot. Ask before marking an existing field —
+   it's a schema change.
 
 ### Resource references
 

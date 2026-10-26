@@ -16,6 +16,7 @@ new and patches anything that changed.
 - [Field Types](#field-types)
 - [Enums](#enums)
 - [File Fields](#file-fields)
+- [Encrypted Fields](#encrypted-fields)
 - [Parent / Child Resources](#parent-child-resources)
 - [Retention](#retention)
 - [Hiding a Resource from AI Tools](#hiding-a-resource-from-ai-tools)
@@ -163,6 +164,39 @@ list is replaced whole. To keep a file in a list you're rewriting, send
 deleted. Files can't sit inside tagged-union `variants`, and `ai` options are
 for top-level files only. The design is in
 [Files in lists and objects](../design/nested-files).
+
+---
+
+## Encrypted Fields
+
+Mark a field `encrypted: true` to store it encrypted at rest with the instance
+master key (see [SECURITY.md](https://github.com/rambleraptor/homestead/blob/main/SECURITY.md)):
+
+```ts
+fields: {
+  wifi_password: { type: 'string', encrypted: true },
+  card: { type: 'object', encrypted: true, properties: { number: { type: 'string' } } },
+}
+```
+
+The database, and any backup of it, holds only ciphertext. Reading is
+unchanged: whoever can read the record gets the value, through the API, the
+app, the assistant and the change feed alike. It's privacy at rest, not access
+control — use [permissions](./permissions) for who may see a record.
+
+- **A master key is required to write one.** On an instance without a key, a
+  write that sets an encrypted field fails with a `400` saying so (and how to
+  generate a key) — the value would otherwise land on disk in plaintext. Writes
+  that leave the field empty, or don't touch it, still work.
+- **It can't be filtered or sorted**: the database only has ciphertext to
+  compare, so `filter` or `order_by` on it is a `400`.
+- **Top-level `string`, `object` or `array` fields only.** Objects and arrays
+  are encrypted as their JSON. Not with `enum` or `reference`, nor with a file
+  or reference anywhere inside: the engine needs those in plaintext.
+- **Marking an existing field encrypts what it already holds**, when the
+  definition is applied (and at boot, for values written before the instance
+  had a key). Removing `encrypted` stops encrypting new writes; values already
+  encrypted still read back.
 
 ---
 

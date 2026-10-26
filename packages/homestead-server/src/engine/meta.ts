@@ -4,6 +4,7 @@
  * live resource through the Registry.
  */
 
+import { encryptedFieldsError, sweepEncryption } from './encrypted-fields';
 import type { Database } from './sqlite';
 import { errorResponse, jsonResponse } from './errors';
 import { nowRFC3339 } from './ids';
@@ -224,6 +225,8 @@ export async function handleMetaCreate(reg: Registry, req: Request): Promise<Res
   if (def.singleton && (def.parents ?? []).length === 0) {
     return errorResponse(400, 'singleton resources must have at least one parent');
   }
+  const encryptedErr = encryptedFieldsError(def.schema ?? { properties: {} });
+  if (encryptedErr) return errorResponse(400, encryptedErr);
 
   const url = new URL(req.url);
   const id = url.searchParams.get('id') || def.singular;
@@ -334,6 +337,8 @@ export async function handleMetaUpdate(
     existing.examples = { ...existing.examples, ...patch.examples };
   }
   if (patch.schema?.properties) {
+    const encryptedErr = encryptedFieldsError(patch.schema);
+    if (encryptedErr) return errorResponse(400, encryptedErr);
     existing.schema = patch.schema;
   }
   if (patch.enums) {
@@ -377,6 +382,10 @@ export async function handleMetaUpdate(
   } catch (err) {
     return errorResponse(500, `saving definition: ${err instanceof Error ? err.message : err}`);
   }
+
+  // A field newly marked encrypted still holds plaintext: encrypt it now.
+  const registered = reg.get(existing.singular);
+  if (registered) sweepEncryption(reg.db, registered);
 
   return jsonResponse(withFileFieldMarkers(existing));
 }

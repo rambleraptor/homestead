@@ -14,6 +14,7 @@
  * list handler maps to a 400 — the same contract as `compileFilter`.
  */
 
+import { isEncryptedField } from './encrypted-fields';
 import type { Schema } from './types';
 import { STANDARD_FIELDS } from './types';
 import { derivedColumnsFromSchema } from './db';
@@ -65,9 +66,9 @@ export function compileOrderBy(orderBy: string, schema: Schema): string {
           : derived.get(name);
       if (!column) throw new OrderError(`unknown field ${JSON.stringify(name)}`);
 
-      // Extracted-text columns are encrypted at rest, so ordering would sort
+      // Encrypted columns hold ciphertext, so ordering would sort
       // ciphertext — meaningless. Reject it, matching the filter compiler.
-      if (schema.properties?.[name]?.['x-aepbase-file-text-field'] === true) {
+      if (isEncryptedField(schema, name)) {
         throw new OrderError(`field ${JSON.stringify(name)} is encrypted and cannot be ordered`);
       }
 

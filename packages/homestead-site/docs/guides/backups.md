@@ -90,9 +90,9 @@ you which case you are in when it finishes.
 plaintext — your whole household database and every uploaded file. Store it
 the way you'd store the data directory itself.
 
-**With a master key**, encryption covers uploaded file bytes and
-extracted-text columns. Everything else is still readable: structured fields
-(names, amounts, card numbers), the search index in `vectors.db`, and the
+**With a master key**, encryption covers uploaded file bytes, extracted-text
+columns, and fields a resource declares `encrypted`. Everything else is still
+readable: other structured fields (names, amounts), the search index in `vectors.db`, and the
 account rows (password hashes, session tokens). So an encrypted-at-rest
 archive is safer, but it is not safe to store just anywhere. See
 [SECURITY.md](https://github.com/rambleraptor/homestead/blob/main/SECURITY.md)

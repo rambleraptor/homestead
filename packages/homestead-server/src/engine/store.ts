@@ -14,6 +14,7 @@ import { OWNER_COLUMN, sanitizeTableName } from './db';
 import { compileFilter } from './filter';
 import { compileOrderBy } from './order';
 import { decryptText, encryptionEnabled, encryptText, isEncryptedText } from './crypto';
+import { encryptionKeyId, isEncryptedField } from './encrypted-fields';
 
 type SqlValue = string | number | bigint | boolean | null | Uint8Array;
 
@@ -23,41 +24,28 @@ function schemaPropertyNames(schema: Schema): string[] {
     .sort();
 }
 
-/** True for an extracted-text companion column (translate.ts tags these). */
-function isFileTextField(schema: Schema, name: string): boolean {
-  return schema.properties?.[name]?.['x-aepbase-file-text-field'] === true;
-}
-
-/** Stable KEK key id for a text column value, matching the file-field scheme. */
-function textKeyId(path: string, field: string): string {
-  return `${path}/${field}`;
-}
-
 /**
- * Encrypt an extracted-text value before it is written, when a master key is
- * configured. No-op for other fields, empty/non-string values, already-
- * encrypted values, and when encryption is disabled (values stay plaintext).
+ * Encrypt a value bound for an encrypted column (`./encrypted-fields`) when a
+ * master key is configured; an object or array is encrypted as its JSON. No-op
+ * for other fields, empty values, already-encrypted values, and with no key —
+ * a write that needed one was refused before it got here, so what passes
+ * through is extracted text or a stored value the write didn't touch.
  */
 function encryptForStore(val: unknown, schema: Schema, name: string, path: string): unknown {
-  if (
-    encryptionEnabled() &&
-    isFileTextField(schema, name) &&
-    typeof val === 'string' &&
-    val.length > 0 &&
-    !isEncryptedText(val)
-  ) {
-    return encryptText(val, textKeyId(path, name));
-  }
-  return val;
+  if (!encryptionEnabled() || !isEncryptedField(schema, name)) return val;
+  if (val === null || val === undefined || val === '') return val;
+  const text = typeof val === 'string' ? val : JSON.stringify(val);
+  return isEncryptedText(text) ? text : encryptText(text, encryptionKeyId(path, name));
 }
 
 /**
- * Decrypt an extracted-text value on read. Legacy plaintext passes through;
- * a missing/wrong key throws (fails closed) rather than leaking ciphertext.
+ * Decrypt an encrypted column's raw value on read, before it is parsed back to
+ * its type. Legacy plaintext passes through; a missing/wrong key throws (fails
+ * closed) rather than leaking ciphertext.
  */
 function decryptForStore(val: unknown, schema: Schema, name: string, path: string): unknown {
-  if (isFileTextField(schema, name) && typeof val === 'string' && isEncryptedText(val)) {
-    return decryptText(val, textKeyId(path, name));
+  if (isEncryptedField(schema, name) && typeof val === 'string' && isEncryptedText(val)) {
+    return decryptText(val, encryptionKeyId(path, name));
   }
   return val;
 }
@@ -105,7 +93,7 @@ function rowToStored(
   const fields: Record<string, unknown> = {};
   const path = String(row.path);
   for (const name of schemaPropertyNames(schema)) {
-    fields[name] = decryptForStore(coerceFieldValue(row[name], schema, name), schema, name, path);
+    fields[name] = coerceFieldValue(decryptForStore(row[name], schema, name, path), schema, name);
   }
   return {
     id: String(row.id),

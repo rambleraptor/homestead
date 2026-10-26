@@ -202,6 +202,22 @@ export interface FieldDef {
    */
   immutable?: boolean;
   /**
+   * Store the value encrypted at rest with the instance master key, so a
+   * stolen disk, database or backup doesn't give it away. Reads are unchanged
+   * for anyone allowed to read the record — this is privacy at rest, not
+   * access control. The cost: the field can't be filtered or sorted, and a
+   * write that sets it is refused (400) on an instance with no master key.
+   *
+   * Top-level `string`, `object` or `array` fields only (objects and arrays are
+   * encrypted as their JSON), and not with `enum`, `reference`, or a file or
+   * reference anywhere inside — the engine needs those in plaintext. Marking an
+   * existing field encrypts the values it already holds. See
+   * `homestead-server/src/engine/encrypted-fields.ts`.
+   *
+   * @default false
+   */
+  encrypted?: boolean;
+  /**
    * Default value applied by the engine when the field is omitted from a
    * create (or full-replace apply) request. Encoded into the wire schema's
    * standard JSON-schema `default` keyword (which aepbase preserves on
@@ -359,6 +375,12 @@ export interface JsonSchemaProperty {
    * carries it (see `homestead-server/src/engine/validate.ts`).
    */
   'x-aepbase-immutable'?: boolean;
+  /**
+   * Marks a field stored encrypted at rest, produced by the translator from a
+   * field's `encrypted` annotation (see
+   * `homestead-server/src/engine/encrypted-fields.ts`).
+   */
+  'x-aepbase-encrypted'?: boolean;
 }
 
 export interface ResourceSchema {
