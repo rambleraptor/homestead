@@ -657,6 +657,14 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    master key is a 400. Plaintext already in the column is encrypted when the
    definition is applied and at boot. Ask before marking an existing field —
    it's a schema change.
+9. **`secret: true`** (or `{ hint: n }`) is `encrypted` plus write-only
+   (`x-aepbase-secret`; `homestead-server/src/engine/secret-fields.ts`): every
+   read gets `{ $secret, set, set_time?, hint? }`, never the value; a write takes
+   a value, `null` to clear, or the descriptor / nothing to keep it. Server code
+   uses the value through `readSecret` (`homestead-core/server/secrets.ts`) —
+   no route returns it, and it must never reach a response, a log, or a model.
+   Secret fields are left out of the chat and MCP tools, and a field can't stop
+   being secret while it holds values.
 
 ### Resource references
 

@@ -4,7 +4,8 @@
  * receive the same {@link FieldWidgetProps} and, unless `bare`, the same frame.
  */
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { isSecretDescriptor } from '../../resources/secrets';
 import { ReferenceField } from '../components/ReferenceField';
 import { TagInput } from '../components/TagInput';
 import { fileField } from './FileField';
@@ -268,6 +269,97 @@ function TagsWidget(p: FieldWidgetProps) {
   );
 }
 
+const LINK_BUTTON = 'text-sm font-medium text-accent-terracotta hover:underline disabled:opacity-50';
+
+/**
+ * A write-only secret. A stored one shows as "Set" (with its hint and date) and
+ * is never filled in — there's nothing to fill it with; Replace opens a
+ * password box, Clear removes it on save. The value is the stored descriptor
+ * (leave alone), a string (set), or null (clear); `buildPayload` maps them.
+ */
+function SecretWidget(p: FieldWidgetProps) {
+  // The descriptor the form started from, so Cancel and Undo can return to it.
+  const [stored] = useState(() => (isSecretDescriptor(p.value) && p.value.set ? p.value : null));
+  const testId = (suffix: string) => (p.testId ? `${p.testId}-${suffix}` : undefined);
+
+  if (isSecretDescriptor(p.value)) {
+    const setOn = p.value.set_time ? new Date(p.value.set_time).toLocaleDateString() : null;
+    return (
+      <div className="flex flex-wrap items-center gap-3" data-testid={testId('stored')}>
+        <span className="text-sm text-gray-700">
+          Set{p.value.hint ? ` · ${p.value.hint}` : ''}
+          {setOn ? ` · ${setOn}` : ''}
+        </span>
+        <button
+          type="button"
+          id={p.id}
+          aria-describedby={p.describedBy}
+          disabled={p.disabled}
+          onClick={() => p.onChange('')}
+          data-testid={testId('replace')}
+          className={LINK_BUTTON}
+        >
+          Replace
+        </button>
+        {!p.required && (
+          <button
+            type="button"
+            disabled={p.disabled}
+            onClick={() => p.onChange(null)}
+            data-testid={testId('clear')}
+            className={LINK_BUTTON}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (p.value === null && stored) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm text-gray-700">Removed when you save.</span>
+        <button
+          type="button"
+          id={p.id}
+          disabled={p.disabled}
+          onClick={() => p.onChange(stored)}
+          data-testid={testId('undo')}
+          className={LINK_BUTTON}
+        >
+          Undo
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        {...commonProps(p)}
+        type="password"
+        autoComplete="new-password"
+        value={typeof p.value === 'string' ? p.value : ''}
+        onChange={(e) => p.onChange(e.target.value)}
+        placeholder={p.config?.placeholder}
+        className={INPUT}
+      />
+      {stored && (
+        <button
+          type="button"
+          disabled={p.disabled}
+          onClick={() => p.onChange(stored)}
+          data-testid={testId('cancel')}
+          className={LINK_BUTTON}
+        >
+          Cancel
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Widgets that render their own label/error chrome — the frame must not. */
 export const SELF_CHROMED: ReadonlySet<WidgetName> = new Set([
   'reference',
@@ -290,4 +382,5 @@ export const BUILTIN_WIDGETS: Record<WidgetName, FieldWidget> = {
   reference: ReferenceWidget,
   'reference-multi': ReferenceMultiWidget,
   tags: TagsWidget,
+  secret: SecretWidget,
 };

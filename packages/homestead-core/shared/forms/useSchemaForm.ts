@@ -17,6 +17,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import type { FieldDef, FieldType, ResourceDefinition } from '../../resources/types';
 import { buildPayload as buildDefaultPayload, fieldLabel, initialValue, isAutoHidden } from './helpers';
 import { deriveValidator, mapServerError } from './validation';
+import { isSecretDescriptor } from '../../resources/secrets';
 import type { FieldConfig } from './types';
 
 /** A control the form manages that isn't a field on the resource schema. */
@@ -235,7 +236,9 @@ export function useSchemaForm<T = Record<string, unknown>>(
   const register = (name: string): NativeBinding => ({
     name,
     id: idOf(name),
-    value: (values[name] as string | number | undefined) ?? '',
+    // A stored secret's descriptor isn't text: a native box starts empty, and
+    // stays the descriptor (unchanged) until someone types a replacement.
+    value: isSecretDescriptor(values[name]) ? '' : ((values[name] as string | number | undefined) ?? ''),
     onChange: (event) => setValue(name, event.target.value),
     onBlur: () => {
       const msg = validateField(name);

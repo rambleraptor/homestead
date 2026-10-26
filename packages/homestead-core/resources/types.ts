@@ -218,6 +218,25 @@ export interface FieldDef {
    */
   encrypted?: boolean;
   /**
+   * A write-only field: encrypted at rest like `encrypted`, and never read
+   * back. Every read — the API, the app, the change feed, exports, the
+   * assistant — gets a descriptor in its place,
+   * `{ $secret: true, set, set_time?, hint? }`. Writes take a value to set it,
+   * `null` (or `""`) to clear it, and the descriptor (or nothing) to leave it
+   * alone, so a form that saves the whole record can't wipe it. Server code
+   * that uses the value reads it in-process with `readSecret` from
+   * `@rambleraptor/homestead-core/server/secrets`; no route returns it.
+   *
+   * `{ hint: n }` shows the last n characters (1–8) in the descriptor, for a
+   * value at least 3n long — right for an API key, wrong for a short password.
+   * The same rules as `encrypted` apply, plus no `default`; secret fields are
+   * left out of the model tools entirely. A field can't stop being secret while
+   * it holds values. See `homestead-server/src/engine/secret-fields.ts`.
+   *
+   * @default false
+   */
+  secret?: boolean | { hint?: number };
+  /**
    * Default value applied by the engine when the field is omitted from a
    * create (or full-replace apply) request. Encoded into the wire schema's
    * standard JSON-schema `default` keyword (which aepbase preserves on
@@ -381,6 +400,11 @@ export interface JsonSchemaProperty {
    * `homestead-server/src/engine/encrypted-fields.ts`).
    */
   'x-aepbase-encrypted'?: boolean;
+  /**
+   * Marks a write-only secret field, produced by the translator from a field's
+   * `secret` annotation (see `homestead-server/src/engine/secret-fields.ts`).
+   */
+  'x-aepbase-secret'?: true | { hint: number };
 }
 
 export interface ResourceSchema {

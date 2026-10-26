@@ -33,6 +33,16 @@ this feature is not that — it does not implement end-to-end encryption.
   instance with no master key, a write that sets one is refused (400) rather
   than stored in plaintext. They can't be filtered or sorted, since the
   database only holds ciphertext.
+- **Secret fields**: a field declared `secret: true` is an encrypted field
+  that is also **write-only**. No route returns its value — not to its owner,
+  not to a superuser: reads get a descriptor (`{ $secret: true, set, set_time?,
+  hint? }`), the change feed and exports carry the same, and secret fields are
+  left out of the assistant's and MCP's tools entirely. Server code that uses
+  one (calling a provider with a stored API key) reads it in-process
+  (`readSecret` in `homestead-core/server/secrets.ts`), so a stolen session or
+  token can replace or clear a secret but not take it. A field can't stop being
+  secret while it holds values. Someone with shell access and the master key
+  can still read them.
 
 Other structured fields (names, amounts, titles) are **not** encrypted unless
 their resource declares them so, and neither are the account rows (`_users`

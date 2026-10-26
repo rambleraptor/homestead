@@ -14,7 +14,7 @@ import { OWNER_COLUMN, sanitizeTableName } from './db';
 import { compileFilter } from './filter';
 import { compileOrderBy } from './order';
 import { decryptText, encryptionEnabled, encryptText, isEncryptedText } from './crypto';
-import { encryptionKeyId, isEncryptedField } from './encrypted-fields';
+import { encryptionKeyId, isEncryptedField, isSecretField } from './encrypted-fields';
 
 type SqlValue = string | number | bigint | boolean | null | Uint8Array;
 
@@ -93,7 +93,10 @@ function rowToStored(
   const fields: Record<string, unknown> = {};
   const path = String(row.path);
   for (const name of schemaPropertyNames(schema)) {
-    fields[name] = coerceFieldValue(decryptForStore(row[name], schema, name, path), schema, name);
+    // A secret stays as stored; only `./secret-fields` opens it.
+    fields[name] = isSecretField(schema, name)
+      ? row[name]
+      : coerceFieldValue(decryptForStore(row[name], schema, name, path), schema, name);
   }
   return {
     id: String(row.id),

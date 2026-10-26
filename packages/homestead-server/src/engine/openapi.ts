@@ -18,6 +18,7 @@
 
 import type { RegisteredResource, Registry } from './registry';
 import type { Schema, SchemaProperty } from './types';
+import { isSecretProperty } from './encrypted-fields';
 
 type Json = Record<string, unknown>;
 
@@ -371,6 +372,28 @@ function withFileDescriptorSchemas(prop: Json): Json {
   return out;
 }
 
+/** What a secret reads as: see `SecretDescriptor` in `./secret-fields`. */
+const SECRET_DESCRIPTOR_PROPERTIES: Json = {
+  $secret: { type: 'boolean', description: "Always true: marks a secret's descriptor." },
+  set: { type: 'boolean', description: 'Whether a value is stored.' },
+  set_time: { type: 'string', format: 'date-time', description: 'When the value was last set, if known.' },
+  hint: { type: 'string', description: "The value's last few characters, when the field shows one." },
+};
+
+/** A secret property as it reads: its descriptor, never its value. */
+function withSecretDescriptorSchema(prop: Json): Json {
+  const { type: written, example: _example, ...rest } = prop;
+  const article = /^[aeiou]/.test(String(written)) ? 'an' : 'a';
+  return {
+    ...rest,
+    type: 'object',
+    properties: SECRET_DESCRIPTOR_PROPERTIES,
+    description:
+      (typeof rest.description === 'string' ? `${rest.description} ` : '') +
+      `Write-only: write ${article} ${String(written)} to set it, null to clear it, or the descriptor (or nothing) to keep it.`,
+  };
+}
+
 /** Component schema with enriched property metadata + example object. */
 function componentSchema(doc: ResourceDoc): Json {
   const properties: Record<string, Json> = {};
@@ -384,7 +407,11 @@ function componentSchema(doc: ResourceDoc): Json {
     if (name in doc.examples) out.example = doc.examples[name];
     if (doc.fileFields.has(name)) out['x-aepbase-file-field'] = true;
     withReferenceAnnotation(out, prop as SchemaProperty);
-    properties[name] = doc.nestedFileFields.has(name) ? withFileDescriptorSchemas(out) : out;
+    properties[name] = isSecretProperty(prop as SchemaProperty)
+      ? withSecretDescriptorSchema(out)
+      : doc.nestedFileFields.has(name)
+        ? withFileDescriptorSchemas(out)
+        : out;
   }
 
   const example: Json = {};

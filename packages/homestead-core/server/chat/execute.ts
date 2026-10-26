@@ -35,6 +35,21 @@ export interface ExecuteOptions {
   attachments?: AttachmentSource;
 }
 
+/**
+ * A record as the model sees it: secret fields dropped. The API already
+ * returns only a descriptor for them, but even that (set or not, a hint) isn't
+ * the model's business.
+ */
+function withoutSecrets<R>(binding: ToolBinding, record: R): R {
+  const secrets = Object.entries(binding.def.fields)
+    .filter(([, field]) => field.secret)
+    .map(([name]) => name);
+  if (secrets.length === 0 || record === null || typeof record !== 'object') return record;
+  const out = { ...(record as Record<string, unknown>) };
+  for (const name of secrets) delete out[name];
+  return out as R;
+}
+
 function stringArg(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
@@ -157,13 +172,13 @@ export async function executeToolCall(
         const body = await buildBody(binding, args, attachments);
         const refErr = await validateReferences(binding, body, hs);
         if (refErr) return { ...base, ok: false, error: refErr };
-        const result = await records.create(body);
+        const result = withoutSecrets(binding, await records.create(body));
         return { ...base, ok: true, result };
       }
       case 'read': {
         const id = stringArg(args.id);
         if (id) {
-          return { ...base, ok: true, result: await records.get(id) };
+          return { ...base, ok: true, result: withoutSecrets(binding, await records.get(id)) };
         }
         // One page, sized by `limit`: the engine does the filtering and
         // sorting, so a narrow question costs one small read instead of the
@@ -172,7 +187,7 @@ export async function executeToolCall(
         const page = await records.page(opts);
         const truncated = page.nextPageToken !== undefined;
         const result = {
-          records: page.records,
+          records: page.records.map((record) => withoutSecrets(binding, record)),
           count: page.records.length,
           truncated,
           ...(truncated
@@ -192,7 +207,7 @@ export async function executeToolCall(
         const body = await buildBody(binding, args, attachments);
         const refErr = await validateReferences(binding, body, hs);
         if (refErr) return { ...base, ok: false, error: refErr };
-        const result = await records.record(id).update(body);
+        const result = withoutSecrets(binding, await records.record(id).update(body));
         return { ...base, ok: true, result };
       }
       case 'delete': {

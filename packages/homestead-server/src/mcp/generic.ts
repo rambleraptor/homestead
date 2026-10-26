@@ -291,8 +291,8 @@ export function buildGenericTools(
     const fields: Record<string, unknown> = {};
     for (const [name, field] of Object.entries(def.fields)) {
       // Deprecated fields are on their way out — the write tools reject them,
-      // so don't advertise them either.
-      if (field.deprecated) continue;
+      // so don't advertise them either. Nor secrets, which no tool touches.
+      if (field.deprecated || field.secret) continue;
       fields[name] = describeField(field);
     }
     return {

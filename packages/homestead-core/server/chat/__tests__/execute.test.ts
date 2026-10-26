@@ -58,6 +58,15 @@ const game: ResourceDefinition = {
   },
 };
 
+const credential: ResourceDefinition = {
+  singular: 'credential',
+  plural: 'credentials',
+  fields: {
+    name: { type: 'string', required: true },
+    api_key: { type: 'string', secret: true },
+  },
+};
+
 const TOKEN = 'user-token';
 const { bindings } = buildTools([todo, notification]);
 const { bindings: refBindings } = buildTools([person, game]);
@@ -69,6 +78,43 @@ beforeEach(() => {
   listAllFn.mockResolvedValue([{ id: 'rec-1' }, { id: 'rec-2' }]);
   updateFn.mockResolvedValue({ id: 'rec-1', updated: true });
   deleteFn.mockResolvedValue(undefined);
+});
+
+describe('secret fields', () => {
+  const { bindings: credentialBindings } = buildTools([credential]);
+  const DESCRIPTOR = { $secret: true, set: true, hint: '…3f9a' };
+
+  it('are dropped from what reads and writes hand back to the model', async () => {
+    getFn.mockResolvedValue({ id: 'c1', name: 'AI', api_key: DESCRIPTOR });
+    createFn.mockResolvedValue({ id: 'c2', name: 'New', api_key: { $secret: true, set: false } });
+    updateFn.mockResolvedValue({ id: 'c1', name: 'Renamed', api_key: DESCRIPTOR });
+
+    const read = await executeToolCall({ name: 'read_credential', args: { id: 'c1' } }, credentialBindings, TOKEN);
+    expect(read.result).toEqual({ id: 'c1', name: 'AI' });
+
+    const created = await executeToolCall({ name: 'create_credential', args: { name: 'New' } }, credentialBindings, TOKEN);
+    expect(created.result).toEqual({ id: 'c2', name: 'New' });
+
+    const updated = await executeToolCall(
+      { name: 'update_credential', args: { id: 'c1', name: 'Renamed' } },
+      credentialBindings,
+      TOKEN,
+    );
+    expect(updated.result).toEqual({ id: 'c1', name: 'Renamed' });
+  });
+
+  it('are dropped from every record of a list', async () => {
+    listAllFn.mockResolvedValue([
+      { id: 'c1', name: 'A', api_key: DESCRIPTOR },
+      { id: 'c2', name: 'B', api_key: DESCRIPTOR },
+    ]);
+    const out = await executeToolCall({ name: 'read_credential', args: {} }, credentialBindings, TOKEN);
+    expect(JSON.stringify(out.result)).not.toContain('$secret');
+    expect((out.result as { records: unknown[] }).records).toEqual([
+      { id: 'c1', name: 'A' },
+      { id: 'c2', name: 'B' },
+    ]);
+  });
 });
 
 describe('executeToolCall', () => {

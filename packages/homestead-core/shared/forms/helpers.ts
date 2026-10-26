@@ -4,6 +4,7 @@
  */
 
 import type { FieldDef } from '../../resources/types';
+import { isSecretDescriptor } from '../../resources/secrets';
 import type { FieldConfig, WidgetName } from './types';
 
 /** `annual_fee` → `Annual Fee`. */
@@ -26,6 +27,7 @@ export function fieldLabel(name: string, field: FieldDef, config?: FieldConfig):
  * explicit `config.widget` (string or component) wins before this is consulted.
  */
 export function inferWidget(field: FieldDef): WidgetName {
+  if (field.secret) return 'secret';
   if (field.reference) return 'reference';
   if (field.type === 'array' && field.items?.reference) return 'reference-multi';
   if (field.enum) return 'select';
@@ -47,9 +49,11 @@ export function resolvedWidgetName(field: FieldDef, config?: FieldConfig): Widge
 }
 
 /** Fields the form never renders by default: audit/ownership pointers to the
- *  built-in user root, and fields on their way out. */
+ *  built-in user root, fields on their way out, and secrets that aren't text
+ *  (structured secrets — OAuth tokens — are the server's to write). */
 export function isAutoHidden(field: FieldDef): boolean {
   if (field.deprecated) return true;
+  if (field.secret && field.type !== 'string') return true;
   if (field.reference?.resource === 'user') return true;
   return false;
 }
@@ -73,6 +77,10 @@ export function initialValue(
   // stored filename/marker string on the entity. Custom file widgets resolve
   // the existing file separately (e.g. from `config.data`).
   if (field.type === 'file') return null;
+
+  // A secret's form value is its stored descriptor (unchanged), a new value,
+  // or null (clear) — see the `secret` widget. Never a default.
+  if (field.secret) return isSecretDescriptor(provided) && provided.set ? provided : '';
 
   // Any array field holds an array — never stringify it. Covers array-of-string
   // (tags/reference-multi) and array-of-object (nested rows / custom editors).
@@ -136,6 +144,13 @@ export function buildPayload(
     let v = values[name];
     const widget = resolvedWidgetName(field, config);
 
+    if (field.secret) {
+      // A new value sets it (untrimmed: it's someone's key), null clears it;
+      // the stored descriptor or an empty box leaves it alone.
+      if (v === null) out[name] = null;
+      else if (typeof v === 'string' && v !== '') out[name] = v;
+      continue;
+    }
     if (widget === 'number' || widget === 'currency') {
       if (v === '' || v === undefined) {
         if (required) out[name] = 0;
