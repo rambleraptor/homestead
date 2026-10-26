@@ -30,7 +30,7 @@ import type { EnforceContext } from './enforce';
 import { collectionsWithVisibleRows } from './visible-rows';
 import { collectionAccess } from './collection-access';
 import { householdMembers } from './household';
-import { isSecretField, sweepEncryption } from './encrypted-fields';
+import { isSecretField, scrubFreedPlaintext, sweepEncryption } from './encrypted-fields';
 import { readSecretValue } from './secret-fields';
 import { getResource } from './store';
 import type { HouseholdMember } from '@rambleraptor/homestead-core/household/types';
@@ -137,7 +137,10 @@ export class Engine {
     // a master key — is encrypted once one is configured.
     let swept = 0;
     for (const resource of this.registry.dynamic()) swept += sweepEncryption(this.db, resource);
-    if (swept > 0) log.info('encrypted plaintext values left in encrypted fields', { count: swept });
+    if (swept > 0) {
+      scrubFreedPlaintext(this.db);
+      log.info('encrypted plaintext values left in encrypted fields', { count: swept });
+    }
   }
 
   setAccessCheck(check: AccessCheck | null): void {

@@ -211,7 +211,9 @@ export interface FieldDef {
    * Top-level `string`, `object` or `array` fields only (objects and arrays are
    * encrypted as their JSON), and not with `enum`, `reference`, or a file or
    * reference anywhere inside — the engine needs those in plaintext. Marking an
-   * existing field encrypts the values it already holds. See
+   * existing field encrypts the values it already holds (and vacuums the
+   * database, so they're gone from the file). One way: a field can't stop
+   * being encrypted — remove it instead. See
    * `homestead-server/src/engine/encrypted-fields.ts`.
    *
    * @default false

@@ -75,7 +75,12 @@ An authoritative database marker records whether an item is encrypted
 secondary cross-check. Legacy plaintext is detected and passes through
 unchanged, so encryption can be turned on for an existing instance: text columns
 (extracted text and encrypted fields) are encrypted at the next boot, and when a
-field is newly declared encrypted; files migrate lazily as they are rewritten. Anything that cannot be decrypted **fails
+field is newly declared encrypted; files migrate lazily as they are rewritten.
+SQLite doesn't wipe what an update frees, so after encrypting text in place the
+server checkpoints the WAL and `VACUUM`s the database — the old plaintext is
+gone from the file, not just from the rows. Backups taken *before* still hold
+it; replace them. Encryption is one way: a field can't be declared plain again
+(remove the field instead). Anything that cannot be decrypted **fails
 closed** — the server errors rather than serving ciphertext as content.
 
 ## The master key
@@ -104,8 +109,10 @@ homestead start          # (or restart the service) — encryption is now on
 
 `homestead init` also offers to do the `key generate` step for you. Existing
 plaintext stays readable. Text columns — extracted text and encrypted fields —
-are encrypted in place when the server boots with the key; files are
-re-encrypted lazily the next time each one is written.
+are encrypted in place when the server boots with the key (and the database is
+vacuumed, so the old plaintext doesn't linger in the file); files are
+re-encrypted lazily the next time each one is written. Archives you made before
+turning the key on still hold plaintext — replace them with a fresh backup.
 
 ### Operator rules
 
