@@ -4,7 +4,12 @@
  * live resource through the Registry.
  */
 
-import { encryptedFieldsError, sweepEncryption } from './encrypted-fields';
+import {
+  encryptedFieldsError,
+  scrubFreedPlaintext,
+  sweepEncryption,
+  unencryptError,
+} from './encrypted-fields';
 import { revealedSecretsError } from './secret-fields';
 import type { Database } from './sqlite';
 import { errorResponse, jsonResponse } from './errors';
@@ -340,6 +345,8 @@ export async function handleMetaUpdate(
   if (patch.schema?.properties) {
     const encryptedErr = encryptedFieldsError(patch.schema);
     if (encryptedErr) return errorResponse(400, encryptedErr);
+    const unencryptErr = unencryptError(existing.schema, patch.schema);
+    if (unencryptErr) return errorResponse(400, unencryptErr);
     const revealErr = revealedSecretsError(reg.db, existing.plural, existing.schema, patch.schema);
     if (revealErr) return errorResponse(400, revealErr);
     existing.schema = patch.schema;
@@ -386,9 +393,10 @@ export async function handleMetaUpdate(
     return errorResponse(500, `saving definition: ${err instanceof Error ? err.message : err}`);
   }
 
-  // A field newly marked encrypted still holds plaintext: encrypt it now.
+  // A field newly marked encrypted still holds plaintext: encrypt it now, and
+  // wipe the old values from the file.
   const registered = reg.get(existing.singular);
-  if (registered) sweepEncryption(reg.db, registered);
+  if (registered && sweepEncryption(reg.db, registered) > 0) scrubFreedPlaintext(reg.db);
 
   return jsonResponse(withFileFieldMarkers(existing));
 }

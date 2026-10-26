@@ -18,7 +18,9 @@
  *
  * Either way the column can't be filtered or sorted (that would compare
  * ciphertext), and plaintext already in it — a field newly marked, or an
- * instance that gained a master key — is encrypted by {@link sweepEncryption}.
+ * instance that gained a master key — is encrypted by {@link sweepEncryption},
+ * then scrubbed from the file by {@link scrubFreedPlaintext}. Encryption is one
+ * way: a declared field can't stop being encrypted ({@link unencryptError}).
  */
 
 import type { Database } from './sqlite';
@@ -119,6 +121,25 @@ export function encryptedFieldsError(schema: Schema): string | null {
   return null;
 }
 
+/**
+ * Why a definition change would turn a declared encrypted field back into a
+ * plain one, or null. Refused outright: the column holds ciphertext a plain
+ * field can't read, and a field once deemed sensitive stays so. Removing the
+ * field is the way out (the populated-column guard governs that drop).
+ */
+export function unencryptError(before: Schema, after: Schema): string | null {
+  for (const [name, prop] of Object.entries(before.properties ?? {})) {
+    const next = after.properties?.[name];
+    if (next && declaresEncryption(prop) && !declaresEncryption(next)) {
+      return (
+        `field "${name}" is encrypted, and a field can't stop being encrypted. ` +
+        'To retire it, remove the field instead.'
+      );
+    }
+  }
+  return null;
+}
+
 /** The declared encrypted fields a write sets to a value (not null, not empty). */
 export function encryptedWrites(schema: Schema, fields: Record<string, unknown>): string[] {
   return Object.keys(fields).filter((name) => {
@@ -173,4 +194,18 @@ export function sweepEncryption(db: Database, resource: RegisteredResource): num
     }
   }
   return count;
+}
+
+/**
+ * Wipe the plaintext a sweep left behind. SQLite doesn't zero what an UPDATE
+ * frees: the old values sit in the WAL until a checkpoint, and in free pages
+ * until they're reused — so a copy of the raw database file would still hold
+ * them. A checkpoint moves the WAL into the file and truncates it; VACUUM
+ * rebuilds the file without its free pages. Run once after a sweep that
+ * encrypted anything, never per write.
+ */
+export function scrubFreedPlaintext(db: Database): void {
+  db.run('PRAGMA wal_checkpoint(TRUNCATE)');
+  db.run('VACUUM');
+  db.run('PRAGMA wal_checkpoint(TRUNCATE)');
 }

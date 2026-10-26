@@ -221,24 +221,30 @@ describe('definitions', () => {
     expect(t.engine.readSecret('service', 'services/s1', 'token')).toBe('legacy-token-value');
   });
 
+  const redefineApiKey = (apiKey: Record<string, unknown>) =>
+    call(t.engine, 'PATCH', '/aep-resource-definitions/credential', {
+      token: t.adminToken,
+      body: {
+        schema: { ...CREDENTIAL.schema, properties: { ...CREDENTIAL.schema.properties, api_key: apiKey } },
+      },
+    });
+
   test("a field can't stop being secret while it holds values", async () => {
     await create('d1', { name: 'AI', api_key: API_KEY });
-    const unmark = () =>
-      call(t.engine, 'PATCH', '/aep-resource-definitions/credential', {
-        token: t.adminToken,
-        body: {
-          schema: {
-            ...CREDENTIAL.schema,
-            properties: { ...CREDENTIAL.schema.properties, api_key: { type: 'string' } },
-          },
-        },
-      });
-    const refused = await unmark();
+    // Still encrypted, no longer write-only: readers would get the value.
+    const readable = { type: 'string', 'x-aepbase-encrypted': true };
+    const refused = await redefineApiKey(readable);
     expect(refused.status).toBe(400);
     expect(await refused.text()).toContain('holds secrets');
 
     await patch('d1', { api_key: null });
-    expect((await unmark()).status).toBe(200);
+    expect((await redefineApiKey(readable)).status).toBe(200);
+  });
+
+  test("nor stop being encrypted, even when empty", async () => {
+    const refused = await redefineApiKey({ type: 'string' });
+    expect(refused.status).toBe(400);
+    expect(await refused.text()).toContain("can't stop being encrypted");
   });
 
   test('refuse secret markers the engine could not honor', async () => {

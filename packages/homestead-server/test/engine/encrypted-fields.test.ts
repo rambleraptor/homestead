@@ -6,8 +6,13 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { randomBytes } from 'node:crypto';
-import { call, defineResource, makeEngine, type TestEngine } from './helpers';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { call, defineResource, makeEngine, seedUser, type TestEngine } from './helpers';
 import { __resetMasterKeyCacheForTests } from '../../src/engine/crypto';
+import { Engine } from '../../src/engine/engine';
+import { TYPE_SUPERUSER } from '../../src/engine/types';
 import { sweepEncryption } from '../../src/engine/encrypted-fields';
 
 let t: TestEngine;
@@ -170,6 +175,67 @@ describe('the sweep', () => {
   });
 });
 
+describe('the plaintext the sweep replaces', () => {
+  test('is gone from the database file and its WAL, not just from the rows', async () => {
+    // A real file: an in-memory database has no file to leave residue in.
+    const dir = mkdtempSync(join(tmpdir(), 'hs-encrypt-scrub-'));
+    const dbPath = join(dir, 'data.db');
+    const engine = new Engine({ dbPath, filesDir: join(dir, 'files'), serverUrl: 'http://localhost:8090' });
+    const { token } = await seedUser(engine, { email: 'scrub@example.com', type: TYPE_SUPERUSER });
+    const notes = {
+      singular: 'note',
+      plural: 'notes',
+      user_settable_create: true,
+      schema: { type: 'object', properties: { body: { type: 'string' } } },
+    };
+    expect((await call(engine, 'POST', '/aep-resource-definitions?id=note', { token, body: notes })).ok).toBe(true);
+    // Long values spill into overflow pages, which SQLite frees but doesn't wipe.
+    const secret = 'SCRUB-ME-gate-code-4321';
+    for (let i = 0; i < 20; i++) {
+      await call(engine, 'POST', `/notes?id=n${i}`, { token, body: { body: `${secret} ${'x'.repeat(6000)} ${i}` } });
+    }
+    engine.db.run('PRAGMA wal_checkpoint(TRUNCATE)');
+    const inFiles = () =>
+      [dbPath, `${dbPath}-wal`].some((f) => existsSync(f) && readFileSync(f).includes(Buffer.from(secret)));
+    expect(inFiles()).toBe(true);
+
+    const res = await call(engine, 'PATCH', '/aep-resource-definitions/note', {
+      token,
+      body: { schema: { type: 'object', properties: { body: { type: 'string', 'x-aepbase-encrypted': true } } } },
+    });
+    expect(res.status).toBe(200);
+    expect(inFiles()).toBe(false);
+    const got = await (await call(engine, 'GET', '/notes/n3', { token })).json();
+    expect(got.body.startsWith(secret)).toBe(true);
+    engine.db.close();
+  });
+  test('is gone too when an instance that gained a key boots', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hs-encrypt-scrub-boot-'));
+    const dbPath = join(dir, 'data.db');
+    const open = () => new Engine({ dbPath, filesDir: join(dir, 'files'), serverUrl: 'http://localhost:8090' });
+
+    // No key yet: the definition is applied, and a value lands in plaintext
+    // (written here straight to the table, as an older release could have).
+    useKey(false);
+    const before = open();
+    const { token } = await seedUser(before, { email: 'boot@example.com', type: TYPE_SUPERUSER });
+    expect((await call(before, 'POST', '/aep-resource-definitions?id=vault', { token, body: VAULT })).ok).toBe(true);
+    const secret = 'SCRUB-ME-at-boot';
+    before.db
+      .query('INSERT INTO vaults (id, path, create_time, update_time, name, wifi_password) VALUES (?, ?, ?, ?, ?, ?)')
+      .run('v1', 'vaults/v1', 't', 't', 'Home', `${secret} ${'x'.repeat(6000)}`);
+    before.db.close();
+
+    useKey(true);
+    const after = open();
+    const inFiles = [dbPath, `${dbPath}-wal`].some(
+      (f) => existsSync(f) && readFileSync(f).includes(Buffer.from(secret)),
+    );
+    expect(inFiles).toBe(false);
+    after.db.close();
+  });
+});
+
 describe('definitions', () => {
   const bad = async (prop: Record<string, unknown>) => {
     const res = await call(t.engine, 'POST', '/aep-resource-definitions?id=bad', {
@@ -188,5 +254,34 @@ describe('definitions', () => {
     expect(
       (await bad({ type: 'object', properties: { inner: { type: 'string', 'x-aepbase-encrypted': true } } })).text,
     ).toContain('only top-level');
+  });
+});
+
+describe("a field can't stop being encrypted", () => {
+  const redefine = (wifi: Record<string, unknown>) =>
+    call(t.engine, 'PATCH', '/aep-resource-definitions/vault', {
+      token: t.adminToken,
+      body: { schema: { ...VAULT.schema, properties: { ...VAULT.schema.properties, wifi_password: wifi } } },
+    });
+
+  test('dropping the marker is refused, with values or without', async () => {
+    const empty = await redefine({ type: 'string' });
+    expect(empty.status).toBe(400);
+    expect(await empty.text()).toContain("can't stop being encrypted");
+
+    await create('u1', { name: 'Home', wifi_password: 'hunter2' });
+    expect((await redefine({ type: 'string' })).status).toBe(400);
+    expect((await (await call(t.engine, 'GET', '/vaults/u1', { token: t.adminToken })).json()).wifi_password).toBe(
+      'hunter2',
+    );
+  });
+
+  test('removing the field is still possible', async () => {
+    const { wifi_password: _gone, ...rest } = VAULT.schema.properties;
+    const res = await call(t.engine, 'PATCH', '/aep-resource-definitions/vault', {
+      token: t.adminToken,
+      body: { schema: { ...VAULT.schema, properties: rest } },
+    });
+    expect(res.status).toBe(200);
   });
 });

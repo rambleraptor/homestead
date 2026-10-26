@@ -196,8 +196,10 @@ control — use [permissions](./permissions) for who may see a record.
   or reference anywhere inside: the engine needs those in plaintext.
 - **Marking an existing field encrypts what it already holds**, when the
   definition is applied (and at boot, for values written before the instance
-  had a key). Removing `encrypted` stops encrypting new writes; values already
-  encrypted still read back.
+  had a key). The database is then vacuumed, so the old plaintext is gone from
+  the file too — but backups taken before still hold it.
+- **It's one way.** A field can't stop being encrypted: the definition change is
+  refused. To retire one, remove the field.
 
 ---
 
@@ -249,6 +251,7 @@ without a master key) that is also **write-only**:
 - **Marking an existing field secret** encrypts what it holds, and reads stop
   returning it. **A field can't stop being secret while it holds values** — the
   definition change is refused until they're cleared (or the field is removed).
+  Either way it stays encrypted.
 
 ---
 

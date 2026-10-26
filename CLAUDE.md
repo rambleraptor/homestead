@@ -655,8 +655,10 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    `homestead-server/src/engine/encrypted-fields.ts`). Reads are unchanged; it
    can't be filtered or sorted; a write that sets it on an instance with no
    master key is a 400. Plaintext already in the column is encrypted when the
-   definition is applied and at boot. Ask before marking an existing field —
-   it's a schema change.
+   definition is applied and at boot, then the database is vacuumed so it's gone
+   from the file. It's one way: dropping `encrypted` from a field is refused
+   (remove the field instead). Ask before marking an existing field — it's a
+   schema change.
 9. **`secret: true`** (or `{ hint: n }`) is `encrypted` plus write-only
    (`x-aepbase-secret`; `homestead-server/src/engine/secret-fields.ts`): every
    read gets `{ $secret, set, set_time?, hint? }`, never the value; a write takes
