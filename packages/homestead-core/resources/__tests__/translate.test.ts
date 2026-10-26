@@ -1135,3 +1135,44 @@ describe('encrypted fields', () => {
     }
   });
 });
+
+describe('secret fields', () => {
+  const def = (fields: Record<string, FieldDef>): ResourceDefinition => ({
+    singular: 'credential',
+    plural: 'credentials',
+    fields,
+  });
+
+  it('carry the secret marker, with the hint when asked, and say so', () => {
+    const { properties } = toWireSchema(
+      {
+        api_key: { type: 'string', secret: { hint: 4 } },
+        password: { type: 'string', secret: true },
+        tokens: { type: 'object', secret: {}, properties: { access: { type: 'string' } } },
+      },
+      'credential',
+    );
+    expect(properties.api_key).toMatchObject({ 'x-aepbase-secret': { hint: 4 } });
+    expect(properties.api_key!.description).toContain('write-only secret');
+    expect(properties.password).toMatchObject({ 'x-aepbase-secret': true });
+    expect(properties.tokens).toMatchObject({ 'x-aepbase-secret': true });
+  });
+
+  it('follow the encrypted rules, and take no default and a hint from 1 to 8', () => {
+    expect(() =>
+      validateResourceDefinition(def({ a: { type: 'string', secret: { hint: 8 }, required: true } })),
+    ).not.toThrow();
+    for (const [field, message] of [
+      [{ type: 'number', secret: true }, 'can be secret'],
+      [{ type: 'string', secret: true, enum: ['a'] }, 'enum'],
+      [{ type: 'string', secret: true, reference: { resource: 'user' } }, 'reference'],
+      [{ type: 'string', secret: true, default: 'x' }, 'default'],
+      [{ type: 'string', secret: { hint: 0 } }, 'hint'],
+      [{ type: 'string', secret: { hint: 9 } }, 'hint'],
+      [{ type: 'object', properties: { pin: { type: 'string', secret: true } } }, 'only top-level'],
+      [{ type: 'array', items: { type: 'string', secret: true } }, 'only top-level'],
+    ] as Array<[FieldDef, string]>) {
+      expect(() => validateResourceDefinition(def({ f: field }))).toThrow(message);
+    }
+  });
+});

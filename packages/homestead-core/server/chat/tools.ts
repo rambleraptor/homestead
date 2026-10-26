@@ -363,7 +363,8 @@ export function buildTools(
     const fileFields = new Set<string>();
     for (const [key, prop] of Object.entries(def.fields)) {
       // Deprecated fields are on their way out — don't offer them to the model.
-      if (prop.deprecated) continue;
+      // Secrets are never the model's to write (nor to read: see execute.ts).
+      if (prop.deprecated || prop.secret) continue;
       if (prop.type === 'file') {
         if (!files) continue;
         const about = prop.description ? `${prop.description} — ` : '';

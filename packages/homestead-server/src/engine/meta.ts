@@ -5,6 +5,7 @@
  */
 
 import { encryptedFieldsError, sweepEncryption } from './encrypted-fields';
+import { revealedSecretsError } from './secret-fields';
 import type { Database } from './sqlite';
 import { errorResponse, jsonResponse } from './errors';
 import { nowRFC3339 } from './ids';
@@ -339,6 +340,8 @@ export async function handleMetaUpdate(
   if (patch.schema?.properties) {
     const encryptedErr = encryptedFieldsError(patch.schema);
     if (encryptedErr) return errorResponse(400, encryptedErr);
+    const revealErr = revealedSecretsError(reg.db, existing.plural, existing.schema, patch.schema);
+    if (revealErr) return errorResponse(400, revealErr);
     existing.schema = patch.schema;
   }
   if (patch.enums) {

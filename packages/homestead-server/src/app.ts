@@ -125,6 +125,11 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   );
   setHouseholdDirectory(() => engine.householdMembers());
 
+  // Server code that uses a secret field's value (a stored API key) reads it
+  // in-process; the API only ever returns a descriptor.
+  const { setSecretReader } = await import('@rambleraptor/homestead-core/server/secrets');
+  setSecretReader((resource, path, field) => engine.readSecret(resource, path, field));
+
   // Server code that has already decided a write is allowed, but can't make it
   // with its caller's token (a message into someone else's inbox), borrows a
   // short-lived admin token — the one a cron firing gets.

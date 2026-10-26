@@ -212,8 +212,8 @@ function validateFields(
         );
       }
     }
-    if (field.encrypted && path) {
-      fail(`field "${fieldPath}" is nested; only top-level fields can be encrypted`);
+    if ((field.encrypted || field.secret) && path) {
+      fail(`field "${fieldPath}" is nested; only top-level fields can be ${field.secret ? 'secret' : 'encrypted'}`);
     }
     validateField(field, fieldPath, fail);
   }
@@ -227,19 +227,38 @@ function holdsFileOrReference(field: FieldDef): boolean {
   return Object.values(field.variants ?? {}).some((fields) => Object.values(fields).some(holdsFileOrReference));
 }
 
+/** The longest hint a secret may show (the engine enforces the same). */
+const MAX_SECRET_HINT = 8;
+
 /**
- * An encrypted field is stored as ciphertext: it must be a type the engine can
- * encrypt, and hold nothing the engine needs to read in plaintext.
+ * An encrypted field — and a secret, which is always encrypted — is stored as
+ * ciphertext: it must be a type the engine can encrypt, and hold nothing the
+ * engine needs to read in plaintext.
  */
 function validateEncrypted(field: FieldDef, path: string, fail: (message: string) => never): void {
-  if (!field.encrypted) return;
+  if (!field.encrypted && !field.secret) return;
+  const word = field.secret ? 'secret' : 'encrypted';
   if (field.type !== 'string' && field.type !== 'object' && field.type !== 'array') {
-    fail(`field "${path}" is ${field.type}; only string, object and array fields can be encrypted`);
+    fail(`field "${path}" is ${field.type}; only string, object and array fields can be ${word}`);
   }
-  if (field.enum) fail(`field "${path}" declares enum values and can't also be encrypted`);
+  if (field.enum) fail(`field "${path}" declares enum values and can't also be ${word}`);
   if (holdsFileOrReference(field)) {
-    fail(`field "${path}" holds a file or a reference, which can't be encrypted`);
+    fail(`field "${path}" holds a file or a reference, which can't be ${word}`);
   }
+  if (!field.secret) return;
+  if (field.default !== undefined) fail(`field "${path}" is secret and can't have a default`);
+  if (typeof field.secret === 'object') {
+    const { hint } = field.secret;
+    if (hint !== undefined && (!Number.isInteger(hint) || hint < 1 || hint > MAX_SECRET_HINT)) {
+      fail(`field "${path}" has secret hint ${hint}; use a whole number from 1 to ${MAX_SECRET_HINT}`);
+    }
+  }
+}
+
+/** A field's `secret` annotation as its wire marker. */
+function secretMarker(secret: FieldDef['secret']): true | { hint: number } | undefined {
+  if (!secret) return undefined;
+  return typeof secret === 'object' && secret.hint !== undefined ? { hint: secret.hint } : true;
 }
 
 function validateField(
@@ -255,8 +274,8 @@ function validateField(
   }
   validateReference(field, path, fail);
   validateEncrypted(field, path, fail);
-  if (field.items?.encrypted) {
-    fail(`field "${path}[]" is nested; only top-level fields can be encrypted`);
+  if (field.items?.encrypted || field.items?.secret) {
+    fail(`field "${path}[]" is nested; only top-level fields can be encrypted or secret`);
   }
   if (field.items && field.type !== 'array') {
     fail(`field "${path}" declares items but is not an array`);
@@ -825,6 +844,7 @@ function toWireProperty(
     ...(field.type === 'file' ? { 'x-aepbase-file-field': true } : {}),
     ...(field.immutable ? { 'x-aepbase-immutable': true } : {}),
     ...(field.encrypted ? { 'x-aepbase-encrypted': true } : {}),
+    ...(field.secret ? { 'x-aepbase-secret': secretMarker(field.secret) } : {}),
     ...(field.reference
       ? {
           'x-aepbase-reference': {
@@ -871,7 +891,11 @@ function wireDescription(field: FieldDef): string | undefined {
       `defaults to the household "${field.defaultFromFlag.key}" setting when omitted`,
     );
   }
-  if (field.encrypted) notes.push('encrypted at rest; cannot be filtered or sorted');
+  if (field.secret) {
+    notes.push('write-only secret: reads return a descriptor, never the value; cannot be filtered or sorted');
+  } else if (field.encrypted) {
+    notes.push('encrypted at rest; cannot be filtered or sorted');
+  }
   if (!notes.length) return field.description;
   const suffix = notes.join('; ');
   return field.description ? `${field.description} (${suffix})` : suffix;

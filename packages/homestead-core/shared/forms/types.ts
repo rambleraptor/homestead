@@ -23,7 +23,8 @@ export type WidgetName =
   | 'file'
   | 'reference'
   | 'reference-multi'
-  | 'tags';
+  | 'tags'
+  | 'secret';
 
 /** Props every widget receives — built-in and custom alike. */
 export interface FieldWidgetProps<V = unknown> {

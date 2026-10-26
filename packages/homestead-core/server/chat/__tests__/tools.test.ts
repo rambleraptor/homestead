@@ -190,6 +190,23 @@ describe('buildTools', () => {
     expect(keysFor(tools, 'create_widget')).toContain('name');
   });
 
+  it('omits secret fields from every tool', () => {
+    const withSecret: ResourceDefinition = {
+      singular: 'credential',
+      plural: 'credentials',
+      fields: {
+        name: { type: 'string', required: true },
+        api_key: { type: 'string', secret: { hint: 4 }, required: true },
+      },
+    };
+    const { tools, bindings } = buildTools([withSecret]);
+    expect(keysFor(tools, 'create_credential')).not.toContain('api_key');
+    expect(keysFor(tools, 'update_credential')).not.toContain('api_key');
+    // Required in the schema, but the model can't supply it, so not required of it.
+    expect(schemaFor(tools, 'create_credential').safeParse({ name: 'AI' }).success).toBe(true);
+    expect(bindings.get('create_credential')?.bodyFields.has('api_key')).toBe(false);
+  });
+
   it('adds a required parent id param for parented resources', () => {
     const { tools, bindings } = buildTools(ALL);
     const create = schemaFor(tools, 'create_transaction');

@@ -17,6 +17,7 @@ new and patches anything that changed.
 - [Enums](#enums)
 - [File Fields](#file-fields)
 - [Encrypted Fields](#encrypted-fields)
+- [Secret Fields](#secret-fields)
 - [Parent / Child Resources](#parent-child-resources)
 - [Retention](#retention)
 - [Hiding a Resource from AI Tools](#hiding-a-resource-from-ai-tools)
@@ -197,6 +198,57 @@ control — use [permissions](./permissions) for who may see a record.
   definition is applied (and at boot, for values written before the instance
   had a key). Removing `encrypted` stops encrypting new writes; values already
   encrypted still read back.
+
+---
+
+## Secret Fields
+
+For a value Homestead *uses* but nobody should read back — an API key, an OAuth
+client secret, a token — mark it `secret`:
+
+```ts
+fields: {
+  api_key: { type: 'string', secret: { hint: 4 } },
+  tokens: { type: 'object', secret: true },
+}
+```
+
+A secret is an [encrypted field](#encrypted-fields) (same rules, same `400`
+without a master key) that is also **write-only**:
+
+- **Reads return a descriptor, never the value** — every read: the API, the app,
+  the change feed, exports.
+
+  ```json
+  "api_key": { "$secret": true, "set": true, "set_time": "2026-10-26T14:02:11Z", "hint": "…3f9a" }
+  ```
+
+  `hint` shows the last few characters, only when the field asks for it
+  (`secret: { hint: 1–8 }`), and only for a value at least three times that long.
+  Right for an API key; leave it off for a password.
+- **Writes**: a value sets it, `null` (or `""`) clears it, and the descriptor
+  — or leaving the field out — keeps it. So a form that loads a record and saves
+  it whole can't wipe the secret by accident; neither can a `PUT` that omits it.
+- **Server code reads the value in-process** with `readSecret` from
+  `@rambleraptor/homestead-core/server/secrets`:
+
+  ```ts
+  import { readSecret } from '@rambleraptor/homestead-core/server/secrets';
+  const key = readSecret('credential', `credentials/${id}`, 'api_key');
+  ```
+
+  There is no route that returns it, so only your server code decides where a
+  secret goes. Use it for what it's for — never put it in a response, a log
+  line, or a model's context.
+- **The AI never sees one.** Secret fields are left out of the assistant's and
+  MCP's tools in both directions; the model can't set one and doesn't learn
+  whether it's set.
+- **In forms**, a text secret shows as *Set · …3f9a · Oct 26* with **Replace**
+  and **Clear**, and as a password box when empty. Object and array secrets
+  (tokens the server writes) aren't shown.
+- **Marking an existing field secret** encrypts what it holds, and reads stop
+  returning it. **A field can't stop being secret while it holds values** — the
+  definition change is refused until they're cleared (or the field is removed).
 
 ---
 

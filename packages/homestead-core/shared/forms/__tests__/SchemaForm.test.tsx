@@ -197,3 +197,72 @@ describe('SchemaForm disableSubmitUntilValid', () => {
     await waitFor(() => expect(submit).toBeEnabled());
   });
 });
+
+describe('SchemaForm secret fields', () => {
+  const credential: ResourceDefinition = {
+    singular: 'credential',
+    plural: 'credentials',
+    fields: {
+      name: { type: 'string', required: true },
+      api_key: { type: 'string', secret: { hint: 4 } },
+      tokens: { type: 'object', secret: true },
+    },
+  };
+  const stored = {
+    name: 'AI',
+    api_key: { $secret: true, set: true, hint: '…3f9a', set_time: '2026-10-26T14:02:11Z' },
+    tokens: { $secret: true, set: true },
+  };
+  const renderSecret = (initialData: Record<string, unknown> | null) => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SchemaForm
+        resource={credential}
+        mode={initialData ? 'edit' : 'create'}
+        initialData={initialData}
+        fields={{ api_key: { testId: 'api-key' } }}
+        onSubmit={onSubmit}
+      />,
+    );
+    return { onSubmit };
+  };
+  const submit = () => fireEvent.click(screen.getByRole('button', { name: /save|create/i }));
+
+  it('shows a stored secret as set, never its value, and leaves it alone on save', async () => {
+    const { onSubmit } = renderSecret(stored);
+    expect(screen.getByTestId('api-key-stored')).toHaveTextContent('Set · …3f9a');
+    // Structured secrets (tokens) aren't the form's to edit.
+    expect(screen.queryByText('Tokens')).not.toBeInTheDocument();
+    submit();
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ name: 'AI' }));
+  });
+
+  it('replaces it with what is typed, untrimmed', async () => {
+    const { onSubmit } = renderSecret(stored);
+    fireEvent.click(screen.getByTestId('api-key-replace'));
+    const box = screen.getByTestId('api-key');
+    expect(box).toHaveAttribute('type', 'password');
+    fireEvent.change(box, { target: { value: ' sk-new ' } });
+    submit();
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ name: 'AI', api_key: ' sk-new ' }));
+  });
+
+  it('clears it, and Undo takes that back', async () => {
+    const { onSubmit } = renderSecret(stored);
+    fireEvent.click(screen.getByTestId('api-key-clear'));
+    expect(screen.getByText('Removed when you save.')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('api-key-undo'));
+    expect(screen.getByTestId('api-key-stored')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('api-key-clear'));
+    submit();
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ name: 'AI', api_key: null }));
+  });
+
+  it('starts as an empty password box on create', async () => {
+    const { onSubmit } = renderSecret(null);
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'AI' } });
+    expect(screen.getByTestId('api-key')).toHaveValue('');
+    submit();
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ name: 'AI' }));
+  });
+});

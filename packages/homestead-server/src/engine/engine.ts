@@ -30,7 +30,9 @@ import type { EnforceContext } from './enforce';
 import { collectionsWithVisibleRows } from './visible-rows';
 import { collectionAccess } from './collection-access';
 import { householdMembers } from './household';
-import { sweepEncryption } from './encrypted-fields';
+import { isSecretField, sweepEncryption } from './encrypted-fields';
+import { readSecretValue } from './secret-fields';
+import { getResource } from './store';
 import type { HouseholdMember } from '@rambleraptor/homestead-core/household/types';
 import type { CollectionAccess } from '@rambleraptor/homestead-core/resources/model-tools';
 import { TYPE_SUPERUSER, type User } from './types';
@@ -202,6 +204,25 @@ export class Engine {
   /** Who shares this Homestead, by name. See `./household`. */
   householdMembers(): HouseholdMember[] {
     return householdMembers(this.db, this.permissionStore);
+  }
+
+  /**
+   * The value of the secret `field` on the record at `path` (a `resource`), or
+   * null when it's unset or there's no such record. In-process only — nothing
+   * routes here, and there's no caller to authorize: the server code that
+   * calls it is what decides a secret gets used. See `./secret-fields`.
+   */
+  readSecret(resource: string, path: string, field: string): unknown {
+    const registered = this.registry.get(resource);
+    if (!registered || !isSecretField(registered.schema, field)) {
+      throw new Error(`"${field}" is not a secret field of ${resource}`);
+    }
+    const match = matchResourcePath(this.registry, path);
+    if (!match || match.resource.singular !== resource) {
+      throw new Error(`${path} is not a ${resource} record`);
+    }
+    const stored = getResource(this.db, registered.plural, path, registered.schema);
+    return stored ? readSecretValue(registered.schema, field, path, stored.fields[field]) : null;
   }
 
   /**

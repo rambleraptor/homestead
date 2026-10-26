@@ -13,6 +13,9 @@
  *    (`x-aepbase-file-text-field`). Derived, written by the server itself, so
  *    without a key it stays plaintext rather than failing the upload.
  *
+ * A **secret** field (`x-aepbase-secret`, see `./secret-fields`) is a declared
+ * encrypted field that is also never read back.
+ *
  * Either way the column can't be filtered or sorted (that would compare
  * ciphertext), and plaintext already in it — a field newly marked, or an
  * instance that gained a master key — is encrypted by {@link sweepEncryption}.
@@ -25,20 +28,41 @@ import { encryptionEnabled, encryptText, TEXT_PREFIX } from './crypto';
 import type { RegisteredResource } from './registry';
 
 export const ENCRYPTED_MARKER = 'x-aepbase-encrypted';
+/** `true`, or `{ hint: n }` to show the last n characters on read. */
+export const SECRET_MARKER = 'x-aepbase-secret';
 const FILE_TEXT_MARKER = 'x-aepbase-file-text-field';
+
+/** The longest hint a secret may show. */
+const MAX_SECRET_HINT = 8;
 
 /** The types a declared encrypted field may have. Objects and arrays are stored as JSON. */
 const ENCRYPTABLE_TYPES = new Set(['string', 'object', 'array']);
 
-/** Whether a field is authored `encrypted: true`. */
+/** Whether a property is a secret (`./secret-fields`). */
+export function isSecretProperty(prop: SchemaProperty | undefined): boolean {
+  const marker = prop?.[SECRET_MARKER];
+  return marker === true || (typeof marker === 'object' && marker !== null);
+}
+
+/** Whether a field is a secret. */
+export function isSecretField(schema: Schema, name: string): boolean {
+  return isSecretProperty(schema.properties?.[name]);
+}
+
+/** Whether a property is authored `encrypted: true`, or is a secret (always encrypted). */
+function declaresEncryption(prop: SchemaProperty | undefined): boolean {
+  return prop?.[ENCRYPTED_MARKER] === true || isSecretProperty(prop);
+}
+
+/** Whether a field is authored `encrypted: true` (secrets included). */
 export function isDeclaredEncrypted(schema: Schema, name: string): boolean {
-  return schema.properties?.[name]?.[ENCRYPTED_MARKER] === true;
+  return declaresEncryption(schema.properties?.[name]);
 }
 
 /** Whether a field's column holds ciphertext (declared, or extracted text). */
 export function isEncryptedField(schema: Schema, name: string): boolean {
   const prop = schema.properties?.[name];
-  return prop?.[ENCRYPTED_MARKER] === true || prop?.[FILE_TEXT_MARKER] === true;
+  return declaresEncryption(prop) || prop?.[FILE_TEXT_MARKER] === true;
 }
 
 /** Stable key id for one value: the record and the field. */
@@ -63,13 +87,26 @@ function holdsFileOrReference(prop: SchemaProperty): boolean {
  */
 export function encryptedFieldsError(schema: Schema): string | null {
   for (const [name, prop] of Object.entries(schema.properties ?? {})) {
-    if (prop[ENCRYPTED_MARKER] !== true) {
+    if (!declaresEncryption(prop)) {
       for (const nested of [prop.items, ...Object.values(prop.properties ?? {})]) {
-        if (nested?.[ENCRYPTED_MARKER] === true) {
-          return `field "${name}" nests an encrypted field; only top-level fields can be encrypted`;
+        if (declaresEncryption(nested)) {
+          return `field "${name}" nests an encrypted or secret field; only top-level fields can be`;
         }
       }
       continue;
+    }
+    const secret = prop[SECRET_MARKER];
+    if (secret !== undefined && secret !== true) {
+      const hint = (secret as { hint?: unknown } | null)?.hint;
+      const keys = secret !== null && typeof secret === 'object' ? Object.keys(secret) : [];
+      if (
+        keys.some((k) => k !== 'hint') ||
+        !Number.isInteger(hint) ||
+        (hint as number) < 1 ||
+        (hint as number) > MAX_SECRET_HINT
+      ) {
+        return `field "${name}" has an invalid secret marker; use true or { hint: 1–${MAX_SECRET_HINT} }`;
+      }
     }
     if (!ENCRYPTABLE_TYPES.has(String(prop.type))) {
       return `field "${name}" is ${prop.type}; only string, object and array fields can be encrypted`;

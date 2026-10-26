@@ -14,6 +14,7 @@
  */
 
 import { missingKeyError, writesNeedingKey } from './encrypted-fields';
+import { describeSecrets, keepUnchangedSecrets, sealSecretWrites } from './secret-fields';
 import { errorResponse, HttpError, isUniqueConstraintError, jsonResponse } from './errors';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -204,6 +205,7 @@ function storedToMap(
   for (const propName of Object.keys(r.schema.properties ?? {})) {
     if (propName in s.fields) m[propName] = s.fields[propName];
   }
+  describeSecrets(r.schema, s.path, s.fields, m);
   for (const name of r.fileFields) {
     if (!fileFieldExists(reg.filesDir, s.path, name)) {
       delete m[name];
@@ -232,6 +234,7 @@ function singletonToMap(r: RegisteredResource, s: StoredResource): Record<string
   for (const propName of Object.keys(r.schema.properties ?? {})) {
     if (propName in s.fields) m[propName] = s.fields[propName];
   }
+  describeSecrets(r.schema, s.path, s.fields, m);
   return m;
 }
 
@@ -470,6 +473,7 @@ function preparePayload(
 ): Record<string, unknown> {
   for (const std of STANDARD_FIELDS) delete fields[std];
   stripReadOnlyFields(r.schema, fields);
+  keepUnchangedSecrets(r.schema, fields);
 
   // Authoritative encryption flag for each uploaded file, gated on the same
   // encryptionEnabled() check writeFileField uses this request, so marker and
@@ -498,6 +502,7 @@ function preparePayload(
   if (needKey.length) throw new HttpError(400, missingKeyError(needKey));
   const constraintErr = validateConstraints(r.schema, fields, r.fileFields);
   if (constraintErr) throw new HttpError(400, constraintErr);
+  sealSecretWrites(r.schema, fields, nowRFC3339());
   return fields;
 }
 
@@ -1019,6 +1024,7 @@ export async function handleSingletonUpdate(
 
   for (const std of STANDARD_FIELDS) delete patch[std];
   stripReadOnlyFields(r.schema, patch);
+  keepUnchangedSecrets(r.schema, patch);
 
   const typeErr = validateTypes(r.schema, patch);
   if (typeErr) return errorResponse(400, typeErr);
@@ -1026,6 +1032,7 @@ export async function handleSingletonUpdate(
   if (enumErr) return errorResponse(400, enumErr);
   const needKey = writesNeedingKey(r.schema, patch);
   if (needKey.length) return errorResponse(400, missingKeyError(needKey));
+  sealSecretWrites(r.schema, patch, nowRFC3339());
 
   const existing = getResource(reg.db, r.plural, path, r.schema);
   const now = nowRFC3339();
