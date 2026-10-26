@@ -394,7 +394,12 @@ SPA and apps share:
   past ones in a drawer (`chat/components/ConversationList`). It fills the main
   area via `layout/pageFill`. When the AI isn't configured or the viewer can't
   use Chat, a note takes the conversation's place and the chips stay — that rule
-  is `dashboard/home.ts` (`useAssistantAvailability`). `chat` has no screen of
+  is `dashboard/home.ts` (`useAssistantAvailability`). The
+  `dashboard.classic_home` flag gives its audience the classic dashboard
+  instead (`dashboard/components/ClassicHome`: welcome panel, an Ask box that
+  starts a conversation at `/dashboard/c/:id`, and the widget stack);
+  `useHomeMode` in the same file decides, and a conversation's address opens
+  the conversation on either home. `chat` has no screen of
   its own: its app gates access to the assistant, and its `/chat` routes only
   redirect old links to the home.
 - `layout/`, `shared/`, `resources/`, `app-flags/`, `user-settings/` —

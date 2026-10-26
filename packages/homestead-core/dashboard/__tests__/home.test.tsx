@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useAssistantAvailability } from '../home';
+import { useAssistantAvailability, useHomeMode } from '../home';
 import { partOfDay } from '../greeting';
 import { useAiConfigured } from '@rambleraptor/homestead-core/chat/hooks/useAiConfigured';
 import { getAppById } from '@rambleraptor/homestead-core/apps/registry';
+import { useAppFlag } from '@rambleraptor/homestead-core/settings/hooks/useAppFlag';
 
 let visible = true;
 vi.mock('@rambleraptor/homestead-core/chat/hooks/useAiConfigured', () => ({
@@ -16,6 +17,32 @@ vi.mock('@rambleraptor/homestead-core/apps/registry', async (importOriginal) => 
   ...(await importOriginal<typeof import('@rambleraptor/homestead-core/apps/registry')>()),
   getAppById: vi.fn((id: string) => (id === 'chat' ? { id: 'chat' } : undefined)),
 }));
+
+vi.mock('@rambleraptor/homestead-core/settings/hooks/useAppFlag', () => ({
+  useAppFlag: vi.fn(),
+}));
+
+function mockClassicFlag(value: boolean | undefined, isLoading = false) {
+  vi.mocked(useAppFlag).mockReturnValue({ value, isLoading } as ReturnType<typeof useAppFlag>);
+}
+
+describe('useHomeMode', () => {
+  it("is the assistant's home by default", () => {
+    mockClassicFlag(false);
+    expect(renderHook(() => useHomeMode()).result.current).toBe('agentic');
+  });
+
+  it('is the classic dashboard when the flag is on for this person', () => {
+    mockClassicFlag(true);
+    expect(renderHook(() => useHomeMode()).result.current).toBe('classic');
+    expect(useAppFlag).toHaveBeenCalledWith('dashboard', 'classic_home');
+  });
+
+  it('is unknown while the flag loads', () => {
+    mockClassicFlag(undefined, true);
+    expect(renderHook(() => useHomeMode()).result.current).toBeUndefined();
+  });
+});
 
 describe('useAssistantAvailability', () => {
   beforeEach(() => {

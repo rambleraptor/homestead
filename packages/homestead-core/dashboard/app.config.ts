@@ -6,8 +6,13 @@
  * conversation needs an AI provider and access to Chat; without them the home
  * keeps its chips and says why the assistant isn't there.
  *
- * The `show_welcome_guide` per-user setting dismisses the admin setup
- * checklist shown on the home (the key predates the checklist).
+ * The `classic_home` flag gives its audience the classic dashboard instead —
+ * the widget stack with an Ask box (see `components/ClassicHome`) — so a group
+ * can keep it while everyone else has the assistant's home.
+ *
+ * The `show_welcome_guide` per-user setting dismisses the getting-started
+ * panel: the admin setup checklist, or a member's welcome guide on the
+ * classic dashboard.
  */
 
 import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
@@ -16,8 +21,19 @@ export const dashboardApp: AppConfig = {
   id: 'dashboard',
   name: 'Dashboard',
   description: 'Your home: the assistant, and what needs you today',
-  // The assistant-first home was tried behind a flag; it is now the only
-  // home. This authorizes dropping the flag's stored columns.
+  flags: {
+    classic_home: {
+      type: 'boolean',
+      label: 'Classic dashboard',
+      description:
+        'Show the classic dashboard — the stack of widgets, with an Ask box into the ' +
+        'assistant — in place of the assistant\'s home. Limit its audience to the ' +
+        'groups that should keep it.',
+      default: false,
+    },
+  },
+  // The assistant-first home was tried behind the `agentic_home` flag, then
+  // made the default. This authorizes dropping that flag's stored columns.
   migrations: [
     {
       id: 'dashboard-drop-agentic-home-flag',
@@ -30,12 +46,10 @@ export const dashboardApp: AppConfig = {
     },
   ],
   userSettings: {
-    // Key kept from the retired welcome guide (renaming it would drop a
-    // column that holds data); it now dismisses the admin setup checklist.
     show_welcome_guide: {
       type: 'boolean',
-      label: 'Show setup checklist',
-      description: 'For admins: show the setup checklist on the home.',
+      label: 'Show welcome guide',
+      description: 'Show the getting-started guide (for admins, the setup checklist) on the home.',
       default: true,
     },
   },
@@ -50,7 +64,7 @@ export const dashboardApp: AppConfig = {
           import('./components/DashboardHome').then((m) => m.DashboardHome),
       },
       {
-        // A conversation on the agentic home; the classic home sends it to Chat.
+        // A conversation, on either home.
         path: 'c/:id',
         component: () =>
           import('./components/DashboardHome').then((m) => m.DashboardHome),
