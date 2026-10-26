@@ -48,6 +48,8 @@ homestead start
 
 `homestead init` creates the project files — `homestead.config.ts` (picks your apps), `package.json`, and an `apps/` folder for your own apps — then installs the dependencies. Along the way it prompts you to pick which [example apps](apps.md) to include (or pass `--apps=todos,groceries`, `--apps=all`, or `--no-apps` to skip the prompt). If `homestead start` ever runs before the dependencies are installed, it installs them first.
 
+It also offers to generate a **master key** for encryption at rest — say yes. Some fields are always stored encrypted (a gift card's number and PIN, a household's WiFi password), so without a key they can't be saved; `homestead key generate` adds one later. See [SECURITY.md](https://github.com/rambleraptor/homestead/blob/main/SECURITY.md).
+
 `homestead start` boots the stack on port 3000 and prints a banner:
 
 ```

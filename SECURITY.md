@@ -32,7 +32,10 @@ this feature is not that — it does not implement end-to-end encryption.
   (strings, objects and arrays). Unlike the two above, these demand a key: on an
   instance with no master key, a write that sets one is refused (400) rather
   than stored in plaintext. They can't be filtered or sorted, since the
-  database only holds ciphertext.
+  database only holds ciphertext. The bundled apps declare a gift card's
+  `card_number` and `pin`, and a household's `wifi_password`. An instance with
+  no master key says which fields it can't save: the server logs it at boot,
+  and `homestead doctor` lists them.
 - **Secret fields**: a field declared `secret: true` is an encrypted field
   that is also **write-only**. No route returns its value — not to its owner,
   not to a superuser: reads get a descriptor (`{ $secret: true, set, set_time?,
@@ -113,6 +116,11 @@ are encrypted in place when the server boots with the key (and the database is
 vacuumed, so the old plaintext doesn't linger in the file); files are
 re-encrypted lazily the next time each one is written. Archives you made before
 turning the key on still hold plaintext — replace them with a fresh backup.
+
+**Without a key, encrypted fields can't be saved.** Gift cards (whose number is
+encrypted) can't be added, and a household's WiFi password can't be set, until
+the instance has a key. If you upgraded an instance set up without one, run
+`homestead doctor` to see what's affected, then the steps above.
 
 ### Operator rules
 

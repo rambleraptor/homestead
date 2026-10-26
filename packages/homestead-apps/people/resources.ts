@@ -133,7 +133,7 @@ export const peopleResources: ResourceDefinition[] = [
       postal_code: { type: 'string' },
       country: { type: 'string' },
       wifi_network: { type: 'string' },
-      wifi_password: { type: 'string' },
+      wifi_password: { type: 'string', encrypted: true },
       created_by: { type: 'string', reference: { resource: 'user' } },
     },
   },
@@ -154,7 +154,7 @@ export const peopleResources: ResourceDefinition[] = [
       postal_code: { type: 'string' },
       country: { type: 'string' },
       wifi_network: { type: 'string' },
-      wifi_password: { type: 'string' },
+      wifi_password: { type: 'string', encrypted: true },
       shared_data_id: {
         type: 'string',
         reference: { resource: 'person-shared-data' },

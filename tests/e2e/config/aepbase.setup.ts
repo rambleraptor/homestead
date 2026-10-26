@@ -116,6 +116,10 @@ export async function startAepbase(): Promise<AepbaseAdminCreds> {
         AI_PROVIDER: 'openai',
         AI_MODEL: 'stub-model',
         AI_BASE_URL: aiBaseUrl,
+        // Encryption at rest on, as on an instance set up with a key: encrypted
+        // fields (a gift card's number) refuse writes without one. A fixed test
+        // key, not a secret — the VM tier uses the same one.
+        HOMESTEAD_MASTER_KEY: 'aG9tZXN0ZWFkLXRlc3QtbWFzdGVyLWtleS0wMDAwMzI=',
         // E2E_DISABLE_APP_ACCESS passes through to the server (escape hatch
         // for debugging with backend enforcement off).
       },

@@ -30,6 +30,7 @@ import {
   getAllUserSettingDefs,
 } from './app-registry';
 import { mintAdminToken } from './bootstrap';
+import { fieldsNeedingMasterKey, missingMasterKeyWarning } from './engine/key-check';
 import { runMigrations } from './migrations';
 
 const log = createLogger('schema-sync');
@@ -169,6 +170,11 @@ export async function syncSchema(db: Database, aepbaseUrl: string): Promise<void
     } catch (error) {
       log.child('user-settings').error('schema sync failed', { err: error });
     }
+
+    // Encrypted fields refuse writes without a master key: say so now, by
+    // name, rather than leave it to the first failed save.
+    const keyless = fieldsNeedingMasterKey(db);
+    if (keyless.length > 0) log.child('encryption').warn(missingMasterKeyWarning(keyless));
   } finally {
     admin.revoke();
   }

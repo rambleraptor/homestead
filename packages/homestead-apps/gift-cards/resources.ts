@@ -11,8 +11,9 @@ export const giftCardsResources: ResourceDefinition[] = [
     user_settable_create: true,
     fields: {
       merchant: { type: 'string', required: true },
-      card_number: { type: 'string', required: true },
-      pin: { type: 'string' },
+      // Encrypted at rest: they spend the card. Never filtered or sorted on.
+      card_number: { type: 'string', required: true, encrypted: true },
+      pin: { type: 'string', encrypted: true },
       amount: { type: 'number', required: true, minimum: 0 },
       notes: { type: 'string' },
       archived: { type: 'boolean' },
