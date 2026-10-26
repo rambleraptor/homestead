@@ -75,6 +75,10 @@ export default defineConfig({
       AEPBASE_URL: `${VM_ORIGIN}/api/aep`,
       // Point the e2e seed helpers (tests/e2e/utils) at the VM too.
       HOMESTEAD_E2E_APP_URL: VM_ORIGIN,
+      // Encryption at rest on, as on an instance set up with a key: encrypted
+      // fields (a gift card's number) refuse writes without one. A fixed test
+      // key, not a secret — mirrors the e2e server's.
+      HOMESTEAD_MASTER_KEY: 'aG9tZXN0ZWFkLXRlc3QtbWFzdGVyLWtleS0wMDAwMzI=',
     },
   },
 });

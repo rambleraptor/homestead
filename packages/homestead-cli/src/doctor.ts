@@ -1,8 +1,9 @@
+import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join, resolve, sep } from 'node:path';
 import { loadProject } from './project.ts';
-import { findRuntime } from './runtime.ts';
+import { findRuntime, resolveServerModule } from './runtime.ts';
 import { keyPermsAreLocked, resolveKeyLocation } from './key.ts';
 
 type Status = 'ok' | 'warn' | 'fail';
@@ -97,10 +98,14 @@ function projectCheck(dir: string): Check {
 function masterKeyCheck(dir: string): Check {
   const loc = resolveKeyLocation();
   if (loc.source === 'none') {
+    const fields = encryptedFieldsOf(dir);
     return {
       name: 'encryption',
       status: 'warn',
-      detail: 'no master key — file encryption is OFF (run `homestead key generate` to enable)',
+      detail: fields?.length
+        ? `no master key, so ${fields.length} encrypted field(s) can't be saved: ${fields.join(', ')} ` +
+          '(run `homestead key generate` and restart)'
+        : 'no master key — file encryption is OFF (run `homestead key generate` to enable)',
     };
   }
   if (loc.source === 'env') {
@@ -133,6 +138,26 @@ function masterKeyCheck(dir: string): Check {
     };
   }
   return { name: 'encryption', status: 'ok', detail: `master key at ${keyPath} (0600)` };
+}
+
+/**
+ * The encrypted fields the project's database declares, read through the
+ * project's homestead-server (`tools/encrypted-fields.ts`) so the launcher
+ * carries no engine code. Null when they can't be read (no project, no server
+ * installed) — the check then falls back to the plain no-key warning.
+ */
+function encryptedFieldsOf(dir: string): string[] | null {
+  try {
+    const { dataDir } = loadProject(dir);
+    const tool = resolveServerModule(dir, 'tools', 'encrypted-fields.ts');
+    const cmd = findRuntime(dir).run(tool, ['--db', join(dataDir, 'aepbase.db')]);
+    const result = spawnSync(cmd[0]!, cmd.slice(1), { cwd: dir, encoding: 'utf8' });
+    if (result.error || result.status !== 0) return null;
+    const parsed = JSON.parse(result.stdout) as { fields?: unknown };
+    return Array.isArray(parsed.fields) ? parsed.fields.filter((f): f is string => typeof f === 'string') : null;
+  } catch {
+    return null;
+  }
 }
 
 // The server, SPA shell, and vite all resolve through the project's

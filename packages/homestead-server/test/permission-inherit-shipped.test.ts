@@ -25,7 +25,9 @@ import { BUILTIN_RESOURCE_DEFS } from '@rambleraptor/homestead-core/resources/bu
 import { PERMISSION_RESOURCE_DEFS } from '@rambleraptor/homestead-core/permissions/resources';
 import { householdCollections, householdFilterFor } from '@rambleraptor/homestead-core/permissions/household';
 import { seedPermissions } from '@rambleraptor/homestead-core/permissions/seed';
+import { randomBytes } from 'node:crypto';
 import { call, defineResource, makeEngine, seedUser, type TestEngine } from './engine/helpers';
+import { __resetMasterKeyCacheForTests } from '../src/engine/crypto';
 import type { User } from '../src/engine/types';
 
 const BASE = 'http://localhost:8090';
@@ -190,6 +192,10 @@ async function buildChain(def: ResourceDefinition): Promise<string[]> {
 
 beforeAll(async () => {
   process.env.PERMISSION_CACHE_TTL_MS = '0';
+  // Shipped resources include encrypted fields (a gift card's number), which
+  // can't be written without a master key.
+  process.env.HOMESTEAD_MASTER_KEY = randomBytes(32).toString('base64');
+  __resetMasterKeyCacheForTests();
   t = await makeEngine();
   for (const def of topoSorted(DEFS)) {
     const res = await defineResource(
@@ -229,6 +235,8 @@ beforeAll(async () => {
 
 afterAll(() => {
   delete process.env.PERMISSION_CACHE_TTL_MS;
+  delete process.env.HOMESTEAD_MASTER_KEY;
+  __resetMasterKeyCacheForTests();
 });
 
 describe('every shipped child resource follows its governing ancestor', () => {
