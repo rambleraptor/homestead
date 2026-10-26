@@ -1,10 +1,10 @@
 # Security: encryption at rest
 
-Homestead can encrypt uploaded file bytes and extracted-text columns at rest, so
-that the most sensitive part of a stolen disk, database dump, or backup is
-unreadable without the master key. It is **partial** by design — structured
-fields, the search index, and account rows stay in the clear (see [What is
-encrypted](#what-is-encrypted)). This document describes the trust model, how
+Homestead can encrypt uploaded file bytes, extracted-text columns, and the
+fields a resource declares `encrypted` at rest, so that the most sensitive part
+of a stolen disk, database dump, or backup is unreadable without the master key.
+It is **partial** by design — other structured fields, the search index, and
+account rows stay in the clear (see [What is encrypted](#what-is-encrypted)). This document describes the trust model, how
 keys work, and the operator's responsibilities.
 
 ## Threat model
@@ -28,10 +28,16 @@ this feature is not that — it does not implement end-to-end encryption.
 
 - **File-field bytes** on disk (`data/files/...`).
 - **Extracted-text companion columns** (`<field>_text`) in the database.
+- **Encrypted fields**: any field a resource declares `encrypted: true`
+  (strings, objects and arrays). Unlike the two above, these demand a key: on an
+  instance with no master key, a write that sets one is refused (400) rather
+  than stored in plaintext. They can't be filtered or sorted, since the
+  database only holds ciphertext.
 
-Structured fields (names, amounts, titles, card numbers) are **not** encrypted,
-and neither are the account rows (`_users` password hashes, `_tokens`). Treat a
-data directory or a backup as sensitive even with encryption on.
+Other structured fields (names, amounts, titles) are **not** encrypted unless
+their resource declares them so, and neither are the account rows (`_users`
+password hashes, `_tokens`). Treat a data directory or a backup as sensitive
+even with encryption on.
 
 ### Known residual: the vector store
 
@@ -57,8 +63,9 @@ The wrapped DEK travels in a self-describing container alongside the ciphertext.
 An authoritative database marker records whether an item is encrypted
 (`enc:v1` for files, an `enc:v1:` prefix for text); the container magic is a
 secondary cross-check. Legacy plaintext is detected and passes through
-unchanged, so encryption can be turned on for an existing instance and data
-migrates lazily as it is rewritten. Anything that cannot be decrypted **fails
+unchanged, so encryption can be turned on for an existing instance: text columns
+(extracted text and encrypted fields) are encrypted at the next boot, and when a
+field is newly declared encrypted; files migrate lazily as they are rewritten. Anything that cannot be decrypted **fails
 closed** — the server errors rather than serving ciphertext as content.
 
 ## The master key
@@ -86,8 +93,9 @@ homestead start          # (or restart the service) — encryption is now on
 ```
 
 `homestead init` also offers to do the `key generate` step for you. Existing
-plaintext files and text stay readable and are re-encrypted lazily the next
-time each record is written; there is no bulk re-encrypt of old data.
+plaintext stays readable. Text columns — extracted text and encrypted fields —
+are encrypted in place when the server boots with the key; files are
+re-encrypted lazily the next time each one is written.
 
 ### Operator rules
 

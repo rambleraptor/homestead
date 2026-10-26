@@ -212,7 +212,33 @@ function validateFields(
         );
       }
     }
+    if (field.encrypted && path) {
+      fail(`field "${fieldPath}" is nested; only top-level fields can be encrypted`);
+    }
     validateField(field, fieldPath, fail);
+  }
+}
+
+/** Whether a field holds a file or a reference anywhere inside it. */
+function holdsFileOrReference(field: FieldDef): boolean {
+  if (field.type === 'file' || field.reference) return true;
+  if (field.items && holdsFileOrReference(field.items)) return true;
+  if (Object.values(field.properties ?? {}).some(holdsFileOrReference)) return true;
+  return Object.values(field.variants ?? {}).some((fields) => Object.values(fields).some(holdsFileOrReference));
+}
+
+/**
+ * An encrypted field is stored as ciphertext: it must be a type the engine can
+ * encrypt, and hold nothing the engine needs to read in plaintext.
+ */
+function validateEncrypted(field: FieldDef, path: string, fail: (message: string) => never): void {
+  if (!field.encrypted) return;
+  if (field.type !== 'string' && field.type !== 'object' && field.type !== 'array') {
+    fail(`field "${path}" is ${field.type}; only string, object and array fields can be encrypted`);
+  }
+  if (field.enum) fail(`field "${path}" declares enum values and can't also be encrypted`);
+  if (holdsFileOrReference(field)) {
+    fail(`field "${path}" holds a file or a reference, which can't be encrypted`);
   }
 }
 
@@ -228,6 +254,10 @@ function validateField(
     fail(`field "${path}" cannot be both deprecated and required`);
   }
   validateReference(field, path, fail);
+  validateEncrypted(field, path, fail);
+  if (field.items?.encrypted) {
+    fail(`field "${path}[]" is nested; only top-level fields can be encrypted`);
+  }
   if (field.items && field.type !== 'array') {
     fail(`field "${path}" declares items but is not an array`);
   }
@@ -794,6 +824,7 @@ function toWireProperty(
     ...(field.default !== undefined ? { default: field.default } : {}),
     ...(field.type === 'file' ? { 'x-aepbase-file-field': true } : {}),
     ...(field.immutable ? { 'x-aepbase-immutable': true } : {}),
+    ...(field.encrypted ? { 'x-aepbase-encrypted': true } : {}),
     ...(field.reference
       ? {
           'x-aepbase-reference': {
@@ -840,6 +871,7 @@ function wireDescription(field: FieldDef): string | undefined {
       `defaults to the household "${field.defaultFromFlag.key}" setting when omitted`,
     );
   }
+  if (field.encrypted) notes.push('encrypted at rest; cannot be filtered or sorted');
   if (!notes.length) return field.description;
   const suffix = notes.join('; ');
   return field.description ? `${field.description} (${suffix})` : suffix;

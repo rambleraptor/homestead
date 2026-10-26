@@ -30,6 +30,7 @@ import type { EnforceContext } from './enforce';
 import { collectionsWithVisibleRows } from './visible-rows';
 import { collectionAccess } from './collection-access';
 import { householdMembers } from './household';
+import { sweepEncryption } from './encrypted-fields';
 import type { HouseholdMember } from '@rambleraptor/homestead-core/household/types';
 import type { CollectionAccess } from '@rambleraptor/homestead-core/resources/model-tools';
 import { TYPE_SUPERUSER, type User } from './types';
@@ -130,6 +131,11 @@ export class Engine {
     for (const def of topoSortDefs(loadAllDefinitions(this.db))) {
       this.registry.addResource(def);
     }
+    // Plaintext left in encrypted columns — written before this instance had
+    // a master key — is encrypted once one is configured.
+    let swept = 0;
+    for (const resource of this.registry.dynamic()) swept += sweepEncryption(this.db, resource);
+    if (swept > 0) log.info('encrypted plaintext values left in encrypted fields', { count: swept });
   }
 
   setAccessCheck(check: AccessCheck | null): void {

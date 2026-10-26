@@ -32,6 +32,7 @@
  * aliases) can be searched the same way.
  */
 
+import { isEncryptedField } from './encrypted-fields';
 import type { Schema } from './types';
 import { STANDARD_FIELDS } from './types';
 import { derivedColumnsFromSchema } from './db';
@@ -218,9 +219,9 @@ export function compileFilter(
       if (!column) {
         throw new FilterError(`unknown field ${JSON.stringify(name)}`);
       }
-      // Extracted-text columns are encrypted at rest, so a SQL comparison
+      // Encrypted columns hold ciphertext, so a SQL comparison
       // would match ciphertext and silently return nothing. Reject it.
-      if (schema.properties?.[name]?.['x-aepbase-file-text-field'] === true) {
+      if (isEncryptedField(schema, name)) {
         throw new FilterError(`field ${JSON.stringify(name)} is encrypted and cannot be filtered`);
       }
       // propType is the declared type for a direct field; derived union

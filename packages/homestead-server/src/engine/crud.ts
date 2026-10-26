@@ -13,6 +13,7 @@
  * any create-with-image. Both layouts are accepted here.
  */
 
+import { missingKeyError, writesNeedingKey } from './encrypted-fields';
 import { errorResponse, HttpError, isUniqueConstraintError, jsonResponse } from './errors';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -492,6 +493,9 @@ function preparePayload(
   if (typeErr) throw new HttpError(400, typeErr);
   const enumErr = validateEnums(r.enums, fields);
   if (enumErr) throw new HttpError(400, enumErr);
+  // A value for an encrypted field must not land on disk in plaintext.
+  const needKey = writesNeedingKey(r.schema, fields);
+  if (needKey.length) throw new HttpError(400, missingKeyError(needKey));
   const constraintErr = validateConstraints(r.schema, fields, r.fileFields);
   if (constraintErr) throw new HttpError(400, constraintErr);
   return fields;
@@ -1020,6 +1024,8 @@ export async function handleSingletonUpdate(
   if (typeErr) return errorResponse(400, typeErr);
   const enumErr = validateEnums(r.enums, patch);
   if (enumErr) return errorResponse(400, enumErr);
+  const needKey = writesNeedingKey(r.schema, patch);
+  if (needKey.length) return errorResponse(400, missingKeyError(needKey));
 
   const existing = getResource(reg.db, r.plural, path, r.schema);
   const now = nowRFC3339();
