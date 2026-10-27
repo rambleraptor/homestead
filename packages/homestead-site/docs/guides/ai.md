@@ -571,6 +571,29 @@ under **Superuser → MCP servers**:
 The token is attached only inside Homestead's server, as a bearer header on
 requests to that server; it never reaches the browser, the assistant or a log.
 
+### Servers that sign in with OAuth
+
+Many MCP servers take an OAuth sign-in rather than a pasted token. Add the
+server with no credential, then click **Sign in with OAuth** on its card:
+
+- **Most servers register Homestead themselves** — leave the client blank and
+  click **Connect**. You sign in on the provider's page, approve, and land back
+  on MCP servers with the server's tools fetched.
+- **A provider that doesn't** (Google, for one) needs a client you register in
+  its console. The dialog shows the redirect address to give it — this
+  Homestead's `/superuser/mcp-servers/oauth-callback` — then paste the client
+  ID and secret, and any scopes to ask for.
+
+Homestead signs in as the household, stores the sign-in as an **OAuth
+credential** (encrypted; nobody can read its tokens back), and keeps it fresh:
+a token about to expire is refreshed before it's used, one refresh at a time.
+If the provider revokes it, the server's card says **Reconnect needed** and the
+assistant says the service is unavailable; nothing pops up mid-conversation.
+**Disconnect** forgets the sign-in.
+
+A sign-in is tied to the server's address: change the address and the server
+has to be connected again — its tokens are never sent anywhere else.
+
 ### Every call goes through one gate
 
 Whatever makes a call — today a person through the API, next the assistant —
@@ -629,7 +652,8 @@ Can edit: the rest that are on too). Superusers get every server's tools.
 In the chat, a call shows as **Home Assistant · Get state**, with what it sent
 and got back behind the disclosure, like Homestead's own tools.
 
-> OAuth sign-in (for Google Workspace services) is coming next.
+> A ready-made setup for Google Workspace services (Calendar first) is coming
+> next.
 
 ---
 

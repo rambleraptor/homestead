@@ -38,8 +38,13 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/** "Set · …3f9a · Oct 26, 2026", or "Not set". */
+/** "Set · …3f9a · Oct 26, 2026", or "Not set"; an OAuth sign-in says whether it's connected. */
 function valueSummary(credential: Credential): string {
+  if (credential.kind === 'oauth') {
+    return credential.oauth_connected_at
+      ? `OAuth sign-in · connected ${formatDate(credential.oauth_connected_at)}`
+      : 'OAuth sign-in · not connected';
+  }
   const value = credential.value;
   if (!value?.set) return 'Not set';
   return ['Set', value.hint, value.set_time ? formatDate(value.set_time) : undefined]
@@ -208,15 +213,18 @@ export function CredentialsHome() {
                     )}
                   </div>
                   <div className="flex flex-shrink-0 gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setEditing({ kind: 'edit', credential })}
-                      aria-label={`Edit ${credential.name}`}
-                      data-testid={`edit-credential-${credential.id}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    {/* An OAuth sign-in is managed from its MCP server's card. */}
+                    {credential.kind !== 'oauth' && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setEditing({ kind: 'edit', credential })}
+                        aria-label={`Edit ${credential.name}`}
+                        data-testid={`edit-credential-${credential.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="secondary"
                       size="sm"

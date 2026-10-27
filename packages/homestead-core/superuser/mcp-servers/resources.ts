@@ -94,6 +94,39 @@ export const mcpServersResources: ResourceDefinition[] = [
           'Connect to the server and fetch its tools. New tools start off; existing ones keep their policy.',
         load: () => import('./methods/refresh-tools'),
       },
+      connect: {
+        target: 'item',
+        description:
+          'Start signing in to a server that uses OAuth (its credential is an OAuth one). Returns the ' +
+          'provider’s sign-in address to send the browser to; it comes back to redirect_uri.',
+        request: {
+          type: 'object',
+          required: ['redirect_uri'],
+          properties: {
+            redirect_uri: {
+              type: 'string',
+              description: 'This Homestead’s /superuser/mcp-servers/oauth-callback address.',
+            },
+          },
+        },
+        load: () => import('./methods/connect'),
+      },
+      'finish-connect': {
+        target: 'item',
+        description:
+          'Finish a sign-in with the code and state the provider sent back, then fetch the server’s tools.',
+        request: {
+          type: 'object',
+          required: ['code', 'state'],
+          properties: { code: { type: 'string' }, state: { type: 'string' } },
+        },
+        load: () => import('./methods/finish-connect'),
+      },
+      disconnect: {
+        target: 'item',
+        description: 'Forget the server’s OAuth sign-in. A pasted client stays.',
+        load: () => import('./methods/disconnect'),
+      },
     },
   },
   {

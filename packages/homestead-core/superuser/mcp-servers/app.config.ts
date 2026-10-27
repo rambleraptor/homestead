@@ -27,6 +27,12 @@ export const mcpServersApp: AppConfig = {
         component: () => import('./components/McpServersHome').then((m) => m.McpServersHome),
         gates: ['superuser'],
       },
+      {
+        // An OAuth provider sends the browser back here after a sign-in.
+        path: 'oauth-callback',
+        component: () => import('./components/OAuthCallback').then((m) => m.OAuthCallback),
+        gates: ['superuser'],
+      },
     ],
   },
 };

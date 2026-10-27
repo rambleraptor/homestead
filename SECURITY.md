@@ -82,6 +82,16 @@ this feature is not that — it does not implement end-to-end encryption.
   results are framed to the model as outside data, not instructions
   (`homestead-core/server/chat/mcp-tools.ts`). The server's own `instructions`
   are stored but not given to the model.
+  A server can sign in with OAuth instead of a token
+  (`homestead-core/server/mcp/oauth.ts`, on `@ai-sdk/mcp`'s client): PKCE S256
+  always; a random, single-use `state`, kept in memory for ten minutes and
+  bound to the superuser and server that started it, with the code handed back
+  by that superuser's own session (`:finish-connect`), never a bare callback; a
+  `redirect_uri` that must be this Homestead's callback page. Tokens and client
+  secrets are secret fields on an `oauth` credential, refreshed one at a time
+  per credential, and attached only to the address the sign-in was made for
+  (`oauth_resource`). Discovery, registration and token requests go through
+  the MCP address policy with redirects refused.
 
 Other structured fields (names, amounts, titles) are **not** encrypted unless
 their resource declares them so, and neither are the account rows (`_users`

@@ -4,10 +4,11 @@
  */
 
 import { SchemaForm } from '@rambleraptor/homestead-core/shared/forms';
-import { credentialsResources } from '../resources';
+import { credentialsResources, OAUTH_FIELDS } from '../resources';
 import type { CredentialFormData, CredentialSlotStatus } from '../types';
 
 const credentialDef = credentialsResources[0]!;
+const hiddenOAuthFields = Object.fromEntries(OAUTH_FIELDS.map((field) => [field, { hidden: true, required: false }]));
 
 interface SlotValueFormProps {
   slot: CredentialSlotStatus;
@@ -30,10 +31,13 @@ export function SlotValueForm({ slot, onSubmit, onCancel, isSubmitting }: SlotVa
       submitLabel="Save"
       layout={{ columns: 1 }}
       fields={{
+        ...hiddenOAuthFields,
         name: { hidden: true, required: false },
         description: { hidden: true },
         value: {
           testId: 'slot-value',
+          // Optional in the schema (an OAuth credential has none); a token needs one.
+          required: true,
           label: slot.label,
           autoFocus: true,
           help: slot.stored

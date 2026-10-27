@@ -25,7 +25,10 @@ import {
   useRefreshMcpTools,
   useUpdateMcpServer,
 } from '../hooks/useMcpServers';
+import { useCredentials } from '../../credentials/hooks/useCredentials';
+import type { Credential } from '../../credentials/types';
 import { McpServerForm } from './McpServerForm';
+import { SignInStatus } from './SignInStatus';
 import { RecentCalls } from './RecentCalls';
 import { ToolPolicyTable } from './ToolPolicyTable';
 import type { McpTool } from '../tools';
@@ -40,7 +43,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 const STATUS_LABEL: Record<string, string> = { ok: 'Connected', failing: 'Failing', untested: 'Not checked' };
 
-function ServerCard({ server }: { server: McpServer }) {
+function ServerCard({ server, credential }: { server: McpServer; credential: Credential | undefined }) {
   const [expanded, setExpanded] = useState(false);
   const [showCalls, setShowCalls] = useState(false);
   const updateServer = useUpdateMcpServer();
@@ -83,6 +86,7 @@ function ServerCard({ server }: { server: McpServer }) {
           </span>
         )}
       </div>
+      <SignInStatus server={server} credential={credential} />
       {status === 'failing' && server.last_error && (
         <p className="text-sm text-red-700" role="alert" data-testid={`mcp-server-error-${server.id}`}>
           {server.last_error}
@@ -144,6 +148,7 @@ export function McpServersHome() {
   const [editing, setEditing] = useState<Editing>(null);
   const [deleting, setDeleting] = useState<McpServer | null>(null);
   const { data: servers, isLoading, isError, error } = useMcpServers();
+  const { data: credentials } = useCredentials();
   const createServer = useCreateMcpServer();
   const updateServer = useUpdateMcpServer();
   const deleteServer = useDeleteMcpServer();
@@ -243,7 +248,10 @@ export function McpServersHome() {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <ServerCard server={server} />
+                  <ServerCard
+                    server={server}
+                    credential={credentials?.find((c) => server.credential === c.path || server.credential === c.id)}
+                  />
                 </div>
               </Card>
             </li>
