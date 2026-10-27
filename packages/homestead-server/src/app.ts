@@ -111,12 +111,16 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
 
   // The model-facing tool surfaces (chat, MCP) offer only what a caller can
   // reach. The engine decides that, so it's handed down like the vector store.
-  const { setCollectionAccessResolver } = await import(
+  const { setCollectionAccessResolver, setRecordAccessResolver } = await import(
     '@rambleraptor/homestead-core/server/collection-access'
   );
   setCollectionAccessResolver(async (token) => {
     const caller = await engine.authenticateToken(token);
     return caller ? engine.collectionAccess(caller) : null;
+  });
+  setRecordAccessResolver(async (token, resource, path, verb) => {
+    const caller = await engine.authenticateToken(token);
+    return caller ? engine.recordAllows(caller, resource, path, verb) : false;
   });
 
   // Who shares this Homestead, by name — the assistant addresses people by it.

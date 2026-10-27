@@ -58,6 +58,15 @@ export class McpServersPage {
     await this.driver.getByTestId(`toggle-mcp-tools-${id}`).click();
   }
 
+  async openCalls(id: string) {
+    await this.driver.getByTestId(`toggle-mcp-calls-${id}`).click();
+  }
+
+  /** One row of a server's recent calls. */
+  call(callId: string): Locator {
+    return this.driver.getByTestId(`mcp-call-${callId}`);
+  }
+
   async setPolicy(id: string, tool: string, policy: 'off' | 'read' | 'ask' | 'allow') {
     await this.toolPolicy(id, tool).selectOption(policy);
   }

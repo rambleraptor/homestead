@@ -61,3 +61,33 @@ export async function canWriteCollection(token: string, singular: string): Promi
   const access = await current(token);
   return access?.get(singular)?.write === true;
 }
+
+/** Whether a bearer token's caller may `verb` one record: `Engine.recordAllows`. */
+export type RecordAccessResolver = (
+  token: string,
+  resource: string,
+  path: string,
+  verb: 'read' | 'write',
+) => Promise<boolean>;
+
+let recordResolver: RecordAccessResolver | null = null;
+
+/** Install the server's record-level resolver. `null` removes it. */
+export function setRecordAccessResolver(resolver: RecordAccessResolver | null): void {
+  recordResolver = resolver;
+}
+
+/**
+ * Whether `token`'s caller may `verb` the `resource` record at `path` by its
+ * grants — for server code gating what a record *confers*, not the record's
+ * own CRUD (the engine decides that). Fails closed: false when no resolver is
+ * installed.
+ */
+export async function canUseRecord(
+  token: string,
+  resource: string,
+  path: string,
+  verb: 'read' | 'write',
+): Promise<boolean> {
+  return recordResolver ? recordResolver(token, resource, path, verb) : false;
+}

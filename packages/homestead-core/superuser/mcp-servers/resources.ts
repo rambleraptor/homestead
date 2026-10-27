@@ -2,6 +2,10 @@ import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/
 import { TOOL_POLICIES } from './tools';
 
 export const MCP_SERVERS = 'mcp-servers' as const;
+export const MCP_CALLS = 'mcp-calls' as const;
+
+/** Outcomes of a call through the broker (`server/mcp/broker.ts`). */
+export const MCP_CALL_OUTCOMES = ['ok', 'error', 'denied', 'refused'] as const;
 
 /**
  * An external MCP server the household assistant may use, on a shared
@@ -63,12 +67,61 @@ export const mcpServersResources: ResourceDefinition[] = [
       created_by: { type: 'string', reference: { resource: 'user' } },
     },
     customMethods: {
+      'call-tool': {
+        target: 'item',
+        description:
+          'Call one of the server’s tools as yourself: the same checks and log as the assistant’s calls. ' +
+          'Calling it is your approval, so "ask first" tools run.',
+        request: {
+          type: 'object',
+          required: ['tool'],
+          properties: {
+            tool: { type: 'string', description: 'The tool’s name, as the server reports it.' },
+            arguments: { type: 'object', description: 'The tool’s arguments.' },
+          },
+        },
+        load: () => import('./methods/call-tool'),
+      },
       'refresh-tools': {
         target: 'item',
         description:
           'Connect to the server and fetch its tools. New tools start off; existing ones keep their policy.',
         load: () => import('./methods/refresh-tools'),
       },
+    },
+  },
+  {
+    singular: 'mcp-call',
+    plural: MCP_CALLS,
+    description:
+      'One call Homestead made to a tool on an MCP server: who it was for, what it did, and how it went.',
+    // Written by the server (a system token), read by superusers only — members
+    // can't see others' calls, nor delete their own.
+    superuser_write: true,
+    access: { model: 'superusers' },
+    modelTools: { chat: false, mcp: false },
+    retention: { days: 90, field: 'create_time' },
+    fields: {
+      server: {
+        type: 'string',
+        reference: { resource: 'mcp-server', onDelete: 'set-null' },
+      },
+      server_name: { type: 'string', description: 'The server’s name at the time, kept if it’s deleted.' },
+      tool: { type: 'string', required: true },
+      caller: {
+        type: 'string',
+        reference: { resource: 'user' },
+        description: 'Who the call was for.',
+      },
+      conversation: {
+        type: 'string',
+        reference: { resource: 'conversation', onDelete: 'set-null' },
+        description: 'The conversation it came from, when the assistant made it.',
+      },
+      arguments: { type: 'string', maxLength: 1000, description: 'The arguments, summarized.' },
+      outcome: { type: 'string', enum: [...MCP_CALL_OUTCOMES], required: true },
+      error: { type: 'string', maxLength: 1000 },
+      duration_ms: { type: 'integer', minimum: 0 },
     },
   },
 ];

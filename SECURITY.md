@@ -64,7 +64,14 @@ this feature is not that — it does not implement end-to-end encryption.
   redirects are refused (`server/net/mcp-url.ts`; `HOMESTEAD_MCP_TRUSTED_HOSTS`
   exempts named hosts). New tools start off, so a description reaches a prompt
   only after a superuser has read it, and a server is usable only by groups
-  it's shared with.
+  it's shared with. Every tool call goes through one broker
+  (`homestead-core/server/mcp/broker.ts`), which refuses an unshared server, a
+  tool that's off or unknown, a tool beyond the share level (View → look-up
+  tools only), and an "ask first" tool without approval — before anything is
+  sent. Results come back labelled as untrusted outside data and capped in
+  size. Each call is logged as an `mcp-call` row (superusers-only, written with
+  a system token so a caller can't erase it, kept 90 days), with an argument
+  summary but never the token or the result.
 
 Other structured fields (names, amounts, titles) are **not** encrypted unless
 their resource declares them so, and neither are the account rows (`_users`

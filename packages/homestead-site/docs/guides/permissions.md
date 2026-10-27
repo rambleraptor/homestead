@@ -67,8 +67,10 @@ role. So:
   no role covers them: **Credentials** (the API keys and tokens Homestead uses)
   and **MCP servers** (outside services for the assistant). Members and Admins
   can't list or add them; only superusers can. Sharing an MCP server with a group
-  is how its members get to use it. A resource opts into this with
-  `access: { model: 'superusers' }`.
+  is how its members get to use it: **View** for its look-up tools, **Can edit**
+  for its tools that change things too — the share decides which tools, while
+  changing the server stays superusers-only. The MCP call log is superuser-only
+  data too. A resource opts into this with `access: { model: 'superusers' }`.
 
 This is what lets one household have full-access adults *and* a limited guest at
 the same time: the adults are Members or Admins, the guest is defined by their

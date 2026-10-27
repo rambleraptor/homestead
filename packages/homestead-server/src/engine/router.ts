@@ -40,6 +40,7 @@ import { governorFor } from './inherit';
 import { createLogger } from '../log';
 import type { RegisteredResource, Registry } from './registry';
 import type { User } from './types';
+import type { Verb } from './permissions';
 
 const log = createLogger('permissions');
 
@@ -156,14 +157,30 @@ export function authorizeRecordRead(
   caller: User | null,
   ctx?: EnforceContext,
 ): void {
+  authorizeRecord(reg, match, caller, 'read', ctx);
+}
+
+/**
+ * {@link authorizeRecordRead} for any verb: whether the grants (and the
+ * credential's ceiling) let `caller` act on the addressed record. Answers the
+ * grant question only — `superuser_write` and other per-route rules are the
+ * route's. Throws 403 when denied.
+ */
+export function authorizeRecord(
+  reg: Registry,
+  match: RouteMatch,
+  caller: User | null,
+  verb: Verb,
+  ctx?: EnforceContext,
+): void {
   checkUserScope(match, caller);
   if (!ctx) return;
   const r = match.resource;
   // Grant rows are readable by any authenticated caller (see routeGrant).
-  if (r.plural === ACCESS_GRANTS_PLURAL) return;
+  if (r.plural === ACCESS_GRANTS_PLURAL && verb === 'read') return;
   const opts = {
     caller,
-    verb: 'read' as const,
+    verb,
     resourceType: r.singular,
     plural: r.plural,
     schema: r.schema,
@@ -176,7 +193,7 @@ export function authorizeRecordRead(
   else if (access.kind === 'inherited') {
     enforceInheritedAccess(ctx, reg.db, {
       caller,
-      verb: 'read',
+      verb,
       governor: access.governor,
       intermediates: access.intermediates,
       child: opts,

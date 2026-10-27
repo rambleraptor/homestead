@@ -26,6 +26,7 @@ import {
   useUpdateMcpServer,
 } from '../hooks/useMcpServers';
 import { McpServerForm } from './McpServerForm';
+import { RecentCalls } from './RecentCalls';
 import { ToolPolicyTable } from './ToolPolicyTable';
 import type { McpTool } from '../tools';
 import type { McpServer, McpServerFormData } from '../types';
@@ -41,6 +42,7 @@ const STATUS_LABEL: Record<string, string> = { ok: 'Connected', failing: 'Failin
 
 function ServerCard({ server }: { server: McpServer }) {
   const [expanded, setExpanded] = useState(false);
+  const [showCalls, setShowCalls] = useState(false);
   const updateServer = useUpdateMcpServer();
   const refreshTools = useRefreshMcpTools();
   const tools = server.tools ?? [];
@@ -108,6 +110,15 @@ function ServerCard({ server }: { server: McpServer }) {
             {expanded ? 'Hide tools' : 'Tools'}
           </Button>
         )}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowCalls((open) => !open)}
+          aria-expanded={showCalls}
+          data-testid={`toggle-mcp-calls-${server.id}`}
+        >
+          {showCalls ? 'Hide calls' : 'Recent calls'}
+        </Button>
         <ShareButton
           resourceType="mcp-server"
           recordId={server.id}
@@ -124,6 +135,7 @@ function ServerCard({ server }: { server: McpServer }) {
           disabled={updateServer.isPending}
         />
       )}
+      {showCalls && <RecentCalls serverId={server.id} />}
     </div>
   );
 }
