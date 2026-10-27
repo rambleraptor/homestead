@@ -37,20 +37,14 @@ provider you choose. Three are supported, via the
 | Anthropic (Claude) | `'anthropic'` | `claude-3-5-sonnet-latest` |
 | Google (Gemini)    | `'google'`    | `gemini-2.5-flash`         |
 
-Set the `ai` block in `homestead.config.ts` — provider, model, and auth — and
-read the API key from the environment so the secret never reaches the client
-bundle:
+Set the `ai` block in `homestead.config.ts` — the provider and model:
 
 ```ts
 // homestead.config.ts
-const aiApiKey = fromEnv('AI_API_KEY');
-const ai: HomesteadConfig['ai'] = aiApiKey
-  ? {
-      provider: 'google', //  'openai' | 'anthropic' | 'google'
-      model: 'gemini-2.5-flash', // must be vision-capable for the photo features
-      auth: { apiKey: aiApiKey },
-    }
-  : undefined;
+const ai: HomesteadConfig['ai'] = {
+  provider: 'google', //  'openai' | 'anthropic' | 'google'
+  model: 'gemini-2.5-flash', // must be vision-capable for the photo features
+};
 
 const config: HomesteadConfig = {
   apps: [/* … */],
@@ -58,14 +52,25 @@ const config: HomesteadConfig = {
 };
 ```
 
+Then give it a key, either way:
+
+- **In Homestead:** **Superuser → Credentials** lists what Homestead needs under
+  *Homestead needs*. Set **AI provider API key** there. It's stored encrypted,
+  nobody can read it back, and the assistant turns on at once — no restart.
+- **In the environment:** `AI_API_KEY`. It wins over a stored key, and the
+  Credentials page says so.
+
 ```bash
 # .env — get a key from your chosen provider's console.
 AI_API_KEY=your_ai_provider_api_key_here
 ```
 
-Restart the server to apply changes. AI is **opt-in**: with no `ai` block (no
-key set), the chat and photo endpoints return `503` and the rest of Homestead
-works as normal.
+A config can still pass its own `auth: { apiKey }` (the scaffolded config reads
+the provider's own variable, such as `OPENAI_API_KEY`); that wins over both.
+With no key anywhere — or no `ai` block — the chat and photo endpoints return
+`503` and the rest of Homestead works as normal. `homestead doctor` says where
+the AI key comes from. The embedding key for document search works the same
+way: `EMBEDDING_API_KEY`, or **Embedding API key** in Credentials.
 
 ::: tip Vision models
 The grocery and HSA photo features send an image to the model, so the
@@ -323,9 +328,9 @@ A resource can be left out of the assistant's tools, or out of MCP's, with
 
 Chat runs on whichever model you [configure as your AI
 provider](#configure-your-ai-provider) — OpenAI, Anthropic, or Gemini. Set the
-`ai` block in `homestead.config.ts`, supply `AI_API_KEY`, and restart the
-server; the home then holds a conversation instead of noting that the
-assistant isn't set up. Without an `ai` block the home shows its widget chips
+`ai` block in `homestead.config.ts` and give it a key (in Credentials, or
+`AI_API_KEY`); the home then holds a conversation instead of noting that the
+assistant isn't set up — a superuser sees a **Set the AI key** button there. Without an `ai` block the home shows its widget chips
 and that note, and the rest of Homestead works as normal.
 
 ---

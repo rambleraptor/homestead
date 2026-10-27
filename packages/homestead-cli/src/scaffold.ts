@@ -295,7 +295,8 @@ function aiBlock(ai: AiChoice): string {
   // AI features (the chat assistant + image-extraction methods). The API key is
   // read from the environment when the launcher evaluates this file
   // server-side, so it never reaches the browser bundle. Set ${ai.keyEnv} in
-  // your environment (or a .env file) before running \`homestead start\`.
+  // your environment (or a .env file) before running \`homestead start\` — or
+  // leave it unset and store the key under Superuser → Credentials instead.
   ai: {
     provider: '${ai.provider}',
     model: '${ai.model}',

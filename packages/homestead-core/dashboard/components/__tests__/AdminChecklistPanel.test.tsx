@@ -93,11 +93,9 @@ describe('AdminChecklistPanel', () => {
         '0 of 2 done',
       ),
     );
-    // The AI step shows the config hint and no "open" link when unconfigured.
-    expect(screen.getByTestId('checklist-item-ai')).toHaveTextContent(
-      /homestead\.config\.ts/i,
-    );
-    expect(screen.queryByTestId('checklist-link-ai')).toBeNull();
+    // The AI step links to the key's place in Credentials when unconfigured.
+    expect(screen.getByTestId('checklist-link-ai')).toHaveAttribute('href', '/superuser/credentials');
+    expect(screen.getByTestId('checklist-link-ai')).toHaveTextContent('Set the AI key');
     // Members step links to the Users admin.
     expect(screen.getByTestId('checklist-link-members')).toHaveAttribute(
       'href',

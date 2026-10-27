@@ -109,24 +109,20 @@ const authServer: NonNullable<HomesteadConfig['auth']>['authServer'] = authServe
 
 const auth: HomesteadConfig['auth'] = oauth || authServer ? { oauth, authServer } : undefined;
 
-// AI is opt-in: enabled only when an API key is present in the launcher's
-// environment. Set the key via AI_API_KEY; with no key set, `ai` is undefined
-// and AI endpoints return 503. The defaults below (Gemini) can be overridden
-// per-instance:
+// AI: the provider and model come from the environment (defaults below,
+// Gemini); the key doesn't have to. With no `auth.apiKey` here, the server
+// takes it from AI_API_KEY, else from the key a superuser stores under
+// Superuser → Credentials ("AI provider API key"). With no key either way, AI
+// endpoints return 503. Overridable per instance:
 //   AI_PROVIDER  'openai' (Codex) | 'anthropic' (Claude) | 'google' (Gemini)
 //   AI_MODEL     must be vision-capable for the grocery/HSA image features
 //   AI_BASE_URL  point at a self-hosted/proxied endpoint (Ollama, vLLM,
 //                LiteLLM) speaking that provider's wire format
-const aiApiKey = fromEnv('AI_API_KEY');
-const ai: HomesteadConfig['ai'] = aiApiKey
-  ? {
-      provider: (fromEnv('AI_PROVIDER') ??
-        'google') as NonNullable<HomesteadConfig['ai']>['provider'],
-      model: fromEnv('AI_MODEL') ?? 'gemini-2.5-flash',
-      auth: { apiKey: aiApiKey },
-      baseURL: fromEnv('AI_BASE_URL'),
-    }
-  : undefined;
+const ai: HomesteadConfig['ai'] = {
+  provider: (fromEnv('AI_PROVIDER') ?? 'google') as NonNullable<HomesteadConfig['ai']>['provider'],
+  model: fromEnv('AI_MODEL') ?? 'gemini-2.5-flash',
+  baseURL: fromEnv('AI_BASE_URL'),
+};
 
 // Email is opt-in: enabled only when Gmail credentials are present in the
 // launcher's environment. The refresh token is for one mailbox and must carry
@@ -151,26 +147,22 @@ const email: HomesteadConfig['email'] =
         query: fromEnv('EMAIL_QUERY') ?? 'has:attachment',
       }
     : undefined;
-// Embedding is opt-in and independent of `ai`: it powers semantic search over
-// `ai.embed`-flagged file fields. Enabled only when EMBEDDING_API_KEY is set;
-// with no key, `embedding` is undefined — `embed` fields still extract text but
-// aren't indexed for search, and the chat search tool isn't registered.
-// Anthropic ships no embedding model, so the provider is 'openai' | 'google'
-// only. Defaults below (Gemini) can be overridden per-instance:
+// Embedding powers semantic search over `ai.embed`-flagged file fields,
+// independent of `ai`. Like the AI key, its key comes from EMBEDDING_API_KEY,
+// else from Superuser → Credentials ("Embedding API key"); with neither,
+// `embed` fields still extract text but aren't indexed for search, and the
+// chat search tool isn't registered. Anthropic ships no embedding model, so
+// the provider is 'openai' | 'google' only. Defaults below (Gemini) can be
+// overridden per-instance:
 //   EMBEDDING_PROVIDER  'openai' | 'google'
 //   EMBEDDING_MODEL     e.g. 'text-embedding-3-small' (OpenAI),
 //                            'text-embedding-004' (Google)
 //   EMBEDDING_BASE_URL  point at a self-hosted/proxied endpoint
-const embeddingApiKey = fromEnv('EMBEDDING_API_KEY');
-const embedding: HomesteadConfig['embedding'] = embeddingApiKey
-  ? {
-      provider: (fromEnv('EMBEDDING_PROVIDER') ??
-        'google') as NonNullable<HomesteadConfig['embedding']>['provider'],
-      model: fromEnv('EMBEDDING_MODEL') ?? 'text-embedding-004',
-      auth: { apiKey: embeddingApiKey },
-      baseURL: fromEnv('EMBEDDING_BASE_URL'),
-    }
-  : undefined;
+const embedding: HomesteadConfig['embedding'] = {
+  provider: (fromEnv('EMBEDDING_PROVIDER') ?? 'google') as NonNullable<HomesteadConfig['embedding']>['provider'],
+  model: fromEnv('EMBEDDING_MODEL') ?? 'text-embedding-004',
+  baseURL: fromEnv('EMBEDDING_BASE_URL'),
+};
 
 // Resource syncs mirror a resource's records to an external system, one way,
 // after they change (create / update / delete). Declared here — not inside an

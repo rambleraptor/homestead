@@ -169,9 +169,11 @@ export interface AiAuthConfig {
   /**
    * Provider API key. Server-side only — read (typically from an env var) when
    * the launcher evaluates this config; it must never reach the browser bundle,
-   * exactly like OAuth `clientSecret`.
+   * exactly like OAuth `clientSecret`. Blank or omitted, the key comes from its
+   * credential slot instead: `AI_API_KEY` (`EMBEDDING_API_KEY` for embeddings),
+   * else the key a superuser stored under Superuser → Credentials.
    */
-  apiKey: string;
+  apiKey?: string;
 }
 
 /**
@@ -188,8 +190,8 @@ export interface AiConfig {
    * the grocery/HSA image methods to work.
    */
   model: string;
-  /** Provider credentials. */
-  auth: AiAuthConfig;
+  /** Provider credentials. Omit to take the key from its credential slot. */
+  auth?: AiAuthConfig;
   /**
    * Override the provider's API endpoint. Point this at any host speaking the
    * chosen provider's wire format — a self-hosted or proxied model (Ollama,
@@ -224,7 +226,7 @@ export interface EmbeddingConfig {
    */
   model: string;
   /** Provider credentials. Server-side only, like {@link AiConfig.auth}. */
-  auth: AiAuthConfig;
+  auth?: AiAuthConfig;
   /** Override the provider's API endpoint. See {@link AiConfig.baseURL}. */
   baseURL?: string;
 }

@@ -76,4 +76,33 @@ export class CredentialsPage {
     await this.driver.getByRole('button', { name: 'Delete', exact: true }).click();
     await this.credential(id).waitFor({ state: 'hidden' });
   }
+
+  /** A slot under "Homestead needs", by slot id. */
+  slot(id: string): Locator {
+    return this.driver.getByTestId(`slot-${id}`);
+  }
+
+  /** Where a slot's value comes from: "Set here · …", "From the environment variable …", "Missing". */
+  slotStatus(id: string): Locator {
+    return this.driver.getByTestId(`slot-status-${id}`);
+  }
+
+  setSlotButton(id: string): Locator {
+    return this.driver.getByTestId(`set-slot-${id}`);
+  }
+
+  /** Set (or replace) a slot's value. */
+  async setSlot(id: string, value: string) {
+    await this.setSlotButton(id).click();
+    await this.driver.getByTestId('slot-value').fill(value);
+    await this.driver.getByTestId('slot-form-submit').click();
+    await this.driver.getByTestId('slot-form').waitFor({ state: 'hidden' });
+  }
+
+  /** Clear a slot's stored value. */
+  async clearSlot(id: string) {
+    await this.driver.getByTestId(`clear-slot-${id}`).click();
+    await this.driver.getByRole('button', { name: 'Clear', exact: true }).click();
+    await this.driver.getByTestId(`clear-slot-${id}`).waitFor({ state: 'hidden' });
+  }
 }

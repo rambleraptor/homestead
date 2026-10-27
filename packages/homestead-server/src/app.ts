@@ -208,6 +208,7 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   const { makeTokensRoute } = await import('./routes/tokens');
   const { makeSecurityRoute } = await import('./routes/security');
   const { makeHouseholdRoute } = await import('./routes/household');
+  const { makeCredentialSlotsRoute } = await import('./routes/credential-slots');
   const { makeSetupRoute } = await import('./routes/setup');
   const { bulkImportTemplateRoute } = await import('./routes/bulk-import-template');
   const { makeAuthRoutes } = await import('./routes/auth');
@@ -248,6 +249,7 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   publicApp.route('/api/tokens', makeTokensRoute(engine));
   publicApp.route('/api/security', makeSecurityRoute());
   publicApp.route('/api/household', makeHouseholdRoute());
+  publicApp.route('/api/credential-slots', makeCredentialSlotsRoute());
   publicApp.route('/api/chat', chatRoute);
   publicApp.route('/api/events', makeEventsRoute(changeFeed, (token) => engine.authenticateToken(token)));
   publicApp.route('/api/aep', makeAepGateway(engine, loopbackOrigin));
