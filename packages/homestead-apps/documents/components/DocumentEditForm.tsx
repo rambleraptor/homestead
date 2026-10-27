@@ -14,8 +14,8 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { TagInput } from '@rambleraptor/homestead-core/shared/components/TagInput';
-import { getDocType } from '../doc-types/registry';
-import { UNKNOWN_DOC_TYPE, type DocField } from '../doc-types/docType';
+import { getDocType, getDocTypeFields } from '../doc-types/registry';
+import { replaceMetadata, UNKNOWN_DOC_TYPE, type DocField } from '../doc-types/docType';
 import { useCollections, toggleMembership } from '../hooks/useCollections';
 import { DocTypeCombobox } from './DocTypeCombobox';
 import { usePeople } from '../../people/hooks/usePeople';
@@ -92,14 +92,17 @@ export function DocumentEditForm({
     e.preventDefault();
 
     const metadata: DocumentMetadata = { doc_type: docTypeId };
-    if (selectedType) {
+    // `unknown` has fields too (its facts), carried through like a type's.
+    const fields = getDocTypeFields(docTypeId);
+    if (fields) {
       // Whether the stored composite values still belong to this record — only
       // when the type is unchanged (a type switch has no matching prior values).
       const sameType = docTypeId === document.metadata?.doc_type;
-      for (const [name, field] of Object.entries(selectedType.fields)) {
+      for (const [name, field] of Object.entries(fields)) {
         if (!isScalarField(field)) {
           // Not editable here; carry the existing value through so a save (which
-          // replaces the whole metadata object) doesn't drop it.
+          // replaces the whole metadata object — see replaceMetadata) doesn't
+          // drop it.
           const existing = sameType ? document.metadata?.[name] : undefined;
           if (existing !== undefined) metadata[name] = existing;
           continue;
@@ -117,7 +120,7 @@ export function DocumentEditForm({
       tags,
       collections: memberOf,
       people: linkedPeople,
-      metadata,
+      metadata: replaceMetadata(document.metadata, metadata),
       // A human-set type is authoritative: matched → parsed, unknown → unmatched.
       parse_status: matched ? 'parsed' : 'unmatched',
       // A human-confirmed type is certain, so the AI's (possibly low) confidence

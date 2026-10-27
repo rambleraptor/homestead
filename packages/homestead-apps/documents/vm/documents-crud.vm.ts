@@ -109,6 +109,10 @@ describe('Documents', { timeout: CLASSIFY_TEST_TIMEOUT_MS }, () => {
     const doc = await uploadAndClassify(userToken, 'unknown', { title: 'mystery-letter' });
     expect(doc.parse_status).toBe('unmatched');
     expect(doc.metadata?.doc_type).toBe('unknown');
+    expect(doc.metadata?.facts).toEqual([
+      { label: 'Account Number', value: 'AC-20931' },
+      { label: 'Support Phone', value: '1-800-555-0142' },
+    ]);
 
     const documents = new DocumentsPage(h.driver);
     await documents.goto();
@@ -121,9 +125,27 @@ describe('Documents', { timeout: CLASSIFY_TEST_TIMEOUT_MS }, () => {
     await h.driver.expect(documents.type('mystery-letter')).toHaveCount(0);
     await h.driver.expect(documents.status('mystery-letter')).toHaveCount(0);
 
-    // The detail page, where it can be corrected, still names the state.
+    // The detail page, where it can be corrected, still names the state, and
+    // shows the facts read off it in place of a type's fields.
     await documents.open('mystery-letter');
     await h.driver.expect(documents.detailStatus()).toContainText(/no matching type/i);
+    await h.driver.expect(documents.detailFacts()).toHaveCount(2);
+    await h.driver.expect(documents.detailFacts().first()).toContainText('Account Number');
+    await h.driver.expect(documents.detailFacts().first()).toContainText('AC-20931');
+
+    // A hand edit keeps the facts...
+    await documents.edit();
+    await documents.setTitle('Acme account letter');
+    await documents.save();
+    await h.driver.expect(documents.detailFacts()).toHaveCount(2);
+
+    // ...until it gives the document a real type, whose fields replace them.
+    await documents.edit();
+    await documents.chooseType('warranty');
+    await documents.save();
+    await h.driver.expect(documents.detailFacts()).toHaveCount(0);
+    const [saved] = await listDocuments(userToken, "metadata.doc_type == 'warranty'");
+    expect(saved?.metadata).toEqual({ doc_type: 'warranty' });
   });
 
   test('the index filters by search, type, and person', async () => {
@@ -149,6 +171,11 @@ describe('Documents', { timeout: CLASSIFY_TEST_TIMEOUT_MS }, () => {
     // Search also reaches parsed metadata (the payer name from the 1099).
     await documents.search('Ally Bank');
     await h.driver.expect(documents.card('ally-1099')).toBeVisible();
+
+    // ...and an unmatched document's free-form facts (its account number).
+    await documents.search('AC-20931');
+    await h.driver.expect(documents.card('mystery-letter')).toBeVisible();
+    await h.driver.expect(documents.card('ally-1099')).toHaveCount(0);
 
     await documents.clearFilters();
     await h.driver.expect(documents.card('mystery-letter')).toBeVisible();

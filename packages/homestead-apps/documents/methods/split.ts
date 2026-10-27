@@ -39,7 +39,7 @@ import { serverClient } from '@rambleraptor/homestead-core/server/client';
 import { sha256Hex } from '@rambleraptor/homestead-core/server/hash';
 import { HomesteadError } from '@rambleraptor/homestead-client';
 import { DOCUMENTS } from '../resources';
-import { UNKNOWN_DOC_TYPE } from '../doc-types/docType';
+import { replaceMetadata, UNKNOWN_DOC_TYPE } from '../doc-types/docType';
 import {
   childFilename,
   groupTag,
@@ -273,7 +273,7 @@ const handler: AsyncCustomMethodHandler = async ({ id, auth, log }) => {
   const bundleTags = Array.from(new Set([...(bundle.tags ?? []), tag]));
   await documents.record(docId).update({
     parse_status: 'unmatched',
-    metadata: { doc_type: UNKNOWN_DOC_TYPE },
+    metadata: replaceMetadata(bundle.metadata, { doc_type: UNKNOWN_DOC_TYPE }),
     tags: bundleTags,
     ...(!bundle.title_edited && year ? { title: `Tax Return (${year})` } : {}),
   });

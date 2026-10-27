@@ -142,6 +142,91 @@ export interface DocType {
  */
 export const UNKNOWN_DOC_TYPE = 'unknown';
 
+/** A label/value pair read off a document that matched no type. */
+export interface DocFact {
+  label: string;
+  value: string;
+}
+
+/**
+ * The fields an unmatched document carries. With no type to say which fields
+ * exist, the model reads the facts worth finding later — a model number, a
+ * paint code, an expiry date — as free-form label/value pairs, so a photo of
+ * anything still becomes searchable fields rather than just text. Declared as
+ * the `unknown` variant's fields, so it flows through the same schema, search,
+ * and display paths as a real type's.
+ */
+export const UNKNOWN_FIELDS: Record<string, DocField> = {
+  facts: {
+    label: 'Details',
+    type: 'array',
+    description:
+      'The facts a person would want to look up later, as label/value pairs, ' +
+      'most useful first. Empty when the document shows none.',
+    items: {
+      label: 'Detail',
+      type: 'object',
+      properties: {
+        label: {
+          label: 'Label',
+          type: 'string',
+          description:
+            'A short name for the fact in Title Case (e.g. "Model Number", ' +
+            '"Paint Color Code", "Expiry Date").',
+        },
+        value: {
+          label: 'Value',
+          type: 'string',
+          description: 'The value exactly as printed on the document.',
+        },
+      },
+    },
+  },
+};
+
+/**
+ * The PATCH body that swaps a document's stored metadata for `next`. The engine
+ * deep-merges an object field (RFC 7396), so sending `next` alone would keep
+ * every key it leaves out — a previous type's fields, or `unknown`'s facts once
+ * a type matches. Each such key goes out as `null`, which the merge deletes.
+ */
+export function replaceMetadata<T extends Record<string, unknown>>(
+  previous: Record<string, unknown> | undefined,
+  next: T,
+): T {
+  const cleared: Record<string, null> = {};
+  for (const key of Object.keys(previous ?? {})) {
+    if (!(key in next)) cleared[key] = null;
+  }
+  return { ...cleared, ...next };
+}
+
+/** Most facts kept from one document — past this it's noise, not a card. */
+const MAX_FACTS = 20;
+
+/**
+ * Narrow a stored (or model-returned) `facts` value to clean pairs: drops
+ * entries missing a label or value, trims both, removes repeats, and caps the
+ * list. Anything that isn't a list reads as none.
+ */
+export function readFacts(value: unknown): DocFact[] {
+  if (!Array.isArray(value)) return [];
+  const facts: DocFact[] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const { label, value: raw } = entry as Record<string, unknown>;
+    if (typeof label !== 'string' || typeof raw !== 'string') continue;
+    const fact = { label: label.trim(), value: raw.trim() };
+    const key = `${fact.label.toLowerCase()}\n${fact.value.toLowerCase()}`;
+    if (!fact.label || !fact.value || seen.has(key)) continue;
+    seen.add(key);
+    facts.push(fact);
+    if (facts.length === MAX_FACTS) break;
+  }
+  return facts;
+}
+
 /** Kebab-case: doc type ids become discriminator values, which aepbase keys on. */
 const KEBAB_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 /** Snake_case: field names become column names. */
@@ -373,27 +458,29 @@ export function toVariants(types: DocType[]): Record<string, Record<string, Fiel
   const seen = new Map<string, { type: DocFieldType; id: string }>();
   const variants: Record<string, Record<string, FieldDef>> = {};
 
-  for (const type of types) {
+  // The unmatched case is declared last so it sorts predictably in the emitted
+  // schema. Its fields share columns with the rest, so it takes the same check.
+  const entries: [string, Record<string, DocField>][] = [
+    ...types.map((type): [string, Record<string, DocField>] => [type.id, type.fields]),
+    [UNKNOWN_DOC_TYPE, UNKNOWN_FIELDS],
+  ];
+  for (const [id, docFields] of entries) {
     const fields: Record<string, FieldDef> = {};
-    for (const [name, field] of Object.entries(type.fields)) {
+    for (const [name, field] of Object.entries(docFields)) {
       const prior = seen.get(name);
       if (prior && prior.type !== field.type) {
         throw new Error(
           `[documents] "${name}" is a ${prior.type} in doc type "${prior.id}" but a ` +
-            `${field.type} in "${type.id}". Document types share one column per field ` +
+            `${field.type} in "${id}". Document types share one column per field ` +
             `name, so a shared name must have the same type in every type that uses it — ` +
             `rename one of them.`,
         );
       }
-      if (!prior) seen.set(name, { type: field.type, id: type.id });
+      if (!prior) seen.set(name, { type: field.type, id });
       fields[name] = docFieldToFieldDef(field);
     }
-    variants[type.id] = fields;
+    variants[id] = fields;
   }
-
-  // The unmatched case carries no fields — only its tag, which the translator
-  // injects. Declared last so it sorts predictably in the emitted schema.
-  variants[UNKNOWN_DOC_TYPE] = {};
   return variants;
 }
 
@@ -464,8 +551,17 @@ export function docTypeIds(types: DocType[]): [string, ...string[]] {
  * before storing.
  */
 export function toExtractionSchema(type: DocType) {
+  return fieldsToExtractionSchema(type.fields);
+}
+
+/** The extraction schema for an unmatched document: its free-form facts. */
+export function toUnknownExtractionSchema() {
+  return fieldsToExtractionSchema(UNKNOWN_FIELDS);
+}
+
+function fieldsToExtractionSchema(fields: Record<string, DocField>) {
   const shape: Record<string, z.ZodTypeAny> = {};
-  for (const [name, field] of Object.entries(type.fields)) {
+  for (const [name, field] of Object.entries(fields)) {
     shape[name] = docFieldToZod(field)
       .nullable()
       .describe(field.description ?? field.label);

@@ -36,8 +36,11 @@ import { DOCUMENTS } from '../resources';
 import {
   docTypeIds,
   freeTitlePlaceholders,
+  readFacts,
   renderTitleTemplate,
+  replaceMetadata,
   toExtractionSchema,
+  toUnknownExtractionSchema,
   UNKNOWN_DOC_TYPE,
   type DocType,
 } from '../doc-types/docType';
@@ -138,6 +141,27 @@ Read the document and fill in that type's fields. Rules:
 - Set any field you cannot find to null. Never guess, and never carry a value
   over from a different field just because it looks similar.
 - Numbers must have no currency symbols, thousands separators, or percent signs.`;
+}
+
+/**
+ * The extraction pass for a document that matched no type. With no fields to
+ * ask for, it asks for the facts worth finding later — what's printed on a
+ * rating plate, a paint can, a ticket — so the document still reads as fields.
+ */
+function factsPrompt(): string {
+  return `This document matched none of the known document types. List the facts a
+person would want to look up later, as label/value pairs, most useful first:
+- identifiers: model, serial, part, account, policy, membership, confirmation,
+  or reference numbers, and codes such as a paint color code;
+- names: the brand or manufacturer, the business or issuer, who it is for;
+- dates: purchase, issue, expiry, event, or service due dates;
+- amounts, quantities, sizes, capacities, and ratings;
+- contact details: phone numbers, websites, addresses.
+
+Rules:
+- Copy each value exactly as printed. Never guess or infer a value.
+- Skip boilerplate, marketing copy, and legal text.
+- At most 15 facts. An empty list is a fine answer.`;
 }
 
 /** Clamp to 0-1: the field is advisory, and a wild value shouldn't poison it. */
@@ -302,15 +326,15 @@ const handler: AsyncCustomMethodHandler = async ({ id, auth, request }) => {
 
   const matched = matchedDocType !== UNKNOWN_DOC_TYPE;
 
-  // Pass 2 — extraction, only when a type matched. The schema is that single
+  // Pass 2 — extraction. When a type matched, the schema is that single
   // type's fields (small, and focused on the fields this document has), and the
   // document is re-sent so the model reads it, not the pass-1 verdict. The model
   // fills every field, using null for the ones it couldn't find (the fields are
   // `.nullable()`, not `.optional()`, to keep Gemini from aborting — see
   // toExtractionSchema). Drop the nulls so the stored record carries only real
   // values, and re-attach the discriminator. Unmatched documents (including a
-  // low-confidence guess, downgraded rather than stored as a match) skip the
-  // pass entirely and carry only the unknown tag. (The document's text is
+  // low-confidence guess, downgraded rather than stored as a match) get a
+  // free-form facts pass instead (see factsPrompt). (The document's text is
   // extracted separately by the platform index pipeline into `file_text`,
   // independent of this classification.)
   let metadata: { doc_type: string; [field: string]: unknown } = {
@@ -374,6 +398,21 @@ const handler: AsyncCustomMethodHandler = async ({ id, auth, request }) => {
         ...freeValues,
       });
     }
+  } else {
+    // Unmatched: read free-form facts instead of a type's fields. Best-effort —
+    // the classification itself succeeded, so a failed read files the document
+    // unmatched without facts rather than failing it.
+    try {
+      const extracted = await aiGenerateObject({
+        messages: withDocument(factsPrompt()),
+        schema: toUnknownExtractionSchema(),
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+      });
+      const facts = readFacts(extracted.facts);
+      if (facts.length) metadata = { doc_type: UNKNOWN_DOC_TYPE, facts };
+    } catch (err) {
+      console.error(`[documents] reading facts failed for ${docId}`, err);
+    }
   }
 
   // Prefer the type's rendered template; fall back to the model-authored title —
@@ -387,7 +426,7 @@ const handler: AsyncCustomMethodHandler = async ({ id, auth, request }) => {
   const updated = await documents.record(docId).update({
     ...setTitle,
     confidence,
-    metadata,
+    metadata: replaceMetadata(doc.metadata, metadata),
     parse_status: matched ? 'parsed' : 'unmatched',
   });
 

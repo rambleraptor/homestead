@@ -145,6 +145,11 @@ export class DocumentsPage {
     return this.detail().getByTestId(`document-field-${fieldName}`);
   }
 
+  /** The free-form facts read off an unmatched document, one per row. */
+  detailFacts(): Locator {
+    return this.detail().getByTestId('document-fact');
+  }
+
   async edit(): Promise<void> {
     await this.detail().getByTestId('document-edit').click();
   }
@@ -155,6 +160,12 @@ export class DocumentsPage {
 
   editField(fieldName: string): Locator {
     return this.driver.getByTestId(`document-edit-field-${fieldName}`).locator('input');
+  }
+
+  /** In the edit form, pick a document type by its id (e.g. "warranty"). */
+  async chooseType(docTypeId: string): Promise<void> {
+    await this.driver.getByTestId('document-edit-type').click();
+    await this.driver.getByTestId(`doc-type-option-${docTypeId}`).click();
   }
 
   async save(): Promise<void> {

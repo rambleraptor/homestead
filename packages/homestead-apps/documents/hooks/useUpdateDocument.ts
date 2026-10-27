@@ -1,9 +1,9 @@
 /**
  * Manual edits to a document: save the fields a human changed, or delete it.
  *
- * The engine applies a shallow top-level merge on PATCH, so sending a whole
- * `metadata` object replaces it outright — switching doc types can't leave a
- * previous type's variant fields behind.
+ * The engine deep-merges an object field on PATCH, so a caller replacing
+ * `metadata` sends it through `replaceMetadata` — otherwise switching doc types
+ * would leave the previous type's variant fields behind.
  */
 
 import { useMutation } from '@tanstack/react-query';

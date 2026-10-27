@@ -14,7 +14,10 @@ import {
   docTypeIds,
   toExtractionSchema,
   freeTitlePlaceholders,
+  readFacts,
   renderTitleTemplate,
+  replaceMetadata,
+  toUnknownExtractionSchema,
   UNKNOWN_DOC_TYPE,
   type DocType,
 } from '../doc-types/docType';
@@ -337,8 +340,22 @@ describe('toVariants', () => {
     expect(variants['form-w2']).toEqual({
       wages: { type: 'number', singular_name: 'Wages', description: 'Box 1.' },
     });
-    // Unmatched documents are a real member of the union, carrying only a tag.
-    expect(variants[UNKNOWN_DOC_TYPE]).toEqual({});
+    // Unmatched documents are a real member of the union, carrying free-form facts.
+    expect(Object.keys(variants[UNKNOWN_DOC_TYPE])).toEqual(['facts']);
+    expect(variants[UNKNOWN_DOC_TYPE].facts).toMatchObject({
+      type: 'array',
+      items: { type: 'object', properties: { label: {}, value: {} } },
+    });
+  });
+
+  it('rejects a doc type whose field collides with the unknown facts column', () => {
+    expect(() =>
+      toVariants([type('form-a', { facts: { label: 'Facts', type: 'string' } })]),
+    ).toThrow(/"facts" is a string in doc type "form-a" but a array in "unknown"/);
+  });
+
+  it('compiles the built-in types alongside the unknown facts', () => {
+    expect(() => toVariants(BUILTIN_DOC_TYPES)).not.toThrow();
   });
 
   it('allows a shared field name when the types agree', () => {
@@ -537,5 +554,75 @@ describe('the built-in doc types', () => {
     for (const t of BUILTIN_DOC_TYPES) {
       expect(typeof t.icon, t.id).toBe('function');
     }
+  });
+});
+
+describe('toUnknownExtractionSchema', () => {
+  it('reads label/value pairs, tolerating null halves for readFacts to drop', () => {
+    const read = toUnknownExtractionSchema().parse({
+      facts: [
+        { label: 'Model Number', value: 'WRF555SDFZ' },
+        { label: 'Serial', value: null },
+      ],
+    });
+    expect(read.facts).toHaveLength(2);
+  });
+
+  it('accepts a null list — the document showed nothing worth keeping', () => {
+    expect(toUnknownExtractionSchema().parse({ facts: null })).toEqual({ facts: null });
+  });
+});
+
+describe('readFacts', () => {
+  it('keeps trimmed label/value pairs in order', () => {
+    expect(
+      readFacts([
+        { label: ' Paint Color Code ', value: ' SW 7006 ' },
+        { label: 'Brand', value: 'Sherwin-Williams' },
+      ]),
+    ).toEqual([
+      { label: 'Paint Color Code', value: 'SW 7006' },
+      { label: 'Brand', value: 'Sherwin-Williams' },
+    ]);
+  });
+
+  it('drops entries missing a label or value, and repeats', () => {
+    expect(
+      readFacts([
+        { label: 'Serial', value: null },
+        { label: '', value: 'x' },
+        { label: 'Model', value: '   ' },
+        'not an object',
+        null,
+        { label: 'Model', value: 'A1' },
+        { label: 'model', value: 'a1' },
+      ]),
+    ).toEqual([{ label: 'Model', value: 'A1' }]);
+  });
+
+  it('reads anything that is not a list as no facts', () => {
+    expect(readFacts(undefined)).toEqual([]);
+    expect(readFacts(null)).toEqual([]);
+    expect(readFacts({ label: 'Model', value: 'A1' })).toEqual([]);
+  });
+
+  it('caps a long list', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({ label: `Fact ${i}`, value: `${i}` }));
+    expect(readFacts(many)).toHaveLength(20);
+  });
+});
+
+describe('replaceMetadata', () => {
+  it('nulls every stored key the new metadata leaves out, so the merge drops it', () => {
+    expect(
+      replaceMetadata(
+        { doc_type: 'unknown', facts: [{ label: 'Model', value: 'A1' }] },
+        { doc_type: 'warranty', product: 'Fridge' },
+      ),
+    ).toEqual({ doc_type: 'warranty', product: 'Fridge', facts: null });
+  });
+
+  it('sends the new metadata as-is when nothing was stored', () => {
+    expect(replaceMetadata(undefined, { doc_type: 'unknown' })).toEqual({ doc_type: 'unknown' });
   });
 });
