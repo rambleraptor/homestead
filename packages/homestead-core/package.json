@@ -17,6 +17,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.0",
     "@ai-sdk/google": "^4.0.0",
+    "@ai-sdk/mcp": "^2.0.1",
     "@ai-sdk/openai": "^4.0.0",
     "@rambleraptor/homestead-client": "^0.2.0",
     "ai": "^7.0.2",

@@ -676,7 +676,14 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    (no household role covers it), superuser-only writes, out of the model tools;
    its writes bypass the persisted offline queue so a typed value never lands in
    browser storage. Server code reads one with `readCredential(id)`
-   (`homestead-core/server/credentials.ts`).
+   (`homestead-core/server/credentials.ts`). Outside MCP servers the assistant
+   may use are `mcp-server` records (Superuser → MCP servers,
+   `homestead-core/superuser/mcp-servers/`), same superusers model, usable only
+   by groups they're shared with; each references a credential, and
+   `server/mcp/connect.ts` (`withMcpServer`) is the one place a token is
+   attached. URLs follow `server/net/mcp-url.ts` (home network yes; loopback,
+   link-local, reserved no; `HOMESTEAD_MCP_TRUSTED_HOSTS` exempts hosts).
+   `:refresh-tools` fetches tools; new ones start `off`.
 
 ### Resource references
 

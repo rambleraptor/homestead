@@ -12,6 +12,7 @@ import { flagManagementApp } from './flag-management/app.config';
 import { usersApp } from './users/app.config';
 import { homesteadInformationApp } from './homestead-information/app.config';
 import { credentialsApp } from './credentials/app.config';
+import { mcpServersApp } from './mcp-servers/app.config';
 import { operationsApp } from '@rambleraptor/homestead-core/operations/app.config';
 import { permissionsApp } from '@rambleraptor/homestead-core/permissions/app.config';
 
@@ -24,6 +25,7 @@ export const superuserApp: AppConfig = {
     permissionsApp,
     flagManagementApp,
     credentialsApp,
+    mcpServersApp,
     operationsApp,
     homesteadInformationApp,
   ],
