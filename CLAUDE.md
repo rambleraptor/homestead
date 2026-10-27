@@ -670,7 +670,13 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    uses the value through `readSecret` (`homestead-core/server/secrets.ts`) —
    no route returns it, and it must never reach a response, a log, or a model.
    Secret fields are left out of the chat and MCP tools, and a field can't stop
-   being secret while it holds values.
+   being secret while it holds values. The household's API keys and tokens live
+   in the `credential` resource (Superuser → Credentials,
+   `homestead-core/superuser/credentials/`): `access: { model: 'superusers' }`
+   (no household role covers it), superuser-only writes, out of the model tools;
+   its writes bypass the persisted offline queue so a typed value never lands in
+   browser storage. Server code reads one with `readCredential(id)`
+   (`homestead-core/server/credentials.ts`).
 
 ### Resource references
 

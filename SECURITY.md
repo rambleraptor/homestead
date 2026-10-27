@@ -47,6 +47,15 @@ this feature is not that — it does not implement end-to-end encryption.
   secret while it holds values. Someone with shell access and the master key
   can still read them.
 
+  **Credentials** (Superuser → Credentials) is where the household's API keys
+  and tokens live: a superusers-only collection (`access: { model:
+  'superusers' }`, superuser-only writes, out of the model tools) whose `value`
+  is a secret field. Superusers add, list, replace and delete them; the page
+  shows "Set · …3f9a · date", never the value. The browser never stores a typed
+  value either — credential writes skip the offline queue and the optimistic
+  cache. Server code reads one with `readCredential(id)`
+  (`homestead-core/server/credentials.ts`).
+
 Other structured fields (names, amounts, titles) are **not** encrypted unless
 their resource declares them so, and neither are the account rows (`_users`
 password hashes, `_tokens`). Treat a data directory or a backup as sensitive

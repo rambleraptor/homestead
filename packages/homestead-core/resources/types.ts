@@ -639,7 +639,15 @@ export type ResourceAccess =
       sharedValue: string;
       /** The value meaning "only its owner". */
       privateValue: string;
-    };
+    }
+  /**
+   * Superusers only. The household roles get no grant on the collection at
+   * all, so a member can neither list nor create rows; superusers reach it as
+   * they reach everything. For instance configuration that isn't household
+   * data — credentials. Pair it with `superuser_write` so a stray record grant
+   * can't open writes, and hide it from the model tools.
+   */
+  | { model: 'superusers' };
 
 /**
  * How long a resource's rows are kept. A daily core cron

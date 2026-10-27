@@ -63,6 +63,10 @@ role. So:
 - **Their own records** → always theirs. Whoever creates a record can always read
   and change it, no grant required.
 - **Superusers** → everything, always (break-glass) — you can't lock yourself out.
+- **Superuser-only data** → a few collections aren't household data at all and
+  no role covers them: **Credentials** (Superuser → Credentials, the API keys and
+  tokens Homestead uses). Members and Admins can't list or add them; only
+  superusers can. A resource opts into this with `access: { model: 'superusers' }`.
 
 This is what lets one household have full-access adults *and* a limited guest at
 the same time: the adults are Members or Admins, the guest is defined by their
