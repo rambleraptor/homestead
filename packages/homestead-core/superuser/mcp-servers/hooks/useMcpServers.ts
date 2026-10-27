@@ -16,6 +16,19 @@ export function useMcpServers() {
   return useResourceList<McpServer>(APP, 'mcp-server', MCP_SERVERS, { orderBy: 'name' });
 }
 
+/**
+ * The servers shared with the viewer, for labelling the assistant's calls in
+ * chat. Fetched only while `enabled` — when a message shows an MCP tool call.
+ */
+export function useSharedMcpServers({ enabled }: { enabled: boolean }) {
+  return useQuery({
+    queryKey: ['mcp-servers-shared'],
+    queryFn: () => aepbase.list<McpServer>(MCP_SERVERS),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useCreateMcpServer() {
   return useResourceCreate<McpServer, McpServerFormData & { created_by?: string }>(APP, 'mcp-server');
 }

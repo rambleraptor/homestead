@@ -233,9 +233,9 @@ describe('approvals', () => {
       { type: 'tool-notifications', toolCallId: 'c1', state: 'approval-requested', approval: { id: 'a1' } },
       { type: 'tool-groceries', toolCallId: 'c2', state: 'output-available' },
     ] as unknown as UIMessage['parts'];
-    expect(denyPendingApprovals(parts)).toBe(true);
+    expect(denyPendingApprovals(parts)).toHaveLength(1);
     expect(parts[0]).toMatchObject({ state: 'output-denied', approval: { id: 'a1', approved: false } });
-    expect(denyPendingApprovals(parts)).toBe(false);
+    expect(denyPendingApprovals(parts)).toEqual([]);
   });
 
   it('a denied call reaches the model as denied', async () => {

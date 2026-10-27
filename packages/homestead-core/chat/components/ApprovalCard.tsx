@@ -1,7 +1,7 @@
 /**
  * A tool call waiting on the person (`confirm` custom methods — sending a
- * household member a message): what it would do, in their terms, and Approve
- * or Deny. Nothing runs until they answer; the reply then carries on.
+ * household member a message — and "ask first" tools on outside MCP servers):
+ * what it would do, in their terms, and Approve or Deny. Nothing runs until they answer; the reply then carries on.
  */
 
 import { useState } from 'react';
@@ -11,6 +11,7 @@ import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button
 import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehold';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
+import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
 
 /** `notifications` + `:send` → "Notifications: send". */
 function actionLabel(part: ToolUIPart): string {
@@ -19,10 +20,12 @@ function actionLabel(part: ToolUIPart): string {
   return `${resource[0]?.toUpperCase() ?? ''}${resource.slice(1)}: ${verb}`;
 }
 
-/** The text fields the call would send, as label/value rows. */
-function detailRows(input: unknown): Array<[string, string]> {
+/** The text fields the call would send, as label/value rows. An outside tool's are its arguments. */
+function detailRows(input: unknown, outside: boolean): Array<[string, string]> {
   const args = (input ?? {}) as Record<string, unknown>;
-  const body = (typeof args.body === 'object' && args.body) || (typeof args.fields === 'object' && args.fields) || {};
+  const body = outside
+    ? args
+    : (typeof args.body === 'object' && args.body) || (typeof args.fields === 'object' && args.fields) || {};
   return Object.entries(body as Record<string, unknown>)
     .filter(([, v]) => typeof v === 'string' || typeof v === 'number')
     .map(([k, v]) => [k[0]!.toUpperCase() + k.slice(1).replace(/_/g, ' '), String(v)]);
@@ -40,6 +43,7 @@ export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
   const household = useHousehold();
   const toast = useToast();
   const [answering, setAnswering] = useState(false);
+  const mcp = useMcpToolLabel(part.type);
   const approvalId = part.approval?.id;
   const userId = (part.input as { user_id?: unknown } | undefined)?.user_id;
   const recipient =
@@ -71,15 +75,21 @@ export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
       <dl className="mb-3 space-y-1">
         <div className="flex gap-2">
           <dt className="text-gray-500">Action</dt>
-          <dd data-testid="chat-approval-action">{actionLabel(part)}</dd>
+          <dd data-testid="chat-approval-action">{mcp ? mcp.tool : actionLabel(part)}</dd>
         </div>
+        {mcp && (
+          <div className="flex gap-2">
+            <dt className="text-gray-500">On</dt>
+            <dd data-testid="chat-approval-service">{mcp.server}</dd>
+          </div>
+        )}
         {recipient && (
           <div className="flex gap-2">
             <dt className="text-gray-500">To</dt>
             <dd data-testid="chat-approval-to">{recipient}</dd>
           </div>
         )}
-        {detailRows(part.input).map(([label, value]) => (
+        {detailRows(part.input, mcp !== null).map(([label, value]) => (
           <div key={label} className="flex gap-2">
             <dt className="text-gray-500">{label}</dt>
             <dd className="whitespace-pre-wrap break-words">{value}</dd>

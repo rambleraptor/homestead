@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeTools, type McpTool } from '../tools';
+import { mcpToolName, mergeTools, type McpTool } from '../tools';
 
 describe('mergeTools', () => {
   const existing: McpTool[] = [
@@ -31,5 +31,26 @@ describe('mergeTools', () => {
       ['a', 'Tool A', 'off'],
       ['b', 'Tool B', 'off'],
     ]);
+  });
+});
+
+describe('mergeTools and input schemas', () => {
+  it('stores the schema the server reports now, replacing the one from the last check', () => {
+    const schema = { type: 'object', properties: { entity: { type: 'string' } } };
+    const [tool] = mergeTools([{ name: 'get_state', policy: 'read', input_schema: { type: 'object' } }], [
+      { name: 'get_state', inputSchema: schema },
+    ]);
+    expect(tool).toEqual({ name: 'get_state', policy: 'read', input_schema: schema });
+  });
+});
+
+describe('mcpToolName', () => {
+  it('names a tool by its server and itself, in the characters providers accept', () => {
+    expect(mcpToolName('18a2f3', 'get_state')).toBe('mcp_18a2f3__get_state');
+    expect(mcpToolName('ha', 'calendar.list events')).toBe('mcp_ha__calendar_list_events');
+  });
+
+  it('stays within 64 characters', () => {
+    expect(mcpToolName('ha', 'x'.repeat(100))).toHaveLength(64);
   });
 });

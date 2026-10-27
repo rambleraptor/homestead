@@ -84,6 +84,15 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('App notes:\nTodos\n- Default to personal todos.');
   });
 
+  it('carries the note on outside services among its guidelines, only when given one', () => {
+    const note = ['- Tools named mcp_… reach outside services connected to Homestead (Home Assistant).'];
+    expect(buildSystemPrompt(user, { now: 'x', hasDocSearch: false, outsideServices: note })).toContain(
+      `Guidelines:`,
+    );
+    expect(buildSystemPrompt(user, { now: 'x', hasDocSearch: false, outsideServices: note })).toContain(note[0]);
+    expect(buildSystemPrompt(user, { now: 'x', hasDocSearch: false })).not.toContain('outside services');
+  });
+
   it('answers for every match, and asks which one only before a change', () => {
     const prompt = buildSystemPrompt(user, { now: 'x', hasDocSearch: false });
     expect(prompt).toContain('answer for every match');

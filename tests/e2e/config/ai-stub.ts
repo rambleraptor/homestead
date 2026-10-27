@@ -31,6 +31,7 @@ import {
   ATTACHMENTS_PLACEHOLDER,
   TOOLS_PLACEHOLDER,
   CONTEXT_PLACEHOLDER,
+  TOOL_OUTPUT_PLACEHOLDER,
   SCRIPT_EXHAUSTED_TEXT,
   scriptFor,
   type ScriptStep,
@@ -172,6 +173,7 @@ export function chunkDelayMs(): number {
 type InputItem = {
   role?: string;
   type?: string;
+  output?: unknown;
   content?: string | Array<{ type?: string; text?: string }>;
 };
 
@@ -267,6 +269,12 @@ export function scriptedStep(body: unknown): ScriptStep | null {
   }
   if (step.text?.includes(TOOLS_PLACEHOLDER)) {
     step = { ...step, text: step.text.replace(TOOLS_PLACEHOLDER, toolSummary(body)) };
+  }
+  if (step.text?.includes(TOOL_OUTPUT_PLACEHOLDER)) {
+    const outputs = items.slice(lastUser + 1).filter((item) => item.type === 'function_call_output');
+    const latest = outputs.at(-1)?.output;
+    const text = latest === undefined ? '(no tool output)' : typeof latest === 'string' ? latest : JSON.stringify(latest);
+    step = { ...step, text: step.text.replace(TOOL_OUTPUT_PLACEHOLDER, text) };
   }
   if (step.text?.includes(ATTACHMENTS_PLACEHOLDER)) {
     step = { ...step, text: step.text.replace(ATTACHMENTS_PLACEHOLDER, attachmentSummary(items[lastUser]!)) };

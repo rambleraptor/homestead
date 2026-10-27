@@ -600,8 +600,31 @@ token or the tool's output. Rows are written by the system, so nobody can erase
 their own call; only superusers can read them, and they're deleted after 90
 days. **Recent calls** on each server's card shows its last 20.
 
-> The assistant doesn't use these servers yet — that, and OAuth sign-in (for
-> Google services), are coming next.
+### The assistant uses them
+
+Each turn, the assistant is offered the tools of every server shared with the
+person it's talking to, as far as their share goes (View: *Use freely* tools;
+Can edit: the rest that are on too). Superusers get every server's tools.
+
+- **What the model sees is what you reviewed.** A tool's description and its
+  arguments' schema are stored when you **Check tools**, and that copy is what
+  the assistant gets — a turn never asks the server what its tools are. A
+  server checked before this release needs one more **Check tools** before its
+  tools reach the assistant.
+- **"Ask first" tools show an approval card** — the tool, the service, and the
+  arguments — and run only on **Approve**. **Deny**, or sending another message
+  instead, means it never reaches the server; the log records it as `denied`.
+- **What a tool returns is outside data.** It reaches the model labelled as
+  coming from that service, and the assistant is told to treat it as data to
+  report, never as instructions — so a calendar invite or a web page that says
+  "ignore your instructions and…" doesn't steer it.
+- **A server that's down costs only its own tools.** The assistant says the
+  call failed and carries on.
+
+In the chat, a call shows as **Home Assistant · Get state**, with what it sent
+and got back behind the disclosure, like Homestead's own tools.
+
+> OAuth sign-in (for Google Workspace services) is coming next.
 
 ---
 
