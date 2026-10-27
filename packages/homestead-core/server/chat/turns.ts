@@ -42,6 +42,7 @@ import { valueTypeLines } from '../../chat/values';
 import { getAllApps } from '../../apps/registry';
 import { modelResourcesFor } from '../collection-access';
 import { attachmentSource, attachmentsTitle, checkAttachments, withAttachments } from './attachments';
+import { buildMcpToolSet, mcpPromptLines, recordDeniedMcpCall } from './mcp-tools';
 
 /** Max rounds of tool execution per turn before forcing a text answer. */
 const MAX_TOOL_ROUNDS = 10;
@@ -245,6 +246,7 @@ export function settleResumedCall(parts: UIMessage['parts'], chunk: StreamChunk)
 type ToolPartShape = {
   type: string;
   toolCallId?: string;
+  input?: unknown;
   state?: string;
   approval?: { id: string; approved?: boolean; reason?: string };
 };
@@ -256,19 +258,22 @@ export function pendingApproval(parts: UIMessage['parts'] | undefined, approvalI
     .find((p) => p.state === 'approval-requested' && p.approval?.id === approvalId);
 }
 
+/** Why an approval left waiting was denied. */
+export const UNANSWERED_REASON = 'not answered before the next message';
+
 /**
  * Settle every approval still waiting in `parts` as denied — the person moved
- * on without answering, so the call never runs. True when any was waiting.
+ * on without answering, so the call never runs. Returns the parts it denied.
  */
-export function denyPendingApprovals(parts: UIMessage['parts'] | undefined): boolean {
-  let any = false;
+export function denyPendingApprovals(parts: UIMessage['parts'] | undefined): ToolPartShape[] {
+  const denied: ToolPartShape[] = [];
   for (const p of (parts ?? []) as ToolPartShape[]) {
     if (p.state !== 'approval-requested' || !p.approval) continue;
     p.state = 'output-denied';
-    p.approval = { id: p.approval.id, approved: false, reason: 'not answered before the next message' };
-    any = true;
+    p.approval = { id: p.approval.id, approved: false, reason: UNANSWERED_REASON };
+    denied.push(p);
   }
-  return any;
+  return denied;
 }
 
 /** The plain text of a message's parts. */
@@ -427,6 +432,8 @@ export async function handleTurn(
   let assistantId = message ? `${message.id}-reply` : '';
   let resumed: UIMessage['parts'] | undefined;
   let answered: ToolPartShape | undefined;
+  /** Approvals the person declined, or left unanswered, this turn. */
+  const declined: ToolPartShape[] = [];
 
   let finished = false;
   /** Release the conversation and record how the turn ended. Runs once. */
@@ -471,8 +478,12 @@ export async function handleTurn(
 
   /** A new message: an unanswered approval is denied, then this turn's two messages. */
   async function startTurn(last: StoredMessage | undefined): Promise<void> {
-    if (last?.role === 'assistant' && denyPendingApprovals(last.parts)) {
-      await messages.record(last.id).update({ parts: last.parts });
+    if (last?.role === 'assistant') {
+      const unanswered = denyPendingApprovals(last.parts);
+      if (unanswered.length > 0) {
+        declined.push(...unanswered);
+        await messages.record(last.id).update({ parts: last.parts });
+      }
     }
     const seq = (last?.seq ?? 0) + 1;
     const text = message!.text;
@@ -508,7 +519,10 @@ export async function handleTurn(
     modelMessages = await convertToModelMessages(ui);
     // The model hears a denial through the context above; the stream reports
     // nothing for it, so the card is settled here.
-    if (answered && answered.approval?.approved === false) answered.state = 'output-denied';
+    if (answered && answered.approval?.approved === false) {
+      answered.state = 'output-denied';
+      declined.push(answered);
+    }
   } catch (err) {
     await finish({ status: 'error', error: `could not rebuild the conversation: ${String(err)}` });
     return problem(500, 'could not rebuild the conversation history');
@@ -525,10 +539,20 @@ export async function handleTurn(
     await finish({ status: 'error', error: `could not resolve access: ${String(err)}` });
     return problem(500, 'could not resolve what this account can reach');
   }
-  const { toolSet, hasDocSearch } = buildChatToolSet(reachable.defs, auth.token, {
+  const { toolSet: homesteadTools, hasDocSearch } = buildChatToolSet(reachable.defs, auth.token, {
     attachments: attachmentSource(history, readAttachment),
     write: reachable.writable,
   });
+  // The outside services shared with this person, through the broker.
+  const conversationPath = `${CONVERSATIONS}/${conversationId}`;
+  const mcp = await buildMcpToolSet({ token: auth.token, userId: auth.user.id, conversation: conversationPath });
+  const toolSet = { ...homesteadTools, ...mcp.toolSet };
+  for (const part of declined) {
+    const entry = mcp.entries.get(part.type.slice('tool-'.length));
+    if (entry) {
+      await recordDeniedMcpCall(entry, part.input, { userId: auth.user.id }, conversationPath, part.approval?.reason);
+    }
+  }
   // What the apps know about the speaker. Bounded: a slow app is left out.
   const offered = new Set(reachable.defs.map((d) => d.singular));
   const household = householdFor(auth.user.id);
@@ -553,6 +577,7 @@ export async function handleTurn(
         valueTypes: valueTypeLines(getAllApps(), offered),
         household: householdLines(household, auth.user.id),
         appContext: speakerContext,
+        outsideServices: mcpPromptLines(mcp.entries),
       }),
       messages: modelMessages,
       tools: toolSet,

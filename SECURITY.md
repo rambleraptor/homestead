@@ -71,7 +71,13 @@ this feature is not that — it does not implement end-to-end encryption.
   sent. Results come back labelled as untrusted outside data and capped in
   size. Each call is logged as an `mcp-call` row (superusers-only, written with
   a system token so a caller can't erase it, kept 90 days), with an argument
-  summary but never the token or the result.
+  summary but never the token or the result. The assistant is offered a
+  server's tools per turn, within the speaker's share, from the description
+  and argument schema stored at the last superuser check (never fetched from
+  the server mid-turn); "ask first" tools wait for the person's approval, and
+  results are framed to the model as outside data, not instructions
+  (`homestead-core/server/chat/mcp-tools.ts`). The server's own `instructions`
+  are stored but not given to the model.
 
 Other structured fields (names, amounts, titles) are **not** encrypted unless
 their resource declares them so, and neither are the account rows (`_users`

@@ -45,10 +45,20 @@ export interface PromptContext {
   household?: string[];
   /** What the apps know about the speaker, under each app's name (`appContext`). */
   appContext?: string[];
+  /** The note on outside services, when their tools are offered (`mcpPromptLines`). */
+  outsideServices?: string[];
 }
 
 export function buildSystemPrompt(user: AuthedUser, context: PromptContext): string {
-  const { now, hasDocSearch, appNotes = [], valueTypes = [], household = [], appContext = [] } = context;
+  const {
+    now,
+    hasDocSearch,
+    appNotes = [],
+    valueTypes = [],
+    household = [],
+    appContext = [],
+    outsideServices = [],
+  } = context;
   return [
     'You are the Homestead household assistant. You help members of the',
     'household look up and manage their data (todos, groceries, recipes,',
@@ -96,6 +106,7 @@ export function buildSystemPrompt(user: AuthedUser, context: PromptContext): str
           '  Cite the resource type and record id of any passage you rely on.',
         ]
       : []),
+    ...outsideServices,
     '- A file the person attached is labelled with its attachment id. To',
     '  save it into a record, pass that id as the value of a file field;',
     '  set any field describing the file (such as a mime_type) from its',

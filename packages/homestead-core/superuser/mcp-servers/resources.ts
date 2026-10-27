@@ -57,6 +57,12 @@ export const mcpServersResources: ResourceDefinition[] = [
             title: { type: 'string' },
             description: { type: 'string' },
             read_only: { type: 'boolean', description: 'The server marks it read-only.' },
+            input_schema: {
+              type: 'object',
+              description:
+                'The JSON schema of the tool’s arguments as the server reported it at the last check — ' +
+                'what the assistant is given, so a turn never depends on the server’s word since.',
+            },
             policy: { type: 'string', enum: [...TOOL_POLICIES], required: true },
           },
         },

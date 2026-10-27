@@ -16,6 +16,7 @@ import {
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/tool';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
+import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
 import { MessageAttachments } from './MessageAttachments';
 import { ApprovalCard } from './ApprovalCard';
 import { ReplyLink, replyRehypePlugins, replyUrlTransform } from './ChatValue';
@@ -52,15 +53,13 @@ function messageText(message: HomesteadUIMessage): string {
  * it sent and got back behind a disclosure.
  */
 function ToolCall({ part }: { part: ToolUIPart }) {
+  const mcp = useMcpToolLabel(part.type);
   const resource = part.type.slice('tool-'.length);
   const action = toolAction(part.input);
+  const title = mcp ? `${mcp.server} · ${mcp.tool}` : action ? `${resource} · ${action}` : resource;
   return (
     <Tool data-testid="chat-tool-call">
-      <ToolHeader
-        type={part.type}
-        state={part.state}
-        title={action ? `${resource} · ${action}` : resource}
-      />
+      <ToolHeader type={part.type} state={part.state} title={title} />
       <ToolContent>
         <ToolInput input={part.input} />
         <ToolOutput output={part.output} errorText={part.errorText} />

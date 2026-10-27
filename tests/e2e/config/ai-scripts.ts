@@ -68,6 +68,19 @@ export const TOOLS_PLACEHOLDER = '{tools}';
 export const CONTEXT_PLACEHOLDER = '{context}';
 
 /**
+ * In a step's text, replaced by the output of the turn's latest tool call, as
+ * the model received it (the raw `function_call_output`) — so a test can check
+ * how a result was framed for the model, not just that the call ran.
+ */
+export const TOOL_OUTPUT_PLACEHOLDER = '{tool-output}';
+
+/**
+ * The id the MCP chat specs give their test server, so a script can name its
+ * tools (`mcp_<server id>__<tool>`, see `mcpToolName`).
+ */
+export const MCP_TEST_SERVER_ID = 'ha';
+
+/**
  * In a tool call's arguments, replaced by the attachment id of the first file
  * the message carried (the model is shown `attachment id: …` beside each) — so
  * a script can file an attachment whose id it can't know in advance.
@@ -113,6 +126,12 @@ export const CHAT_MARKERS = {
   findPerson: 'e2e-chat-find-person',
   /** Message Sam (an approval-gated `:send`), then say so. */
   messageSam: 'e2e-chat-message-sam',
+  /** Read a light's state from the test MCP server, then repeat what came back. */
+  mcpCheckLight: 'e2e-chat-mcp-check-light',
+  /** Unlock the front door on the test MCP server (an "ask first" tool), then say so. */
+  mcpUnlockDoor: 'e2e-chat-mcp-unlock-door',
+  /** Call the test MCP server's failing tool, then repeat what came back. */
+  mcpFailing: 'e2e-chat-mcp-failing',
 } as const;
 
 /** The long reply's text, exported so a spec can check the whole of it arrived. */
@@ -252,6 +271,27 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
       // After the person's answer: the call ran (or was denied), and the
       // model has its outcome.
       { text: 'Done.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.mcpCheckLight,
+    steps: [
+      { toolCalls: [{ name: `mcp_${MCP_TEST_SERVER_ID}__get_state`, args: { entity: 'light.kitchen' } }] },
+      { text: `The service said: ${TOOL_OUTPUT_PLACEHOLDER}` },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.mcpUnlockDoor,
+    steps: [
+      { toolCalls: [{ name: `mcp_${MCP_TEST_SERVER_ID}__unlock`, args: { entity: 'lock.front' } }] },
+      { text: 'Done.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.mcpFailing,
+    steps: [
+      { toolCalls: [{ name: `mcp_${MCP_TEST_SERVER_ID}__fail`, args: {} }] },
+      { text: `The service said: ${TOOL_OUTPUT_PLACEHOLDER}` },
     ],
   },
 ];

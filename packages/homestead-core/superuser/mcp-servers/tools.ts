@@ -21,6 +21,8 @@ export interface McpTool {
   description?: string;
   /** The server's `readOnlyHint` annotation — a claim, not a guarantee. */
   read_only?: boolean;
+  /** The arguments' JSON schema, as reported at the last check. */
+  input_schema?: Record<string, unknown>;
   policy: ToolPolicy;
 }
 
@@ -29,6 +31,7 @@ export interface ListedTool {
   name: string;
   title?: string;
   description?: string;
+  inputSchema?: Record<string, unknown>;
   annotations?: { readOnlyHint?: boolean; title?: string } & Record<string, unknown>;
 }
 
@@ -51,8 +54,25 @@ export function mergeTools(existing: readonly McpTool[] | undefined, listed: rea
       ...(title ? { title } : {}),
       ...(tool.description ? { description: tool.description } : {}),
       ...(tool.annotations?.readOnlyHint !== undefined ? { read_only: tool.annotations.readOnlyHint } : {}),
+      ...(tool.inputSchema ? { input_schema: tool.inputSchema } : {}),
       policy: policies.get(tool.name) ?? 'off',
     });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Every MCP tool's chat name starts with this, so it can't collide with Homestead's own. */
+export const MCP_TOOL_PREFIX = 'mcp_';
+/** Providers cap tool names at 64 characters of `[A-Za-z0-9_-]`. */
+const MAX_TOOL_NAME = 64;
+
+const toolNameSafe = (text: string) => text.replace(/[^A-Za-z0-9_-]/g, '_');
+
+/**
+ * The chat tool name for a server's tool: `mcp_<server id>__<tool>`, cut to
+ * the provider limit. The SPA matches it back to the server and tool to label
+ * the call.
+ */
+export function mcpToolName(serverId: string, tool: string): string {
+  return `${MCP_TOOL_PREFIX}${toolNameSafe(serverId)}__${toolNameSafe(tool)}`.slice(0, MAX_TOOL_NAME);
 }

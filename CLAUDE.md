@@ -691,7 +691,13 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    (unknown = off), and approval for `ask`; labels and caps the result as
    untrusted; and logs an `mcp-call` row (superusers-only, system-written,
    90-day retention; `recordMcpCall` for outcomes decided elsewhere, like a
-   declined approval). People call it through `mcp-servers/{id}:call-tool`.
+   declined approval). People call it through `mcp-servers/{id}:call-tool`;
+   the assistant through `server/chat/mcp-tools.ts`, which builds each turn's
+   `mcp_<server>__<tool>` tools (`mcpToolName`, shared with the SPA's labels)
+   from the servers the speaker can read, using each tool's `input_schema`
+   stored at the last check — tools without one aren't offered. `ask` tools are
+   `needsApproval`; a declined or unanswered approval is logged as `denied`
+   from `turns.ts`.
    The VM tier's `vm/mcp-stub.ts` is an in-process MCP server to call.
 
 ### Resource references
