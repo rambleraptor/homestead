@@ -382,3 +382,23 @@ describe('the change feed’s read check', () => {
     expect(t.engine.canRead(bob.user, 'chapter', 'books/b2/chapters/c9')).toBe(false);
   });
 });
+
+describe('recordAllows', () => {
+  test('a View share lets you read a record, not write it', async () => {
+    await shareBook('share-b1', bob.user, 'read');
+    expect(t.engine.recordAllows(bob.user, 'book', 'books/b1', 'read')).toBe(true);
+    expect(t.engine.recordAllows(bob.user, 'book', 'books/b1', 'write')).toBe(false);
+    expect(t.engine.recordAllows(bob.user, 'chapter', 'books/b1/chapters/c1', 'write')).toBe(false);
+  });
+
+  test('a Can edit share lets you write it, and its children', async () => {
+    await shareBook('share-b1', bob.user, 'write');
+    expect(t.engine.recordAllows(bob.user, 'book', 'books/b1', 'write')).toBe(true);
+    expect(t.engine.recordAllows(bob.user, 'chapter', 'books/b1/chapters/c1', 'write')).toBe(true);
+    expect(t.engine.recordAllows(bob.user, 'book', 'books/b2', 'write')).toBe(false);
+  });
+
+  test('a path that isn’t the named resource is refused', () => {
+    expect(t.engine.recordAllows(alice.user, 'chapter', 'books/b1', 'read')).toBe(false);
+  });
+});

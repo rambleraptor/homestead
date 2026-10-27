@@ -683,7 +683,16 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    `server/mcp/connect.ts` (`withMcpServer`) is the one place a token is
    attached. URLs follow `server/net/mcp-url.ts` (home network yes; loopback,
    link-local, reserved no; `HOMESTEAD_MCP_TRUSTED_HOSTS` exempts hosts).
-   `:refresh-tools` fetches tools; new ones start `off`.
+   `:refresh-tools` fetches tools; new ones start `off`. Every tool call goes
+   through `server/mcp/broker.ts` (`callConnectionTool`) — never call
+   `withMcpServer` to run a tool yourself: it checks the share (read the server
+   → `read` tools; write it → `ask`/`allow` too, via `canUseRecord` in
+   `server/collection-access.ts`, backed by `Engine.recordAllows`), the policy
+   (unknown = off), and approval for `ask`; labels and caps the result as
+   untrusted; and logs an `mcp-call` row (superusers-only, system-written,
+   90-day retention; `recordMcpCall` for outcomes decided elsewhere, like a
+   declined approval). People call it through `mcp-servers/{id}:call-tool`.
+   The VM tier's `vm/mcp-stub.ts` is an in-process MCP server to call.
 
 ### Resource references
 

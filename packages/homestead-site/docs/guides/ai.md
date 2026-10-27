@@ -558,13 +558,50 @@ under **Superuser → MCP servers**:
    that changes something — an approval card every time), or *Allow without
    asking*.
 5. **Share the server** with the groups who may use it. Until it's shared,
-   nobody but superusers can see it.
+   nobody but superusers can see it, or use it. The share level decides which
+   tools: **View** lets a group use the *Use freely* tools; **Can edit** lets
+   it use the *Ask first* and *Allow without asking* ones too. Either way only
+   superusers can change the server itself.
 
 The token is attached only inside Homestead's server, as a bearer header on
 requests to that server; it never reaches the browser, the assistant or a log.
 
-> The assistant doesn't use these servers yet — that, the per-call log, and
-> OAuth sign-in (for Google services) are coming next.
+### Every call goes through one gate
+
+Whatever makes a call — today a person through the API, next the assistant —
+it goes through the same broker
+(`homestead-core/server/mcp/broker.ts`, `callConnectionTool`), which checks, in
+order: the server is shared with the caller; the tool is on (a tool that's
+*off*, unknown, or has a policy Homestead doesn't recognize never runs); the
+share level covers the tool's policy; and an *Ask first* tool has the person's
+approval. Then it connects with the token, and hands back what the tool
+returned **labelled as untrusted data from outside the household**
+(`{ untrusted: true, source, tool, content, truncated }`), as text capped at
+16,000 characters.
+
+A person can call a tool themselves — calling it is their approval:
+
+```bash
+curl -X POST "$HOMESTEAD/api/aep/mcp-servers/$ID:call-tool" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{ "tool": "get_state", "arguments": { "entity": "light.kitchen" } }'
+```
+
+A refusal is a `403` with the reason; the tool's own failure, or a server that
+can't be reached, is a `502`.
+
+### The call log
+
+Every call, refused ones included, leaves an `mcp-call` row: when, who, which
+server and tool, a summary of the arguments (cut at 500 characters), the
+conversation it came from, the outcome (`ok`, `error`, `denied` — the person
+declined — or `refused`), any error, and how long it took. It never holds the
+token or the tool's output. Rows are written by the system, so nobody can erase
+their own call; only superusers can read them, and they're deleted after 90
+days. **Recent calls** on each server's card shows its last 20.
+
+> The assistant doesn't use these servers yet — that, and OAuth sign-in (for
+> Google services), are coming next.
 
 ---
 

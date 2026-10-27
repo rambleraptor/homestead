@@ -24,3 +24,21 @@ export interface McpServerFormData {
   url: string;
   credential?: string;
 }
+
+export type McpCallOutcome = 'ok' | 'error' | 'denied' | 'refused';
+
+/** One logged call (`mcp-call`). */
+export interface McpCall {
+  id: string;
+  path: string;
+  server?: string;
+  server_name?: string;
+  tool: string;
+  caller?: string;
+  conversation?: string;
+  arguments?: string;
+  outcome: McpCallOutcome;
+  error?: string;
+  duration_ms?: number;
+  create_time: string;
+}

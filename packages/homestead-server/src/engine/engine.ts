@@ -22,10 +22,10 @@ import {
 import { OAuthRoutes, type OAuthConfig, type SessionIssuer } from './oauth';
 import { buildOpenApi } from './openapi';
 import { Registry } from './registry';
-import { authorizeRecordRead, matchResourcePath, notFoundText, routeDynamic } from './router';
+import { authorizeRecord, matchResourcePath, notFoundText, routeDynamic } from './router';
 import { originOf, runWithRequestContext } from './request-context';
 import { PermissionStore, permissionCacheTtlMs } from './permission-store';
-import { type Grant } from './permissions';
+import { type Grant, type Verb } from './permissions';
 import type { EnforceContext } from './enforce';
 import { collectionsWithVisibleRows } from './visible-rows';
 import { collectionAccess } from './collection-access';
@@ -297,9 +297,20 @@ export class Engine {
    * delete it must run before the row goes.
    */
   canRead(caller: User, resource: string, path: string): boolean {
+    return this.recordAllows(caller, resource, path, 'read');
+  }
+
+  /**
+   * Whether `caller`'s grants let them `verb` the record at `path` (a
+   * `resource`) — {@link canRead} for any verb. The grant question only: a
+   * resource's `superuser_write` still decides who may change the record
+   * itself. Server code uses it to gate what a record *confers* — reading an
+   * MCP server lets you use its look-up tools, writing it the rest.
+   */
+  recordAllows(caller: User, resource: string, path: string, verb: Verb): boolean {
     const segments = path.split('/').filter((s) => s.length > 0);
     if (this.accessCheck) {
-      const probe = new Request(`http://engine.local/${path}`, { method: 'GET' });
+      const probe = new Request(`http://engine.local/${path}`, { method: verb === 'read' ? 'GET' : 'PATCH' });
       if (this.accessCheck(probe, segments, caller)) return false;
     }
     if (resource === 'user') {
@@ -309,7 +320,7 @@ export class Engine {
     const match = matchResourcePath(this.registry, path);
     if (!match || match.resource.singular !== resource) return false;
     try {
-      authorizeRecordRead(this.registry, match, caller, this.enforceContext());
+      authorizeRecord(this.registry, match, caller, verb, this.enforceContext());
       return true;
     } catch (err) {
       if (err instanceof HttpError) return false;

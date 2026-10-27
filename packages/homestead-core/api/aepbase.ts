@@ -385,6 +385,8 @@ interface ListOptions {
    * sorts server-side, so callers no longer need to re-sort the result.
    */
   orderBy?: string;
+  /** Stop after this many records (the newest few, with `orderBy`). */
+  limit?: number;
 }
 
 interface ListResponse<T> {
@@ -408,7 +410,8 @@ interface ItemOptions {
  * in insertion order and the caller may sort the returned array itself.
  */
 export async function list<T>(plural: string, options: ListOptions = {}): Promise<T[]> {
-  const { filter, parent, maxPageSize = 100, orderBy } = options;
+  const { filter, parent, orderBy, limit } = options;
+  const maxPageSize = limit !== undefined ? Math.min(limit, options.maxPageSize ?? 100) : (options.maxPageSize ?? 100);
   const path = collectionPath(plural, parent);
   const out: T[] = [];
   let pageToken: string | undefined;
@@ -424,9 +427,9 @@ export async function list<T>(plural: string, options: ListOptions = {}): Promis
     });
     if (page.results) out.push(...page.results);
     pageToken = page.next_page_token || undefined;
-  } while (pageToken);
+  } while (pageToken && (limit === undefined || out.length < limit));
 
-  return out;
+  return limit === undefined ? out : out.slice(0, limit);
 }
 
 export async function get<T>(plural: string, id: string, options: ItemOptions = {}): Promise<T> {
