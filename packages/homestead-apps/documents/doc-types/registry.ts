@@ -7,7 +7,7 @@
  * share one access path and the backing store can change without touching them.
  */
 
-import type { DocType } from './docType';
+import { UNKNOWN_DOC_TYPE, UNKNOWN_FIELDS, type DocField, type DocType } from './docType';
 import { BUILTIN_DOC_TYPES } from './builtins';
 
 /** Every known doc type. */
@@ -18,4 +18,13 @@ export function getDocTypes(): DocType[] {
 /** Look up one doc type by its discriminator value. */
 export function getDocType(id: string): DocType | undefined {
   return BUILTIN_DOC_TYPES.find((t) => t.id === id);
+}
+
+/**
+ * The fields a metadata variant declares: a known type's own, the free-form
+ * facts for `unknown`, or undefined for an id that's since been removed.
+ */
+export function getDocTypeFields(id: string): Record<string, DocField> | undefined {
+  if (id === UNKNOWN_DOC_TYPE) return UNKNOWN_FIELDS;
+  return getDocType(id)?.fields;
 }

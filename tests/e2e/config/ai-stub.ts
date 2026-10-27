@@ -98,14 +98,18 @@ export const STUB_DOCUMENT_1099 = {
 };
 
 /**
- * A genuine "not a known type" read: low confidence, the unknown tag. Only
- * pass 1 runs (an unmatched document skips extraction), so this needs the
- * pass-1 keys alone.
+ * A genuine "not a known type" read: low confidence, the unknown tag. Like the
+ * 1099, one payload serves both passes: pass 1 keeps the first three keys, and
+ * the unmatched document's facts pass keeps `facts`.
  */
 export const STUB_DOCUMENT_UNKNOWN = {
   title: 'Customer letter',
   confidence: 0.15,
   doc_type: 'unknown',
+  facts: [
+    { label: 'Account Number', value: 'AC-20931' },
+    { label: 'Support Phone', value: '1-800-555-0142' },
+  ],
 };
 
 /**

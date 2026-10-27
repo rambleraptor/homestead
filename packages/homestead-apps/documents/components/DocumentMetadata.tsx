@@ -12,7 +12,7 @@
  */
 
 import { getDocType } from '../doc-types/registry';
-import { UNKNOWN_DOC_TYPE } from '../doc-types/docType';
+import { readFacts, UNKNOWN_DOC_TYPE } from '../doc-types/docType';
 import type { DocumentMetadata as Metadata } from '../types';
 
 /**
@@ -54,7 +54,8 @@ function formatValue(value: unknown): string {
 }
 
 export function DocumentMetadata({ metadata }: DocumentMetadataProps) {
-  if (!metadata || metadata.doc_type === UNKNOWN_DOC_TYPE) return null;
+  if (!metadata) return null;
+  if (metadata.doc_type === UNKNOWN_DOC_TYPE) return <DocumentFacts metadata={metadata} />;
 
   const docType = getDocType(metadata.doc_type);
   if (!docType) {
@@ -99,6 +100,31 @@ export function DocumentMetadata({ metadata }: DocumentMetadataProps) {
         >
           <dt className="text-xs text-text-muted">{row.label}</dt>
           <dd className="text-sm font-medium text-brand-navy">{formatValue(row.value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/**
+ * An unmatched document's free-form facts. Same layout as a type's fields, but
+ * the labels come from the document itself rather than a declaration.
+ */
+function DocumentFacts({ metadata }: { metadata: Metadata }) {
+  const facts = readFacts(metadata.facts);
+  if (!facts.length) return null;
+
+  return (
+    <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="document-facts">
+      {facts.map((fact, index) => (
+        <div
+          key={`${fact.label}-${index}`}
+          className="animate-field-rise"
+          style={rowStyle(index)}
+          data-testid="document-fact"
+        >
+          <dt className="text-xs text-text-muted">{fact.label}</dt>
+          <dd className="text-sm font-medium text-brand-navy">{fact.value}</dd>
         </div>
       ))}
     </dl>
