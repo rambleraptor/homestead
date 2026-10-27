@@ -9,6 +9,9 @@ with it. You have four ways in:
   data in plain language.
 - **[An MCP server](#connect-an-mcp-client)** — connect Claude or another MCP
   client to your instance.
+- **[Outside MCP servers](#connect-outside-services-mcp-servers)** — the other
+  direction: give the household assistant services like Home Assistant, on a
+  shared household account.
 - **[Agent skills](#teach-a-coding-agent-with-skills)** — drop-in skills that
   teach your coding agent to scaffold apps, edit your schema, and stand up an
   instance.
@@ -529,6 +532,39 @@ break it.
 see **no** `access-jwt` line at all for an attempt, the request never reached
 Homestead — the failure is upstream in Cloudflare/the client, not here. Return
 the level to `info` once you're done.
+
+---
+
+## Connect outside services (MCP servers)
+
+The other direction: Homestead as an MCP *client*, so the household assistant
+can use an outside service — Home Assistant, a calendar — on one shared
+household account that members never hold the keys to. Superusers set it up
+under **Superuser → MCP servers**:
+
+1. **Store the token** under **Superuser → Credentials** (it's write-only: you
+   can replace it, never read it back).
+2. **Add the server**: a name, its Streamable HTTP URL, and that credential.
+   Home-network addresses (`homeassistant.local`, `192.168.…`, a tailnet) are
+   fine; loopback and link-local addresses — Homestead itself, the cloud
+   metadata service — are refused. To reach a server on the same box, list its
+   host in `HOMESTEAD_MCP_TRUSTED_HOSTS` (comma-separated, `host` or
+   `host:port`).
+3. **Check tools.** Homestead connects and lists the server's tools with their
+   descriptions. Every tool starts **off** — including any the server adds
+   later — because a tool's description goes into the assistant's prompt, so
+   read it before turning it on.
+4. **Set each tool's policy**: *Use freely* (look-ups), *Ask first* (anything
+   that changes something — an approval card every time), or *Allow without
+   asking*.
+5. **Share the server** with the groups who may use it. Until it's shared,
+   nobody but superusers can see it.
+
+The token is attached only inside Homestead's server, as a bearer header on
+requests to that server; it never reaches the browser, the assistant or a log.
+
+> The assistant doesn't use these servers yet — that, the per-call log, and
+> OAuth sign-in (for Google services) are coming next.
 
 ---
 

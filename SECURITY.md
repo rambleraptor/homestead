@@ -56,6 +56,16 @@ this feature is not that — it does not implement end-to-end encryption.
   cache. Server code reads one with `readCredential(id)`
   (`homestead-core/server/credentials.ts`).
 
+  **MCP servers** (Superuser → MCP servers) reference a credential for their
+  bearer token; it's read in-process and attached only in
+  `homestead-core/server/mcp/connect.ts`. A server URL may be on the home
+  network but not at loopback, link-local (the cloud metadata service) or
+  reserved addresses; every request the MCP client makes is re-checked and
+  redirects are refused (`server/net/mcp-url.ts`; `HOMESTEAD_MCP_TRUSTED_HOSTS`
+  exempts named hosts). New tools start off, so a description reaches a prompt
+  only after a superuser has read it, and a server is usable only by groups
+  it's shared with.
+
 Other structured fields (names, amounts, titles) are **not** encrypted unless
 their resource declares them so, and neither are the account rows (`_users`
 password hashes, `_tokens`). Treat a data directory or a backup as sensitive
