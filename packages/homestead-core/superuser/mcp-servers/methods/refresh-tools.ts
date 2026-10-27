@@ -32,6 +32,15 @@ const refreshTools: CustomMethodHandler = async ({ auth, id }) => {
     if (err instanceof HomesteadError && err.code === 404) return error(404, `no MCP server "${id}"`);
     throw err;
   }
+  return Response.json(await checkServer(auth.token, server));
+};
+
+/**
+ * Connect to `server`, fetch its tools and instructions, and save them — or
+ * save it as `failing` with the reason. Returns the updated record. Also run
+ * after an OAuth sign-in (`./finish-connect`).
+ */
+export async function checkServer(token: string, server: McpServer): Promise<McpServer> {
   const checkedAt = new Date().toISOString();
   let patch: Record<string, unknown>;
   try {
@@ -49,7 +58,7 @@ const refreshTools: CustomMethodHandler = async ({ auth, id }) => {
   } catch (err) {
     patch = { status: 'failing', last_error: describeConnectionError(err), last_checked_at: checkedAt };
   }
-  return Response.json(await servers.record(id).update(patch));
-};
+  return serverClient(token).collection<McpServer>(MCP_SERVERS).record(server.id).update(patch);
+}
 
 export default refreshTools;

@@ -708,6 +708,19 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    `needsApproval`; a declined or unanswered approval is logged as `denied`
    from `turns.ts`.
    The VM tier's `vm/mcp-stub.ts` is an in-process MCP server to call.
+   A server can sign in with OAuth: its credential is `kind: 'oauth'`
+   (`oauth_client_id`/`oauth_client_secret` for a pasted client, `oauth_scope`,
+   and server-written `oauth_state` — tokens, a registered client, the
+   sign-in server — plus `oauth_resource`, the only address its tokens go to).
+   `server/mcp/oauth.ts` is `@ai-sdk/mcp`'s `OAuthClientProvider` over that
+   credential: `mcp-servers/{id}:connect` returns the provider's sign-in URL
+   (state + PKCE verifier held in memory, single-use, 10 min, bound to the
+   superuser), the provider returns to the SPA's
+   `/superuser/mcp-servers/oauth-callback`, which posts `:finish-connect`;
+   `connect.ts` hands `oauthProviderFor` to the transport, refreshing expiring
+   tokens one at a time per credential and never starting a sign-in itself.
+   `vm/oauth-mcp-stub.ts` is an OAuth-protected MCP server with its own
+   authorization server, for specs.
 
 ### Resource references
 

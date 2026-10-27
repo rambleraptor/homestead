@@ -3,15 +3,17 @@
  *
  * One place attaches a server's token: it's read here, in-process, from the
  * credential the server references (`readCredential`), sent as a bearer header,
- * and goes nowhere else. Every request the client makes is address-checked
+ * and goes nowhere else — or, for an OAuth credential, handed to the client as
+ * a provider that keeps it fresh (`./oauth`). Every request the client makes is address-checked
  * (`../net/mcp-url`), redirects are refused, and each step is bounded in time.
  * The connection is opened for one piece of work and closed after it.
  */
 
-import { createMCPClient, type MCPClient } from '@ai-sdk/mcp';
+import { createMCPClient, type MCPClient, type OAuthClientProvider } from '@ai-sdk/mcp';
 import { referenceId } from '../../resources/references';
 import { readCredential } from '../credentials';
 import { assertMcpUrl, mcpFetch } from '../net/mcp-url';
+import { loadOAuthCredential, oauthProviderFor } from './oauth';
 import type { ListedTool } from '../../superuser/mcp-servers/tools';
 
 /** Bounds each step: connecting, then the work done over the connection. */
@@ -46,13 +48,28 @@ async function bounded<T>(work: Promise<T>, what: string, ms: number): Promise<T
   }
 }
 
-function bearerHeaders(server: McpServerTarget): Record<string, string> | undefined {
-  if (!server.credential) return undefined;
+/**
+ * How a connection authenticates: a token credential's value as a bearer
+ * header, or an OAuth credential's provider (`./oauth`), which attaches fresh
+ * tokens — only to the address it was connected for.
+ */
+async function authFor(
+  server: McpServerTarget,
+): Promise<{ headers?: Record<string, string>; authProvider?: OAuthClientProvider }> {
+  if (!server.credential) return {};
+  const credential = await loadOAuthCredential(server.credential);
+  if (credential?.kind === 'oauth') {
+    try {
+      return { authProvider: await oauthProviderFor(credential, server.url) };
+    } catch (err) {
+      throw new McpConnectionError(err instanceof Error ? err.message : String(err));
+    }
+  }
   const token = readCredential(referenceId(server.credential, 'credentials'));
   if (!token) {
     throw new McpConnectionError('its credential has no value — set one in Credentials');
   }
-  return { Authorization: `Bearer ${token}` };
+  return { headers: { Authorization: `Bearer ${token}` } };
 }
 
 /** Open a connection to `server`, run `use` over it, and close it. */
@@ -62,13 +79,15 @@ export async function withMcpServer<T>(
   timeoutMs = STEP_TIMEOUT_MS,
 ): Promise<T> {
   await assertMcpUrl(server.url);
+  const { headers, authProvider } = await authFor(server);
   const client = await bounded(
     createMCPClient({
       clientName: 'homestead',
       transport: {
         type: 'http',
         url: server.url,
-        headers: bearerHeaders(server),
+        headers,
+        authProvider,
         fetch: mcpFetch(),
         redirect: 'error',
       },

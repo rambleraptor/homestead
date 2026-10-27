@@ -6,7 +6,14 @@ export interface Credential {
   path: string;
   name: string;
   description?: string;
+  kind?: 'token' | 'oauth';
   value: SecretDescriptor;
+  oauth_client_id?: string;
+  oauth_client_secret?: SecretDescriptor;
+  oauth_scope?: string;
+  oauth_resource?: string;
+  oauth_state?: SecretDescriptor;
+  oauth_connected_at?: string;
   created_by?: string;
   create_time: string;
   update_time: string;

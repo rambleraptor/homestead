@@ -19,6 +19,15 @@ const credentials: Credential[] = [
     update_time: '2026-10-26T14:02:11Z',
   },
   {
+    id: 'c3',
+    path: 'credentials/c3',
+    name: 'Calendar sign-in',
+    kind: 'oauth',
+    value: { $secret: true, set: false },
+    create_time: '2026-10-26T14:02:11Z',
+    update_time: '2026-10-26T14:02:11Z',
+  },
+  {
     id: 'c2',
     path: 'credentials/c2',
     name: 'Old token',
@@ -74,6 +83,13 @@ describe('CredentialsHome', () => {
     render(<CredentialsHome />);
     expect(screen.getByTestId('credentials-no-key')).toHaveTextContent('homestead key generate');
     expect(screen.getByTestId('add-credential-button')).toBeDisabled();
+  });
+
+  it('shows an OAuth sign-in as one, managed from its server rather than edited here', () => {
+    render(<CredentialsHome />);
+    expect(screen.getByTestId('credential-value-c3')).toHaveTextContent('OAuth sign-in · not connected');
+    expect(screen.queryByTestId('edit-credential-c3')).not.toBeInTheDocument();
+    expect(screen.getByTestId('delete-credential-c3')).toBeInTheDocument();
   });
 
   it('says which MCP servers use a credential', () => {

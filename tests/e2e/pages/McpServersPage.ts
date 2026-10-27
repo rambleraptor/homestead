@@ -70,4 +70,30 @@ export class McpServersPage {
   async setPolicy(id: string, tool: string, policy: 'off' | 'read' | 'ask' | 'allow') {
     await this.toolPolicy(id, tool).selectOption(policy);
   }
+
+  /** A server's OAuth sign-in status: "Signed in · since …", "Not connected", "Reconnect needed". */
+  signInStatus(id: string): Locator {
+    return this.driver.getByTestId(`sign-in-status-${id}`);
+  }
+
+  /** Switch a server to OAuth from its card, with an optional pasted client, and start the sign-in. */
+  async signInWithOAuth(id: string, client: { id?: string; secret?: string; scope?: string } = {}) {
+    await this.driver.getByTestId(`use-oauth-${id}`).click();
+    if (client.id) await this.driver.getByTestId('oauth-client-id').fill(client.id);
+    if (client.secret) await this.driver.getByTestId('oauth-client-secret').fill(client.secret);
+    if (client.scope) await this.driver.getByTestId('oauth-scope').fill(client.scope);
+    await this.driver.getByTestId('use-oauth-submit').click();
+  }
+
+  async connect(id: string) {
+    await this.driver.getByTestId(`connect-${id}`).click();
+  }
+
+  async disconnect(id: string) {
+    await this.driver.getByTestId(`disconnect-${id}`).click();
+  }
+
+  get callbackError(): Locator {
+    return this.driver.getByTestId('oauth-callback-error');
+  }
 }
