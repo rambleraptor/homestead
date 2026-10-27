@@ -85,6 +85,9 @@ export function householdFilterFor(def: ResourceDefinition): string | undefined 
       return OWN_ROWS_FILTER;
     case 'per-record':
       return `${access.field} == '${access.sharedValue}'`;
+    case 'superusers':
+      // Never reached: householdCollections leaves these out entirely.
+      return undefined;
   }
 }
 
@@ -93,7 +96,8 @@ export function householdFilterFor(def: ResourceDefinition): string | undefined 
  * order.
  *
  * Excluded: the **self-governing** permission resources (above), which the
- * manage-on-target rule owns.
+ * manage-on-target rule owns, and collections declared `access: { model:
+ * 'superusers' }`, which no household role reaches.
  *
  * Everything else a household declares is covered — including child collections
  * like `transaction` or `perk`, which need their own grant because a grant
@@ -119,6 +123,8 @@ export function householdCollections(
   const names = new Set<string>(ENGINE_MANAGED_SHARED);
   for (const def of defs) {
     if (excluded.has(def.singular)) continue;
+    // Superusers-only collections get no household grant: no grant, no access.
+    if (def.access?.model === 'superusers') continue;
     names.add(def.singular);
     filters.set(def.singular, householdFilterFor(def));
   }

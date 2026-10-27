@@ -101,6 +101,15 @@ describe('householdCollections', () => {
     });
   });
 
+  it('gives a superusers-only collection no household grant at all', () => {
+    const cols = householdCollections([
+      base({ singular: 'credential', plural: 'credentials', access: { model: 'superusers' } }),
+      base({ singular: 'event', plural: 'events' }),
+    ]);
+    expect(find(cols, 'credential')).toBeUndefined();
+    expect(find(cols, 'event')).toEqual({ resource_type: 'event' });
+  });
+
   it('names no app resource of its own — scoping comes only from the declaration', () => {
     // The regression guard for deleting PRIVATE_COLLECTIONS: a resource that
     // used to be hardcoded as private is now shared unless it says otherwise.
