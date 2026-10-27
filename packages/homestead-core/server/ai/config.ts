@@ -14,14 +14,43 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type { AiConfig, EmbeddingConfig } from '../../apps/config';
+import { resolveCredential } from '../credentials';
+
+/**
+ * The credential slots the AI keys fall back to (`apps/credential-slots.ts`):
+ * when the config gives no key, `AI_API_KEY` / `EMBEDDING_API_KEY`, else the
+ * key a superuser stored under Superuser → Credentials.
+ */
+export const AI_KEY_SLOT = { id: 'ai-api-key', env: 'AI_API_KEY' } as const;
+export const EMBEDDING_KEY_SLOT = { id: 'embedding-api-key', env: 'EMBEDDING_API_KEY' } as const;
+
+/** Where a key comes from: the config itself, a slot's env var or stored value. */
+export type KeySource = 'config' | 'env' | 'stored';
+
+/** A key from the config, else from its slot. Read on every use, so a stored key works at once. */
+function resolveKey(
+  configured: string | undefined,
+  slot: { id: string; env: string },
+): { apiKey: string; source: KeySource } | null {
+  const fromConfig = configured?.trim();
+  if (fromConfig) return { apiKey: fromConfig, source: 'config' };
+  const resolved = resolveCredential(slot);
+  return resolved ? { apiKey: resolved.value, source: resolved.source } : null;
+}
+
+/** The AI key and where it comes from, or null when there's none (or no `ai` block). */
+export function aiKey(): { apiKey: string; source: KeySource } | null {
+  return current ? resolveKey(current.auth?.apiKey, AI_KEY_SLOT) : null;
+}
+
+/** The embedding key and where it comes from, or null. */
+export function embeddingKey(): { apiKey: string; source: KeySource } | null {
+  return currentEmbedding ? resolveKey(currentEmbedding.auth?.apiKey, EMBEDDING_KEY_SLOT) : null;
+}
 
 let current: AiConfig | null = null;
 let currentEmbedding: EmbeddingConfig | null = null;
 
-/** True when `cfg` carries a usable, non-empty API key. */
-function hasApiKey(cfg: AiConfig | null): cfg is AiConfig {
-  return cfg !== null && cfg.auth.apiKey.trim() !== '';
-}
 
 /**
  * Install the instance's AI config. Called once by the server at startup with
@@ -38,14 +67,14 @@ export function getAiConfig(): AiConfig | null {
 }
 
 /**
- * True when an AI provider is configured for this instance. Requires a
- * non-empty `auth.apiKey`: an `ai` block whose key is blank (e.g. the env var
- * it reads in homestead.config.ts is unset) counts as unconfigured, so callers
- * return a clean 503 instead of letting the provider SDK fall back to its own
- * environment variable (`GOOGLE_GENERATIVE_AI_API_KEY`, `OPENAI_API_KEY`, …).
+ * True when an AI provider is configured for this instance: an `ai` block and
+ * a key — the block's own `auth.apiKey`, else `AI_API_KEY`, else the key stored
+ * in Credentials. With none, callers return a clean 503 instead of letting the
+ * provider SDK fall back to its own environment variable
+ * (`GOOGLE_GENERATIVE_AI_API_KEY`, `OPENAI_API_KEY`, …).
  */
 export function isAiConfigured(): boolean {
-  return hasApiKey(current);
+  return aiKey() !== null;
 }
 
 /** Thrown by {@link getAiModel} when no AI provider is configured. */
@@ -63,9 +92,10 @@ export class AiNotConfiguredError extends Error {
  */
 export function getAiModel(): LanguageModel {
   const cfg = current;
-  if (!hasApiKey(cfg)) throw new AiNotConfiguredError();
+  const key = aiKey();
+  if (!cfg || !key) throw new AiNotConfiguredError();
 
-  const { apiKey } = cfg.auth;
+  const { apiKey } = key;
   // `baseURL: undefined` is the SDKs' own default, so passing it through
   // unconditionally keeps the cloud endpoints intact.
   const { baseURL } = cfg;
@@ -83,10 +113,6 @@ export function getAiModel(): LanguageModel {
 // Embedding provider — separate block; Anthropic has no embedding model.
 // ----------------------------------------------------------------------------
 
-/** True when `cfg` carries a usable, non-empty API key. */
-function hasEmbeddingKey(cfg: EmbeddingConfig | null): cfg is EmbeddingConfig {
-  return cfg !== null && cfg.auth.apiKey.trim() !== '';
-}
 
 /**
  * Install the instance's embedding config. Called once by the server at startup
@@ -108,7 +134,7 @@ export function getEmbeddingConfig(): EmbeddingConfig | null {
  * (extraction still needs the language model).
  */
 export function isEmbeddingConfigured(): boolean {
-  return hasEmbeddingKey(currentEmbedding);
+  return embeddingKey() !== null;
 }
 
 /** Thrown by {@link getEmbeddingModel} when no embedding provider is configured. */
@@ -127,9 +153,10 @@ export class EmbeddingNotConfiguredError extends Error {
  */
 export function getEmbeddingModel(modelOverride?: string): EmbeddingModel {
   const cfg = currentEmbedding;
-  if (!hasEmbeddingKey(cfg)) throw new EmbeddingNotConfiguredError();
+  const key = embeddingKey();
+  if (!cfg || !key) throw new EmbeddingNotConfiguredError();
 
-  const { apiKey } = cfg.auth;
+  const { apiKey } = key;
   const { baseURL } = cfg;
   const model = modelOverride || cfg.model;
   switch (cfg.provider) {
@@ -154,6 +181,6 @@ export function getEmbeddingModel(modelOverride?: string): EmbeddingModel {
  */
 export function getEmbeddingModelId(modelOverride?: string): string {
   const cfg = currentEmbedding;
-  if (!hasEmbeddingKey(cfg)) throw new EmbeddingNotConfiguredError();
+  if (!cfg || !embeddingKey()) throw new EmbeddingNotConfiguredError();
   return `${cfg.provider}:${modelOverride || cfg.model}`;
 }

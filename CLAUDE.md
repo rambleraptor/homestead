@@ -676,7 +676,16 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    (no household role covers it), superuser-only writes, out of the model tools;
    its writes bypass the persisted offline queue so a typed value never lands in
    browser storage. Server code reads one with `readCredential(id)`
-   (`homestead-core/server/credentials.ts`). Outside MCP servers the assistant
+   (`homestead-core/server/credentials.ts`). A key Homestead needs is a
+   **credential slot**: declare it with `credentials: [{ id, label, env?,
+   usedBy?, help? }]` on the `AppConfig` (`apps/credential-slots.ts`) and read
+   it with `resolveCredential(slot)` — the env var wins, else the credential
+   stored under the slot's id. Superuser → Credentials lists every slot under
+   "Homestead needs" (`GET /api/credential-slots`,
+   `server/credential-slots.ts`). Core's are the AI and embedding keys
+   (`AI_KEY_SLOT`, `EMBEDDING_KEY_SLOT` in `server/ai/config.ts`): an `ai`
+   block's own `auth.apiKey` wins, then `AI_API_KEY`, then the stored key, read
+   on every use, so setting one needs no restart. Outside MCP servers the assistant
    may use are `mcp-server` records (Superuser → MCP servers,
    `homestead-core/superuser/mcp-servers/`), same superusers model, usable only
    by groups they're shared with; each references a credential, and

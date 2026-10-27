@@ -54,7 +54,11 @@ this feature is not that — it does not implement end-to-end encryption.
   shows "Set · …3f9a · date", never the value. The browser never stores a typed
   value either — credential writes skip the offline queue and the optimistic
   cache. Server code reads one with `readCredential(id)`
-  (`homestead-core/server/credentials.ts`).
+  (`homestead-core/server/credentials.ts`). The keys Homestead itself needs
+  (the AI and embedding keys, and any an app declares) are *credential slots*:
+  stored under the slot's id, overridden by an environment variable, and read
+  with `resolveCredential`. `GET /api/credential-slots` (superusers only) says
+  where each comes from — config, env var, stored, or missing — never a value.
 
   **MCP servers** (Superuser → MCP servers) reference a credential for their
   bearer token; it's read in-process and attached only in

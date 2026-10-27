@@ -27,6 +27,7 @@ export async function runDoctor(opts: DoctorOptions): Promise<Check[]> {
   checks.push(projectCheck(opts.projectDir));
   checks.push(depsCheck(opts.projectDir));
   checks.push(masterKeyCheck(opts.projectDir));
+  checks.push(aiKeyCheck(opts.projectDir));
   return checks;
 }
 
@@ -155,6 +156,44 @@ function encryptedFieldsOf(dir: string): string[] | null {
     if (result.error || result.status !== 0) return null;
     const parsed = JSON.parse(result.stdout) as { fields?: unknown };
     return Array.isArray(parsed.fields) ? parsed.fields.filter((f): f is string => typeof f === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where the AI key comes from: `AI_API_KEY`, else the key stored under
+ * Superuser → Credentials. Neither is a warning, not a failure — AI is
+ * optional, and a project's config may carry its own `ai.auth.apiKey`.
+ */
+function aiKeyCheck(dir: string): Check {
+  if (process.env.AI_API_KEY?.trim()) return { name: 'ai key', status: 'ok', detail: 'from AI_API_KEY' };
+  if (storedCredentialsOf(dir, ['ai-api-key'])?.includes('ai-api-key')) {
+    return { name: 'ai key', status: 'ok', detail: 'stored in Superuser → Credentials' };
+  }
+  return {
+    name: 'ai key',
+    status: 'warn',
+    detail:
+      'no AI key in AI_API_KEY or Credentials — the assistant stays off until one is set under ' +
+      'Superuser → Credentials (ignore this if homestead.config.ts sets ai.auth.apiKey itself)',
+  };
+}
+
+/**
+ * Which of `ids` have a stored credential value, read through the project's
+ * homestead-server (`tools/stored-credentials.ts`) — whether one is there,
+ * never the value. Null when it can't be read.
+ */
+function storedCredentialsOf(dir: string, ids: string[]): string[] | null {
+  try {
+    const { dataDir } = loadProject(dir);
+    const tool = resolveServerModule(dir, 'tools', 'stored-credentials.ts');
+    const cmd = findRuntime(dir).run(tool, ['--db', join(dataDir, 'aepbase.db'), '--ids', ids.join(',')]);
+    const result = spawnSync(cmd[0]!, cmd.slice(1), { cwd: dir, encoding: 'utf8' });
+    if (result.error || result.status !== 0) return null;
+    const parsed = JSON.parse(result.stdout) as { stored?: unknown };
+    return Array.isArray(parsed.stored) ? parsed.stored.filter((id): id is string => typeof id === 'string') : null;
   } catch {
     return null;
   }

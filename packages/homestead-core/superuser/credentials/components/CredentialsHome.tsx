@@ -17,16 +17,22 @@ import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageH
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
 import { useSecurityStatus } from '../../homestead-information/hooks/useSecurityStatus';
+import { useMcpServers } from '../../mcp-servers/hooks/useMcpServers';
 import {
   useCreateCredential,
+  useCredentialSlots,
   useCredentials,
   useDeleteCredential,
+  useSetSlotCredential,
   useUpdateCredential,
 } from '../hooks/useCredentials';
 import { CredentialForm } from './CredentialForm';
-import type { Credential, CredentialFormData } from '../types';
+import { CredentialSlots } from './CredentialSlots';
+import { SlotValueForm } from './SlotValueForm';
+import type { Credential, CredentialFormData, CredentialSlotStatus } from '../types';
 
 type Editing = { kind: 'new' } | { kind: 'edit'; credential: Credential } | null;
+type Deleting = { id: string; name: string; slot: boolean } | null;
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -43,9 +49,13 @@ function valueSummary(credential: Credential): string {
 
 export function CredentialsHome() {
   const [editing, setEditing] = useState<Editing>(null);
-  const [deleting, setDeleting] = useState<Credential | null>(null);
+  const [deleting, setDeleting] = useState<Deleting>(null);
+  const [settingSlot, setSettingSlot] = useState<CredentialSlotStatus | null>(null);
 
   const { data: credentials, isLoading, isError, error } = useCredentials();
+  const slots = useCredentialSlots();
+  const { data: mcpServers } = useMcpServers();
+  const setSlot = useSetSlotCredential();
   const security = useSecurityStatus();
   const createCredential = useCreateCredential();
   const updateCredential = useUpdateCredential();
@@ -78,6 +88,29 @@ export function CredentialsHome() {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
+
+  const handleSetSlot = async (value: string) => {
+    if (!settingSlot) return;
+    try {
+      await setSlot.mutateAsync({
+        slot: settingSlot,
+        value,
+        exists: (credentials ?? []).some((c) => c.id === settingSlot.id),
+      });
+      setSettingSlot(null);
+    } catch (err) {
+      // Error surfaced by the global mutation error toast (queryClient.ts).
+    }
+  };
+
+  // A slot's value lives in the credential named by its id; the rest are free-form.
+  const slotIds = new Set((slots.data ?? []).map((slot) => slot.id));
+  const freeForm = (credentials ?? []).filter((c) => !slotIds.has(c.id));
+  /** The MCP servers that use a credential, by name. */
+  const usedBy = (credential: Credential) =>
+    (mcpServers ?? [])
+      .filter((server) => server.credential === credential.path || server.credential === credential.id)
+      .map((server) => server.name);
 
   const handleDelete = async () => {
     if (!deleting) return;
@@ -124,23 +157,36 @@ export function CredentialsHome() {
         </div>
       )}
 
+      <CredentialSlots
+        slots={slots.data}
+        isLoading={slots.isLoading}
+        error={slots.error}
+        disabled={noKey}
+        onSet={setSettingSlot}
+        onClear={(slot) => setDeleting({ id: slot.id, name: slot.label, slot: true })}
+      />
+
+      {(slots.data?.length ?? 0) > 0 && (
+        <h2 className="text-lg font-semibold text-gray-900">Other credentials</h2>
+      )}
+
       {isError ? (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           Couldn’t load credentials: {getAepErrorMessage(error)}
         </div>
-      ) : !credentials?.length ? (
+      ) : !freeForm.length ? (
         <Card>
           <div className="py-10 text-center" data-testid="credentials-empty">
             <KeyRound className="mx-auto mb-3 h-12 w-12 text-gray-300" />
             <p className="text-gray-600">No credentials yet</p>
             <p className="mt-1 text-sm text-gray-500">
-              Add the API keys and tokens your apps and integrations need.
+              Add the tokens other services need, such as an MCP server’s.
             </p>
           </div>
         </Card>
       ) : (
         <ul className="space-y-3" data-testid="credentials-list">
-          {credentials.map((credential) => (
+          {freeForm.map((credential) => (
             <li key={credential.id}>
               <Card>
                 <div className="flex items-start justify-between gap-4" data-testid={`credential-${credential.id}`}>
@@ -155,6 +201,11 @@ export function CredentialsHome() {
                     >
                       {valueSummary(credential)}
                     </p>
+                    {usedBy(credential).length > 0 && (
+                      <p className="mt-1 text-xs text-gray-500" data-testid={`credential-used-by-${credential.id}`}>
+                        Used by {usedBy(credential).map((name) => `${name} (MCP server)`).join(', ')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-shrink-0 gap-2">
                     <Button
@@ -169,7 +220,7 @@ export function CredentialsHome() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => setDeleting(credential)}
+                      onClick={() => setDeleting({ id: credential.id, name: credential.name, slot: false })}
                       aria-label={`Delete ${credential.name}`}
                       data-testid={`delete-credential-${credential.id}`}
                     >
@@ -198,13 +249,32 @@ export function CredentialsHome() {
         )}
       </Modal>
 
+      <Modal
+        isOpen={settingSlot !== null}
+        onClose={() => setSettingSlot(null)}
+        title={settingSlot?.stored ? `Replace ${settingSlot.label}` : `Set ${settingSlot?.label ?? ''}`}
+      >
+        {settingSlot && (
+          <SlotValueForm
+            slot={settingSlot}
+            onSubmit={handleSetSlot}
+            onCancel={() => setSettingSlot(null)}
+            isSubmitting={setSlot.isPending}
+          />
+        )}
+      </Modal>
+
       <ConfirmDialog
         isOpen={deleting !== null}
         onClose={() => setDeleting(null)}
         onConfirm={handleDelete}
-        title="Delete credential"
-        message={`Delete “${deleting?.name ?? ''}”? Anything that uses it will stop working. This can’t be undone.`}
-        confirmLabel="Delete"
+        title={deleting?.slot ? 'Clear credential' : 'Delete credential'}
+        message={
+          deleting?.slot
+            ? `Clear the stored ${deleting.name}? What uses it stops working until it's set again.`
+            : `Delete “${deleting?.name ?? ''}”? Anything that uses it will stop working. This can’t be undone.`
+        }
+        confirmLabel={deleting?.slot ? 'Clear' : 'Delete'}
         variant="danger"
         isLoading={deleteCredential.isPending}
       />

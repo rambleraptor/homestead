@@ -200,7 +200,7 @@ export function AgenticHome({ conversationId }: AgenticHomeProps) {
       {withAssistant ? (
         <HomeThread conversationId={conversationId} greeting={greeting} />
       ) : assistant !== undefined ? (
-        <AssistantUnavailable reason={assistant} greeting={greeting} />
+        <AssistantUnavailable reason={assistant} greeting={greeting} isSuperuser={user?.type === 'superuser'} />
       ) : (
         <div className="flex-1" />
       )}
@@ -241,9 +241,12 @@ const UNAVAILABLE: Record<Exclude<AssistantAvailability, 'available'>, string> =
 function AssistantUnavailable({
   reason,
   greeting,
+  isSuperuser,
 }: {
   reason: Exclude<AssistantAvailability, 'available'>;
   greeting: string;
+  /** Superusers can fix it: they get a way to set the key. */
+  isSuperuser: boolean;
 }) {
   return (
     <div
@@ -254,6 +257,11 @@ function AssistantUnavailable({
       <MessageCircleOff className="size-10 text-muted-foreground" aria-hidden />
       <h2 className="font-medium text-sm">{greeting}</h2>
       <p className="max-w-sm text-muted-foreground text-sm">{UNAVAILABLE[reason]}</p>
+      {reason === 'not-configured' && isSuperuser && (
+        <Button asChild size="sm" variant="outline" data-testid="home-set-ai-key">
+          <Link to="/superuser/credentials">Set the AI key</Link>
+        </Button>
+      )}
     </div>
   );
 }

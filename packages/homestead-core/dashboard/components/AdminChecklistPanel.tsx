@@ -56,9 +56,7 @@ export function AdminChecklistPanel() {
         // Once it's on, the assistant is right here on the home.
         ...(aiConfigured
           ? {}
-          : {
-              hint: 'Add an `ai` block to homestead.config.ts (and an API key), then restart.',
-            }),
+          : { to: '/superuser/credentials', linkLabel: 'Set the AI key' }),
       },
     ],
     [users, aiConfigured],

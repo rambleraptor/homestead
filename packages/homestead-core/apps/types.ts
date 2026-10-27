@@ -12,11 +12,13 @@ import type { ResourceDefinition } from '../resources/types';
 import type { CronHook } from './cron';
 import type { Migration } from './migrations';
 import type { ResourceSync } from './sync';
+import type { CredentialSlot } from './credential-slots';
 import type { HouseholdMember } from '../household/types';
 
 export type { CronContext, CronHandler, CronHook } from './cron';
 export type { MigrationContext, MigrationHandler, Migration } from './migrations';
 export type { SyncContext, SyncHandler, SyncEvent, ResourceSync } from './sync';
+export type { CredentialSlot } from './credential-slots';
 
 /**
  * A lazily-loaded React component. The thunk resolves to either a module
@@ -405,6 +407,15 @@ export interface AppConfig {
    * `getAllMigrations()`.
    */
   migrations?: Migration[];
+
+  /**
+   * Optional credentials this app needs (see {@link CredentialSlot}): API keys
+   * or tokens it reads with `resolveCredential`. Each shows on Superuser →
+   * Credentials under "Homestead needs", with its environment variable and
+   * whether it's set, so a superuser can set it without knowing its name.
+   * Aggregated across apps (and nested children) via `getAllCredentialSlots()`.
+   */
+  credentials?: CredentialSlot[];
 
   /**
    * Optional resource syncs this app declares (see {@link ResourceSync}). Each

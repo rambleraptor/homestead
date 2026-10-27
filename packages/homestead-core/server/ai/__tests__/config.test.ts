@@ -3,7 +3,7 @@
  * a provider model only builds a spec object.
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import {
   setAiConfig,
   getAiConfig,
@@ -15,7 +15,10 @@ import {
   isEmbeddingConfigured,
   getEmbeddingModel,
   EmbeddingNotConfiguredError,
+  aiKey,
+  embeddingKey,
 } from '../config';
+import { setSecretReader } from '../../secrets';
 import type { AiProvider, EmbeddingProvider } from '../../../apps/config';
 
 afterEach(() => {
@@ -94,5 +97,69 @@ describe('embedding config', () => {
     setEmbeddingConfig({ provider: 'openai', model: 'text-embedding-3-small', auth: { apiKey: '  ' } });
     expect(isEmbeddingConfigured()).toBe(false);
     expect(() => getEmbeddingModel()).toThrow(EmbeddingNotConfiguredError);
+  });
+});
+
+describe('keys from credential slots', () => {
+  const realAi = process.env.AI_API_KEY;
+  const realEmbedding = process.env.EMBEDDING_API_KEY;
+  const stored = new Map<string, string>();
+
+  beforeEach(() => {
+    delete process.env.AI_API_KEY;
+    delete process.env.EMBEDDING_API_KEY;
+    stored.clear();
+    setSecretReader((resource, path, field) =>
+      resource === 'credential' && field === 'value' ? (stored.get(path) ?? null) : null,
+    );
+  });
+
+  afterEach(() => {
+    setSecretReader(null);
+    if (realAi === undefined) delete process.env.AI_API_KEY;
+    else process.env.AI_API_KEY = realAi;
+    if (realEmbedding === undefined) delete process.env.EMBEDDING_API_KEY;
+    else process.env.EMBEDDING_API_KEY = realEmbedding;
+  });
+
+  it('with no key in the config, takes the stored one, read on each use', () => {
+    setAiConfig({ provider: 'google', model: 'gemini-2.5-flash' });
+    expect(isAiConfigured()).toBe(false);
+    stored.set('credentials/ai-api-key', 'stored-key');
+    expect(aiKey()).toEqual({ apiKey: 'stored-key', source: 'stored' });
+    expect(isAiConfigured()).toBe(true);
+    expect(getAiModel()).toBeDefined();
+  });
+
+  it('AI_API_KEY wins over the stored key, and the config’s own key over both', () => {
+    stored.set('credentials/ai-api-key', 'stored-key');
+    process.env.AI_API_KEY = 'env-key';
+    setAiConfig({ provider: 'google', model: 'gemini-2.5-flash', auth: { apiKey: '  ' } });
+    expect(aiKey()).toEqual({ apiKey: 'env-key', source: 'env' });
+    setAiConfig({ provider: 'google', model: 'gemini-2.5-flash', auth: { apiKey: 'config-key' } });
+    expect(aiKey()).toEqual({ apiKey: 'config-key', source: 'config' });
+  });
+
+  it('no `ai` block means no AI, whatever is stored', () => {
+    stored.set('credentials/ai-api-key', 'stored-key');
+    setAiConfig(null);
+    expect(isAiConfigured()).toBe(false);
+  });
+
+  it('a stored key that can’t be read counts as missing', () => {
+    setSecretReader(() => {
+      throw new Error('no master key');
+    });
+    setAiConfig({ provider: 'google', model: 'gemini-2.5-flash' });
+    expect(isAiConfigured()).toBe(false);
+  });
+
+  it('embeddings take EMBEDDING_API_KEY, else their own stored key', () => {
+    setEmbeddingConfig({ provider: 'openai', model: 'text-embedding-3-small' });
+    stored.set('credentials/embedding-api-key', 'stored-embed');
+    expect(embeddingKey()).toEqual({ apiKey: 'stored-embed', source: 'stored' });
+    process.env.EMBEDDING_API_KEY = 'env-embed';
+    expect(embeddingKey()).toEqual({ apiKey: 'env-embed', source: 'env' });
+    expect(isEmbeddingConfigured()).toBe(true);
   });
 });

@@ -18,3 +18,27 @@ export function readCredential(id: string): string | null {
   const value = readSecret('credential', `credentials/${id}`, 'value');
   return typeof value === 'string' ? value : null;
 }
+
+/** Where a credential slot's value comes from. */
+export type CredentialSource = 'env' | 'stored';
+
+/**
+ * A credential slot's value (`apps/credential-slots.ts`): its environment
+ * variable when that's set, which wins, else the stored credential whose id
+ * is the slot id. Null when neither is set, or when the stored value can't be
+ * read — secrets unavailable, or a key that can't decrypt it — so a caller
+ * treats it as not configured rather than failing.
+ */
+export function resolveCredential(
+  slot: { id: string; env?: string },
+  env: NodeJS.ProcessEnv = process.env,
+): { value: string; source: CredentialSource } | null {
+  const fromEnv = slot.env ? env[slot.env]?.trim() : undefined;
+  if (fromEnv) return { value: fromEnv, source: 'env' };
+  try {
+    const stored = readCredential(slot.id)?.trim();
+    return stored ? { value: stored, source: 'stored' } : null;
+  } catch {
+    return null;
+  }
+}

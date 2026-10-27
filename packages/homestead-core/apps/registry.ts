@@ -33,6 +33,7 @@ import type {
 import type { CronHook } from './cron';
 import type { Migration } from './migrations';
 import type { ResourceSync } from './sync';
+import { CREDENTIAL_SLOT_ID, type CredentialSlot } from './credential-slots';
 import type {
   ResourceCustomMethod,
   ResourceDefinition,
@@ -559,6 +560,35 @@ export function getAllMigrations(): RegisteredMigration[] {
   for (const mod of getAppRegistry().apps) {
     visit(mod);
   }
+  return out;
+}
+
+/** A credential slot paired with the app that declared it. */
+export type RegisteredCredentialSlot = CredentialSlot & { appId: string; appName: string };
+
+/**
+ * Every credential slot declared by registered apps — top-level and nested —
+ * in declaration order. A slot whose id isn't kebab-case, or was already
+ * declared, is dropped with a warning: the id is the stored credential's id.
+ */
+export function getAllCredentialSlots(): RegisteredCredentialSlot[] {
+  const out: RegisteredCredentialSlot[] = [];
+  const seen = new Set<string>();
+  const visit = (mod: AppConfig): void => {
+    for (const slot of mod.credentials ?? []) {
+      if (!CREDENTIAL_SLOT_ID.test(slot.id) || seen.has(slot.id)) {
+        logger.warn(`Credential slot "${slot.id}" (app "${mod.id}") is invalid or a duplicate; ignored`, {
+          appId: mod.id,
+          slotId: slot.id,
+        });
+        continue;
+      }
+      seen.add(slot.id);
+      out.push({ ...slot, appId: mod.id, appName: mod.name });
+    }
+    for (const child of mod.children ?? []) visit(child);
+  };
+  for (const mod of getAppRegistry().apps) visit(mod);
   return out;
 }
 

@@ -1,11 +1,12 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { useResourceList } from '@rambleraptor/homestead-core/api/resourceHooks';
 import { CREDENTIALS } from '../resources';
-import type { Credential } from '../types';
+import type { Credential, CredentialSlotStatus } from '../types';
 
 const APP = 'credentials';
+const SLOTS_KEY = ['credential-slots'] as const;
 
 /** Every credential, by name. Values come back as descriptors only. */
 export function useCredentials() {
@@ -25,8 +26,14 @@ function useCredentialMutation<V>(mutationFn: (vars: V) => Promise<unknown>) {
     mutationKey: ['credentials-write'],
     mutationFn,
     gcTime: 0,
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.app(APP).resource('credential').all() }),
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.app(APP).resource('credential').all() }),
+        queryClient.invalidateQueries({ queryKey: SLOTS_KEY }),
+        // A stored AI key turns the assistant on (`useAiConfigured`).
+        queryClient.invalidateQueries({ queryKey: ['chat', 'status'] }),
+      ]);
+    },
   });
 }
 
@@ -60,4 +67,44 @@ export function useUpdateCredential() {
 
 export function useDeleteCredential() {
   return useCredentialMutation((id: string) => aepbase.remove(CREDENTIALS, id));
+}
+
+/** The credentials Homestead needs and where each comes from (`GET /api/credential-slots`). */
+export function useCredentialSlots() {
+  return useQuery({
+    queryKey: SLOTS_KEY,
+    queryFn: async (): Promise<CredentialSlotStatus[]> => {
+      const res = await fetch('/api/credential-slots', {
+        headers: { Authorization: `Bearer ${aepbase.authStore.token ?? ''}` },
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? `HTTP ${res.status}`);
+      }
+      return ((await res.json()) as { slots: CredentialSlotStatus[] }).slots;
+    },
+  });
+}
+
+/**
+ * Store a slot's value: the credential whose id is the slot id, created the
+ * first time (named after the slot) and replaced after.
+ */
+export function useSetSlotCredential() {
+  return useCredentialMutation(
+    ({ slot, value, exists }: { slot: CredentialSlotStatus; value: string; exists: boolean }) => {
+      if (exists) return aepbase.update<Credential>(CREDENTIALS, slot.id, { value });
+      const userId = aepbase.getCurrentUser()?.id;
+      return aepbase.create<Credential>(
+        CREDENTIALS,
+        {
+          name: slot.label,
+          description: `Used by ${slot.used_by}.`,
+          value,
+          ...(userId ? { created_by: `users/${userId}` } : {}),
+        },
+        { id: slot.id },
+      );
+    },
+  );
 }
