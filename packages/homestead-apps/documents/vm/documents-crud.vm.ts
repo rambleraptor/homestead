@@ -82,6 +82,20 @@ describe('Documents', { timeout: CLASSIFY_TEST_TIMEOUT_MS }, () => {
     await h.driver.expect(documents.detailField('box_1_interest')).toContainText('412.55');
   });
 
+  test('a photo taken with the camera is read like any upload', async () => {
+    const documents = new DocumentsPage(h.driver);
+    await documents.goto();
+    await documents.expectEmpty();
+
+    await documents.takePhoto('photo.jpg', DOC_MARKERS.match);
+
+    const card = documents.onlyCard();
+    await h.driver.expect(card.getByTestId('document-type-icon')).toBeVisible({
+      timeout: 30_000,
+    });
+    await h.driver.expect(card.getByTestId('document-type')).toContainText('Form 1099-INT');
+  });
+
   test('a document can be edited by hand from its detail page', async () => {
     // Seed a parsed 1099 via REST, then correct a field and the title in the UI.
     const doc = await uploadAndClassify(userToken, 'match', { title: 'ally-1099' });

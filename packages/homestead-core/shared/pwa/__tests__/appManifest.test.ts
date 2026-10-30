@@ -65,6 +65,19 @@ describe('buildAppManifest', () => {
     ]);
   });
 
+  it('takes shares only when the app declares what it accepts', () => {
+    expect(buildAppManifest(GROCERIES)).not.toHaveProperty('share_target');
+    expect(
+      buildAppManifest({ ...GROCERIES, basePath: '/documents/', shareAccept: ['image/*'] })
+        .share_target,
+    ).toEqual({
+      action: '/documents/share-target?chrome=none',
+      method: 'POST',
+      enctype: 'multipart/form-data',
+      params: { files: [{ name: 'files', accept: ['image/*'] }] },
+    });
+  });
+
   it('infers the icon type from its extension', () => {
     const icons = buildAppManifest({
       ...GROCERIES,
@@ -94,6 +107,12 @@ describe('toHomeScreenApp', () => {
       iconHref: '/app-icons/todos.png',
     });
     expect(toHomeScreenApp(APPS[2])).toBeNull();
+  });
+
+  it('carries a share target through', () => {
+    const docs = app('documents', '/documents', '/app-icons/documents.png');
+    docs.web!.shareTarget = { accept: ['application/pdf'] };
+    expect(toHomeScreenApp(docs)?.shareAccept).toEqual(['application/pdf']);
   });
 });
 

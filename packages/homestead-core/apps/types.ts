@@ -175,6 +175,21 @@ export interface AppWebConfig {
   homeScreenIcon?: string;
 
   /**
+   * Let the installed app receive files shared from other apps on the device
+   * (the OS share sheet — Android; iOS has no web share target). Adds a
+   * `share_target` to the app's home-screen manifest, so it needs
+   * `homeScreenIcon` too. The service worker holds the shared files and opens
+   * the app's base path with `?shared=<id>`; read them with `useSharedFiles`
+   * (`shared/pwa/shareTarget.ts`).
+   *
+   * Example: `shareTarget: { accept: ['application/pdf', 'image/*'] }`
+   */
+  shareTarget?: {
+    /** MIME types or extensions the app takes, as in an `<input accept>`. */
+    accept: string[];
+  };
+
+  /**
    * Whether this app should appear in the main navigation
    * @default true
    */

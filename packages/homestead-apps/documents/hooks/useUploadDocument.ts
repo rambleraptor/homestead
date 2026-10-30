@@ -13,6 +13,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
+import { toUploadable } from '../heic';
 import { DOCUMENTS } from '../resources';
 import { invalidateDocuments } from './useDocuments';
 import type { Document } from '../types';
@@ -24,7 +25,9 @@ function titleFromFilename(name: string): string {
 
 export function useUploadDocument() {
   return useMutation({
-    mutationFn: async (file: File): Promise<Document> => {
+    mutationFn: async (picked: File): Promise<Document> => {
+      // A HEIC photo is stored as the JPEG the model and the viewer can read.
+      const file = await toUploadable(picked);
       const userId = aepbase.getCurrentUser()?.id;
       const resource: Record<string, unknown> = {
         title: titleFromFilename(file.name),

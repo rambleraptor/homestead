@@ -31,6 +31,13 @@ export class DocumentsPage {
       .setInputFiles({ name, mimeType, buffer: new TextEncoder().encode(contents) });
   }
 
+  /** "Take a photo": the camera input the touch-only button drives. */
+  async takePhoto(name: string, contents: string): Promise<void> {
+    await this.driver
+      .getByTestId('document-camera-input')
+      .setInputFiles({ name, mimeType: 'image/jpeg', buffer: new TextEncoder().encode(contents) });
+  }
+
   // --- Redaction ------------------------------------------------------------
 
   /** Choose a file for the "Redact & upload" path; opens the redaction editor. */
