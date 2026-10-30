@@ -13,6 +13,7 @@ function setup(overrides: Partial<Parameters<typeof DocumentDropzone>[0]> = {}) 
   const props = {
     onFiles: vi.fn(),
     onBrowseUpload: vi.fn(),
+    onTakePhoto: vi.fn(),
     onBrowseRedact: vi.fn(),
     onBrowseBundle: vi.fn(),
     uploading: false,
@@ -24,6 +25,20 @@ function setup(overrides: Partial<Parameters<typeof DocumentDropzone>[0]> = {}) 
 }
 
 describe('DocumentDropzone', () => {
+  it('opens the camera from "Take a photo", shown on touch screens only', () => {
+    const props = setup();
+    const button = screen.getByTestId('document-camera-button');
+    expect(button).toHaveClass('hidden', 'pointer-coarse:inline-flex');
+    button.click();
+    expect(props.onTakePhoto).toHaveBeenCalledOnce();
+    expect(props.onBrowseUpload).not.toHaveBeenCalled();
+  });
+
+  it("won't open the camera mid-upload", () => {
+    setup({ uploading: true });
+    expect(screen.getByTestId('document-camera-button')).toBeDisabled();
+  });
+
   it('browses from the dropzone itself, with no separate upload button', () => {
     const props = setup();
     expect(screen.queryByTestId('document-upload-button')).not.toBeInTheDocument();

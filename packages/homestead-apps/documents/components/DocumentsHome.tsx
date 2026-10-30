@@ -12,6 +12,7 @@ import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageH
 import { TickingCount } from '@rambleraptor/homestead-core/shared/components/TickingCount';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { useReducedMotion } from '@rambleraptor/homestead-core/shared/hooks/useReducedMotion';
+import { useSharedFiles } from '@rambleraptor/homestead-core/shared/pwa/shareTarget';
 import { useDocuments } from '../hooks/useDocuments';
 import { useUploadDocument } from '../hooks/useUploadDocument';
 import { useUploadBundle } from '../hooks/useSplitDocument';
@@ -24,6 +25,7 @@ import {
 } from '../hooks/useCollections';
 import { usePeople } from '../../people/hooks/usePeople';
 import { findDuplicateUploads } from '../duplicates';
+import { HEIC_ACCEPT, toUploadable } from '../heic';
 import { getDocType } from '../doc-types/registry';
 import { DocumentListItem } from './DocumentListItem';
 import { DocumentFilters } from './DocumentFilters';
@@ -44,7 +46,8 @@ import {
   type DocumentFilters as Filters,
 } from '../filtering';
 
-const ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp,image/gif';
+// HEIC is taken and converted to JPEG on the way up (see `heic.ts`).
+const ACCEPT = `application/pdf,image/jpeg,image/png,image/webp,image/gif,${HEIC_ACCEPT}`;
 /** The bundle-split path takes a PDF only — a form boundary needs pages to cut. */
 const ACCEPT_PDF = 'application/pdf';
 
@@ -99,6 +102,7 @@ function sortDocuments(docs: Document[], sort: SortKey): Document[] {
 
 export function DocumentsHome() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const redactInputRef = useRef<HTMLInputElement>(null);
   const bundleInputRef = useRef<HTMLInputElement>(null);
   const [redactTarget, setRedactTarget] = useState<File | null>(null);
@@ -233,7 +237,7 @@ export function DocumentsHome() {
   const releaseRowExit = (id: string) =>
     setExitingIds((ids) => ids.filter((i) => i !== id));
 
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = async (files: FileList | File[] | null) => {
     if (!files?.length) return;
     // Sequential: each upload is a multipart POST plus a classify kick-off, and
     // firing a whole folder at once would stampede the AI provider.
@@ -275,7 +279,12 @@ export function DocumentsHome() {
 
     setUploadedIds(ids);
     if (inputRef.current) inputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
+
+  // Files shared to the installed app from another app's share sheet land here
+  // (`web.shareTarget` in app.config.ts) and take the plain upload path.
+  useSharedFiles((files) => void handleFiles(files));
 
   // Splitting a bundle (a tax return, a batch scan) is its own entry point: it
   // fires the `split` method instead of `classify`, so the plain upload path
@@ -297,10 +306,17 @@ export function DocumentsHome() {
   // Redaction is a File → File step in front of the *same* upload flow: pick one
   // file, edit it, then upload the flattened result. The plain path above is
   // untouched, so uploading without redacting stays the default.
-  const pickRedactTarget = (files: FileList | null) => {
+  // A HEIC photo is converted first: the editor draws the image, and most
+  // browsers can't decode HEIC.
+  const pickRedactTarget = async (files: FileList | null) => {
     const file = files?.[0];
-    if (file) setRedactTarget(file);
     if (redactInputRef.current) redactInputRef.current.value = '';
+    if (!file) return;
+    try {
+      setRedactTarget(await toUploadable(file));
+    } catch (err) {
+      toast.error(err);
+    }
   };
 
   const handleRedacted = async (redacted: File) => {
@@ -416,12 +432,24 @@ export function DocumentsHome() {
         onChange={(e) => void handleFiles(e.target.files)}
         data-testid="document-file-input"
       />
+      {/* Opens the rear camera on a phone; a desktop browser ignores `capture`
+          and shows its file picker, which is why the button for it shows only
+          on touch screens. */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => void handleFiles(e.target.files)}
+        data-testid="document-camera-input"
+      />
       <input
         ref={redactInputRef}
         type="file"
         accept={ACCEPT}
         className="hidden"
-        onChange={(e) => pickRedactTarget(e.target.files)}
+        onChange={(e) => void pickRedactTarget(e.target.files)}
         data-testid="document-redact-input"
       />
       <input
@@ -436,6 +464,7 @@ export function DocumentsHome() {
       <DocumentDropzone
         onFiles={(files) => void handleFiles(files)}
         onBrowseUpload={() => inputRef.current?.click()}
+        onTakePhoto={() => cameraInputRef.current?.click()}
         onBrowseRedact={() => redactInputRef.current?.click()}
         onBrowseBundle={() => bundleInputRef.current?.click()}
         // The queue, not just the mutation: `isPending` dips to false in the

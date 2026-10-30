@@ -13,18 +13,24 @@
  * these do?" disclosure that used to sit alongside them has nothing left to
  * explain.
  *
+ * On a phone the quickest way in is the camera, so a "Take a photo" button sits
+ * beside the menu — on touch screens only, since a desktop browser ignores
+ * `capture` and would just show the file picker the dropzone already opens.
+ *
  * The hidden file inputs live in the parent so the e2e harness can drive them
  * directly; this component just reports intent.
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Loader2, Upload, Shield, Scissors } from 'lucide-react';
+import { Camera, ChevronDown, Loader2, Upload, Shield, Scissors } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface DocumentDropzoneProps {
   /** Files dropped onto the surface go straight to the plain upload path. */
   onFiles: (files: FileList | null) => void;
   onBrowseUpload: () => void;
+  /** Open the camera to photograph something; the photo takes the plain upload path. */
+  onTakePhoto: () => void;
   onBrowseRedact: () => void;
   onBrowseBundle: () => void;
   uploading: boolean;
@@ -48,6 +54,7 @@ interface UploadOption {
 export function DocumentDropzone({
   onFiles,
   onBrowseUpload,
+  onTakePhoto,
   onBrowseRedact,
   onBrowseBundle,
   uploading,
@@ -146,7 +153,7 @@ export function DocumentDropzone({
             {uploading ? uploadingLabel : 'Drop a document here, or click to browse'}
           </p>
           <p className="mt-1 text-xs text-text-muted">
-            PDF or image · multi-page PDFs welcome · we&rsquo;ll read it for you
+            PDF or photo · multi-page PDFs welcome · we&rsquo;ll read it for you
           </p>
 
           {/* A batch's progress as a bar as well as a count. It fills per
@@ -174,7 +181,17 @@ export function DocumentDropzone({
         </div>
       </div>
 
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onTakePhoto}
+          disabled={uploading}
+          data-testid="document-camera-button"
+          className="hidden items-center gap-2 rounded-lg border border-gray-200 bg-surface-white px-3 py-2 text-sm font-medium text-brand-slate transition-colors hover:bg-bg-pearl disabled:opacity-50 pointer-coarse:inline-flex"
+        >
+          <Camera className="h-4 w-4" />
+          Take a photo
+        </button>
         <div ref={menuRef} className="relative inline-block">
           <button
             type="button"

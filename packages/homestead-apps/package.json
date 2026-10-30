@@ -15,6 +15,7 @@
     "@rambleraptor/homestead-client": "^0.2.0",
     "@rambleraptor/homestead-core": "^0.2.0",
     "cheerio": "^1.2.0",
+    "heic-to": "^1.6.7",
     "pdf-lib": "^1.17.1",
     "recipe-scrapers": "^1.10.0"
   },

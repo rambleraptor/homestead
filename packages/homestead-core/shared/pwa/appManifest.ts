@@ -14,6 +14,7 @@
 
 import type { AppConfig } from '../../apps/types';
 import { chromelessUrl } from '../../layout/chromeMode';
+import { shareTargetManifest } from './shareTarget';
 
 /** Brand color, kept in sync with `packages/homestead-app/index.html`. */
 export const THEME_COLOR = '#F7F9FC';
@@ -30,6 +31,8 @@ export interface HomeScreenApp {
   basePath: string;
   /** URL/path to the app's square home-screen image. */
   iconHref: string;
+  /** What the installed app accepts from the share sheet, when it takes shares. */
+  shareAccept?: string[];
 }
 
 /** Where the server serves an app's manifest. */
@@ -70,6 +73,9 @@ export function buildAppManifest(app: HomeScreenApp): Record<string, unknown> {
       { src: app.iconHref, sizes: '192x192', type, purpose: 'any' },
       { src: app.iconHref, sizes: '512x512', type, purpose: 'any maskable' },
     ],
+    ...(app.shareAccept?.length
+      ? { share_target: shareTargetManifest(app.basePath, app.shareAccept) }
+      : {}),
   };
 }
 
@@ -82,6 +88,7 @@ export function toHomeScreenApp(app: AppConfig): HomeScreenApp | null {
     description: app.description,
     basePath: app.web.basePath,
     iconHref: app.web.homeScreenIcon,
+    ...(app.web.shareTarget ? { shareAccept: app.web.shareTarget.accept } : {}),
   };
 }
 

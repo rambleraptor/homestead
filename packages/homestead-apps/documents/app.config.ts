@@ -40,6 +40,10 @@ export const documentsApp: AppConfig = {
     icon: () => import('lucide-react').then((m) => m.FileText),
     basePath: '/documents',
     homeScreenIcon: '/app-icons/documents.png',
+    // Installed on a phone, Documents shows up in the share sheet, so a PDF
+    // ticket or a photo goes straight in from Mail, Files or the gallery.
+    // `DocumentsHome` uploads whatever arrives.
+    shareTarget: { accept: ['application/pdf', 'image/*', '.pdf', '.heic', '.heif'] },
     routes: [
       {
         path: '',
