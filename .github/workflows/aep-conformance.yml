@@ -1,0 +1,197 @@
+name: AEP Conformance
+
+# Runs the AEP behavioral conformance suite
+# (https://github.com/thegagne/aep-conformance-test) against a live Homestead
+# instance. The instance boots with every app listed in homestead.config.ts, so
+# the schema sync registers all of the personal apps' resources and the suite
+# exercises them (Create -> Get -> List -> Update -> Apply) through the engine's
+# AEP-compliant REST surface at /api/aep.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    name: AEP Conformance
+    env:
+      PORT: '5268'
+      DATA_DIR: ${{ github.workspace }}/.conformance-data
+      # The engine (aepbase) is reachable only under the /api/aep prefix; the
+      # OpenAPI doc — which the suite auto-discovers at <base-url>/openapi.json —
+      # advertises this same URL as its server, so paths line up when exercised.
+      BASE_URL: http://127.0.0.1:5268/api/aep
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: conformance-admin-password
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # node:sqlite (used when the server runs under Node) needs >= 22.13
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Install AEP conformance suite
+        run: go install github.com/thegagne/aep-conformance-test@latest
+
+      - name: Start Homestead server
+        run: |
+          mkdir -p "$DATA_DIR"
+          # --dev boots the same in-process engine + schema sync the e2e suite
+          # uses; it needs no prebuilt SPA. The engine API is all the conformance
+          # suite touches.
+          bun packages/homestead-server/src/index.ts \
+            --dev --port "$PORT" --data-dir "$DATA_DIR" > server.log 2>&1 &
+          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for engine, claim admin, sync schema
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1"; echo "--- server.log ---"; cat server.log || true; exit 1; }
+
+          # 1. Engine up: /openapi.json answers 200.
+          for i in $(seq 1 120); do
+            if curl -fsS "$BASE_URL/openapi.json" >/dev/null 2>&1; then break; fi
+            [ "$i" -eq 120 ] && fail "engine did not come up within 120s"
+            sleep 1
+          done
+          echo "Engine is up."
+
+          # 2. Claim the fresh (unclaimed) instance — the same first-visit setup
+          #    flow the SPA uses. 409 means already claimed (safe to ignore).
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            "http://127.0.0.1:$PORT/api/setup" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}")
+          case "$code" in
+            2*|409) echo "Instance claimed (HTTP $code)." ;;
+            *) fail "instance claim failed (HTTP $code)" ;;
+          esac
+
+          # 3. Log in for a bearer token.
+          TOKEN=$(curl -fsS -X POST "$BASE_URL/users/:login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
+            | jq -r '.token')
+          [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ] || fail "admin login returned no token"
+          echo "::add-mask::$TOKEN"
+          echo "TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+          # 4. The schema sync runs asynchronously on boot. Wait for a sentinel
+          #    resource definition (gift-card, from the gift-cards app) so the
+          #    OpenAPI doc includes every app's resources before we test.
+          for i in $(seq 1 120); do
+            if curl -fsS -H "Authorization: Bearer $TOKEN" \
+                 "$BASE_URL/aep-resource-definitions/gift-card" >/dev/null 2>&1; then break; fi
+            [ "$i" -eq 120 ] && fail "schema sync did not finish within 120s"
+            sleep 1
+          done
+          echo "Schema sync complete — all app resources registered."
+
+      - name: Run AEP conformance suite
+        run: |
+          set -uo pipefail
+
+          # Run the suite (markdown report -> file). Capture its exit code
+          # WITHOUT aborting (no `set -e`) so we can print the failures to this
+          # log before the step exits. The tool exits non-zero on any MUST-level
+          # failure; SHOULD failures are reported but non-blocking (no --strict).
+          "$(go env GOPATH)/bin/aep-conformance-test" test "$BASE_URL" \
+            -H "Authorization: Bearer $TOKEN" \
+            --output markdown --output-file conformance-report.md
+          status=$?
+
+          # Pull every MUST failure out of the report, tagging each with the
+          # resource it belongs to (the section header) since the failure rows
+          # themselves don't name it.
+          awk '
+            function trim(s){ gsub(/^[ \t]+|[ \t]+$/,"",s); gsub(/`/,"",s); return s }
+            /^## / { section=$0; sub(/^## /,"",section) }
+            /^\| *FAIL/ { printf "%s\t%s\t%s\t%s\n", section, trim($3), trim($5), trim($6) }
+          ' FS='|' conformance-report.md > failures.tsv
+
+          count=$(wc -l < failures.tsv | tr -d ' ')
+          if [ "$count" -gt 0 ]; then
+            echo "=================================================="
+            echo " AEP conformance: ${count} MUST-level failure(s)"
+            echo "=================================================="
+            echo
+            echo "Failures grouped by check:"
+            cut -f2,3 failures.tsv | sort | uniq -c | sort -rn \
+              | awk '{printf "  %3d  %-8s %s\n", $1, $2, $3}'
+            echo
+            echo "::group::All failures (resource | AEP | check | detail)"
+            awk -F'\t' '{printf "%-26s %-8s %-32s %s\n", $1, $2, $3, $4}' failures.tsv
+            echo "::endgroup::"
+            # Also emit GitHub error annotations so failures surface on the run
+            # summary, not only in the log.
+            while IFS="$(printf '\t')" read -r section aep check detail; do
+              echo "::error title=${aep} ${check} (${section})::${detail}"
+            done < failures.tsv
+          else
+            echo "No MUST-level failures. 🎉"
+          fi
+
+          echo
+          echo "Full report: the job summary and the 'aep-conformance-report' artifact."
+          exit "$status"
+
+      - name: Publish report to job summary
+        if: always()
+        run: |
+          if [ -f conformance-report.md ]; then
+            cat conformance-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No conformance report was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload conformance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aep-conformance-report
+          path: conformance-report.md
+          if-no-files-found: ignore
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homestead-server-log
+          path: server.log
+          if-no-files-found: ignore
+
+      - name: Stop Homestead server
+        if: always()
+        run: |
+          if [ -n "${SERVER_PID:-}" ]; then
+            kill "$SERVER_PID" 2>/dev/null || true
+          fi
