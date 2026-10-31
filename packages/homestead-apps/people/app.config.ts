@@ -48,6 +48,14 @@ export const peopleApp: AppConfig = {
       title: 'Turn shared addresses into households',
       load: () => import('./migrations/backfill-households'),
     },
+    // Addresses the backfill above skipped (no shared-data row claims them,
+    // or its people are all gone) become member-less households, so nothing
+    // is lost when the legacy resources are dropped.
+    {
+      id: 'people-backfill-stranded-addresses',
+      title: 'Keep unassigned addresses as households',
+      load: () => import('./migrations/backfill-stranded-addresses'),
+    },
   ],
   userSettings: {
     map_provider: {

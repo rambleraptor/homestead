@@ -23,46 +23,14 @@ import { serverClient } from '@rambleraptor/homestead-core/server/client';
 import { ADDRESSES, HOUSEHOLDS, PEOPLE, PERSON_SHARED_DATA } from '../resources';
 import type { Household } from '../types';
 import { householdNameFor, memberIds } from '../utils/households';
-import { personIdOf } from '../utils/relationships';
-
-/** The legacy rows this migration reads (both resources are being retired). */
-interface LegacySharedData {
-  id: string;
-  person_a: string;
-  person_b?: string;
-  address_id?: string;
-  created_by?: string;
-}
-
-interface LegacyAddress {
-  id: string;
-  line1?: string;
-  line2?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-  wifi_network?: string;
-  wifi_password?: string;
-  shared_data_id?: string;
-  created_by?: string;
-}
-
-const ADDRESS_FIELDS = [
-  'line1',
-  'line2',
-  'city',
-  'state',
-  'postal_code',
-  'country',
-  'wifi_network',
-  'wifi_password',
-] as const;
-
-function signature(members: string[], fields: Partial<Record<(typeof ADDRESS_FIELDS)[number], string>>) {
-  const address = ADDRESS_FIELDS.map((f) => fields[f]?.trim() ?? '').join('|');
-  return `${[...members].sort().join(',')}#${address}`;
-}
+import {
+  addressFields,
+  householdKey,
+  sharedDataAddresses,
+  sharedDataMembers,
+  type LegacyAddress,
+  type LegacySharedData,
+} from './legacy-addresses';
 
 const migrate: MigrationHandler = async ({ token, log }) => {
   const hs = serverClient(token);
@@ -76,17 +44,15 @@ const migrate: MigrationHandler = async ({ token, log }) => {
 
   const nameById = new Map(people.map((p) => [p.id, p.name]));
   const addressById = new Map(addresses.map((a) => [a.id, a]));
-  const seen = new Set(existing.map((h) => signature(memberIds(h), h)));
+  const personIds = new Set(nameById.keys());
+  const seen = new Set(existing.map((h) => householdKey(memberIds(h), h)));
 
   let created = 0;
   let skipped = 0;
   for (const sd of shared) {
     // Only people who still exist; a dangling id would fail the reference check.
-    const members = [...new Set([sd.person_a, sd.person_b].filter(Boolean).map((id) => personIdOf(id!)))]
-      .filter((id) => nameById.has(id));
-    const primary = sd.address_id ? addressById.get(sd.address_id) : undefined;
-    const extras = addresses.filter((a) => a.shared_data_id === sd.id && a.id !== sd.address_id);
-    const group = primary ? [primary, ...extras] : extras;
+    const members = sharedDataMembers(sd, personIds);
+    const group = sharedDataAddresses(sd, addresses, addressById);
     if (members.length === 0 || group.length === 0) {
       skipped++;
       continue;
@@ -94,10 +60,8 @@ const migrate: MigrationHandler = async ({ token, log }) => {
 
     const names = householdNameFor(members.map((id) => nameById.get(id)!));
     for (const address of group) {
-      const fields = Object.fromEntries(
-        ADDRESS_FIELDS.map((f) => [f, address[f]?.trim() || undefined]),
-      ) as Partial<Record<(typeof ADDRESS_FIELDS)[number], string>>;
-      const key = signature(members, fields);
+      const fields = addressFields(address);
+      const key = householdKey(members, fields);
       if (seen.has(key)) {
         skipped++;
         continue;
