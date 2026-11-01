@@ -35,8 +35,11 @@ export function AppRoute() {
   if (!match) return <NotFound />;
 
   const Component = getLazyComponent(match.route.component);
+  // A new path is a new page, unless its route shares a mount key with the
+  // last one: then the page stays and only its params change.
+  const mountKey = match.route.mountKey ? `${match.app.id}:${match.route.mountKey}` : pathname;
   let element: ReactNode = (
-    <Suspense key={pathname} fallback={<RouteFallback />}>
+    <Suspense key={mountKey} fallback={<RouteFallback />}>
       <Component params={match.params} />
     </Suspense>
   );

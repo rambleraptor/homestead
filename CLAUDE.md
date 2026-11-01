@@ -278,7 +278,9 @@ and the server at boot
 the env parsing and the fs scan both sides use); the shared
 validation/merge helpers live in
 `@rambleraptor/homestead-core/apps/discovery`. Routes are declared inline on each
-`AppRoute` (the `component` field). The SPA's react-router setup
+`AppRoute` (the `component` field); routes sharing a `mountKey` (and loader)
+stay one mounted page across their paths — the home's `''` and `c/:id` do, so
+a new conversation's first message doesn't rebuild the screen mid-reply. The SPA's react-router setup
 (`packages/homestead-app/src/App.tsx`) sends every unmatched path to the catch-all
 renderer in `packages/homestead-app/src/apps/AppRoute.tsx`, which resolves the
 route's lazy component — there are no per-route page files. See
