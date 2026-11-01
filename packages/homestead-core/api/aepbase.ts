@@ -387,6 +387,8 @@ interface ListOptions {
   orderBy?: string;
   /** Stop after this many records (the newest few, with `orderBy`). */
   limit?: number;
+  /** Linked records to bring along, by link name: each record gets them under `$included`. */
+  include?: string[];
 }
 
 interface ListResponse<T> {
@@ -410,7 +412,7 @@ interface ItemOptions {
  * in insertion order and the caller may sort the returned array itself.
  */
 export async function list<T>(plural: string, options: ListOptions = {}): Promise<T[]> {
-  const { filter, parent, orderBy, limit } = options;
+  const { filter, parent, orderBy, limit, include } = options;
   const maxPageSize = limit !== undefined ? Math.min(limit, options.maxPageSize ?? 100) : (options.maxPageSize ?? 100);
   const path = collectionPath(plural, parent);
   const out: T[] = [];
@@ -423,6 +425,7 @@ export async function list<T>(plural: string, options: ListOptions = {}): Promis
         page_token: pageToken,
         filter,
         order_by: orderBy,
+        include: include && include.length > 0 ? include.join(',') : undefined,
       },
     });
     if (page.results) out.push(...page.results);
@@ -432,8 +435,13 @@ export async function list<T>(plural: string, options: ListOptions = {}): Promis
   return limit === undefined ? out : out.slice(0, limit);
 }
 
-export async function get<T>(plural: string, id: string, options: ItemOptions = {}): Promise<T> {
-  return await request<T>(itemPath(plural, id, options.parent));
+export async function get<T>(
+  plural: string,
+  id: string,
+  options: ItemOptions & { include?: string[] } = {},
+): Promise<T> {
+  const include = options.include && options.include.length > 0 ? options.include.join(',') : undefined;
+  return await request<T>(itemPath(plural, id, options.parent), include ? { query: { include } } : {});
 }
 
 /**

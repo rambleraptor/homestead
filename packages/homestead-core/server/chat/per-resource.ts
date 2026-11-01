@@ -64,6 +64,7 @@ import {
   type ToolSpec,
 } from './tools';
 import { executeToolCall, type AttachmentSource } from './execute';
+import { linksFor, type LinkInfo } from '../links';
 import {
   buildCustomMethodTools,
   customMethodToolName,
@@ -102,6 +103,8 @@ interface ResourceTool {
   requiredFields: string[];
   /** Custom method bindings by their `:verb` action. */
   verbs: Map<string, { toolName: string; binding: CustomMethodBinding }>;
+  /** Links `include` may name: those leading to a resource this surface offers. */
+  links: LinkInfo[];
 }
 
 /**
@@ -137,6 +140,9 @@ export function buildResourceTools(
   const tools: Record<string, ToolSpec> = {};
   const byTool = new Map<string, ResourceTool>();
   const canWrite = writeGate(write);
+  // A link is offered only when the surface offers what it leads to: never a
+  // way around a resource left out of the tools.
+  const offered = new Set(defs.map((d) => d.singular));
 
   for (const def of defs) {
     const writable = canWrite(def);
@@ -171,6 +177,8 @@ export function buildResourceTools(
       ...verbs.keys(),
     ];
 
+    const links = linksFor(def.singular).filter((link) => offered.has(link.to));
+
     tools[snake(def.plural)] = {
       description: describeResource(def, {
         actions,
@@ -178,6 +186,7 @@ export function buildResourceTools(
         requiredFields,
         verbs,
         write: writable,
+        links,
       }),
       inputSchema: buildInputSchema(def, {
         actions,
@@ -186,6 +195,7 @@ export function buildResourceTools(
         bodyFields,
         typedUpdateShape: updateShapeOf(typed, def),
         hasVerbs: verbs.size > 0,
+        links,
       }),
     };
     byTool.set(snake(def.plural), {
@@ -195,6 +205,7 @@ export function buildResourceTools(
       bodyFields,
       requiredFields,
       verbs,
+      links,
     });
   }
 
@@ -267,8 +278,12 @@ export function buildResourceTools(
     );
     if ('error' in call) return { ok: false, error: call.error };
 
+    const include = op === 'read' ? checkInclude(tool, args.include) : { names: undefined };
+    if ('error' in include) return { ok: false, error: include.error };
+
     const out = await executeToolCall({ name: call.name, args: call.args }, bindings, token, {
       attachments,
+      include: include.names,
     });
     return out.ok ? { ok: true, result: out.result } : { ok: false, error: out.error ?? 'error' };
   }
@@ -307,6 +322,7 @@ function buildInputSchema(
     bodyFields: string[];
     typedUpdateShape: Record<string, z.ZodTypeAny>;
     hasVerbs: boolean;
+    links: LinkInfo[];
   },
 ): z.ZodObject {
   const shape: Record<string, z.ZodTypeAny> = {
@@ -333,6 +349,17 @@ function buildInputSchema(
   // List options, `list` only. Brief descriptions: the grammar is stated once
   // in the surface instructions rather than once per resource.
   Object.assign(shape, listParamShape({ brief: true }));
+
+  if (opts.links.length > 0) {
+    shape.include = z
+      .array(z.enum(opts.links.map((l) => l.name) as [string, ...string[]]))
+      .max(MAX_INCLUDE)
+      .describe(
+        `Linked records to bring along on get or list (at most ${MAX_INCLUDE}), each under the` +
+          ' record\'s "$included".',
+      )
+      .optional();
+  }
 
   if (opts.bodyFields.length > 0) {
     const fields: Record<string, z.ZodTypeAny> = {};
@@ -392,6 +419,7 @@ function describeResource(
     requiredFields: string[];
     verbs: Map<string, { toolName: string; binding: CustomMethodBinding }>;
     write: boolean;
+    links: LinkInfo[];
   },
 ): string {
   const lines: string[] = [def.description ?? `The ${def.plural} collection.`];
@@ -400,13 +428,16 @@ function describeResource(
   // schema serves them all.
   const crud = opts.actions.filter((a) => !a.startsWith(':'));
   const signature: Record<string, string> = {
-    list: 'list(filter?, order_by?, limit?)',
-    get: 'get(id)',
+    list: opts.links.length > 0 ? 'list(filter?, order_by?, limit?, include?)' : 'list(filter?, order_by?, limit?)',
+    get: opts.links.length > 0 ? 'get(id, include?)' : 'get(id)',
     create: 'create(fields)',
     update: 'update(id, fields)',
     delete: 'delete(id)',
   };
   lines.push(`Actions: ${crud.map((a) => signature[a] ?? a).join(' · ')}.`);
+  if (opts.links.length > 0) {
+    lines.push(`Links (for include): ${opts.links.map(linkLabel).join(', ')}.`);
+  }
 
   if (opts.requiredFields.length > 0 && opts.write) {
     lines.push(`create requires: ${opts.requiredFields.join(', ')}.`);
@@ -455,7 +486,43 @@ export function resourceInstructions(): string {
       ' says when more matched).',
     `- filter: ${FILTER_SYNTAX}`,
     `- order_by: ${ORDER_BY_SYNTAX}`,
+    '',
+    'Records link to each other (a person to the households they live in, a household to its' +
+      ' members). To read a record with what it links to, pass `include` with link names from the' +
+      ' tool\'s "Links" line on get or list: the linked records come back under each record\'s' +
+      ' `$included`, so one call answers "Jake\'s address" instead of three.',
   ].join('\n');
+}
+
+/** Links one read may include, as the engine allows. */
+const MAX_INCLUDE = 3;
+
+/** "households (household, many)". */
+function linkLabel(link: LinkInfo): string {
+  return `${link.name} (${link.to}${link.many ? ', many' : ''})`;
+}
+
+/** The `include` a read asked for, checked against the tool's links. */
+function checkInclude(tool: ResourceTool, raw: unknown): { names: string[] | undefined } | { error: string } {
+  if (raw === undefined || raw === null) return { names: undefined };
+  const names = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : null;
+  if (!names || names.some((n) => typeof n !== 'string')) {
+    return { error: `${tool.def.plural}: "include" must be a list of link names` };
+  }
+  const offered = new Set(tool.links.map((l) => l.name));
+  const unknown = (names as string[]).map((n) => n.trim()).filter((n) => n && !offered.has(n));
+  if (unknown.length > 0) {
+    return {
+      error:
+        `${tool.def.plural} has no link ${unknown.map((n) => `"${n}"`).join(', ')}` +
+        (offered.size > 0 ? ` — its links: ${[...offered].join(', ')}` : ' — it has no links'),
+    };
+  }
+  const picked = [...new Set((names as string[]).map((n) => n.trim()).filter(Boolean))];
+  if (picked.length > MAX_INCLUDE) {
+    return { error: `${tool.def.plural}: include at most ${MAX_INCLUDE} links at a time` };
+  }
+  return { names: picked.length > 0 ? picked : undefined };
 }
 
 // ────────────────────────────── argument checks ──────────────────────────────

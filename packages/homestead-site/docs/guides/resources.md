@@ -19,6 +19,7 @@ new and patches anything that changed.
 - [Encrypted Fields](#encrypted-fields)
 - [Secret Fields](#secret-fields)
 - [Parent / Child Resources](#parent-child-resources)
+- [Links and `include`](#links-and-include)
 - [Retention](#retention)
 - [Hiding a Resource from AI Tools](#hiding-a-resource-from-ai-tools)
 - [Wiring It Up](#wiring-it-up)
@@ -285,6 +286,54 @@ That's almost always what you want. For the rare child whose rows must be
 governed on their own, opt out with `independent_access: true`; its rows are
 then authorized by their own owner and grants, like a top-level resource's.
 See [Parent access inheritance](../design/parent-access-inheritance).
+
+---
+
+## Links and `include`
+
+Records point at each other: a household's `members` are people, a gift card
+belongs to a person. Homestead reads those links off what you already declare —
+every `reference` field, and every parent/child pair — in **both directions**,
+with no extra work per resource:
+
+| On a…       | link            | leads to                                         |
+| ----------- | --------------- | ------------------------------------------------ |
+| `household` | `members`       | the people in its `members` field (outbound)      |
+| `person`    | `households`    | the households listing them in `members` (inbound) |
+| `gift-card` | `transactions`  | its child records                                 |
+| `transaction` | `parent`      | the gift card it belongs to                       |
+
+An outbound link is named after its field; an inbound one after the collection
+that points here (`<plural>.<field>` when that collection points here from two
+fields, as `person-relationships.person_a`). Links to the built-in `user` are
+left out of the inbound side — every `created_by` points there.
+
+A read can bring linked records along with `include` (at most 3 links, one
+hop):
+
+```bash
+GET /api/aep/people?filter=name.contains("jake")&include=households
+```
+
+```json
+{ "results": [{
+  "id": "abc", "name": "Jake Miller",
+  "$included": {
+    "households": { "results": [{ "id": "h1", "line1": "12 Oak St", … }], "more": false }
+  }
+}] }
+```
+
+A link to one record (`parent`, a scalar reference) gives the record or `null`;
+the rest give `{ results, more }`, cut at 25 per record. Every included record
+is checked the way a `GET` of it would be: one the caller can't read is simply
+absent. A reference may be stored as a bare id or a path (`people/abc`); both
+match. Each resource's link names are in the OpenAPI document (`include` on
+its get and list), and the shared client takes `{ include: ['households'] }`.
+
+The assistant's tools offer `include` too — each tool lists its links — so
+"Jake's address" is one call instead of three. A link to a resource hidden
+from the tools ([below](#hiding-a-resource-from-ai-tools)) isn't offered.
 
 ---
 

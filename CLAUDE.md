@@ -752,6 +752,18 @@ fields: {
   one); the chat executor existence-checks a supplied reference id before a
   create/update write; and the search tool resolves a hit's references to their
   target's display name.
+- **Links.** The engine derives a link graph from every reference and
+  parent/child pair, both directions (`engine/links.ts`; outbound links are
+  named by field, inbound by the referring plural, or `<plural>.<field>` when it
+  points twice; no inbound links to `user`). `GET` and list take
+  `include=<link>,…` (`engine/include.ts`; ≤3 links, one hop, 25 per link per
+  record with `more`), returning linked records under `$included`, each checked
+  with the same read decision as a GET (`recordAllows`), batched per link per
+  page. Both stored id forms match. OpenAPI lists each resource's links; the
+  shared client and SPA wrapper take `include: [...]`; the per-resource tools
+  offer `include` with a "Links" line, limited to links whose target the surface
+  offers (`server/links.ts` is the seam). No per-app work — declare the
+  `reference` and the link exists.
 - `onDelete` is **enforced by the engine** at delete time, opt-in per field —
   only a reference that declares one is acted on:
   - `restrict` blocks the delete (409) while any record still points at it;

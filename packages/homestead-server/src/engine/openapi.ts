@@ -17,6 +17,7 @@
  */
 
 import type { RegisteredResource, Registry } from './registry';
+import { linksOf } from './links';
 import type { Schema, SchemaProperty } from './types';
 import { isSecretProperty } from './encrypted-fields';
 
@@ -94,6 +95,23 @@ function queryParam(name: string, type: string): Json {
   };
 }
 
+/**
+ * `include`: linked records to bring along (`./include`), each under the
+ * record's `$included`. Its values are this resource's link names.
+ */
+function includeParam(links: string[]): Json {
+  return {
+    name: 'include',
+    in: 'query',
+    style: 'form',
+    explode: false,
+    schema: { type: 'array', items: { type: 'string', enum: links } },
+    description:
+      'Linked records to return beside each record, under "$included" (comma-separated, at most 3). ' +
+      'A link to one record gives it or null; others give { results, more }, cut at 25.',
+  };
+}
+
 function pathParam(name: string): Json {
   const resName = name.replace(/_id$/, '');
   return {
@@ -166,6 +184,8 @@ interface ResourceDoc {
   patternElems: string[];
   /** Children make delete advertise a `force` query param (aep-lib-go shape). */
   hasChildren: boolean;
+  /** Link names `include` accepts on get and list (`./links`); none, no param. */
+  links?: string[];
   /** Which CRUD methods the resource exposes. */
   methods: {
     list?: { supportsSkipFilter: boolean };
@@ -264,8 +284,9 @@ function metaResourceDoc(): ResourceDoc {
   };
 }
 
-function registeredToDoc(r: RegisteredResource, hasChildren: boolean): ResourceDoc {
+function registeredToDoc(r: RegisteredResource, hasChildren: boolean, links: string[]): ResourceDoc {
   return {
+    ...(links.length > 0 ? { links } : {}),
     singular: r.singular,
     plural: r.plural,
     parents: r.parents,
@@ -521,6 +542,7 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
         queryParam('order_by', 'string'),
       );
     }
+    if (doc.links) listParams.push(includeParam(doc.links));
     const listExample = schemaExample
       ? { results: [schemaExample], next_page_token: '' }
       : undefined;
@@ -591,7 +613,7 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
       operationId: `Get${pascal(doc.singular)}`,
       description: `Retrieves a single ${name} by ID.`,
       tags: [name],
-      parameters: resourceParams,
+      parameters: doc.links ? [...resourceParams, includeParam(doc.links)] : resourceParams,
       responses: { '200': successRef(doc.singular, schemaExample), '404': notFound },
     };
   }
@@ -754,7 +776,9 @@ function hoistUnionVariants(schema: Json, schemas: Record<string, Json>): void {
 export function buildOpenApi(reg: Registry): Json {
   const docs: ResourceDoc[] = [
     metaResourceDoc(),
-    ...reg.all().map((r) => registeredToDoc(r, reg.children(r.singular).length > 0)),
+    ...reg
+      .all()
+      .map((r) => registeredToDoc(r, reg.children(r.singular).length > 0, [...linksOf(reg, r).keys()].sort())),
   ];
 
   const schemas: Record<string, Json> = {};

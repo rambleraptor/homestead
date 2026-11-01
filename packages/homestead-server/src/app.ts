@@ -123,6 +123,10 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
     return caller ? engine.recordAllows(caller, resource, path, verb) : false;
   });
 
+  // Which records a resource links to: the tools offer them as `include`.
+  const { setLinkResolver } = await import('@rambleraptor/homestead-core/server/links');
+  setLinkResolver((singular) => engine.linksFor(singular));
+
   // Who shares this Homestead, by name — the assistant addresses people by it.
   const { setHouseholdDirectory } = await import(
     '@rambleraptor/homestead-core/server/household'

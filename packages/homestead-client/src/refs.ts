@@ -4,6 +4,7 @@ import type {
   CreateOptions,
   DeleteOptions,
   DownloadTarget,
+  GetOptions,
   ListOptions,
   Page,
   PageOptions,
@@ -22,8 +23,8 @@ export interface CollectionRef<T> {
   list(options?: ListOptions): AsyncIterableIterator<T>;
   /** Collect every record into an array (convenience over {@link list}). */
   listAll(options?: ListOptions): Promise<T[]>;
-  /** Fetch one record by id. */
-  get(id: string): Promise<T>;
+  /** Fetch one record by id (with linked records, given `include`). */
+  get(id: string, options?: GetOptions): Promise<T>;
   /**
    * Create a record. Pass a plain object, a `FormData`, or an object containing
    * `Blob`/`File` fields (auto-assembled into multipart for file uploads).
@@ -43,8 +44,8 @@ export interface CollectionRef<T> {
 export interface RecordRef<T> {
   /** The record's engine path (e.g. `/gift-cards/abc`). */
   readonly path: string;
-  /** Fetch the record. */
-  get(): Promise<T>;
+  /** Fetch the record (with linked records, given `include`). */
+  get(options?: GetOptions): Promise<T>;
   /** Merge-patch the record. Accepts file fields like {@link CollectionRef.create}. */
   update(patch: RecordBody | FormData): Promise<T>;
   /** Delete the record (optionally cascading with `force`). */
@@ -112,6 +113,11 @@ export function encodeBody(body: RecordBody | FormData): RecordBody | FormData {
   return form;
 }
 
+/** The `include` query value: link names, comma-separated; none, no param. */
+function includeParam(include: string[] | undefined): string | undefined {
+  return include && include.length > 0 ? include.join(',') : undefined;
+}
+
 /** The `:download` request body for a {@link DownloadTarget}. */
 export function downloadBody(target: DownloadTarget): { field: string } | { file: string } {
   if (typeof target === 'string') return { field: target };
@@ -132,6 +138,7 @@ export class CollectionRefImpl<T> implements CollectionRef<T> {
         page_token: options.pageToken,
         filter: options.filter,
         order_by: options.orderBy,
+        include: includeParam(options.include),
       },
     });
     return { records: env.results ?? [], nextPageToken: env.next_page_token || undefined };
@@ -152,8 +159,10 @@ export class CollectionRefImpl<T> implements CollectionRef<T> {
     return out;
   }
 
-  get(id: string): Promise<T> {
-    return this.http.request<T>(`${this.path}/${encodeURIComponent(id)}`);
+  get(id: string, options: GetOptions = {}): Promise<T> {
+    return this.http.request<T>(`${this.path}/${encodeURIComponent(id)}`, {
+      query: { include: includeParam(options.include) },
+    });
   }
 
   create(body: RecordBody | FormData, options: CreateOptions = {}): Promise<T> {
@@ -183,8 +192,8 @@ export class RecordRefImpl<T> implements RecordRef<T> {
     public readonly path: string,
   ) {}
 
-  get(): Promise<T> {
-    return this.http.request<T>(this.path);
+  get(options: GetOptions = {}): Promise<T> {
+    return this.http.request<T>(this.path, { query: { include: includeParam(options.include) } });
   }
 
   update(patch: RecordBody | FormData): Promise<T> {

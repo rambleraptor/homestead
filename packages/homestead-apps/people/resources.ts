@@ -78,6 +78,9 @@ export const peopleResources: ResourceDefinition[] = [
     description:
       'Legacy, replaced by households — do not create. Grouped up to two ' +
       'people who shared an address.',
+    // Legacy, so out of the assistant's tools: nothing should read or write it,
+    // and its links would only crowd the ones that matter.
+    modelTools: { chat: false, mcp: false },
     user_settable_create: true,
     fields: {
       person_a: {
@@ -145,6 +148,9 @@ export const peopleResources: ResourceDefinition[] = [
     description:
       'Legacy, replaced by households — do not create. A physical address ' +
       'with optional WiFi credentials.',
+    // Legacy, so out of the assistant's tools: nothing should read or write it,
+    // and its links would only crowd the ones that matter.
+    modelTools: { chat: false, mcp: false },
     user_settable_create: true,
     fields: {
       line1: { type: 'string', required: true },

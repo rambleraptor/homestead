@@ -74,6 +74,17 @@ export interface ListOptions {
   orderBy?: string;
   /** Per-page size hint. The server may cap it. Defaults to 100. */
   pageSize?: number;
+  /**
+   * Linked records to bring along, by link name (`households`, `members`,
+   * `parent`): each record gets them under `$included`. At most 3.
+   */
+  include?: string[];
+}
+
+/** Options for reading one record. */
+export interface GetOptions {
+  /** Linked records to bring along, as on a list ({@link ListOptions.include}). */
+  include?: string[];
 }
 
 /** {@link ListOptions} plus an explicit cursor, for one-page-at-a-time reads. */

@@ -6,6 +6,7 @@
  * self-correct.
  */
 
+import { isSecretDescriptor } from '../../resources/secrets';
 import type { HomesteadClient, ListOptions } from '@rambleraptor/homestead-client';
 import { collectionAt, serverClient } from '../client';
 import type { ChatToolCall } from '../../chat/types';
@@ -33,6 +34,8 @@ export type AttachmentSource = (id: string) => Promise<File>;
 
 export interface ExecuteOptions {
   attachments?: AttachmentSource;
+  /** Linked records a read brings along (`include`), already checked by the surface. */
+  include?: string[];
 }
 
 /**
@@ -44,10 +47,25 @@ function withoutSecrets<R>(binding: ToolBinding, record: R): R {
   const secrets = Object.entries(binding.def.fields)
     .filter(([, field]) => field.secret)
     .map(([name]) => name);
-  if (secrets.length === 0 || record === null || typeof record !== 'object') return record;
+  if (record === null || typeof record !== 'object') return record;
   const out = { ...(record as Record<string, unknown>) };
   for (const name of secrets) delete out[name];
+  if (out.$included !== undefined) out.$included = withoutDescriptors(out.$included);
   return out as R;
+}
+
+/**
+ * Linked records (`$included`) with every secret descriptor dropped: they're
+ * other resources' records, whose secret fields this binding doesn't know.
+ */
+function withoutDescriptors(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutDescriptors);
+  if (value === null || typeof value !== 'object') return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, inner] of Object.entries(value)) {
+    if (!isSecretDescriptor(inner)) out[key] = withoutDescriptors(inner);
+  }
+  return out;
 }
 
 function stringArg(value: unknown): string | undefined {
@@ -151,7 +169,7 @@ export async function executeToolCall(
   call: ToolCall,
   bindings: Map<string, ToolBinding>,
   token: string,
-  { attachments }: ExecuteOptions = {},
+  { attachments, include }: ExecuteOptions = {},
 ): Promise<ChatToolCall> {
   const args = (call.args ?? {}) as Record<string, unknown>;
   const base = { tool: call.name, args };
@@ -178,13 +196,13 @@ export async function executeToolCall(
       case 'read': {
         const id = stringArg(args.id);
         if (id) {
-          return { ...base, ok: true, result: withoutSecrets(binding, await records.get(id)) };
+          return { ...base, ok: true, result: withoutSecrets(binding, await records.get(id, { include })) };
         }
         // One page, sized by `limit`: the engine does the filtering and
         // sorting, so a narrow question costs one small read instead of the
         // whole collection. A next-page token means more matched than fit.
         const opts = listOptions(args);
-        const page = await records.page(opts);
+        const page = await records.page({ ...opts, include });
         const truncated = page.nextPageToken !== undefined;
         const result = {
           records: page.records.map((record) => withoutSecrets(binding, record)),
