@@ -37,6 +37,19 @@ While offline:
 The cache survives a page reload, too. A user can close the tab on the subway,
 reopen it still underground, and see their data (kept for up to 7 days).
 
+**The app itself opens offline, too.** The service worker precaches the app
+shell — `index.html`, styles, and the code of every app's screens — so an app
+added to the Home Screen launches with no network, even one the person has
+never opened before. A navigation tries the network first (so an online
+launch always gets the current build) and falls back to the cached shell when
+the network fails or takes more than a few seconds. Code that only a library
+loads on demand (syntax-highlighting grammars, diagram renderers), plus the
+packages listed in `lazyPackages` in `packages/homestead-app/vite.config.ts`,
+is cached the first time it loads instead. Each build ships a new worker, which
+replaces the previous build's cache. Nothing to do in your app: the build works
+out what to cache (`packages/homestead-app/vite/offline-precache.ts`). Dev mode
+caches nothing.
+
 You opt into all of this by using the standard write hooks from
 [State Management](./state-management#data-hooks):
 
@@ -192,6 +205,7 @@ invalidation to reconcile it.
 
 | Action offline | What happens |
 |----------------|--------------|
+| Open the app | Loads from the cached shell (network first, falls back after ~4s) |
 | Read a resource | Serves cached data (kept up to 7 days, survives reload) |
 | Create / update / delete | Applies on screen, queues, syncs on reconnect (oldest first) |
 | Queued write rejected by server | Optimistic change rolls back |

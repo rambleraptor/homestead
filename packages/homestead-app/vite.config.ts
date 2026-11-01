@@ -5,6 +5,7 @@ import { execSync } from 'node:child_process';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoveredApps, projectAppsDirs } from './vite/discovered-apps';
+import { offlinePrecache } from './vite/offline-precache';
 
 const SERVER_STUB_ID = '\0homestead-server-only-stub';
 
@@ -87,6 +88,12 @@ export default defineConfig(({ mode }) => ({
     discoveredApps(projectRoot),
     react(),
     tailwindcss(),
+    offlinePrecache({
+      // Imported by app code, but only to prepare an upload or redact a
+      // document — both need the network — so not worth ~5 MB on every
+      // phone on every deploy. They're cached the first time they load.
+      lazyPackages: ['heic-to', 'pdfjs-dist'],
+    }),
   ],
   resolve: {
     alias: {
