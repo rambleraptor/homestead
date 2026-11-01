@@ -43,6 +43,7 @@ export type {
   HomesteadUser,
   RawUser,
   Page,
+  GetOptions,
   ListOptions,
   PageOptions,
   CreateOptions,

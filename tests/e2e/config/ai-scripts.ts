@@ -124,6 +124,8 @@ export const CHAT_MARKERS = {
   typedValues: 'e2e-chat-typed-values',
   /** Look a person up by a first name, loosely (name or alias), then answer. */
   findPerson: 'e2e-chat-find-person',
+  /** "Jake's address": find Jake with his households in one call, then repeat what came back. */
+  jakesAddress: 'e2e-chat-jakes-address',
   /** Message Sam (an approval-gated `:send`), then say so. */
   messageSam: 'e2e-chat-message-sam',
   /** Read a light's state from the test MCP server, then repeat what came back. */
@@ -271,6 +273,24 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
       // After the person's answer: the call ran (or was denied), and the
       // model has its outcome.
       { text: 'Done.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.jakesAddress,
+    steps: [
+      {
+        toolCalls: [
+          {
+            name: 'people',
+            args: {
+              action: 'list',
+              filter: 'name.contains("jake") || aliases.exists(a, a.contains("jake"))',
+              include: ['households'],
+            },
+          },
+        ],
+      },
+      { text: `Found: ${TOOL_OUTPUT_PLACEHOLDER}` },
     ],
   },
   {

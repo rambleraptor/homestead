@@ -9,7 +9,7 @@ import type { Database } from './sqlite';
 import { join } from 'node:path';
 import { createLogger } from '../log';
 import { openDb } from './db';
-import { errorResponse, HttpError } from './errors';
+import { errorResponse, HttpError, jsonResponse } from './errors';
 import {
   handleMetaCreate,
   handleMetaDelete,
@@ -21,8 +21,10 @@ import {
 } from './meta';
 import { OAuthRoutes, type OAuthConfig, type SessionIssuer } from './oauth';
 import { buildOpenApi } from './openapi';
-import { Registry } from './registry';
-import { authorizeRecord, matchResourcePath, notFoundText, routeDynamic } from './router';
+import { Registry, type RegisteredResource } from './registry';
+import { authorizeRecord, matchResourcePath, notFoundText, readTarget, routeDynamic } from './router';
+import { addIncluded, parseInclude } from './include';
+import { linksOf, type Link } from './links';
 import { originOf, runWithRequestContext } from './request-context';
 import { PermissionStore, permissionCacheTtlMs } from './permission-store';
 import { type Grant, type Verb } from './permissions';
@@ -202,6 +204,13 @@ export class Engine {
    */
   collectionAccess(caller: User): Map<string, CollectionAccess> {
     return collectionAccess(this.enforceContext(), this.db, this.registry, caller);
+  }
+
+  /** A resource's links, by the names `include` takes (`./links`). Empty for an unknown resource. */
+  linksFor(singular: string): Array<{ name: string; to: string; many: boolean }> {
+    const r = this.registry.get(singular);
+    if (!r) return [];
+    return [...linksOf(this.registry, r).values()].map((l) => ({ name: l.name, to: l.to.singular, many: l.many }));
   }
 
   /** Who shares this Homestead, by name. See `./household`. */
@@ -439,6 +448,12 @@ export class Engine {
       return res ?? notFoundText();
     }
 
+    // `include` (./include): checked before the read, applied to what it returns.
+    const include = req.method === 'GET' ? new URL(req.url).searchParams.get('include') : null;
+    const target = include ? readTarget(this.registry, segments) : null;
+    const links = target ? parseInclude(this.registry, target.resource, include!) : [];
+    if (!Array.isArray(links)) return errorResponse(400, links.error);
+
     const dynamicRes = await routeDynamic(
       this.registry,
       req,
@@ -446,9 +461,28 @@ export class Engine {
       caller,
       this.enforceContext(),
     );
+    if (dynamicRes && target && links.length > 0 && dynamicRes.ok) {
+      return this.withIncluded(dynamicRes, target, links, caller);
+    }
     if (dynamicRes) return dynamicRes;
 
     return notFoundText();
+  }
+
+  /** A read's response with each record's linked records beside it. */
+  private async withIncluded(
+    res: Response,
+    target: { resource: RegisteredResource; kind: 'resource' | 'collection' },
+    links: Link[],
+    caller: User | null,
+  ): Promise<Response> {
+    const body = (await res.json()) as Record<string, unknown>;
+    const records = (target.kind === 'collection' ? body.results : [body]) as Record<string, unknown>[] | undefined;
+    // Each included record is decided as a GET of it would be.
+    const canRead = (resource: RegisteredResource, path: string) =>
+      caller !== null && this.recordAllows(caller, resource.singular, path, 'read');
+    addIncluded(this.registry, target.resource, records ?? [], links, canRead);
+    return jsonResponse(body, res.status);
   }
 
   private async routeMeta(

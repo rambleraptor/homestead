@@ -191,7 +191,7 @@ function storedFileDownloadUrl(serverUrl: string, resourcePath: string, id: stri
  * are present, with file fields rewritten to download URLs (omitted when
  * there is no on-disk content).
  */
-function storedToMap(
+export function storedToMap(
   reg: Registry,
   r: RegisteredResource,
   s: StoredResource,

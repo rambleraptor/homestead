@@ -72,6 +72,13 @@ beforeAll(async () => {
   doc = await res.json();
 });
 
+/**
+ * Query parameters Homestead adds to the AEP contract the baseline froze —
+ * `include` (linked records, `src/engine/include.ts`) — set aside when
+ * comparing against it, and checked on their own below.
+ */
+const HOMESTEAD_EXTENSION_PARAMS = new Set(['include']);
+
 describe('AEP wire-contract invariants vs the baseline', () => {
   test('same path set', () => {
     expect(Object.keys(doc.paths).sort()).toEqual(Object.keys(baseline.paths).sort());
@@ -91,10 +98,32 @@ describe('AEP wire-contract invariants vs the baseline', () => {
         const ours = doc.paths[path][method];
         expect(ours.operationId).toBe(op['operationId']);
         const baselineParams = ((op['parameters'] ?? []) as { name: string }[]).map((p) => p.name);
-        const ourParams = ((ours.parameters ?? []) as { name: string }[]).map((p) => p.name);
+        const ourParams = ((ours.parameters ?? []) as { name: string }[])
+          .map((p) => p.name)
+          .filter((name) => !HOMESTEAD_EXTENSION_PARAMS.has(name));
         expect(ourParams.sort()).toEqual(baselineParams.sort());
       }
     }
+  });
+
+  test('include lists a resource’s links on get and list, and only where it has some', () => {
+    const includeOf = (path: string, method: string) =>
+      ((doc.paths[path][method].parameters ?? []) as { name: string; schema?: any }[]).find(
+        (p) => p.name === 'include',
+      );
+    const offered: string[] = [];
+    for (const [path, ops] of Object.entries(doc.paths) as [string, Record<string, any>][]) {
+      for (const method of Object.keys(ops)) {
+        const include = includeOf(path, method);
+        if (!include) continue;
+        offered.push(...include.schema.items.enum);
+        expect(method).toBe('get');
+        expect(include.schema.type).toBe('array');
+        expect(include.schema.items.enum.length).toBeGreaterThan(0);
+      }
+    }
+    // A gift card's transactions are a child collection; a transaction's gift card its parent.
+    expect(offered).toEqual(expect.arrayContaining(['transactions', 'parent']));
   });
 
   test('same component schemas with matching x-aep-resource', () => {

@@ -129,6 +129,21 @@ function resolve(reg: Registry, segments: string[]): ResolvedRoute | null {
 }
 
 /**
+ * The resource a plain GET of `segments` reads, and whether it reads one record
+ * or a page of them — what `include` (`./include`) needs to know. Null for
+ * anything else: no such resource, a singleton, or a custom method.
+ */
+export function readTarget(
+  reg: Registry,
+  segments: string[],
+): { resource: RegisteredResource; kind: 'resource' | 'collection' } | null {
+  const resolved = resolve(reg, segments);
+  if (!resolved || resolved.match.kind === 'singleton') return null;
+  if (resolved.match.kind === 'resource' && resolved.rawId.includes(':')) return null;
+  return { resource: resolved.match.resource, kind: resolved.match.kind };
+}
+
+/**
  * Resolve an AEP resource path (`groceries/abc`, `credit-cards/1/perks/2`, or a
  * singleton's path) to its route match — the same resolution a request for
  * that path gets. Null when no registered resource owns the path.

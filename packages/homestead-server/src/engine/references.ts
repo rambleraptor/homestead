@@ -32,7 +32,7 @@ export interface Referrer {
 }
 
 /** The reference marker on a property, if it declares a valid one. */
-function referenceMarker(
+export function referenceMarker(
   prop: SchemaProperty | undefined,
 ): { resource: string; onDelete?: OnDelete } | null {
   const marker = prop?.['x-aepbase-reference'];
