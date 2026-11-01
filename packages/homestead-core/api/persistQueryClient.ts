@@ -12,7 +12,11 @@
  */
 
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
-import type { PersistQueryClientOptions } from '@tanstack/react-query-persist-client';
+import type {
+  PersistQueryClientOptions,
+  PersistedClient,
+  Persister,
+} from '@tanstack/react-query-persist-client';
 import { logger } from '../utils/logger';
 
 export const PERSISTER_STORAGE_KEY = 'homeos:rq:v2';
@@ -67,15 +71,70 @@ function quotaSafeStorage(): Storage {
   };
 }
 
-export function createOfflinePersister() {
+// 7 days — long enough to survive a holiday weekend without connectivity.
+export const PERSIST_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Each build gets its own cache of reads: a hook may have changed what it
+// stores under a key, and new code shouldn't render a shape it never wrote.
+// NEXT_PUBLIC_BUILD_ID is defined at build time (vite.config.ts); dev falls
+// back to a stable string.
+export const PERSIST_BUSTER = process.env.NEXT_PUBLIC_BUILD_ID ?? 'dev';
+
+/**
+ * A snapshot from another build, or one older than `maxAge`, keeping only its
+ * queued writes — or the snapshot unchanged when it's current.
+ *
+ * React Query discards such a snapshot outright on restore, and that throws
+ * away writes the person made offline: a server update, or a week without
+ * signal, would silently lose the groceries they added. Reads are safe to
+ * drop (they refetch), so this keeps every mutation still pending (paused in
+ * the queue, or in flight when the tab closed) and drops the rest. Replaying
+ * one is safe: creates carry a client-chosen id, updates are merge patches,
+ * and a repeated delete is a no-op (`registerResourceMutationDefaults`).
+ *
+ * The result carries the current buster and timestamp, so React Query's own
+ * check passes and it hydrates the queue as usual.
+ */
+export function salvageQueuedWrites(
+  persisted: PersistedClient,
+  { buster, maxAge, now }: { buster: string; maxAge: number; now: number },
+): PersistedClient {
+  const current = persisted.buster === buster && now - persisted.timestamp <= maxAge;
+  if (current) return persisted;
+  return {
+    buster,
+    timestamp: now,
+    clientState: {
+      queries: [],
+      mutations: (persisted.clientState?.mutations ?? []).filter(
+        (mutation) => mutation.state.status === 'pending',
+      ),
+    },
+  };
+}
+
+export function createOfflinePersister(): Persister | null {
   if (!hasStorage()) return null;
-  return createSyncStoragePersister({
+  const persister = createSyncStoragePersister({
     storage: quotaSafeStorage(),
     key: PERSISTER_STORAGE_KEY,
     // Bumped from 1s to 2s — persisting every app multiplies write
     // pressure roughly 10× compared to the groceries-only baseline.
     throttleTime: 2000,
   });
+  return {
+    ...persister,
+    restoreClient: async () => {
+      const persisted = await persister.restoreClient();
+      return persisted
+        ? salvageQueuedWrites(persisted, {
+            buster: PERSIST_BUSTER,
+            maxAge: PERSIST_MAX_AGE_MS,
+            now: Date.now(),
+          })
+        : persisted;
+    },
+  };
 }
 
 /**
@@ -102,11 +161,10 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   persister: createOfflinePersister() as NonNullable<
     ReturnType<typeof createOfflinePersister>
   >,
-  // 7 days — long enough to survive a holiday weekend without connectivity.
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  // Bust the persisted cache on each deploy. NEXT_PUBLIC_BUILD_ID is exposed
-  // by Next.js when set; falls back to a stable string in dev.
-  buster: process.env.NEXT_PUBLIC_BUILD_ID ?? 'dev',
+  // Reads from another build or older than this are dropped on restore;
+  // queued writes are kept regardless (`salvageQueuedWrites`).
+  maxAge: PERSIST_MAX_AGE_MS,
+  buster: PERSIST_BUSTER,
   dehydrateOptions: {
     shouldDehydrateQuery: (query) => isPersistableKey(query.queryKey),
     shouldDehydrateMutation: (mutation) => {
