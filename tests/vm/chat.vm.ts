@@ -56,6 +56,20 @@ describe('Chat', () => {
     await h.close();
   });
 
+  test('the first message moves to its conversation without rebuilding the page', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await d.expect(d.getByTestId('agentic-home')).toBeVisible();
+    const home = document.querySelector('[data-testid="agentic-home"]');
+
+    await chat.send(`Hi ${CHAT_MARKERS.hello}`);
+    await openConversationId(d);
+    await d.expect(chat.messages).toContainText('Hello from the scripted assistant');
+    // The same page, its address changed under it — not a new one.
+    expect(document.querySelector('[data-testid="agentic-home"]')).toBe(home);
+  });
+
   test('a tool call the assistant makes really changes the data, and the transcript shows it', async () => {
     const d = h.driver;
     const chat = new ChatPage(d);
@@ -452,8 +466,10 @@ describe('Chat', () => {
 
     await chat.deleteConversation(`Hi ${CHAT_MARKERS.hello}`);
 
+    // Back to a new conversation, the drawer still open (as after deleting
+    // any other), now empty.
     await d.waitForURL('/dashboard');
-    await chat.openHistory();
+    await d.expect(chat.historyDrawer).toBeVisible();
     await d.expect(chat.conversations).toHaveCount(0);
     await d.expect(chat.userMessages).toHaveCount(0);
     expect(await conversations().listAll()).toEqual([]);

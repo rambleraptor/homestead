@@ -135,6 +135,14 @@ export interface AppRoute {
    * statically prerendered by `generateStaticParams`.
    */
   dynamic?: boolean;
+
+  /**
+   * Routes of one app sharing a `mountKey` render one mounted page: moving
+   * between them hands the page new params instead of remounting it. Without
+   * one, every path change remounts the page (the safe default). Give the
+   * routes the same `component` loader too, so it's one component.
+   */
+  mountKey?: string;
 }
 
 /**

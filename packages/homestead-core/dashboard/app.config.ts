@@ -17,6 +17,8 @@
 
 import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
 
+const dashboardHome = () => import('./components/DashboardHome').then((m) => m.DashboardHome);
+
 export const dashboardApp: AppConfig = {
   id: 'dashboard',
   name: 'Dashboard',
@@ -60,14 +62,16 @@ export const dashboardApp: AppConfig = {
       {
         path: '',
         index: true,
-        component: () =>
-          import('./components/DashboardHome').then((m) => m.DashboardHome),
+        component: dashboardHome,
+        mountKey: 'home',
       },
       {
-        // A conversation, on either home.
+        // A conversation, on either home. One mounted page with the index:
+        // the first message moves a new conversation here mid-reply, which
+        // must not rebuild the screen under it.
         path: 'c/:id',
-        component: () =>
-          import('./components/DashboardHome').then((m) => m.DashboardHome),
+        component: dashboardHome,
+        mountKey: 'home',
         dynamic: true,
       },
     ],
