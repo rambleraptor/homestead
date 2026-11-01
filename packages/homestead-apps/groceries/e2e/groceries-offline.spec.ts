@@ -9,12 +9,13 @@
  *  4. On reconnect, paused mutations replay against aepbase in FIFO order
  *     and the server state matches what the user wrote locally.
  *
- * Reload-while-offline is intentionally NOT tested here: Playwright's
- * `setOffline(true)` cuts off all network including the dev server, so
- * `page.reload()` errors with ERR_INTERNET_DISCONNECTED. Surviving a
- * cold offline reload would require a service worker that caches the app
- * shell, which the persistence plan explicitly scoped out. Cross-session
- * persistence is covered by the unit tests on the persister.
+ * Reload-while-offline is NOT tested here: Playwright's `setOffline(true)`
+ * cuts off all network including the dev server, so `page.reload()` errors
+ * with ERR_INTERNET_DISCONNECTED. The service worker serves a cached app shell
+ * only in production builds (`homestead-app/vite/offline-precache.ts`), and
+ * this suite runs the dev server. Cross-session persistence — including
+ * queued writes surviving a new build — is covered by the unit tests on the
+ * persister.
  */
 
 import { test, expect } from '../../../../tests/e2e/fixtures/aepbase.fixture';

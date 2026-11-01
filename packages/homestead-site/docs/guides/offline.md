@@ -37,6 +37,12 @@ While offline:
 The cache survives a page reload, too. A user can close the tab on the subway,
 reopen it still underground, and see their data (kept for up to 7 days).
 
+**Queued writes outlive the cache.** Cached reads are dropped when the server
+ships a new build or after 7 days, but writes still waiting to sync are kept
+either way and replay on the next connection — a server update or a week
+without signal never loses what someone did offline. Until they replay, those
+writes don't show in lists that were dropped with the old reads.
+
 **The app itself opens offline, too.** The service worker precaches the app
 shell — `index.html`, styles, and the code of every app's screens — so an app
 added to the Home Screen launches with no network, even one the person has
@@ -208,6 +214,7 @@ invalidation to reconcile it.
 | Open the app | Loads from the cached shell (network first, falls back after ~4s) |
 | Read a resource | Serves cached data (kept up to 7 days, survives reload) |
 | Create / update / delete | Applies on screen, queues, syncs on reconnect (oldest first) |
+| App updated (or 7+ days) before reconnecting | Cached reads dropped; queued writes kept and replayed |
 | Queued write rejected by server | Optimistic change rolls back |
 | Upload a file | Fails — uploads are online-only |
 | Action with no offline meaning | You disable it via `useOnlineStatus` |
