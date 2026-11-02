@@ -1,41 +1,43 @@
 /**
  * Persistence options for the React Query cache.
  *
- * Persists every `['app', ...]`-prefixed query and mutation to
- * localStorage so reads survive cold offline loads and queued writes
- * survive a page reload. Auth/users/roles/permissions intentionally
- * stay out of the persisted cache (token-bound, may rotate).
+ * Persists every `['app', ...]`-prefixed query and mutation to the device
+ * (IndexedDB, or localStorage where that's unavailable — `offlineStore.ts`)
+ * so reads survive cold offline loads and queued writes survive a page
+ * reload. Auth/users/roles/permissions intentionally stay out of the
+ * persisted cache (token-bound, may rotate), and secret field values never
+ * reach the disk (`redactSecrets.ts`).
  *
- * The sync persister returns `null` on the server so
- * `PersistQueryClientProvider` falls back to plain cache-only behavior
- * during SSR.
+ * The persister is `null` on the server, so `PersistQueryClientProvider`
+ * falls back to plain cache-only behavior there.
  */
 
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { timeoutManager } from '@tanstack/react-query';
 import type {
   PersistQueryClientOptions,
   PersistedClient,
   Persister,
 } from '@tanstack/react-query-persist-client';
+import { getAllResourceDefs } from '../apps/registry';
 import { logger } from '../utils/logger';
+import { defaultOfflineStore, type KeyValueStore } from './offlineStore';
+import {
+  redactPersistedClient,
+  secretFieldIndex,
+  type SecretFieldIndex,
+} from './redactSecrets';
 
-export const PERSISTER_STORAGE_KEY = 'homeos:rq:v2';
+export const PERSISTER_STORAGE_KEY = 'homestead:rq:v3';
 
 /**
- * Drop the persisted React Query snapshot from localStorage. Called on
- * logout / user change so the next mount of `PersistQueryClientProvider`
- * doesn't rehydrate a previous user's optimistic state into the new
- * session. Matches the in-memory `queryClient.clear()` happening at the
- * same time.
+ * Where the snapshot lived before it moved to IndexedDB. Read once, moved
+ * over (so a write queued before the upgrade isn't lost), then removed.
  */
-export function clearPersistedQueryCache(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.removeItem(PERSISTER_STORAGE_KEY);
-  } catch {
-    // ignored — quota errors and SecurityError shouldn't break logout
-  }
-}
+export const LEGACY_PERSISTER_STORAGE_KEY = 'homeos:rq:v2';
+
+// Bumped from 1s to 2s — persisting every app multiplies write pressure
+// roughly 10× compared to the groceries-only baseline.
+const SAVE_THROTTLE_MS = 2000;
 
 const NEVER_PERSIST: ReadonlySet<string> = new Set([
   'auth',
@@ -44,31 +46,21 @@ const NEVER_PERSIST: ReadonlySet<string> = new Set([
   'app_permissions',
 ]);
 
-function hasStorage(): boolean {
-  return typeof window !== 'undefined' && !!window.localStorage;
+function legacyStorage(): Storage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
-/** Wrap localStorage so a quota overflow is logged and dropped, not thrown. */
-function quotaSafeStorage(): Storage {
-  const ls = window.localStorage;
-  return {
-    getItem: (k) => ls.getItem(k),
-    setItem: (k, v) => {
-      try {
-        ls.setItem(k, v);
-      } catch (err) {
-        logger.warn('Failed to persist React Query cache to localStorage', {
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    },
-    removeItem: (k) => ls.removeItem(k),
-    clear: () => ls.clear(),
-    key: (i) => ls.key(i),
-    get length() {
-      return ls.length;
-    },
-  };
+/** The secret fields of every installed resource; none before the registry is. */
+function installedSecretFields(): SecretFieldIndex {
+  try {
+    return secretFieldIndex(getAllResourceDefs());
+  } catch {
+    return secretFieldIndex([]);
+  }
 }
 
 // 7 days — long enough to survive a holiday weekend without connectivity.
@@ -113,28 +105,115 @@ export function salvageQueuedWrites(
   };
 }
 
-export function createOfflinePersister(): Persister | null {
-  if (!hasStorage()) return null;
-  const persister = createSyncStoragePersister({
-    storage: quotaSafeStorage(),
-    key: PERSISTER_STORAGE_KEY,
-    // Bumped from 1s to 2s — persisting every app multiplies write
-    // pressure roughly 10× compared to the groceries-only baseline.
-    throttleTime: 2000,
-  });
+export interface OfflinePersisterOptions {
+  /** Where the snapshot is kept; the device's IndexedDB by default. */
+  store?: KeyValueStore | null;
+  /** Where a pre-IndexedDB snapshot may still be; localStorage by default. */
+  legacy?: Storage | null;
+  /** Which fields to keep off the disk; the installed resources' by default. */
+  secretFields?: () => SecretFieldIndex;
+}
+
+/** A persister that can also write its pending save right away. */
+export interface OfflinePersister extends Persister {
+  removeClient(): Promise<void>;
+  flush(): Promise<void>;
+}
+
+export function createOfflinePersister(options: OfflinePersisterOptions = {}): OfflinePersister | null {
+  const store = options.store === undefined ? defaultOfflineStore() : options.store;
+  if (!store) return null;
+  const legacy = options.legacy === undefined ? legacyStorage() : options.legacy;
+  const secretFields = options.secretFields ?? installedSecretFields;
+
+  const serialize = (client: PersistedClient) =>
+    JSON.stringify(redactPersistedClient(client, secretFields()));
+
+  // Trailing throttle, latest snapshot wins. Timers go through React Query's
+  // timeoutManager so the VM harness can cancel a save the way an unload would.
+  let pending: PersistedClient | null = null;
+  let timer: ReturnType<typeof timeoutManager.setTimeout> | null = null;
+  const save = async () => {
+    if (timer !== null) timeoutManager.clearTimeout(timer);
+    timer = null;
+    const client = pending;
+    pending = null;
+    if (client) await store.set(PERSISTER_STORAGE_KEY, serialize(client));
+  };
+
+  /**
+   * Move a snapshot saved before the switch to IndexedDB: write its redacted
+   * copy to the new store before deleting the old one, so a crash in between
+   * loses nothing, and hand back the original so this session still has
+   * everything in memory.
+   */
+  const migrateLegacy = async (): Promise<PersistedClient | undefined> => {
+    const raw = legacy?.getItem(LEGACY_PERSISTER_STORAGE_KEY);
+    if (!raw) return undefined;
+    try {
+      const client = JSON.parse(raw) as PersistedClient;
+      await store.set(PERSISTER_STORAGE_KEY, serialize(client));
+      return client;
+    } catch (err) {
+      logger.warn('Discarding an unreadable offline cache from localStorage', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return undefined;
+    } finally {
+      legacy?.removeItem(LEGACY_PERSISTER_STORAGE_KEY);
+    }
+  };
+
   return {
-    ...persister,
+    persistClient: (client) => {
+      pending = client;
+      timer ??= timeoutManager.setTimeout(() => void save(), SAVE_THROTTLE_MS);
+    },
     restoreClient: async () => {
-      const persisted = await persister.restoreClient();
+      const raw = await store.get(PERSISTER_STORAGE_KEY);
+      const persisted = raw ? (JSON.parse(raw) as PersistedClient) : await migrateLegacy();
       return persisted
         ? salvageQueuedWrites(persisted, {
             buster: PERSIST_BUSTER,
             maxAge: PERSIST_MAX_AGE_MS,
             now: Date.now(),
           })
-        : persisted;
+        : undefined;
     },
+    removeClient: async () => {
+      if (timer !== null) timeoutManager.clearTimeout(timer);
+      timer = null;
+      pending = null;
+      legacy?.removeItem(LEGACY_PERSISTER_STORAGE_KEY);
+      await store.delete(PERSISTER_STORAGE_KEY);
+    },
+    flush: save,
   };
+}
+
+const persister = createOfflinePersister();
+
+/**
+ * Save right away when the app is hidden, not up to two seconds later: on a
+ * phone, switching away is often the last thing that happens before the
+ * system kills the page, and the write just queued would go with it.
+ */
+if (persister && typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') void persister.flush();
+  });
+}
+
+/**
+ * Drop the persisted React Query snapshot. Called on logout / user change so
+ * the next mount of `PersistQueryClientProvider` doesn't rehydrate a previous
+ * user's optimistic state into the new session. Matches the in-memory
+ * `queryClient.clear()` happening at the same time; a save still pending is
+ * cancelled with it.
+ */
+export function clearPersistedQueryCache(): void {
+  // Ignored — storage errors shouldn't break logout.
+  persister?.removeClient().catch(() => {});
 }
 
 /**
@@ -158,9 +237,7 @@ export function isPersistableKey(key: readonly unknown[]): boolean {
  * QueryClientProvider during SSR.
  */
 export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
-  persister: createOfflinePersister() as NonNullable<
-    ReturnType<typeof createOfflinePersister>
-  >,
+  persister: persister as NonNullable<typeof persister>,
   // Reads from another build or older than this are dropped on restore;
   // queued writes are kept regardless (`salvageQueuedWrites`).
   maxAge: PERSIST_MAX_AGE_MS,

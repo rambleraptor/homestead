@@ -51,7 +51,6 @@
     "@rambleraptor/homestead-core": "^0.2.0",
     "@shadcn/react": "^0.2.1",
     "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/query-sync-storage-persister": "^5.100.5",
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-persist-client": "^5.100.5",
     "@vitejs/plugin-react": "^5.0.0",

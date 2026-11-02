@@ -35,7 +35,19 @@ While offline:
   finally runs, the optimistic change is undone.
 
 The cache survives a page reload, too. A user can close the tab on the subway,
-reopen it still underground, and see their data (kept for up to 7 days).
+reopen it still underground, and see their data (kept for up to 7 days). It is
+saved in the browser's IndexedDB (localStorage only where IndexedDB is
+unavailable), at most every two seconds and immediately when the app is
+hidden, so a write made just before switching away is kept.
+
+**Secret fields never reach the device.** Fields declared `encrypted` or
+`secret` — a gift card's number and PIN, the household Wi-Fi password — are
+stripped from everything the cache saves (`homestead-core/api/redactSecrets.ts`).
+While the app is open they show as usual; after a cold offline start the
+record is there without them until it can refetch, so render a missing secret
+as "Available when online" rather than as blank. A queued write whose own
+input carries a secret (changing a PIN offline) stays queued in memory only:
+it syncs as long as the app stays open, but not across a restart.
 
 **Queued writes outlive the cache.** Cached reads are dropped when the server
 ships a new build or after 7 days, but writes still waiting to sync are kept
@@ -213,6 +225,7 @@ invalidation to reconcile it.
 |----------------|--------------|
 | Open the app | Loads from the cached shell (network first, falls back after ~4s) |
 | Read a resource | Serves cached data (kept up to 7 days, survives reload) |
+| Read a secret field after an offline restart | Missing until the next refetch — never stored on the device |
 | Create / update / delete | Applies on screen, queues, syncs on reconnect (oldest first) |
 | App updated (or 7+ days) before reconnecting | Cached reads dropped; queued writes kept and replayed |
 | Queued write rejected by server | Optimistic change rolls back |
