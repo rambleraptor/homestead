@@ -4,7 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, onlineManager } from '@tanstack/react-query';
+import { outbox } from '../outbox';
 import { queryKeys } from '../queryClient';
 import {
   applyResourceEvent,
@@ -98,21 +99,17 @@ describe('applyResourceEvent', () => {
     expect(qc.getQueryData<Item[]>(keys.list())).toHaveLength(2);
   });
 
-  it('leaves a record alone while this tab has its own write to it pending', async () => {
+  it('leaves a record alone while this tab has its own write to it queued', async () => {
     registerListShape('groceries', 'grocery', { complete: true });
-    let release!: () => void;
-    const mutation = qc.getMutationCache().build(qc, {
-      mutationFn: () => new Promise<void>((resolve) => (release = resolve)),
-    });
-    const running = mutation.execute({ id: 'a', data: { checked: true } });
+    onlineManager.setOnline(false);
+    outbox.enqueue('update', 'groceries/a', { checked: true });
 
     const applied = applyResourceEvent(qc, 'groceries', 'resource.updated', event('a', { name: 'Renamed' }));
 
     expect(applied).toBe(false);
     expect(qc.getQueryData<Item[]>(keys.list())?.[0]?.name).toBe('Apples');
-    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
-    release();
-    await running;
+    await outbox.clear();
+    onlineManager.setOnline(true);
   });
 
   it('counts as applied when nothing is cached to patch', () => {

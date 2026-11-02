@@ -14,10 +14,8 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import {
-  clearTempIdMaps,
-  registerResourceMutationDefaults,
-} from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import { registerResourceMutationDefaults } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import { outbox } from '@rambleraptor/homestead-core/api/outbox';
 import { GROCERIES } from '../../../groceries/resources';
 import type { GroceryItem } from '../../../groceries/types';
 import type { RecipeIngredient } from '../../types';
@@ -115,9 +113,9 @@ function createWrapper(client: QueryClient) {
 }
 
 describe('useAddIngredientsToGroceryList (integration)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    clearTempIdMaps();
+    await outbox.clear();
   });
 
   it('creates one grocery item per new ingredient and skips existing ones', async () => {

@@ -3,6 +3,7 @@ import {
   registerResourceMutationDefaults,
   resourceMutationKeys,
 } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import { outbox } from '@rambleraptor/homestead-core/api/outbox';
 import { GROCERIES, STORES } from '../../resources';
 
 /**
@@ -52,3 +53,8 @@ export function makeGroceriesClient(): QueryClient {
 
 export const groceryKeys = resourceMutationKeys('groceries', 'grocery');
 export const storeKeys = resourceMutationKeys('groceries', 'store');
+
+/** Empty the page's outbox, so one test's queued writes can't reach the next. */
+export function resetOutbox(): Promise<void> {
+  return outbox.clear();
+}

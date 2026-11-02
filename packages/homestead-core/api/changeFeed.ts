@@ -30,7 +30,8 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { onlineManager, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { authStore, refreshSession } from './aepbase';
 import { queryKeys } from './queryClient';
-import { appIdsForResource } from './registerResourceMutationDefaults';
+import { appIdsForResource, collectionsForApp } from './registerResourceMutationDefaults';
+import { outbox } from './outbox';
 import { getClientId } from './clientId';
 import { publishRemoteChange } from './remoteChanges';
 import {
@@ -169,7 +170,10 @@ function makeInvalidator(qc: QueryClient) {
     const job = pending.get(appId);
     pending.delete(appId);
     if (!job) return;
+    // A refetch now would drop optimistic rows the server hasn't seen yet;
+    // the outbox's own sync refetches the app once its writes are sent.
     if (qc.isMutating({ mutationKey: ['app', appId] }) > 0) return;
+    if (outbox.hasPendingIn(collectionsForApp(appId))) return;
     void qc.invalidateQueries({
       queryKey: queryKeys.app(appId).all(),
       predicate: job.all ? undefined : (q) => !job.except.has(String(q.queryKey[2])),

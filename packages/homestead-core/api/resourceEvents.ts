@@ -17,7 +17,7 @@
 
 import type { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from './queryClient';
-import { affectedRecordId } from './usePendingSync';
+import { outbox } from './outbox';
 
 export type ResourceEventType = 'resource.created' | 'resource.updated' | 'resource.deleted';
 
@@ -62,12 +62,12 @@ export function clearListShapes(): void {
   listShapes.clear();
 }
 
-/** Whether this tab has a write queued or in flight for the record. */
-function hasPendingWrite(qc: QueryClient, id: string): boolean {
-  return qc
-    .getMutationCache()
-    .getAll()
-    .some((m) => m.state.status === 'pending' && affectedRecordId(m.state.variables) === id);
+/**
+ * Whether this tab has a write queued or in flight for the record — an
+ * outbox request on the same resource name (AEP-122) the event carries.
+ */
+function hasPendingWrite(path: string): boolean {
+  return outbox.requests().some((r) => r.name === path);
 }
 
 type Row = { id: string } & Record<string, unknown>;
@@ -103,7 +103,7 @@ export function applyResourceEvent(
   // Our own edit to this record hasn't landed yet. Writing someone else's
   // version over the optimistic one would flicker it back; the mutation
   // settles moments from now and invalidates, which picks up both.
-  if (hasPendingWrite(qc, data.id)) return false;
+  if (hasPendingWrite(data.path)) return false;
 
   const keys = queryKeys.app(appId).resource(data.resource);
   const shape = listShapes.get(shapeKey(appId, data.resource));

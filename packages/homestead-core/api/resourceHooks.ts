@@ -24,10 +24,12 @@ import { isConfirmedMediaType } from '../resources/media-type';
 import { queryKeys } from './queryClient';
 import { registerListShape } from './resourceEvents';
 import {
-  newTempId,
-  resolveParentChainFromCache,
+  newRecordId,
+  resourceNameFromCache,
   resourceHasParents,
   resourceMutationKeys,
+  withPendingUpdates,
+  withPendingWrites,
   type CreateVarsBase,
   type DeleteVars,
   type UpdateVars,
@@ -136,7 +138,11 @@ export function useResourceList<T, R = T>(
   return useQuery<R[], Error>({
     queryKey: queryKeys.app(appId).resource(singular).list(),
     queryFn: async (): Promise<R[]> => {
-      const records = await aepbase.list<T>(plural, { filter, orderBy, parent, maxPageSize });
+      const fetched = await aepbase.list<T>(plural, { filter, orderBy, parent, maxPageSize });
+      // This device's queued writes still show on top of what the server
+      // returned (outbox.ts). A filtered list can't tell which queued records
+      // match its filter, so it shows only what the server sent.
+      const records = filter ? fetched : withPendingWrites(appId, singular, fetched, { parent });
       const mapped = map ? records.map(map) : (records as unknown as R[]);
       return comparator ? [...mapped].sort(comparator) : mapped;
     },
@@ -168,7 +174,7 @@ export function useResourceItem<T>(
     queryKey: queryKeys.app(appId).resource(singular).detail(id ?? ''),
     queryFn: async (): Promise<T> => {
       if (!id) throw new Error('Resource id is required');
-      return aepbase.get<T>(plural, id, { parent });
+      return withPendingUpdates(await aepbase.get<T>(plural, id, { parent }));
     },
     enabled: !!id,
     ...queryOptions,
@@ -309,8 +315,10 @@ export function byCreateTimeAsc<T extends { create_time?: string }>(a: T, b: T):
 // ----------------------------------------------------------------------------
 
 /**
- * Create-mutation wrapper. The hook auto-injects a stable `tempId` on each
- * call so optimistic + persisted state share one handle through the queue.
+ * Create-mutation wrapper. Each call picks the new record's id up front
+ * (AEP-133), so the optimistic record, the queued request and the stored
+ * record all share it: a caller can link to or edit the new record at once,
+ * online or not.
  */
 export function useResourceCreate<T, V extends object>(
   appId: string,
@@ -327,11 +335,11 @@ export function useResourceCreate<T, V extends object>(
   return {
     ...mutation,
     mutate: (vars: V) =>
-      mutation.mutate({ ...(vars as object), tempId: newTempId() } as V & CreateVarsBase),
+      mutation.mutate({ ...(vars as object), recordId: newRecordId() } as V & CreateVarsBase),
     mutateAsync: (vars: V) =>
       mutation.mutateAsync({
         ...(vars as object),
-        tempId: newTempId(),
+        recordId: newRecordId(),
       } as V & CreateVarsBase),
   } as UseMutationResult<T, Error, V> & {
     mutate: (vars: V) => void;
@@ -352,10 +360,9 @@ export function useResourceUpdate<T, U = Record<string, unknown>>(
 
 /**
  * Delete-mutation wrapper. Public variables are the record id. For a nested
- * resource the wrapper resolves the aepbase URL parent chain from cache up
- * front (before the optimistic delete removes the record) and passes it in
- * the variables, so the chain persists into the offline queue and survives a
- * reload. Top-level resources pass the bare id unchanged.
+ * resource the wrapper looks up the record's resource name (AEP-122) up front,
+ * before the optimistic delete removes the record from the cache, and passes
+ * it along. Top-level resources pass the bare id unchanged.
  */
 export function useResourceDelete(
   appId: string,
@@ -369,8 +376,7 @@ export function useResourceDelete(
 
   const toVars = (id: string): DeleteVars => {
     if (!resourceHasParents(appId, singular)) return id;
-    const parent = resolveParentChainFromCache(queryClient, appId, singular, id);
-    return { id, parent };
+    return { id, name: resourceNameFromCache(queryClient, appId, singular, id) };
   };
 
   return {

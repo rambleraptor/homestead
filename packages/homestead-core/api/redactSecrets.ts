@@ -15,6 +15,7 @@
 
 import type { PersistedClient } from '@tanstack/react-query-persist-client';
 import type { ResourceDefinition } from '../resources/types';
+import { getAllResourceDefs } from '../apps/registry';
 
 /** Which fields are secret: by collection, and every such name across resources. */
 export interface SecretFieldIndex {
@@ -37,6 +38,15 @@ export function secretFieldIndex(defs: readonly ResourceDefinition[]): SecretFie
     }
   }
   return { byCollection, names };
+}
+
+/** The secret fields of every installed resource; none before the registry is. */
+export function installedSecretFields(): SecretFieldIndex {
+  try {
+    return secretFieldIndex(getAllResourceDefs());
+  } catch {
+    return secretFieldIndex([]);
+  }
 }
 
 /** The collection a record belongs to, from its AEP `path` (`gift-cards/abc`). */

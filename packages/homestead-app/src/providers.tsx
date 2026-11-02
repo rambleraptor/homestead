@@ -6,7 +6,12 @@ import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useChangeFeed } from '@rambleraptor/homestead-core/api/changeFeed';
 import { queryClient } from '@rambleraptor/homestead-core/api/queryClient';
 import { persistOptions } from '@rambleraptor/homestead-core/api/persistQueryClient';
-import { registerResourceMutationDefaults } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import {
+  overlayPendingWrites,
+  registerResourceMutationDefaults,
+  syncCacheWithOutbox,
+} from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import { startOutbox } from '@rambleraptor/homestead-core/api/outbox';
 import { getAllResourceDefsWithApp } from '@/apps/registry';
 import { ToastProvider } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 
@@ -23,6 +28,12 @@ for (const { app, def } of getAllResourceDefsWithApp()) {
     parents: def.parents,
   });
 }
+
+// Writes queued on this device (AEP requests in the outbox) start sending as
+// soon as the page loads, and what the server answers is folded back into
+// the cache.
+syncCacheWithOutbox(queryClient);
+void startOutbox();
 
 // Gate the dynamic import on `import.meta.env.DEV` so a production build
 // (`vite build`, what `homestead start` runs) constant-folds this to the
@@ -54,8 +65,12 @@ export function Providers({ children }: ProvidersProps) {
       client={queryClient}
       persistOptions={persistOptions}
       onSuccess={() => {
-        // Drain queued offline mutations before refetching, so the server
-        // sees the user's writes before we ask it for the truth.
+        // The restored cache may predate the person's last changes (it's
+        // saved on a throttle; the outbox saves every change), so lay the
+        // queued writes over it. Then replay any mutation an earlier version
+        // persisted — it lands in the outbox — and refetch; list reads apply
+        // whatever is still queued on top of what the server returns.
+        void startOutbox().then(() => overlayPendingWrites(queryClient));
         queryClient.resumePausedMutations().then(() => {
           queryClient.invalidateQueries();
         });

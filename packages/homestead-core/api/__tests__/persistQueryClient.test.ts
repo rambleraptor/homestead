@@ -81,31 +81,9 @@ describe('shouldDehydrateQuery', () => {
 });
 
 describe('shouldDehydrateMutation', () => {
-  it('matches app-prefixed mutation keys', () => {
-    expect(
-      dehydrate.shouldDehydrateMutation!(
-        makeMutation(['app', 'groceries', 'create-item']),
-      ),
-    ).toBe(true);
-    expect(
-      dehydrate.shouldDehydrateMutation!(
-        makeMutation(['app', 'credit-cards', 'create-credit-card']),
-      ),
-    ).toBe(true);
-  });
-
-  it('rejects unkeyed mutations', () => {
+  it('persists no mutations: queued writes live in the outbox', () => {
+    expect(dehydrate.shouldDehydrateMutation!(makeMutation(['app', 'groceries', 'create-grocery']))).toBe(false);
     expect(dehydrate.shouldDehydrateMutation!(makeMutation(undefined))).toBe(false);
-  });
-
-  it('skips mutations tagged non-queueable (e.g. multipart uploads)', () => {
-    expect(
-      dehydrate.shouldDehydrateMutation!(
-        makeMutation(['app', 'groceries', 'upload-image'], {
-          offlineQueueable: false,
-        }),
-      ),
-    ).toBe(false);
   });
 });
 
@@ -378,7 +356,8 @@ describe('restoring a snapshot from an earlier build', () => {
     const stale: PersistedClient = {
       buster: 'an-earlier-build',
       timestamp: Date.now(),
-      clientState: dehydrateClient(before, persistOptions.dehydrateOptions),
+      // How an earlier version saved it: the paused mutation, dehydrated.
+      clientState: dehydrateClient(before, { shouldDehydrateMutation: () => true }),
     };
     const store = memoryStore();
     store.data.set(PERSISTER_STORAGE_KEY, JSON.stringify(stale));

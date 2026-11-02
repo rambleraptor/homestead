@@ -9,10 +9,9 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { clearTempIdMaps } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 import { useClearCheckedItems } from '../useClearCheckedItems';
 import type { GroceryItem } from '../../types';
-import { makeGroceriesClient } from './testUtils';
+import { makeGroceriesClient, resetOutbox } from './testUtils';
 
 const ITEMS_KEY = queryKeys.app('groceries').resource('grocery').list();
 
@@ -35,9 +34,9 @@ function render(client: ReturnType<typeof makeGroceriesClient>) {
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
-  clearTempIdMaps();
+  await resetOutbox();
 });
 
 describe('useClearCheckedItems', () => {

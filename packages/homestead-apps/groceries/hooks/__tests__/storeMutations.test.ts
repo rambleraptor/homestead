@@ -5,42 +5,38 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import {
-  clearTempIdMaps,
-  newTempId,
-} from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import { newRecordId } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 import type { Store } from '../../types';
-import { makeGroceriesClient, runMutation, storeKeys } from './testUtils';
+import { makeGroceriesClient, resetOutbox, runMutation, storeKeys } from './testUtils';
 
 const STORES_KEY = queryKeys.app('groceries').resource('store').list();
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
-  clearTempIdMaps();
+  await resetOutbox();
 });
 
 describe('create-store', () => {
-  it('inserts an optimistic store and reconciles with the server id', async () => {
+  it('inserts an optimistic store under the id it is created with', async () => {
     const client = makeGroceriesClient();
     client.setQueryData<Store[]>(STORES_KEY, []);
+    const recordId = newRecordId();
     vi.mocked(aepbase.create).mockResolvedValueOnce({
-      id: 'store-srv-1',
+      id: recordId,
       name: 'Costco',
       sort_order: 0,
       created: '2026-04-27T00:00:00Z',
       updated: '2026-04-27T00:00:00Z',
     });
 
-    const tempId = newTempId();
-    await runMutation(client, storeKeys.create, {
-      name: 'Costco',
-      sort_order: 0,
-      tempId,
-    });
+    await runMutation(client, storeKeys.create, { name: 'Costco', sort_order: 0, recordId });
 
+    expect(aepbase.create).toHaveBeenCalledWith('stores', expect.objectContaining({ name: 'Costco' }), {
+      id: recordId,
+    });
     const list = client.getQueryData<Store[]>(STORES_KEY) ?? [];
     expect(list).toHaveLength(1);
-    expect(list[0].id).toBe('store-srv-1');
+    expect(list[0].id).toBe(recordId);
   });
 });
 

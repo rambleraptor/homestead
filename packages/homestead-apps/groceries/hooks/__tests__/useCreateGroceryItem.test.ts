@@ -1,161 +1,109 @@
 /**
- * Optimistic create flow + tempId reconciliation, exercised against the
- * generic factory (registered for the groceries app via the same code
- * the runtime uses). The aepbase client is the global mock from
- * `src/test/setup.ts`.
+ * Optimistic create, and writes made to an item before the server has it,
+ * exercised against the generic factory (registered for the groceries app via
+ * the same code the runtime uses). The aepbase client is the global mock from
+ * `src/test/setup.ts`; writes reach it through the page's outbox.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { onlineManager } from '@tanstack/react-query';
+import { aepbase, AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
+import { outbox } from '@rambleraptor/homestead-core/api/outbox';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import {
-  clearTempIdMaps,
-  newTempId,
-} from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import { newRecordId } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 import type { GroceryItem } from '../../types';
-import { groceryKeys, makeGroceriesClient, runMutation } from './testUtils';
+import { groceryKeys, makeGroceriesClient, resetOutbox, runMutation } from './testUtils';
 
 const ITEMS_KEY = queryKeys.app('groceries').resource('grocery').list();
 
-beforeEach(() => {
+function item(id: string, fields: Partial<GroceryItem> = {}): GroceryItem {
+  return {
+    id,
+    name: 'Milk',
+    checked: false,
+    created: '2026-04-27T00:00:00Z',
+    updated: '2026-04-27T00:00:00Z',
+    ...fields,
+  };
+}
+
+beforeEach(async () => {
   vi.clearAllMocks();
-  clearTempIdMaps();
+  await resetOutbox();
+});
+
+afterEach(async () => {
+  onlineManager.setOnline(true);
+  await resetOutbox();
 });
 
 describe('create-grocery mutation', () => {
-  it('inserts an optimistic record before the server responds', async () => {
+  it('inserts an optimistic record, under its final id, before the server responds', async () => {
     const client = makeGroceriesClient();
     client.setQueryData<GroceryItem[]>(ITEMS_KEY, []);
+    const recordId = newRecordId();
 
-    let resolveCreate!: (item: GroceryItem) => void;
+    let respond!: () => void;
     vi.mocked(aepbase.create).mockImplementationOnce(
-      () => new Promise((res) => (resolveCreate = res as (item: GroceryItem) => void)),
+      () => new Promise((res) => (respond = () => res(item(recordId, { name: 'Milk' })))),
     );
 
-    const tempId = newTempId();
-    const promise = runMutation<GroceryItem>(client, groceryKeys.create, {
-      name: 'Milk',
-      tempId,
-    });
+    const creating = runMutation<GroceryItem>(client, groceryKeys.create, { name: 'Milk', recordId });
 
-    // Optimistic record visible immediately.
     await vi.waitFor(() => {
       const list = client.getQueryData<GroceryItem[]>(ITEMS_KEY) ?? [];
       expect(list).toHaveLength(1);
-      expect(list[0].id).toBe(tempId);
+      expect(list[0].id).toBe(recordId);
       expect(list[0].name).toBe('Milk');
     });
 
-    // Server resolves with the real id.
-    resolveCreate({
-      id: 'srv-1',
-      name: 'Milk',
-      checked: false,
-      created: '2026-04-27T00:00:00Z',
-      updated: '2026-04-27T00:00:00Z',
-    });
-    await promise;
-
+    respond();
+    await creating;
     const list = client.getQueryData<GroceryItem[]>(ITEMS_KEY) ?? [];
-    expect(list).toHaveLength(1);
-    expect(list[0].id).toBe('srv-1');
+    expect(list.map((i) => i.id)).toEqual([recordId]);
   });
 
   it('rolls back the cache on server error', async () => {
     const client = makeGroceriesClient();
-    const seed: GroceryItem[] = [
-      {
-        id: 'existing',
-        name: 'Bread',
-        checked: false,
-        created: '2026-04-26T00:00:00Z',
-        updated: '2026-04-26T00:00:00Z',
-      },
-    ];
+    const seed = [item('existing', { name: 'Bread' })];
     client.setQueryData<GroceryItem[]>(ITEMS_KEY, seed);
-
-    vi.mocked(aepbase.create).mockRejectedValueOnce(new Error('network down'));
+    vi.mocked(aepbase.create).mockRejectedValueOnce(new AepbaseError(400, 'name is required', '/groceries'));
 
     await expect(
-      runMutation(client, groceryKeys.create, {
-        name: 'Eggs',
-        tempId: newTempId(),
-      }),
+      runMutation(client, groceryKeys.create, { name: '', recordId: newRecordId() }),
     ).rejects.toThrow();
 
     expect(client.getQueryData<GroceryItem[]>(ITEMS_KEY)).toEqual(seed);
   });
 });
 
-describe('temp-id reconciliation', () => {
-  it('rewrites a follow-up update from tempId to the real server id', async () => {
+describe('writes to an item the server has not seen yet', () => {
+  it('sends a follow-up update to the same id', async () => {
     const client = makeGroceriesClient();
     client.setQueryData<GroceryItem[]>(ITEMS_KEY, []);
+    const recordId = newRecordId();
+    vi.mocked(aepbase.create).mockResolvedValueOnce(item(recordId, { name: 'Cheese' }));
+    vi.mocked(aepbase.update).mockResolvedValueOnce(item(recordId, { name: 'Cheese', checked: true }));
 
-    vi.mocked(aepbase.create).mockResolvedValueOnce({
-      id: 'srv-2',
-      name: 'Cheese',
-      checked: false,
-      created: '2026-04-27T00:00:00Z',
-      updated: '2026-04-27T00:00:00Z',
-    });
-    vi.mocked(aepbase.update).mockResolvedValueOnce({
-      id: 'srv-2',
-      name: 'Cheese',
-      checked: true,
-      created: '2026-04-27T00:00:00Z',
-      updated: '2026-04-27T00:00:01Z',
-    });
+    await runMutation(client, groceryKeys.create, { name: 'Cheese', recordId });
+    await runMutation(client, groceryKeys.update, { id: recordId, data: { checked: true } });
 
-    const tempId = newTempId();
-    await runMutation(client, groceryKeys.create, {
-      name: 'Cheese',
-      tempId,
-    });
-
-    await runMutation(client, groceryKeys.update, {
-      id: tempId,
-      data: { checked: true },
-    });
-
-    expect(aepbase.update).toHaveBeenCalledWith('groceries', 'srv-2', { checked: true });
+    expect(aepbase.update).toHaveBeenCalledWith('groceries', recordId, { checked: true });
   });
 
-  it('skips the network call when deleting an item whose create is still pending', async () => {
+  it('sends nothing for an item added and removed while offline', async () => {
     const client = makeGroceriesClient();
     client.setQueryData<GroceryItem[]>(ITEMS_KEY, []);
+    const recordId = newRecordId();
+    onlineManager.setOnline(false);
 
-    let resolveCreate!: () => void;
-    vi.mocked(aepbase.create).mockImplementationOnce(
-      () =>
-        new Promise<GroceryItem>((res) => {
-          resolveCreate = () =>
-            res({
-              id: 'srv-3',
-              name: 'Salt',
-              checked: false,
-              created: '2026-04-27T00:00:00Z',
-              updated: '2026-04-27T00:00:00Z',
-            });
-        }),
-    );
-
-    const tempId = newTempId();
-    const createPromise = runMutation(client, groceryKeys.create, {
-      name: 'Salt',
-      tempId,
-    });
-
-    await vi.waitFor(() => {
-      expect(client.getQueryData<GroceryItem[]>(ITEMS_KEY) ?? []).toHaveLength(1);
-    });
-
-    await runMutation(client, groceryKeys.delete, tempId);
-
-    expect(aepbase.remove).not.toHaveBeenCalled();
+    await runMutation(client, groceryKeys.create, { name: 'Salt', recordId });
+    await runMutation(client, groceryKeys.delete, recordId);
     expect(client.getQueryData<GroceryItem[]>(ITEMS_KEY) ?? []).toHaveLength(0);
 
-    resolveCreate();
-    await createPromise.catch(() => undefined);
+    onlineManager.setOnline(true);
+    await outbox.drain();
+    expect(aepbase.create).not.toHaveBeenCalled();
+    expect(aepbase.remove).not.toHaveBeenCalled();
   });
 });

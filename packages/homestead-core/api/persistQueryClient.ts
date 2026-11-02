@@ -18,12 +18,11 @@ import type {
   PersistedClient,
   Persister,
 } from '@tanstack/react-query-persist-client';
-import { getAllResourceDefs } from '../apps/registry';
 import { logger } from '../utils/logger';
-import { defaultOfflineStore, type KeyValueStore } from './offlineStore';
+import { deviceStore, type KeyValueStore } from './offlineStore';
 import {
+  installedSecretFields,
   redactPersistedClient,
-  secretFieldIndex,
   type SecretFieldIndex,
 } from './redactSecrets';
 
@@ -51,15 +50,6 @@ function legacyStorage(): Storage | null {
     return typeof window === 'undefined' ? null : window.localStorage;
   } catch {
     return null;
-  }
-}
-
-/** The secret fields of every installed resource; none before the registry is. */
-function installedSecretFields(): SecretFieldIndex {
-  try {
-    return secretFieldIndex(getAllResourceDefs());
-  } catch {
-    return secretFieldIndex([]);
   }
 }
 
@@ -121,7 +111,7 @@ export interface OfflinePersister extends Persister {
 }
 
 export function createOfflinePersister(options: OfflinePersisterOptions = {}): OfflinePersister | null {
-  const store = options.store === undefined ? defaultOfflineStore() : options.store;
+  const store = options.store === undefined ? deviceStore : options.store;
   if (!store) return null;
   const legacy = options.legacy === undefined ? legacyStorage() : options.legacy;
   const secretFields = options.secretFields ?? installedSecretFields;
@@ -202,6 +192,8 @@ if (persister && typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') void persister.flush();
   });
+  // A reload or navigation away, too (not always preceded by "hidden").
+  window.addEventListener('pagehide', () => void persister.flush());
 }
 
 /**
@@ -244,17 +236,10 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   buster: PERSIST_BUSTER,
   dehydrateOptions: {
     shouldDehydrateQuery: (query) => isPersistableKey(query.queryKey),
-    shouldDehydrateMutation: (mutation) => {
-      const key = mutation.options.mutationKey;
-      if (!Array.isArray(key) || !isPersistableKey(key)) return false;
-      // FormData / multipart writes are non-serializable. Resource
-      // factories tag those with `meta.offlineQueueable: false`; the
-      // UI is expected to disable the trigger when offline.
-      const meta = mutation.options.meta as
-        | { offlineQueueable?: boolean }
-        | undefined;
-      if (meta?.offlineQueueable === false) return false;
-      return true;
-    },
+    // Queued writes live in the outbox (AEP requests, saved on their own —
+    // `outbox.ts`), not in React Query's mutation state. A mutation an
+    // earlier version persisted is still restored and replays through the
+    // resource mutation defaults, which put it in the outbox.
+    shouldDehydrateMutation: () => false,
   },
 };
