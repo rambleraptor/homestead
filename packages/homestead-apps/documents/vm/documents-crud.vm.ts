@@ -15,6 +15,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { DOC_MARKERS } from '../../../../tests/e2e/config/ai-stub';
+import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 import { DocumentsPage } from '../e2e/DocumentsPage';
 import {
   classifyDocument,
@@ -160,6 +161,42 @@ describe('Documents', { timeout: CLASSIFY_TEST_TIMEOUT_MS }, () => {
     await h.driver.expect(documents.detailFacts()).toHaveCount(0);
     const [saved] = await listDocuments(userToken, "metadata.doc_type == 'warranty'");
     expect(saved?.metadata).toEqual({ doc_type: 'warranty' });
+  });
+
+  test('typing a charitable receipt by hand creates its charitable receipt', async () => {
+    // The AI couldn't place it, so no post-classify hook ran at upload.
+    await uploadAndClassify(userToken, 'unknown', { title: 'food-bank-letter' });
+
+    const documents = new DocumentsPage(h.driver);
+    await documents.goto();
+    await documents.open('food-bank-letter');
+
+    await documents.edit();
+    await documents.chooseType('charitable-donation-receipt');
+    await documents.editField('organization_name').fill('Central Texas Food Bank');
+    await documents.editField('donation_amount').fill('150');
+    await documents.save();
+
+    await h.driver
+      .expect(h.driver.getByTestId('document-origin-link'))
+      .toContainText(/saved as a charitable receipt/i);
+
+    const receipts = await e2eClient(userToken).collection('charitable-receipts').listAll();
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]).toMatchObject({
+      organization: 'Central Texas Food Bank',
+      amount: 150,
+      gift_type: 'Cash',
+    });
+
+    // A second save is a no-op for the link — no duplicate receipt.
+    await documents.edit();
+    await documents.setTitle('Food bank 2026');
+    await documents.save();
+    await h.driver.expect(documents.detail()).toContainText('Food bank 2026');
+    expect(
+      await e2eClient(userToken).collection('charitable-receipts').listAll(),
+    ).toHaveLength(1);
   });
 
   test('the index filters by search, type, and person', async () => {

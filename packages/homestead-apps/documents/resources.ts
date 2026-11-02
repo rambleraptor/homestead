@@ -218,6 +218,14 @@ export const documentsResources: ResourceDefinition[] = [
         title: 'Split bundle into documents',
         load: () => import('./methods/split'),
       },
+      // POST /api/aep/documents/{id}:link — runs the doc type's post_classify
+      // hook for a type or fields a person set by hand (classify runs it
+      // itself). No-op when the document already has a linked_resource.
+      link: {
+        target: 'item',
+        title: 'Create the linked record',
+        load: () => import('./methods/link'),
+      },
       // Migration support for the full_text → file_text backfill; called by
       // scripts/backfill-document-embeddings.sh. Removable post-migration.
       reembed: {

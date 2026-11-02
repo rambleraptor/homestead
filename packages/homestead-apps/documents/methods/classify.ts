@@ -46,6 +46,7 @@ import {
 } from '../doc-types/docType';
 import { getDocType, getDocTypes } from '../doc-types/registry';
 import { parseForcedDocType } from './forced-type';
+import { runPostClassify } from './post-classify';
 import { resolveDocumentPersonIds } from '../personLinks';
 import { PEOPLE } from '../../people/resources';
 import type { Person } from '../../people/types';
@@ -469,20 +470,13 @@ const handler: AsyncCustomMethodHandler = async ({ id, auth, request }) => {
   // doesn't create a second downstream resource. A hook failure is logged but
   // never fails the classification — the parse itself already succeeded.
   if (matched && !doc.linked_resource) {
-    const docType = getDocType(metadata.doc_type);
-    if (docType?.post_classify) {
-      try {
-        const { default: hook } = await docType.post_classify();
-        const result = await hook({ document: updated, metadata, auth });
-        if (result?.linked_resource) {
-          await documents.record(docId).update({ linked_resource: result.linked_resource });
-        }
-      } catch (err) {
-        console.error(
-          `[documents] post_classify failed for ${docId} (${metadata.doc_type})`,
-          err,
-        );
-      }
+    try {
+      await runPostClassify({ ...updated, metadata }, auth);
+    } catch (err) {
+      console.error(
+        `[documents] post_classify failed for ${docId} (${metadata.doc_type})`,
+        err,
+      );
     }
   }
 
