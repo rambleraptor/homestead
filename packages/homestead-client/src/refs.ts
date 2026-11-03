@@ -1,4 +1,5 @@
 import type { Http } from './http';
+import { BulkImportApiImpl, bulkExport, type BulkExportOptions, type BulkImportApi } from './bulk';
 import { errorFromResponse } from './errors';
 import type {
   CreateOptions,
@@ -35,9 +36,14 @@ export interface CollectionRef<T> {
   record(id: string): RecordRef<T>;
   /**
    * Invoke an AEP-136 collection-target custom method
-   * (`POST /<plural>:<verb>`), sending `X-User-Id` for the gateway.
+   * (`POST /<plural>:<verb>`), sending `X-User-Id` for the gateway. A body
+   * holding `Blob`s goes as multipart ({@link encodeMethodBody}).
    */
   invoke<R = unknown>(verb: string, body?: RecordBody): Promise<R>;
+  /** The collection's `:bulk-import` method: preview, import a preview, or both at once. */
+  readonly bulkImport: BulkImportApi<T>;
+  /** Download the collection (or the rows `filter` selects) via `:bulk-export`. */
+  bulkExport(options?: BulkExportOptions): Promise<Blob>;
 }
 
 /** A handle to a single record. */
@@ -156,11 +162,19 @@ export function downloadBody(target: DownloadTarget): { field: string } | { file
 }
 
 export class CollectionRefImpl<T> implements CollectionRef<T> {
+  readonly bulkImport: BulkImportApi<T>;
+
   constructor(
     private readonly http: Http,
     /** Collection path with a leading slash, no trailing slash. */
     private readonly path: string,
-  ) {}
+  ) {
+    this.bulkImport = new BulkImportApiImpl<T>(http, path);
+  }
+
+  bulkExport(options?: BulkExportOptions): Promise<Blob> {
+    return bulkExport(this.http, this.path, options);
+  }
 
   async page(options: PageOptions = {}): Promise<Page<T>> {
     const env = await this.http.request<ListEnvelope<T>>(this.path, {

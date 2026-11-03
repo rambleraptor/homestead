@@ -552,8 +552,17 @@ export interface ResourceCustomMethod {
    * prompt per tool call themselves, get no extra step. People calling it
    * directly (the SPA, scripts, the CLI) are already deciding, so it changes
    * nothing for them.
+   *
+   * `{ unless: '<field>' }` asks only when that boolean body field isn't true —
+   * bulk import asks before it writes, never for a `validate_only` preview.
    */
-  confirm?: boolean;
+  confirm?: boolean | { unless: string };
+  /**
+   * The result carries content from outside the household (a parsed web page,
+   * a caption, a file someone uploaded). The model tools label it untrusted —
+   * this text says where it came from — so instructions inside it stay data.
+   */
+  untrustedResult?: string;
   /** HTTP method this custom method accepts. Defaults to `'POST'`. */
   method?: CustomMethodHttpMethod;
   /**

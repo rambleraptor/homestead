@@ -138,6 +138,12 @@ API by running `homestead resources`.
 | `--email=… --password=…`      | Authenticate with superuser credentials instead of minting.    |
 | `--server-url=URL`            | Target a remote engine (default `http://127.0.0.1:<port>/api/aep`). |
 | `--@data=PATH`                | Supply a JSON body from a file (for create or custom methods). |
+| `--upload=FIELD=PATH`         | Attach a file to a custom method's body (repeat a field for a list); sent as multipart. |
+| `--no-wait`                   | Print a long-running method's operation instead of waiting for its result. |
+| `--format`, `--file`, `--text`, `--text-file` | Bulk import input (`--file` repeats). |
+| `--validate-only`             | Bulk import: preview without writing; prints the `preview_id`. |
+| `--preview-id=ID`, `--select=0,2` | Bulk import: write exactly those rows of a preview. |
+| `--out=PATH`, `--filter=EXPR` | Bulk export: where to write the file, and which rows. |
 | `--data-dir=PATH`             | Where the SQLite database lives (default `<project>/data`).    |
 
 ---
@@ -486,8 +492,21 @@ Custom methods count as writes unless they're declared `method: 'GET'`. Request
 `homestead:write` (or both) for full access. Clients that request no scope get
 full read + write, as before.
 
-The synthesized `:bulk-import` / `:bulk-export` methods aren't exposed on any
-surface — they move files, not model-composable JSON.
+The synthesized `:bulk-import` is a tool action like any custom method, with
+the same body every client sends: a `validate_only` preview first, then the
+`preview_id` (and `selected_indices`) to write exactly those rows. In the chat
+the write asks the person first (`confirm: { unless: 'validate_only' }`), and
+the approval card lists the rows it would save; a preview never asks. A preview
+is labelled untrusted — it's someone else's caption or page — so instructions
+inside it stay data. `:bulk-export` stays out: it returns a file.
+
+A method that takes files gets them **by attachment id** in the chat: files the
+person attached to the conversation, which the executor uploads (as multipart
+`$upload` parts) — "save this recipe" with a screenshot attached, or a
+grocery-list photo for `:process-image`. MCP has no attachments, so an optional
+file field is left out of the tool and a method that requires one isn't
+offered. Long-running methods are awaited (up to 90 seconds) and return their
+result; past that, the operation to poll.
 
 > Prefer an out-of-process option? The community
 > [`aep-mcp-server`](https://github.com/aep-dev/aep-mcp-server) can still be

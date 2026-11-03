@@ -69,6 +69,7 @@ import {
   buildCustomMethodTools,
   customMethodToolName,
   executeCustomMethod,
+  methodsOf,
   type CustomMethodBinding,
 } from './custom-methods';
 import { writeGate, type SurfaceResult, type ToolSurface, type WriteAccess } from './surface';
@@ -135,7 +136,9 @@ export function buildResourceTools(
     findHint: (target) => `use the ${snake(target.plural)} tool's "list" action to find one`,
     files: attachments !== undefined,
   });
-  const custom = buildCustomMethodTools(defs);
+  // File fields of custom methods take attachment ids when there's a
+  // conversation to resolve them from (the chat).
+  const custom = buildCustomMethodTools(defs, undefined, { files: attachments !== undefined });
 
   const tools: Record<string, ToolSpec> = {};
   const byTool = new Map<string, ResourceTool>();
@@ -160,7 +163,7 @@ export function buildResourceTools(
     // Custom methods this surface will accept: all of them, or only the `GET`
     // ones when the authorization is read-only.
     const verbs = new Map<string, { toolName: string; binding: CustomMethodBinding }>();
-    for (const [verb, method] of Object.entries(def.customMethods ?? {})) {
+    for (const [verb, method] of methodsOf(def)) {
       const toolName = customMethodToolName(def, verb, method.target ?? 'collection');
       const binding = custom.bindings.get(toolName);
       // Guard against a generated name that resolved to another resource's
@@ -246,7 +249,7 @@ export function buildResourceTools(
         { id, body: args.body, parentIds: parentIds.ids },
       );
       if ('error' in call) return { ok: false, error: call.error };
-      return executeCustomMethod(call.name, call.args, custom.bindings, token);
+      return executeCustomMethod(call.name, call.args, custom.bindings, token, { attachments });
     }
 
     const op = CRUD_OP[action];
@@ -454,7 +457,7 @@ function describeResource(
   if (opts.verbs.size > 0) {
     lines.push('Custom methods:');
     for (const [action, { binding }] of opts.verbs) {
-      const method = def.customMethods?.[binding.verb];
+      const method = methodsOf(def).find(([verb]) => verb === binding.verb)?.[1];
       if (method) lines.push(verbLine(action, method, binding));
     }
   }

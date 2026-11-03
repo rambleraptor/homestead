@@ -5,6 +5,7 @@
  * renders it.
  */
 
+import { findImportPreview } from '../importPreview';
 import { MessageCircle } from 'lucide-react';
 import {
   Conversation,
@@ -116,6 +117,7 @@ export function ChatThread({
                 streaming={busy && i === messages.length - 1 && message.role === 'assistant'}
                 onAnswerApproval={chat.answerApproval}
                 busy={busy}
+                findPreview={(previewId) => findImportPreview(messages, previewId)}
               />
             ))
           )}

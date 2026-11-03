@@ -75,13 +75,40 @@ automatically from the auth strategy.
 
 ```ts
 // collection- and item-target custom verbs
-await hs.collection('groceries').invoke('process-image', { image });
+await hs.collection('groceries').invoke('process-image', { image }); // a File/Blob → multipart
 await hs.collection('hsa-receipts').record(id).invoke('parse-receipt');
 
 // async method (202 + Operation): poll to completion
 const op = await hs.collection('hsa-receipts').record(id).invoke('parse-receipt');
 const result = await hs.operations.await(op.id, { timeoutMs: 60_000 });
 ```
+
+## Bulk import & export
+
+A collection that declares bulk import answers `:bulk-import`; the client wraps
+it — files go as multipart `$upload` parts, the operation is awaited:
+
+```ts
+const recipes = hs.collection('recipes');
+
+// Preview (AEP-163 validate_only), pick rows, import exactly those:
+const preview = await recipes.bulkImport.preview({ format: 'paprika', files: [file] });
+await recipes.bulkImport.importPreview({
+  format: 'paprika',
+  previewId: preview.preview_id,
+  selected: [0, 2],
+});
+
+// Or parse and write everything importable in one call:
+await recipes.bulkImport.run({ format: 'text', text: pasted });
+
+// Export as a file:
+const csv = await hs.collection('people').bulkExport({ format: 'csv' });
+```
+
+The request and response types (`BulkImportRequest`, `BulkImportPreview`,
+`BulkImportResult`, `ParsedItem`, …) are exported; the server compiles against
+the same definitions.
 
 ## Files
 

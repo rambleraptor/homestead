@@ -4,6 +4,8 @@
  * what it would do, in their terms, and Approve or Deny. Nothing runs until they answer; the reply then carries on.
  */
 
+import type { BulkImportPreview } from '@rambleraptor/homestead-client';
+import { bulkImportBody, rowLabel, selectedRows } from '../importPreview';
 import { useState } from 'react';
 import { ShieldQuestion } from 'lucide-react';
 import type { ToolUIPart } from 'ai';
@@ -33,13 +35,15 @@ function detailRows(input: unknown, outside: boolean): Array<[string, string]> {
 
 export interface ApprovalCardProps {
   part: ToolUIPart;
+  /** Look up the bulk-import preview a `:bulk-import` write names. */
+  findPreview?: (previewId: string) => BulkImportPreview | null;
   /** Answer it; rejects when the answer couldn't be sent. */
   onAnswer: (approvalId: string, approved: boolean) => Promise<void>;
   /** Another turn is running, so it can't be answered yet. */
   disabled?: boolean;
 }
 
-export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
+export function ApprovalCard({ part, onAnswer, disabled, findPreview }: ApprovalCardProps) {
   const household = useHousehold();
   const toast = useToast();
   const [answering, setAnswering] = useState(false);
@@ -50,6 +54,8 @@ export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
     typeof userId === 'string'
       ? (household.data?.find((m) => m.id === userId)?.name ?? 'a household member')
       : undefined;
+
+  const importBody = mcp ? null : bulkImportBody(part.input);
 
   const answer = async (approved: boolean) => {
     if (!approvalId) return;
@@ -89,7 +95,10 @@ export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
             <dd data-testid="chat-approval-to">{recipient}</dd>
           </div>
         )}
-        {detailRows(part.input, mcp !== null).map(([label, value]) => (
+        {importBody ? (
+          <ImportRows body={importBody} findPreview={findPreview} />
+        ) : null}
+        {(importBody ? [] : detailRows(part.input, mcp !== null)).map(([label, value]) => (
           <div key={label} className="flex gap-2">
             <dt className="text-gray-500">{label}</dt>
             <dd className="whitespace-pre-wrap break-words">{value}</dd>
@@ -115,6 +124,46 @@ export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
           Deny
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** What a bulk import would save: the chosen rows of the preview it names. */
+function ImportRows({
+  body,
+  findPreview,
+}: {
+  body: Record<string, unknown>;
+  findPreview?: (previewId: string) => BulkImportPreview | null;
+}) {
+  const previewId = typeof body.preview_id === 'string' ? body.preview_id : null;
+  const preview = previewId ? (findPreview?.(previewId) ?? null) : null;
+  if (!preview) {
+    return (
+      <div className="flex gap-2">
+        <dt className="text-gray-500">Import</dt>
+        <dd>{previewId ? 'the rows of an earlier preview' : 'the input, without a preview'}</dd>
+      </div>
+    );
+  }
+  const rows = selectedRows(preview, body.selected_indices);
+  return (
+    <div>
+      <dt className="text-gray-500">
+        Import {rows.length} {rows.length === 1 ? 'row' : 'rows'}
+      </dt>
+      <dd>
+        <ul className="ml-4 list-disc" data-testid="chat-approval-import-rows">
+          {rows.map((row) => (
+            <li key={row.index}>
+              {rowLabel(row)}
+              {row.warnings.length > 0 && (
+                <span className="text-gray-500"> — {row.warnings.join('; ')}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </dd>
     </div>
   );
 }

@@ -249,6 +249,22 @@ curl -X POST "$HOMESTEAD/api/aep/gift-cards:bulk-import" \
   -F 'f0=@cards.csv;type=text/csv'
 ```
 
+The CLI and the shared client do all of this for you — encoding the files and
+waiting on the operation:
+
+```bash
+homestead resources gift-card bulk-import --format csv --file cards.csv --validate-only
+# → the preview, and on stderr: --preview-id <id> to import it
+homestead resources gift-card bulk-import --format csv --preview-id <id> --select 0,2
+```
+
+```ts
+const preview = await hs.collection('gift-cards').bulkImport.preview({ format: 'csv', files: [file] });
+await hs.collection('gift-cards').bulkImport.importPreview({
+  format: 'csv', previewId: preview.preview_id, selected: [0, 2],
+});
+```
+
 Selecting a row that has errors is rejected rather than skipped: a caller that
 named a specific row should hear that it couldn't be imported.
 
