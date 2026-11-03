@@ -27,7 +27,7 @@ import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehol
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
-import { ownerForTool } from '../cards';
+import { cardActionOf, chatCardFor, ownerForTool } from '../cards';
 import { CardFace } from './ChatCard';
 
 /** `notifications` + `:send` → "Notifications: send". */
@@ -72,6 +72,10 @@ export function ApprovalCard({ part, onAnswer, disabled, findPreview }: Approval
 
   const importBody = mcp ? null : bulkImportBody(part.input);
   const owner = mcp || importBody ? undefined : ownerForTool(part.type);
+  // An app's own card for the call names who it's for itself (a message shows
+  // "To Sam"); the generic one doesn't, so the row stays for it.
+  const action = cardActionOf(part.input);
+  const appCard = owner && action ? chatCardFor(owner, action) !== undefined : false;
 
   const answer = async (approved: boolean) => {
     if (!approvalId) return;
@@ -111,7 +115,7 @@ export function ApprovalCard({ part, onAnswer, disabled, findPreview }: Approval
               <dd data-testid="chat-approval-service">{mcp.server}</dd>
             </div>
           )}
-          {recipient && (
+          {recipient && !appCard && (
             <div className="flex gap-2">
               <dt className="text-muted-foreground">To</dt>
               <dd data-testid="chat-approval-to">{recipient}</dd>

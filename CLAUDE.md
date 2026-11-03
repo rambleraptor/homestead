@@ -376,7 +376,12 @@ SPA and apps share:
   the app's component (`chat/values.ts`, `chat/components/ChatValue.tsx`), the
   link built from the value's text, never from the reply. Its SPA half is
   the AI SDK's `useChat` over a stored-turn transport (`chat/api.ts`,
-  `chat/hooks/useConversation.ts`), rendered with AI Elements. `notifications` owns the
+  `chat/hooks/useConversation.ts`), rendered with AI Elements. A tool call on
+  a resource renders as a card (`chat/cards.ts`, `chat/components/ChatCard.tsx`):
+  the app's `chat.cards` entry for the action, else the generic card wrapping
+  the app's record card (`AppConfig.records`, hosted by
+  `records/components/RecordCard.tsx`, read live with `records/useCardRecord.ts`)
+  — see [`docs/design/agent-cards.md`](packages/homestead-site/docs/design/agent-cards.md). `notifications` owns the
   web-push inbox + subscription management; its server half lives in
   `server/notifications.ts`. Household members message each other through
   `POST users/{id}/notifications:send` (the one API every caller uses — SPA,

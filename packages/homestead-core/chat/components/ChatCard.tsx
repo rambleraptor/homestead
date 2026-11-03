@@ -22,6 +22,7 @@ import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button
 import { CollapsibleTrigger } from '@rambleraptor/homestead-core/shared/components/ui/collapsible';
 import { resourceLabel } from '@rambleraptor/homestead-core/resources/display';
 import { Shimmer } from '@rambleraptor/homestead-core/shared/components/ai-elements/shimmer';
+import { ownerOf } from '@rambleraptor/homestead-core/records/owners';
 import { cardActionOf, cardMode, chatCardFor, toolOutcome, type CardOwner } from '../cards';
 import { GenericActionCard } from './GenericActionCard';
 
@@ -52,15 +53,34 @@ export function CardFace({ part, owner, mode }: CardFaceProps) {
     result,
     error,
   };
-  const generic = <GenericActionCard app={owner.app} {...props} />;
   const custom = chatCardFor(owner, action);
-  if (!custom) return generic;
+  if (!custom) return <GenericActionCard app={owner.app} {...props} />;
   const Card = getLazyComponent(custom.component);
+  // The app's card is wrapped in the same test id and attributes the generic
+  // one carries, so every card is found the same way.
   return (
-    <Suspense fallback={generic}>
-      <Card {...props} />
-    </Suspense>
+    <div
+      className="min-w-0 text-sm"
+      data-testid={`chat-card-${owner.def.singular}`}
+      data-action={action}
+      data-mode={props.mode}
+    >
+      <Suspense fallback={<GenericActionCard app={owner.app} marked={false} {...props} />}>
+        <Card {...props} />
+      </Suspense>
+    </div>
   );
+}
+
+/**
+ * The generic card for a chat card's props: what an app's own card renders for
+ * the modes it doesn't draw itself (running, failed…), inside the wrapper that
+ * already marks it.
+ */
+export function GenericChatCard(props: ChatCardProps) {
+  const owner = ownerOf(props.resource.singular);
+  if (!owner) return null;
+  return <GenericActionCard app={owner.app} marked={false} {...props} />;
 }
 
 /** The card in the transcript, with its status and the Details disclosure. */

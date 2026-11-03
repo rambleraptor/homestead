@@ -1,6 +1,6 @@
 # Agent cards — Design and implementation plan
 
-**Status:** Phase 1 implemented, phases 2–3 proposed · **Audience:** contributors
+**Status:** Phases 1–2 implemented, phase 3 proposed · **Audience:** contributors
 
 > How a tool call in an assistant reply renders as a card the person can read
 > and act on, instead of a JSON disclosure — and how the record half of that
@@ -61,6 +61,8 @@ export interface RecordCardProps {
   snapshot?: unknown;
   /** How much room there is: a row in a list or toast, or a standalone card. */
   size: 'row' | 'card';
+  /** The parent chain of a nested record (`['users', '<id>']`), as the client's `parent` takes it. */
+  parent?: string[];
 }
 
 export interface RecordCardType {
@@ -103,26 +105,26 @@ export interface AppConfig {
 ```
 
 ```ts
-// packages/homestead-core/chat/cards.ts — what a card can reach from the thread
+// packages/homestead-core/chat/cardContext.ts — what a card can reach from the thread
 
 export interface ChatCardContext {
   conversationId: string | null;
-  /** Put a follow-up into this conversation ("Move this to tomorrow"). */
+  /** Put a follow-up into this conversation ("Send the household this grocery list"). */
   send: (text: string) => Promise<void>;
   /** A turn is running, so actions that send should wait. */
   busy: boolean;
 }
-export function useChatCard(): ChatCardContext;
+/** Null outside a conversation, so a card offers `send` only where it means something. */
+export function useChatCard(): ChatCardContext | null;
 ```
 
 ```ts
-// packages/homestead-core/records/useRecordCard.ts — the live record behind a card
+// packages/homestead-core/records/useCardRecord.ts — the live record behind a card
 
-export function useCardRecord<T>(
-  def: ResourceDefinition,
-  id: string,
-  snapshot?: unknown,
-): { data: T | undefined; deleted: boolean; isPending: boolean };
+export function useCardRecord<T extends { id: string }>(opts: {
+  appId: string; singular: string; plural: string; id: string;
+  snapshot?: unknown; parent?: string[];
+}): { record: T | undefined; deleted: boolean; isPending: boolean; error: Error | null };
 ```
 
 ### 2.2 Rules every card follows
@@ -205,19 +207,38 @@ and toasts.
 
 ### 3.3 The record card helper (`records/`)
 
-- `records/useRecordCard.ts` — `useCardRecord` above. Needs the owning app id
-  for the query key; `ownerForTool`/`recordCardFor` supply it.
-- `records/components/RecordCard.tsx` — `<RecordCard singular id snapshot size />`:
+- `records/owners.ts` — the registry lookups every host needs: `ownerOf(singular)`,
+  `ownerOfTool(name)`, `recordCardOf(owner)`, and `recordParent(def, input,
+  result)`, which reads a nested record's parent chain off the result's `path`,
+  else builds it from the call's ancestor ids. `chat/cards.ts` uses these.
+- `records/useCardRecord.ts` — `useCardRecord` above: `useResourceItem` with the
+  snapshot as placeholder data (only when it is that record, not a preview).
+  A 404 reads as `deleted`, and so does a delete event from the change feed,
+  which drops the cache slot but leaves the card showing what it last had.
+- `records/components/RecordCard.tsx` — `<RecordCard singular id snapshot size parent />`:
   resolves the app's record card through the registry and renders it under
-  `Suspense`, with the generic title line as the fallback. This is the one
-  component every non-chat host uses.
+  `Suspense`, with the title line (`RecordTitleLine`) as the fallback. This is
+  the one component every non-chat host uses.
+- A list card reads its rows from the app's own list query and matches them by
+  id — one request, kept live — rather than one `useCardRecord` per row. The
+  generic card's list (five rows) is the exception: it renders each row as a
+  record card, since it doesn't know the app's list hook.
+
+For apps writing a chat card, `GenericActionCard.tsx` exports the shared
+pieces: `cardHeadline(props)` (the same wording), `CardHeadline` and
+`CardAppIcon` (the same header row), and `CardRows`; `ChatCard.tsx` exports
+`GenericChatCard(props)` for the modes an app card doesn't draw itself. Every
+app card is wrapped in the same `chat-card-<singular>` test id and
+`data-action`/`data-mode` attributes as the generic one.
 
 ### 3.4 Approvals
 
 `ApprovalCard` keeps the Approve/Deny buttons and the recipient lookup and
 renders `<ChatCard mode="proposed">` above them, built from the input alone.
 A `notification:send` chat card shows the message as the inbox bubble the
-recipient will see. The `chat-approval*` test ids are unchanged.
+recipient will see, with its own "To Sam" line (`chat-card-recipient`); when
+an app card handles the call, the approval leaves out its own "To" row
+(`chat-approval-to`), which stays for generic cards.
 
 ### 3.5 Read rollup
 
@@ -268,21 +289,33 @@ No app changes. Every reply reads better immediately.
   renders the MCP header. Reopening a conversation from history renders the
   same cards from stored parts.
 
-### Phase 2 — app cards: todos, groceries, notifications
+### Phase 2 — app cards: todos, groceries, notifications (done)
 
-- `records/useRecordCard.ts`, `records/components/RecordCard.tsx`,
-  `chat/cards.ts` gains `ChatCardContext`/`useChatCard`; `ChatThread`
-  provides it from `useConversation` (`send`, `busy`, `conversationId`).
-- Todos: `records.todo` → `components/TodoCard.tsx` (title, category, project,
-  checkbox via `useUpdateTodo`, "Reschedule" → `send`). `chat.cards.todo` for
-  `list` → `TodoListCard.tsx` (overdue first, "Push overdue to tomorrow").
-- Groceries: `records.grocery` → `GroceryCard.tsx` (checkbox, store);
-  `chat.cards.grocery` for `list` → `GroceryListCard.tsx` grouped by store.
-- Notifications (core): `chat.cards['notification:send']` → the inbox bubble
-  in `proposed` and `done` modes.
-- Specs: per-app `vm/<app>-chat-cards.vm.ts` using the existing scripts plus
-  a `listTodos` script; ticking a card's checkbox updates the todo (seeded via
-  `e2eClient`) and the card reflects a change made by `h.householdMember`.
+- `records/owners.ts`, `records/useCardRecord.ts`,
+  `records/components/RecordCard.tsx`; `chat/cardContext.ts`
+  (`ChatCardContext`/`useChatCard`), which `ChatThread` provides from
+  `useConversation` (`send`, `busy`, `conversationId`). `RecordCardProps` gains
+  `parent` for nested records.
+- Todos: `records.todo` and `records['personal-todo']` →
+  `components/cards/TodoCard.tsx` (checkbox via `useUpdateTodo` /
+  `useUpdatePersonalTodo`, "Later"/"Cancelled" badges, a private marker, and
+  at card size "Do later" and "Open Todos"). `chat.cards` for `list` on both →
+  `TodoListCard.tsx`, open first, ten rows then "and N more". Todos have no due
+  date, so the planned "Reschedule" became "Do later".
+- Groceries: `records.grocery` → `components/cards/GroceryCard.tsx` (checkbox,
+  store, notes); `chat.cards.grocery` for `list` → `GroceryListCard.tsx`,
+  grouped by store in the household's store order, then "No store". In a
+  conversation with someone else in the household it offers "Share with the
+  household", which sends a follow-up through `useChatCard().send`.
+- Notifications (core): `chat.cards['notification:send']` →
+  `components/SendMessageCard.tsx`, the inbox bubble in every mode ("Message
+  for Sam", "Sent to Sam", "Not sent to Sam", "Couldn't send to Sam").
+- Specs: `todos/vm/todos-chat-cards.vm.ts`,
+  `groceries/vm/groceries-chat-cards.vm.ts` (page objects
+  `todos/e2e/TodoCards.ts`, `groceries/e2e/GroceryCards.ts`), and the message
+  card in `tests/vm/chat-cards.vm.ts`. New `addTodo` and `listTodos` scripts.
+  A card follows a change and a delete made by `h.householdMember` with no
+  reload.
 
 ### Phase 3 — undo, rollup, reuse outside chat
 

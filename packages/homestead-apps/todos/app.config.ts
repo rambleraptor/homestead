@@ -5,6 +5,8 @@
 import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
 import { todosResources } from './resources';
 
+const listCard = () => import('./components/cards/TodoListCard').then((m) => m.TodoListCard);
+
 export const todosApp: AppConfig = {
   id: 'todos',
   name: 'Todos',
@@ -18,6 +20,19 @@ export const todosApp: AppConfig = {
       'When someone asks to add or list todos without saying which, use personal. ' +
         'Use family todos only when they say shared, family or household.',
     ],
+    // A list the assistant read shows as the todos themselves, open first.
+    cards: {
+      todo: { component: listCard, actions: ['list'] },
+      'personal-todo': { component: listCard, actions: ['list'] },
+    },
+  },
+  // How a todo looks wherever Homestead shows one it doesn't otherwise draw
+  // (a todo the assistant added or changed): live, with its checkbox.
+  records: {
+    todo: { component: () => import('./components/cards/TodoCard').then((m) => m.FamilyTodoCard) },
+    'personal-todo': {
+      component: () => import('./components/cards/TodoCard').then((m) => m.PersonalTodoCard),
+    },
   },
   migrations: [
     {

@@ -320,6 +320,11 @@ export interface RecordCardProps {
   snapshot?: unknown;
   /** How much room there is: a row in a list or toast, or a standalone card. */
   size: 'row' | 'card';
+  /**
+   * The parent chain of a nested record, as the client's `parent` option takes
+   * it (`['users', '<id>']` for a personal todo). Absent for a top-level one.
+   */
+  parent?: string[];
 }
 
 export interface RecordCardType {

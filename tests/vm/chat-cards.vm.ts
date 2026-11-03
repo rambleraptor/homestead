@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, test, expect } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { ChatPage } from '../e2e/pages/ChatPage';
+import { TodoCards } from '../../packages/homestead-apps/todos/e2e/TodoCards';
 import { e2eClient } from '../e2e/utils/aepbase-helpers';
 import { CHAT_MARKERS, TODO_ID } from '../e2e/config/ai-scripts';
 
@@ -45,8 +46,10 @@ describe('Chat cards', () => {
     await d.expect(card).toHaveAttribute('data-action', 'update');
     await d.expect(card).toHaveAttribute('data-mode', 'done');
     await d.expect(chat.cardHeadlines.first()).toHaveText('Changed todo');
-    await d.expect(chat.cardTitles.first()).toHaveText('Call the plumber');
-    // The enum value reads as words, labeled by field.
+    // The todo as the Todos app draws it, now, under what the call changed —
+    // the enum value as words, labeled by field.
+    await d.expect(new TodoCards(d).titles.first()).toHaveText('Call the plumber');
+    await d.expect(card).toContainText('Changed');
     await d.expect(card).toContainText('Status');
     await d.expect(card).toContainText('Do later');
     await d.expect(card).not.toContainText('do_later');
@@ -83,8 +86,9 @@ describe('Chat cards', () => {
 
     await d.expect(chat.messages).toContainText('Here it is.');
     await d.expect(chat.cardHeadlines.first()).toHaveText('Looked up todo');
-    await d.expect(chat.cardTitles.first()).toHaveText('Call the plumber');
-    await d.expect(chat.card('todo')).toContainText('Pending');
+    const todos = new TodoCards(d);
+    await d.expect(todos.titles.first()).toHaveText('Call the plumber');
+    await d.expect(todos.card('Call the plumber')).toHaveAttribute('data-status', 'pending');
   });
 
   test('a call that fails says so on the card, and is badged as an error', async () => {
@@ -114,7 +118,7 @@ describe('Chat cards', () => {
 
     await d.reload();
     await d.expect(chat.cardHeadlines.first()).toHaveText('Changed todo');
-    await d.expect(chat.cardTitles.first()).toHaveText('Call the plumber');
+    await d.expect(new TodoCards(d).titles.first()).toHaveText('Call the plumber');
     await d.expect(chat.card('todo')).toHaveAttribute('data-mode', 'done');
   });
 
@@ -127,13 +131,30 @@ describe('Chat cards', () => {
     await d.expect(chat.approvalCard).toBeVisible();
     const card = chat.approvalCard.getByTestId('chat-card-notification');
     await d.expect(card).toHaveAttribute('data-mode', 'proposed');
-    await d.expect(card).toContainText('Notification: send');
-    await d.expect(card).toContainText('Running late');
-    await d.expect(card).toContainText('Be there by 6:30');
-    await d.expect(d.getByTestId('chat-approval-to')).toHaveText('Sam');
+    // The message as it would land in Sam's inbox.
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Message for Sam');
+    await d.expect(chat.cardRecipient).toHaveText('To Sam');
+    await d.expect(chat.cardMessage).toContainText('Running late');
+    await d.expect(chat.cardMessage).toContainText('Be there by 6:30');
+    // The card names the recipient, so the approval doesn't repeat it.
+    await d.expect(d.getByTestId('chat-approval-to')).toHaveCount(0);
 
     await chat.answerApproval(false);
     await d.expect(chat.card('notification')).toHaveAttribute('data-mode', 'denied');
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Not sent to Sam');
     await d.expect(chat.toolCalls.first()).toContainText('Denied');
+  });
+
+  test('an approved message reads as sent, with what was sent', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Tell Sam I'm running late ${CHAT_MARKERS.messageSam}`);
+    await chat.answerApproval(true);
+
+    await d.expect(chat.messages).toContainText('Done.');
+    await d.expect(chat.card('notification')).toHaveAttribute('data-mode', 'done');
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Sent to Sam');
+    await d.expect(chat.cardMessage).toContainText('Running late');
   });
 });

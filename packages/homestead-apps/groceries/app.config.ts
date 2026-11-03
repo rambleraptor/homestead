@@ -12,6 +12,20 @@ export const groceriesApp: AppConfig = {
   name: 'Groceries',
   description: 'Manage your grocery list with smart categorization',
   resources: groceriesResources,
+  // How an item looks wherever Homestead shows one it doesn't otherwise draw
+  // (an item the assistant added): live, with its checkbox.
+  records: {
+    grocery: { component: () => import('./components/cards/GroceryCard').then((m) => m.GroceryCard) },
+  },
+  chat: {
+    // A list the assistant read comes back as the list to shop from, by store.
+    cards: {
+      grocery: {
+        component: () => import('./components/cards/GroceryListCard').then((m) => m.GroceryListCard),
+        actions: ['list'],
+      },
+    },
+  },
   flags: {
     default_store: {
       type: 'string',

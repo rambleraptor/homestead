@@ -16,6 +16,14 @@ export const notificationsApp: AppConfig = {
   name: 'Notifications',
   description: 'View and manage your notifications',
   resources: notificationsResources,
+  chat: {
+    // A message the assistant sends (or asks to) reads as the message itself.
+    cards: {
+      'notification:send': {
+        component: () => import('./components/SendMessageCard').then((m) => m.SendMessageCard),
+      },
+    },
+  },
   // Handler lives under `crons/`, so vite stubs it out of the browser bundle.
   crons: [
     {

@@ -5,7 +5,9 @@
  * renders it.
  */
 
+import { useMemo } from 'react';
 import { findImportPreview } from '../importPreview';
+import { ChatCardProvider, type ChatCardContext } from '../cardContext';
 import { MessageCircle } from 'lucide-react';
 import {
   Conversation,
@@ -83,7 +85,15 @@ export function ChatThread({
   const showThinking = busy && !isAnswering(last);
   const missing = chat.history.isError;
 
+  // What a card in a reply can reach: a follow-up in this conversation.
+  const { send } = chat;
+  const cardContext = useMemo<ChatCardContext>(
+    () => ({ conversationId, busy, send: (text: string) => send(text) }),
+    [conversationId, busy, send],
+  );
+
   return (
+    <ChatCardProvider value={cardContext}>
     <div
       className={cn(
         'min-h-0 min-w-0 flex-1 flex-col',
@@ -194,5 +204,6 @@ export function ChatThread({
       </PromptInput>
     </div>
   </div>
+    </ChatCardProvider>
   );
 }

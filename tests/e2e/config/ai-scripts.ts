@@ -163,6 +163,10 @@ export const CHAT_MARKERS = {
   deleteTodo: 'e2e-chat-delete-todo',
   /** Look the seeded todo (see TODO_ID) up, then say so. */
   readTodo: 'e2e-chat-read-todo',
+  /** Add a shared todo, "Water the plants", then say so. */
+  addTodo: 'e2e-chat-add-todo',
+  /** List the shared todos, then say so. */
+  listTodos: 'e2e-chat-list-todos',
   /** Read a light's state from the test MCP server, then repeat what came back. */
   mcpCheckLight: 'e2e-chat-mcp-check-light',
   /** Unlock the front door on the test MCP server (an "ask first" tool), then say so. */
@@ -384,6 +388,20 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
     steps: [
       { toolCalls: [{ name: 'todos', args: { action: 'get', id: TODO_ID } }] },
       { text: 'Here it is.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.addTodo,
+    steps: [
+      { toolCalls: [{ name: 'todos', args: { action: 'create', fields: { title: 'Water the plants', status: 'pending' } } }] },
+      { text: 'Added it.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.listTodos,
+    steps: [
+      { toolCalls: [{ name: 'todos', args: { action: 'list' } }] },
+      { text: 'Here are your todos.' },
     ],
   },
   {
