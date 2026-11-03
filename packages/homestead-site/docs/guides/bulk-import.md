@@ -203,6 +203,7 @@ Poll `GET /api/aep/operations/op_123` until `done`:
 {
   "response": {
     "dryRun": true,
+    "previewId": "6f1c…",
     "items": [
       { "index": 0, "data": { "merchant": "Amazon" }, "errors": [], "warnings": [], "label": "Amazon" }
     ],
@@ -211,14 +212,23 @@ Poll `GET /api/aep/operations/op_123` until `done`:
 }
 ```
 
-Then import the rows you want:
+Then import the rows you want from that preview:
 
 ```http
 POST /api/aep/gift-cards:bulk-import
-{ "format": "csv", "data": "<base64>", "selectedIndices": [0, 1, 3] }
+{ "format": "csv", "previewId": "6f1c…", "selectedIndices": [0, 1, 3] }
 
 → 202 → { "response": { "dryRun": false, "created": 3, "failed": [], "summary": {…} } }
 ```
+
+The import writes the rows the server held for that preview — it doesn't parse
+again, so what's saved is exactly what was previewed, and a parser that calls a
+model (recipes' Social Post and Screenshots) runs once. The file isn't re-sent.
+A preview is held in server memory for an hour, only for the person who made it
+and the same resource and format, and is used up by the import. A restart or a
+second import gets `410 Gone`: preview again.
+
+Without `previewId`, the request's own `data` / `text` is parsed afresh:
 
 `selectedIndices` accepts an explicit list or `"*"` for every importable row, and
 **defaults to `"*"`** — so a script can post a file and be done:

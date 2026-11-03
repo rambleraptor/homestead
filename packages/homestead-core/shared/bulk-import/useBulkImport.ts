@@ -2,7 +2,8 @@
  * Client hooks for the bulk-import API.
  *
  * The browser is a thin client here: it uploads the file, the server parses it,
- * and the preview the user sees is the server's own parse. Both the preview and
+ * and the preview the user sees is the server's own parse — which the import
+ * then writes by its `previewId`, without uploading or parsing again. Both the preview and
  * the import run as AEP-151 operations, so each call is a `202` + a poll.
  *
  * Nothing in here is app-specific — the standardized page drives any resource
@@ -110,12 +111,15 @@ export function useBulkImportPreview(plural: string) {
   });
 }
 
-export interface RunBulkImportInput extends BulkImportInputPayload {
+export interface RunBulkImportInput {
+  format: string;
   /**
-   * Indices from the preview, or `'*'` for everything importable. The server
-   * re-parses the same input rather than trusting client-supplied records, so
-   * these address its parse, not ours.
+   * The preview being imported. The server writes the rows it held for it
+   * rather than parsing again, so the import is exactly what was shown — and a
+   * parser that calls a model runs once, not twice. The input isn't re-sent.
    */
+  previewId: string;
+  /** Indices from that preview, or `'*'` for everything importable in it. */
   selectedIndices: number[] | '*';
 }
 
@@ -129,9 +133,11 @@ export function useBulkImportRun(plural: string, queryKey: readonly unknown[]) {
     // The import page shows its own message for full and partial failures.
     meta: { skipErrorToast: true },
     mutationFn: async (input: RunBulkImportInput): Promise<BulkImportResult> => {
-      const body = await buildRequest(input, {
+      const body: BulkImportRequest = {
+        format: input.format,
+        previewId: input.previewId,
         selectedIndices: input.selectedIndices,
-      });
+      };
       const operation = await aepbase.customMethod<Operation>(
         plural,
         BULK_IMPORT_VERB,

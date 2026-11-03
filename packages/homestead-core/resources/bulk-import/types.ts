@@ -217,12 +217,22 @@ export interface BulkImportRequest {
   /** Parse and report without writing anything. */
   dryRun?: boolean;
   /**
+   * Import the rows of an earlier dry run instead of parsing again — the
+   * `previewId` its response carried. Same caller, resource and `format` only;
+   * single-use, and forgotten after an hour or a server restart (a `410` says
+   * to preview again). `text` / `data` are not needed alongside it.
+   *
+   * Omit it to parse the input afresh, as a one-shot CLI or REST import does.
+   */
+  previewId?: string;
+  /**
    * Which parsed items to write. An explicit index list, or `'*'` for every
    * importable item. Defaults to `'*'`, so a CLI or REST caller can post a file
    * and get everything importable without a preview round-trip.
    *
-   * Indices refer to the parse of *this* request's input — the server re-parses
-   * rather than trusting client-supplied records, so it stays the only parser.
+   * Indices refer to the server's own parse — the held preview named by
+   * `previewId`, or else this request's input, parsed afresh. Records are never
+   * taken from the client, so the server stays the only parser.
    * Selecting an index whose item has errors is rejected rather than silently
    * skipped.
    */
@@ -246,6 +256,11 @@ export interface BulkImportSummary {
  */
 export interface BulkImportPreview<T = unknown> {
   dryRun: true;
+  /**
+   * Names this parse for the import that follows (see
+   * {@link BulkImportRequest.previewId}), so it writes exactly these items.
+   */
+  previewId: string;
   items: ParsedItem<T>[];
   summary: BulkImportSummary;
 }

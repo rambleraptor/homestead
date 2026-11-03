@@ -31,6 +31,7 @@ import {
 import { getAllResourceDefs, getResourceBulkImport } from '../../apps/registry';
 import { serverClient } from '../client';
 import { isAiConfigured } from '../ai/config';
+import { hasPreview, savePreview, takePreview, type PreviewOwner } from './previews';
 
 /**
  * Cap on the decoded input. Bulk import inherits the async dispatcher's
@@ -74,7 +75,17 @@ export const validate: AsyncCustomMethodValidator = async (ctx) => {
     return problem(503, `Format ${format.id} needs AI, which isn't set up on this server`);
   }
 
-  if (format.inputType === 'text') {
+  if (body.previewId !== undefined) {
+    if (typeof body.previewId !== 'string' || body.previewId === '') {
+      return problem(400, '"previewId" must be the id a dry run returned');
+    }
+    if (body.dryRun) {
+      return problem(400, '"previewId" imports a preview; it cannot be combined with "dryRun"');
+    }
+    if (!hasPreview(body.previewId, previewOwner(ctx, format.id))) {
+      return problem(410, PREVIEW_GONE);
+    }
+  } else if (format.inputType === 'text') {
     if (typeof body.text !== 'string' || body.text.trim() === '') {
       return problem(400, `Format ${format.id} requires a non-empty "text"`);
     }
@@ -130,10 +141,23 @@ export default async function bulkImport(
   if (!format) throw new Error(`Unknown format ${body.format}`);
 
   const importCtx: BulkImportContext = { auth: ctx.auth, plural: ctx.plural };
-  const items = await parseInput(format, body, importCtx);
+  const owner = previewOwner(ctx, format.id);
+
+  let items: ParsedItem[];
+  if (body.previewId !== undefined) {
+    // Checked in validate(), but it can expire (or be taken by a concurrent
+    // import) between that check and this run.
+    const held = takePreview(body.previewId, owner);
+    if (!held) throw new Error(PREVIEW_GONE);
+    items = held;
+  } else {
+    items = await parseInput(format, body, importCtx);
+  }
   const summary = summarize(items);
 
-  if (body.dryRun) return { dryRun: true, items, summary };
+  if (body.dryRun) {
+    return { dryRun: true, previewId: savePreview(owner, items), items, summary };
+  }
 
   const selected = resolveSelection(items, body.selectedIndices);
   const save = def.save ? (await def.save()).save : defaultSaver;
@@ -273,6 +297,13 @@ function summarize(items: ParsedItem[]): BulkImportSummary {
 function asArray(data: string | string[] | undefined): string[] {
   if (data === undefined) return [];
   return Array.isArray(data) ? data : [data];
+}
+
+const PREVIEW_GONE =
+  'This preview has expired or was already imported. Preview the input again.';
+
+function previewOwner(ctx: CustomMethodContext, format: string): PreviewOwner {
+  return { userId: ctx.auth.user.id, plural: ctx.plural, format };
 }
 
 function problem(status: number, message: string): Response {
