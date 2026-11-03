@@ -10,21 +10,13 @@
  */
 
 import type { ToolUIPart } from 'ai';
-import type {
-  AppConfig,
-  ChatCardAction,
-  ChatCardProps,
-  ChatCardType,
-  RecordCardType,
-} from '../apps/types';
-import { getAllResourceDefsWithApp, getAppRegistry } from '../apps/registry';
+import type { ChatCardAction, ChatCardProps, ChatCardType } from '../apps/types';
 import type { FieldDef, ResourceDefinition } from '../resources/types';
-import { resourceToolName, toolNameOf } from './tool-names';
+import { ownerOfTool, recordCardOf, type RecordOwner } from '../records/owners';
+import { toolNameOf } from './tool-names';
 
-export interface CardOwner {
-  app: AppConfig;
-  def: ResourceDefinition;
-}
+/** The app and definition behind a tool call (see `records/owners`). */
+export type CardOwner = RecordOwner;
 
 const CRUD_ACTIONS: ReadonlySet<string> = new Set(['create', 'read', 'update', 'delete', 'list']);
 
@@ -41,25 +33,10 @@ export function cardActionOf(input: unknown): ChatCardAction | null {
   return /^:[a-z][a-z0-9-]*$/.test(action) ? (action as ChatCardAction) : null;
 }
 
-// Rebuilt when the registry is replaced (tests do); otherwise computed once.
-const ownersCache = new WeakMap<object, Map<string, CardOwner>>();
-
-function owners(): Map<string, CardOwner> {
-  const registry = getAppRegistry();
-  const cached = ownersCache.get(registry);
-  if (cached) return cached;
-  const map = new Map<string, CardOwner>();
-  for (const { app, def } of getAllResourceDefsWithApp()) {
-    map.set(resourceToolName(def), { app, def });
-  }
-  ownersCache.set(registry, map);
-  return map;
-}
-
 /** The resource and app behind a tool part's type; undefined for MCP, search, or an unknown tool. */
 export function ownerForTool(partType: string): CardOwner | undefined {
   const name = toolNameOf(partType);
-  return name ? owners().get(name) : undefined;
+  return name ? ownerOfTool(name) : undefined;
 }
 
 /** The app's chat card for this action, if it declares one that claims it. */
@@ -73,9 +50,7 @@ export function chatCardFor(owner: CardOwner, action: ChatCardAction): ChatCardT
 }
 
 /** The app's record card for the resource, if it declares one. */
-export function recordCardFor(owner: CardOwner): RecordCardType | undefined {
-  return owner.app.records?.[owner.def.singular];
-}
+export const recordCardFor = recordCardOf;
 
 /** What the tool's output says: the executor's `{ result }` or `{ error }`. */
 export function toolOutcome(part: Pick<ToolUIPart, 'state' | 'output' | 'errorText'>): {

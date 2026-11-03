@@ -110,6 +110,16 @@ export class ChatPage {
     return this.driver.getByTestId('chat-card-title');
   }
 
+  /** A message card's "To …" line: who a message is (or was) for. */
+  get cardRecipient(): Locator {
+    return this.driver.getByTestId('chat-card-recipient');
+  }
+
+  /** A message card's message, as it lands in the recipient's inbox. */
+  get cardMessage(): Locator {
+    return this.driver.getByTestId('chat-card-message');
+  }
+
   /** The disclosure over a reply that shows what the model thought first. */
   get reasoning(): Locator {
     return this.driver.getByTestId('chat-reasoning');

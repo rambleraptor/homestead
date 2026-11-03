@@ -117,6 +117,7 @@ The app's identity, its data, and the `web` object.
 | `crons`          | `CronHook[]`                     | —       | Periodic server-side hooks ([below](#scheduling-background-work)).  |
 | `children`       | `AppConfig[]`                    | —       | Sub-apps; makes this a container app ([below](#nesting-apps)).     |
 | `chat`           | `AppChatConfig`                  | —       | Notes for the AI chat about using this app's tools ([below](#guiding-the-ai-chat)). |
+| `records`        | `Record<string, RecordCardType>` | —       | How each resource's records look where Homestead shows them, such as in a reply ([below](#cards-for-your-records)). |
 
 ### `web` fields
 
@@ -480,6 +481,52 @@ gives every type the same look.
 - Like instructions, an app's types are offered only to people offered one of
   the app's tools. A type nobody declares shows as plain text.
 - Copying a reply copies the plain values.
+
+### Cards for your records
+
+When the assistant adds, changes, reads or lists one of your records, the reply
+shows the call as a card. Every resource gets a generic one: what happened,
+the record's title, and its readable fields. Declare a **record card** and the
+reply shows the record the way your app draws it instead, live, with your
+app's own actions:
+
+```ts
+records: {
+  todo: { component: () => import('./components/cards/TodoCard').then((m) => m.FamilyTodoCard) },
+},
+```
+
+The component gets `{ id, snapshot, size, parent }`. Read the record with
+`useCardRecord` (`@rambleraptor/homestead-core/records/useCardRecord`), which
+shows the snapshot until the live record arrives, keeps it current through the
+change feed, and reports `deleted` once it's gone. Write through your app's
+usual hooks, so a tick on a card is the same write as one on your page. `size`
+is `row` inside a list and `card` on its own.
+
+For calls where the action matters more than one record, a list say, declare
+a **chat card** by resource singular, or `<singular>:<verb>` for a custom
+method, and the actions it handles:
+
+```ts
+chat: {
+  cards: {
+    grocery: { component: () => import('./components/cards/GroceryListCard').then((m) => m.GroceryListCard), actions: ['list'] },
+  },
+},
+```
+
+It gets `{ resource, action, mode, input, result, error }`, where `mode` is
+`proposed`, `running`, `done`, `denied` or `failed`. Render
+`GenericChatCard` (`@rambleraptor/homestead-core/chat/components/ChatCard`) for
+the modes you don't draw yourself, and reuse `cardHeadline` and `CardHeadline`
+from `.../chat/components/GenericActionCard` for the same wording and header.
+`useChatCard()` (`.../chat/cardContext`) gives a card in a conversation a way
+to carry it on (`send(text)`), and is null anywhere else.
+
+- The result is shaped for the model: secret fields are gone, and a large one
+  is stored as a preview. Treat it as a hint and read the record by id.
+- Build any link from the record and your own routes, never from the reply.
+- See [Agent cards](../design/agent-cards) for how a card is chosen.
 
 ## Nesting apps
 

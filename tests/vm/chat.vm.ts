@@ -81,7 +81,8 @@ describe('Chat', () => {
     await d.expect(chat.toolCalls).toHaveCount(1);
     await d.expect(chat.card('grocery')).toHaveAttribute('data-mode', 'done');
     await d.expect(chat.cardHeadlines.first()).toHaveText('Added grocery');
-    await d.expect(chat.cardTitles.first()).toHaveText('Milk');
+    // The item itself, as the Groceries app draws it.
+    await d.expect(chat.card('grocery')).toContainText('Milk');
     await d.expect(chat.toolCalls.first()).toContainText('Completed');
     await d.expect(chat.pending).toHaveCount(0);
     await chat.expectSettled(/Add milk to the grocery list/);
@@ -113,7 +114,7 @@ describe('Chat', () => {
       await chat.goto();
       await chat.send(`Tell Sam I'm running late ${CHAT_MARKERS.messageSam}`);
       await h.driver.expect(chat.approvalCard).toBeVisible();
-      await h.driver.expect(h.driver.getByTestId('chat-approval-to')).toHaveText('Sam');
+      await h.driver.expect(chat.cardRecipient).toHaveText('To Sam');
       await h.driver.expect(chat.approvalCard).toContainText('Running late');
       await h.driver.expect(chat.approvalCard).toContainText('Be there by 6:30');
       expect(await samInbox()).toEqual([]);
@@ -125,7 +126,7 @@ describe('Chat', () => {
       await ask(chat);
       await chat.answerApproval(true);
       await d.expect(chat.messages).toContainText('Done.');
-      await d.expect(chat.cardHeadlines.first()).toHaveText('Notification: send');
+      await d.expect(chat.cardHeadlines.first()).toHaveText('Sent to Sam');
       await d.expect(chat.toolCalls.first()).toContainText('Completed');
       expect(await samInbox()).toEqual([
         expect.objectContaining({ title: 'Running late', from_user: `users/${h.member.id}` }),
