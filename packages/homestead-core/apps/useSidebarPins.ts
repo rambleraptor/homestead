@@ -15,6 +15,7 @@ import { useAppFlag } from '../settings/hooks/useAppFlag';
 import { getNavigationApps } from './registry';
 import {
   defaultPinIds,
+  movableEntries,
   parseDefaultPinOverrides,
   resolveSidebarPins,
   sidebarEntries,
@@ -29,9 +30,12 @@ export const APP_DRAWER_ID = 'apps';
 export const SIDEBAR_DEFAULTS_FLAG = 'sidebar_defaults';
 
 export interface SidebarPins {
-  /** Every navigation entry the person may reach, in nav order. */
+  /**
+   * Every navigation entry the person may move, in nav order: what the
+   * drawer lists. The fixed entries (Superuser, Settings) are left out.
+   */
   entries: SidebarEntry[];
-  /** The entries the sidebar lists. */
+  /** The entries the sidebar lists: the fixed ones plus what's pinned. */
   pinnedEntries: SidebarEntry[];
   /** Pin state per visible app id. */
   states: Map<string, PinState>;
@@ -48,13 +52,13 @@ export function useSidebarPins(): SidebarPins {
   const pinned = user?.sidebar_pinned_apps;
   const unpinned = user?.sidebar_unpinned_apps;
   return useMemo(() => {
-    const entries = user ? sidebarEntries(getNavigationApps(), isVisible) : [];
+    const all = user ? sidebarEntries(getNavigationApps(), isVisible) : [];
     const defaultOverrides = parseDefaultPinOverrides(rawDefaults);
-    const defaultIds = defaultPinIds(entries, defaultOverrides);
-    const states = resolveSidebarPins(entries, { pinned, unpinned }, { defaultIds });
+    const defaultIds = defaultPinIds(all, defaultOverrides);
+    const states = resolveSidebarPins(all, { pinned, unpinned }, { defaultIds });
     return {
-      entries,
-      pinnedEntries: entries.filter((e) => states.get(e.app.id)?.pinned),
+      entries: movableEntries(all),
+      pinnedEntries: all.filter((e) => states.get(e.app.id)?.pinned),
       states,
       defaultIds,
       defaultOverrides,

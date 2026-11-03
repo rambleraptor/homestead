@@ -156,6 +156,10 @@ An app in More apps still opens from a link, a widget, or the assistant.
 `showInNav: false` is different: it keeps the app out of both the sidebar and
 the drawer.
 
+Superuser (with its configuration apps) and Settings are **fixed**: always in
+the sidebar and never in the drawer's lists, since a person must not be able
+to lose them. The Superuser landing keeps listing its children.
+
 A nested child (`children`, like Bridge under Games) is an entry of its own:
 it can be in the sidebar while its parent isn't, or the other way round, and
 it lists under its parent's section, indented. In More apps a parent with
