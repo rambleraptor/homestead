@@ -253,6 +253,15 @@ bulkImport: {
 }
 ```
 
+Two optional fields shape how a format is offered:
+
+- `description` — one line of guidance shown under the format picker (what to
+  paste or upload).
+- `requiresAi: true` — the parser calls the configured AI model. The format is
+  left out of the picker while no AI provider is set up, and a call naming it
+  gets a `503` before any operation starts. Recipes' `social` (TikTok /
+  Instagram / YouTube links) and `screenshots` formats use it.
+
 A parser doesn't have to be a CSV — implement `BulkImportParser` directly when
 you need to:
 

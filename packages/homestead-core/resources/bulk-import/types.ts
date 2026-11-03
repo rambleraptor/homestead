@@ -135,6 +135,17 @@ export interface BulkImportFormat {
   /** Whether several files may be imported at once. File formats only. */
   multiple?: boolean;
   /**
+   * One line of guidance shown under the format picker — what to paste or
+   * upload. Optional; the page's generic prompt is used without it.
+   */
+  description?: string;
+  /**
+   * The parser needs the configured AI model. Such a format is left out of the
+   * format list while AI isn't set up, and a call naming it is refused (503)
+   * before any operation starts.
+   */
+  requiresAi?: boolean;
+  /**
    * Whether the parser module exports a `template` — a downloadable starter
    * file (a CSV header row, typically). Declared as a flag here, rather than
    * the content itself, so the template lives next to the schema it documents
@@ -255,6 +266,7 @@ export interface BulkImportFormatInfo {
   accept?: string;
   multiple: boolean;
   hasTemplate: boolean;
+  description?: string;
   /** From the parser's {@link BulkImportParser.columns}; drives the page's format reference. */
   columns?: BulkImportColumnInfo[];
 }

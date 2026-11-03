@@ -29,13 +29,13 @@ import { toParsedItems } from './recipe-import-adapter';
  * rate-limited by nature — but a 500-line paste shouldn't tie up an operation
  * for an hour either.
  */
-const MAX_URLS = 20;
+export const MAX_URLS = 20;
 
 /**
  * Fetched sequentially rather than in parallel: these are other people's
  * servers, and a household import has no deadline worth hammering them for.
  */
-async function importOne(url: string): Promise<RecipeImportResult> {
+export async function importRecipeFromUrl(url: string): Promise<RecipeImportResult> {
   try {
     const { html, url: finalUrl } = await safeFetchHtml(url);
     return await importRecipeFromHtml(html, finalUrl);
@@ -82,7 +82,7 @@ const parser: BulkImportParser = {
 
     const results: RecipeImportResult[] = [];
     for (const url of urls) {
-      results.push(await importOne(url));
+      results.push(await importRecipeFromUrl(url));
     }
 
     // Label rows by URL when several were pasted, so a failed row says which.

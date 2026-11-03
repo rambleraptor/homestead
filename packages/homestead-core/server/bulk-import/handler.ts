@@ -30,6 +30,7 @@ import {
 } from '../../resources/bulk-import/types';
 import { getAllResourceDefs, getResourceBulkImport } from '../../apps/registry';
 import { serverClient } from '../client';
+import { isAiConfigured } from '../ai/config';
 
 /**
  * Cap on the decoded input. Bulk import inherits the async dispatcher's
@@ -67,6 +68,10 @@ export const validate: AsyncCustomMethodValidator = async (ctx) => {
         .map((f) => f.id)
         .join(', ')}`,
     );
+  }
+
+  if (format.requiresAi && !isAiConfigured()) {
+    return problem(503, `Format ${format.id} needs AI, which isn't set up on this server`);
   }
 
   if (format.inputType === 'text') {
