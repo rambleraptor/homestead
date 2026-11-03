@@ -74,6 +74,14 @@ vi.mock('@rambleraptor/homestead-core/api/aepbase', () => {
       listOAuthProviders: vi.fn(async () => []),
       startOAuth: vi.fn(),
       completeOAuthLogin: vi.fn(),
+      // Plain fetch carrying the mock session's bearer, so hooks that go
+      // through it can be exercised with a stubbed global fetch.
+      authorizedFetch: vi.fn((input: string, init: RequestInit = {}) =>
+        fetch(input, {
+          ...init,
+          headers: { ...(init.headers as Record<string, string>), Authorization: 'Bearer test-token' },
+        }),
+      ),
       getCurrentUser: vi.fn(() => ({
         id: 'test-user-id',
         email: 'test@example.com',

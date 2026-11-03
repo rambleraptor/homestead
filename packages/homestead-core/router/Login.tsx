@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { rememberOAuthReturnUrl } from '../auth/oauthReturn';
@@ -26,7 +27,16 @@ export function Login() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [providers, setProviders] = useState<OAuthProvider[]>([]);
+  // The configured sign-in providers. A query, not a one-shot effect: a
+  // failure (the server mid-restart, a phone whose radio is still waking)
+  // retries, and is *reported* below rather than passed off as "no providers"
+  // — a missing "Sign in with Google" button is not the same as no Google.
+  const providersQuery = useQuery({
+    queryKey: ['auth', 'oauth-providers'],
+    queryFn: (): Promise<OAuthProvider[]> => aepbase.listOAuthProviders(),
+    staleTime: Infinity,
+  });
+  const providers = providersQuery.data ?? [];
   // First visit to a fresh instance: no admin account exists yet, so render
   // a create-your-account form instead of the sign-in form.
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -36,14 +46,6 @@ export function Login() {
 
   useEffect(() => {
     let active = true;
-    aepbase
-      .listOAuthProviders()
-      .then((list) => {
-        if (active) setProviders(list);
-      })
-      .catch(() => {
-        // No providers / OAuth disabled — leave the list empty.
-      });
     fetch('/api/setup')
       .then((res) => (res.ok ? res.json() : null))
       .then((body: { needsSetup?: boolean } | null) => {
@@ -301,6 +303,23 @@ export function Login() {
           </form>
 
           {/* OAuth / OIDC providers (hidden during first-visit setup) */}
+          {!needsSetup && providersQuery.isError && (
+            <div
+              className="mt-6 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-body text-amber-800"
+              data-testid="oauth-providers-error"
+              role="status"
+            >
+              <span>Couldn&apos;t load the other sign-in options.</span>
+              <button
+                type="button"
+                onClick={() => void providersQuery.refetch()}
+                className="font-semibold underline-offset-2 hover:underline"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
           {!needsSetup && providers.length > 0 && (
             <div className="mt-6" data-testid="oauth-providers">
               <div className="relative my-4">

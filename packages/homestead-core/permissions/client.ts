@@ -6,6 +6,7 @@
  */
 
 import { resolve, type Grant, type Verb } from './resolve';
+import { authorizedFetch, authStore } from '../api/aepbase';
 
 export interface PermissionContext {
   /** Whether enforcement is actually on — the client only restricts when it is. */
@@ -48,14 +49,10 @@ export interface CanOptions {
  * assembles this. Returns undefined on any failure — `canWith` then stays
  * permissive.
  */
-export async function fetchPermissionContext(
-  token: string | null | undefined,
-): Promise<PermissionContext | undefined> {
-  if (!token) return undefined;
+export async function fetchPermissionContext(): Promise<PermissionContext | undefined> {
+  if (!authStore.token) return undefined;
   try {
-    const res = await fetch('/api/permissions/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await authorizedFetch('/api/permissions/me');
     if (!res.ok) return undefined;
     return (await res.json()) as PermissionContext;
   } catch {
@@ -70,13 +67,10 @@ export async function fetchPermissionContext(
  */
 export async function fetchPermissionContextFor(
   userId: string,
-  token: string | null | undefined,
 ): Promise<PermissionContext | undefined> {
-  if (!token || !userId) return undefined;
+  if (!authStore.token || !userId) return undefined;
   try {
-    const res = await fetch(`/api/permissions/user/${encodeURIComponent(userId)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await authorizedFetch(`/api/permissions/user/${encodeURIComponent(userId)}`);
     if (!res.ok) return undefined;
     return (await res.json()) as PermissionContext;
   } catch {

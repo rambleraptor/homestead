@@ -39,8 +39,8 @@ export function NativeDeviceSettings() {
     const scopes = nativeScopes(features);
     const token = await sessionToken();
     const { nonce } = await nativeRequest<{ nonce: string }>('beginPairing', { features, userID: realUser.id });
-    const response = await fetch('/api/tokens', {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    const response = await aepbase.authorizedFetch('/api/tokens', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Homestead iPhone', expires_at: new Date(Date.now() + 90 * 86400000).toISOString(), scopes }),
     });
     if (!response.ok) throw new Error('Could not enable this device. Check your account permissions and try again.');

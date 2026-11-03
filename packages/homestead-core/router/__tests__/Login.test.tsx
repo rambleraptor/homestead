@@ -7,12 +7,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Login } from '../Login';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 
 vi.mock('@rambleraptor/homestead-core/auth/useAuth', () => ({
   useAuth: () => ({ login: vi.fn(), isAuthenticated: false, isLoading: false }),
 }));
+
+/** Mount the page under a fresh query client (the provider list is a query). */
+function renderLogin(initialEntries?: string[]) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <Login />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
 
 describe('Login OAuth providers', () => {
   beforeEach(() => {
@@ -24,11 +37,7 @@ describe('Login OAuth providers', () => {
       { name: 'google', display_name: 'Google' },
     ]);
 
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>,
-    );
+    renderLogin();
 
     const button = await screen.findByTestId('oauth-google');
     expect(button).toHaveTextContent('Sign in with Google');
@@ -43,11 +52,7 @@ describe('Login OAuth providers', () => {
     ]);
     window.sessionStorage.clear();
 
-    render(
-      <MemoryRouter initialEntries={['/login?returnUrl=%2Ftodos']}>
-        <Login />
-      </MemoryRouter>,
-    );
+    renderLogin(['/login?returnUrl=%2Ftodos']);
 
     await userEvent.click(await screen.findByTestId('oauth-google'));
     expect(window.sessionStorage.getItem('homestead:oauth-return-url')).toBe('/todos');
@@ -57,14 +62,30 @@ describe('Login OAuth providers', () => {
   it('shows no provider section when none are configured', async () => {
     vi.mocked(aepbase.listOAuthProviders).mockResolvedValue([]);
 
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>,
-    );
+    renderLogin();
 
     await waitFor(() => expect(aepbase.listOAuthProviders).toHaveBeenCalled());
     expect(screen.queryByTestId('oauth-providers')).toBeNull();
+    expect(screen.queryByTestId('oauth-providers-error')).toBeNull();
+  });
+
+  it('says so when the providers could not be loaded, and retries on request', async () => {
+    // Missing providers must not read as "no providers": a login page shown
+    // while the server is mid-restart would otherwise quietly lose its
+    // "Sign in with Google" button.
+    vi.mocked(aepbase.listOAuthProviders)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce([{ name: 'google', display_name: 'Google' }]);
+
+    renderLogin();
+
+    const note = await screen.findByTestId('oauth-providers-error');
+    expect(note).toHaveTextContent(/couldn.t load/i);
+    expect(screen.queryByTestId('oauth-providers')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: /try again/i }));
+    await screen.findByTestId('oauth-google');
+    expect(screen.queryByTestId('oauth-providers-error')).toBeNull();
   });
 });
 
@@ -93,11 +114,7 @@ describe('Login first-visit setup', () => {
   });
 
   it('shows the welcome intro before the create-admin form', async () => {
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>,
-    );
+    renderLogin();
 
     // Intro appears first — explaining Homestead, no account fields yet.
     const intro = await screen.findByTestId('setup-intro');
@@ -107,11 +124,7 @@ describe('Login first-visit setup', () => {
   });
 
   it('reveals the create-admin form after "Get started"', async () => {
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>,
-    );
+    renderLogin();
 
     await userEvent.click(await screen.findByTestId('setup-get-started'));
 
@@ -127,11 +140,7 @@ describe('Login first-visit setup', () => {
   });
 
   it('submits the display name to /api/setup when provided', async () => {
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>,
-    );
+    renderLogin();
 
     await userEvent.click(await screen.findByTestId('setup-get-started'));
 

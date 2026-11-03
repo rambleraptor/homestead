@@ -10,14 +10,10 @@ export function useRevokePersonalAccessToken() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const token = aepbase.authStore.token;
       const userId = aepbase.getCurrentUser()?.id || '';
-      const res = await fetch(`/api/tokens/${encodeURIComponent(id)}`, {
+      const res = await aepbase.authorizedFetch(`/api/tokens/${encodeURIComponent(id)}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-User-Id': userId,
-        },
+        headers: { 'X-User-Id': userId },
       });
       if (!res.ok) {
         const detail = await res.json().catch(() => ({}));

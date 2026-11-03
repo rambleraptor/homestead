@@ -38,6 +38,17 @@ const AUTH_TOKEN_KEY = 'aepbase_auth_token';
 const AUTH_USER_KEY = 'aepbase_auth_user';
 const AUTH_REFRESH_KEY = 'aepbase_refresh_token';
 const AUTH_EXPIRES_KEY = 'aepbase_token_expires_at';
+/** The localStorage keys that make up a session (what other tabs may change). */
+const SESSION_KEYS = [AUTH_TOKEN_KEY, AUTH_REFRESH_KEY, AUTH_EXPIRES_KEY, AUTH_USER_KEY];
+
+/** localStorage can throw (private mode, blocked storage); read as absent. */
+function readKey(storage: Storage, key: string): string | null {
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+}
 /** Renew the access token this many ms before it actually expires. */
 const RENEW_SKEW_MS = 30_000;
 
@@ -106,20 +117,51 @@ class AuthStore {
   private listeners = new Set<AuthChangeListener>();
 
   constructor() {
-    if (typeof window !== 'undefined') {
-      this._token = window.localStorage.getItem(AUTH_TOKEN_KEY);
-      this._refreshToken = window.localStorage.getItem(AUTH_REFRESH_KEY);
-      const rawExpires = window.localStorage.getItem(AUTH_EXPIRES_KEY);
-      this._expiresAt = rawExpires ? Number(rawExpires) || null : null;
-      const rawUser = window.localStorage.getItem(AUTH_USER_KEY);
-      if (rawUser) {
-        try {
-          this._user = JSON.parse(rawUser) as User;
-        } catch {
-          this._user = null;
-        }
+    if (typeof window === 'undefined') return;
+    this.load();
+    // Tabs share localStorage but not memory: when another tab rotates,
+    // replaces, or clears the session, pick its tokens up here rather than
+    // keep presenting ones the server has already retired. The event only
+    // fires for writes made by *other* documents; `key` is null for a
+    // wholesale `localStorage.clear()`.
+    window.addEventListener('storage', (event) => {
+      if (event.storageArea !== window.localStorage) return;
+      if (event.key === null || SESSION_KEYS.includes(event.key)) this.adoptStored();
+    });
+  }
+
+  /** Read whatever session localStorage holds into memory (no emit). */
+  private load(): void {
+    const storage = window.localStorage;
+    this._token = readKey(storage, AUTH_TOKEN_KEY);
+    this._refreshToken = readKey(storage, AUTH_REFRESH_KEY);
+    const rawExpires = readKey(storage, AUTH_EXPIRES_KEY);
+    this._expiresAt = rawExpires ? Number(rawExpires) || null : null;
+    const rawUser = readKey(storage, AUTH_USER_KEY);
+    this._user = null;
+    if (rawUser) {
+      try {
+        this._user = JSON.parse(rawUser) as User;
+      } catch {
+        this._user = null;
       }
     }
+  }
+
+  /**
+   * Re-read the session from localStorage and adopt it when it differs from
+   * what this tab holds — another tab signed in, rotated the tokens, or signed
+   * out. Returns true when the access token changed; listeners are told then,
+   * so a tab whose session was cleared elsewhere signs out too.
+   */
+  adoptStored(): boolean {
+    if (typeof window === 'undefined') return false;
+    const before = this._token;
+    const beforeRefresh = this._refreshToken;
+    this.load();
+    const changed = this._token !== before;
+    if (changed) this.emit();
+    return changed || this._refreshToken !== beforeRefresh;
   }
 
   get token(): string {
@@ -220,38 +262,66 @@ interface RefreshResponse {
   expires_in: number;
 }
 
+/** The cross-tab lock a refresh runs under (Web Locks, where the browser has them). */
+const REFRESH_LOCK = 'homestead:session-refresh';
+
+/**
+ * Run `fn` while holding the refresh lock, so two tabs never spend the same
+ * single-use refresh token at once. Without Web Locks (older browsers, tests)
+ * it just runs; the storage re-reads around the request still catch most
+ * crossings.
+ */
+function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  return locks ? (locks.request(REFRESH_LOCK, () => fn()) as Promise<T>) : fn();
+}
+
 /**
  * Exchange the stored refresh token for a fresh session. Returns true on
  * success. A definitive rejection (non-ok response — the refresh token is
  * revoked/expired) clears the session; a network error leaves it intact so a
  * later call can retry.
+ *
+ * Refresh tokens are single-use and every tab shares one in localStorage, so
+ * before spending it this re-reads the stored session: if another tab already
+ * rotated it, its tokens are adopted instead. Likewise a rejection only ends
+ * the session when the rejected token is still the one on record — a tab that
+ * lost a race must not wipe the session the winner just stored.
  */
 async function performRefresh(): Promise<boolean> {
-  const refreshToken = authStore.refreshToken;
-  if (!refreshToken) return false;
-  try {
-    const res = await fetch(`${AUTH_BASE}/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    if (!res.ok) {
-      authStore.clear();
+  const held = authStore.refreshToken;
+  if (!held) return false;
+  return withRefreshLock(async () => {
+    authStore.adoptStored();
+    const refreshToken = authStore.refreshToken;
+    if (!refreshToken) return false;
+    if (refreshToken !== held && !authStore.needsRenewal) return true;
+    try {
+      const res = await fetch(`${AUTH_BASE}/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) {
+        authStore.adoptStored();
+        if (authStore.refreshToken && authStore.refreshToken !== refreshToken) return true;
+        authStore.clear();
+        return false;
+      }
+      const data = (await res.json()) as RefreshResponse;
+      authStore.saveSession(
+        {
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token,
+          expiresIn: data.expires_in,
+        },
+        authStore.model,
+      );
+      return true;
+    } catch {
       return false;
     }
-    const data = (await res.json()) as RefreshResponse;
-    authStore.saveSession(
-      {
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
-        expiresIn: data.expires_in,
-      },
-      authStore.model,
-    );
-    return true;
-  } catch {
-    return false;
-  }
+  });
 }
 
 /** Refresh the session, de-duplicating concurrent callers onto one request. */
@@ -267,6 +337,32 @@ export function refreshSession(): Promise<boolean> {
 /** Proactively renew the access token if it is at/near expiry. */
 async function ensureFreshToken(): Promise<void> {
   if (authStore.needsRenewal) await refreshSession();
+}
+
+/**
+ * `fetch` with the signed-in session handled the one right way: renew a
+ * near-expired access token before spending it, send the token the store
+ * holds *now* (not one captured earlier), and on a 401 refresh once and retry.
+ * Every call that carries the user's bearer token — the AEP helpers below and
+ * the server's own `/api/*` routes alike — goes through here, so no caller can
+ * hand the server a token that has already expired or been rotated away.
+ * `init.headers` must be a plain record; the Authorization header is set here.
+ */
+export async function authorizedFetch(
+  input: string,
+  init: RequestInit & { headers?: Record<string, string> } = {},
+): Promise<Response> {
+  const send = (): Promise<Response> => {
+    const headers: Record<string, string> = { ...init.headers };
+    if (authStore.token) headers.Authorization = `Bearer ${authStore.token}`;
+    return fetchOrNetworkError(input, { ...init, headers });
+  };
+  await ensureFreshToken();
+  let res = await send();
+  if (res.status === 401 && authStore.refreshToken && (await refreshSession())) {
+    res = await send();
+  }
+  return res;
 }
 
 // ----------------------------------------------------------------------------
@@ -294,33 +390,22 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (qs) url += `?${qs}`;
   }
 
-  const send = (): Promise<Response> => {
-    const headers: Record<string, string> = { [CLIENT_ID_HEADER]: getClientId() };
-    if (authStore.token) {
-      headers.Authorization = `Bearer ${authStore.token}`;
-    }
-    const init: RequestInit = { method, headers };
-    if (body instanceof FormData) {
-      init.body = body;
-      // Let the browser set the multipart boundary.
-    } else if (body !== undefined) {
-      headers['Content-Type'] = mergePatch
-        ? 'application/merge-patch+json'
-        : 'application/json';
-      init.body = JSON.stringify(body);
-    }
-    return fetchOrNetworkError(url, init);
-  };
-
-  // Renew a near-expired access token before spending it, then send. If the
-  // server still rejects the token (401) and we hold a refresh token, refresh
-  // once and retry — this is the global handler that keeps a session alive
-  // across access-token expiry without the caller noticing.
-  await ensureFreshToken();
-  let res = await send();
-  if (res.status === 401 && authStore.refreshToken && (await refreshSession())) {
-    res = await send();
+  const headers: Record<string, string> = { [CLIENT_ID_HEADER]: getClientId() };
+  const init: RequestInit & { headers: Record<string, string> } = { method, headers };
+  if (body instanceof FormData) {
+    init.body = body;
+    // Let the browser set the multipart boundary.
+  } else if (body !== undefined) {
+    headers['Content-Type'] = mergePatch
+      ? 'application/merge-patch+json'
+      : 'application/json';
+    init.body = JSON.stringify(body);
   }
+
+  // Renew, send, and on a 401 refresh once and retry (see authorizedFetch) —
+  // the global handler that keeps a session alive across access-token expiry
+  // without the caller noticing.
+  const res = await authorizedFetch(url, init);
 
   if (res.status === 204) {
     return undefined as T;
@@ -515,15 +600,10 @@ export async function download(
   target: DownloadTarget,
   options: ItemOptions = {},
 ): Promise<Blob> {
-  await ensureFreshToken();
   const url = `${AEP_BASE}${itemPath(plural, id, options.parent)}:download`;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (authStore.token) headers.Authorization = `Bearer ${authStore.token}`;
-  const res = await fetchOrNetworkError(url, {
+  const res = await authorizedFetch(url, {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(downloadBody(target)),
   });
   if (!res.ok) {
@@ -568,24 +648,25 @@ export async function customMethod<T>(
   body?: unknown,
   options: CustomMethodOptions = {},
 ): Promise<T> {
-  await ensureFreshToken();
   const base = options.id
     ? itemPath(plural, options.id, options.parent)
     : collectionPath(plural, options.parent);
   const url = `${AEP_BASE}${base}:${verb}`;
 
   const headers: Record<string, string> = { [CLIENT_ID_HEADER]: getClientId() };
-  if (authStore.token) headers.Authorization = `Bearer ${authStore.token}`;
   const userId = authStore.model?.id;
   if (userId) headers['X-User-Id'] = userId;
 
-  const init: RequestInit = { method: options.method ?? 'POST', headers };
+  const init: RequestInit & { headers: Record<string, string> } = {
+    method: options.method ?? 'POST',
+    headers,
+  };
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(body);
   }
 
-  const res = await fetchOrNetworkError(url, init);
+  const res = await authorizedFetch(url, init);
   if (res.status === 204) return undefined as T;
 
   const text = await res.text();
@@ -696,12 +777,9 @@ async function postForNewSession(
   body?: Record<string, unknown>,
 ): Promise<void> {
   const url = `${AUTH_BASE}${path}`;
-  const res = await fetch(url, {
+  const res = await authorizedFetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${authStore.token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
@@ -766,16 +844,14 @@ export interface OAuthProvider {
 
 /**
  * List the OAuth providers aepbase is configured with (`GET /oauth/providers`).
- * Unauthenticated. Returns an empty array when OAuth is disabled or on any
- * error, so callers can render zero buttons without special-casing.
+ * Unauthenticated. An instance with OAuth disabled answers with an empty list;
+ * a failure to reach the server rejects, so the login page can say the
+ * sign-in options couldn't be loaded (and retry) instead of silently showing
+ * none — a missing "Sign in with Google" button is not the same as no Google.
  */
 export async function listOAuthProviders(): Promise<OAuthProvider[]> {
-  try {
-    const res = await request<{ providers?: OAuthProvider[] }>('/oauth/providers');
-    return res.providers ?? [];
-  } catch {
-    return [];
-  }
+  const res = await request<{ providers?: OAuthProvider[] }>('/oauth/providers');
+  return res.providers ?? [];
 }
 
 /**
@@ -865,6 +941,7 @@ export const aepbase = {
   listOAuthProviders,
   startOAuth,
   completeOAuthLogin,
+  authorizedFetch,
   authStore,
 };
 

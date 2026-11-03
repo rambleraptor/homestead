@@ -11,7 +11,7 @@
  */
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { authStore } from '@rambleraptor/homestead-core/api/aepbase';
+import { authorizedFetch, authStore } from '@rambleraptor/homestead-core/api/aepbase';
 import type {
   BulkExportFormatInfo,
   BulkExportOption,
@@ -120,13 +120,12 @@ export function useBulkExport(plural: string) {
       const qs = params.toString();
       const url = `${AEP_BASE}/${plural}:${BULK_EXPORT_VERB}${qs ? `?${qs}` : ''}`;
 
-      const headers: Record<string, string> = {};
-      if (authStore.token) headers.Authorization = `Bearer ${authStore.token}`;
       // The gateway authenticates custom methods via bearer + X-User-Id.
+      const headers: Record<string, string> = {};
       const userId = authStore.model?.id;
       if (userId) headers['X-User-Id'] = userId;
 
-      const res = await fetch(url, { headers });
+      const res = await authorizedFetch(url, { headers });
       if (!res.ok) {
         let message = `Export failed (HTTP ${res.status})`;
         try {

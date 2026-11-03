@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
+import { aepbase } from '../api/aepbase';
 import { Home, AlertCircle, ShieldCheck } from 'lucide-react';
 
 interface RequestInfo {
@@ -23,7 +24,7 @@ interface RequestInfo {
 }
 
 export function Authorize() {
-  const { isAuthenticated, isLoading, token } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [params] = useSearchParams();
   const requestId = params.get('request') ?? '';
 
@@ -67,9 +68,9 @@ export function Authorize() {
     setSubmitting(true);
     setError('');
     try {
-      const res = await fetch('/oauth2/authorize/decision', {
+      const res = await aepbase.authorizedFetch('/oauth2/authorize/decision', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ request: requestId, approve }),
       });
       if (!res.ok) throw new Error('Could not complete authorization. Please try again.');

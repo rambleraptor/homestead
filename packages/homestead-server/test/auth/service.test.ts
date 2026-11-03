@@ -57,7 +57,7 @@ describe('AuthService.issueSession + validateAccessToken', () => {
     expect(auth.validateAccessToken(session.access_token)?.id).toBe(user.id);
   });
 
-  test('an expired access token is rejected and its rows are revoked', () => {
+  test('an expired access token is rejected, swept, and its refresh token survives', () => {
     const db = freshDb();
     const user = seed(db);
     // TTL in the past → the token is born expired.
@@ -65,9 +65,29 @@ describe('AuthService.issueSession + validateAccessToken', () => {
 
     const session = auth.issueSession(user.id);
     expect(auth.validateAccessToken(session.access_token)).toBeNull();
-    // The dead access row and its refresh token are swept.
+    // The dead access row is swept …
     expect(getUserByToken(db, session.access_token)).toBeNull();
-    expect(auth.rotateRefresh(session.refresh_token)).toBeNull();
+    // … but presenting a stale access token must not end the session: a
+    // request that raced the renewal, or a tab that slept past the expiry,
+    // still gets to refresh (through a service with a normal access TTL, since
+    // this one mints every token born expired).
+    const renewed = new AuthService(db).rotateRefresh(session.refresh_token);
+    expect(renewed).not.toBeNull();
+    expect(auth.validateAccessToken(renewed!.access_token)?.id).toBe(user.id);
+  });
+
+  test('a stale access token presented after a rotation cannot revive anything', () => {
+    const db = freshDb();
+    const user = seed(db);
+    const auth = new AuthService(db, { accessTokenTtlSeconds: -1 });
+
+    const first = auth.issueSession(user.id);
+    const second = auth.rotateRefresh(first.refresh_token)!;
+    // The old access token is gone and the old refresh token is single-use;
+    // presenting the old access token again changes nothing for the new pair.
+    expect(auth.validateAccessToken(first.access_token)).toBeNull();
+    expect(auth.rotateRefresh(first.refresh_token)).toBeNull();
+    expect(auth.rotateRefresh(second.refresh_token)).not.toBeNull();
   });
 
   test('an unknown token resolves to null', () => {

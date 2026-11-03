@@ -31,10 +31,9 @@ export function useConnectedApps() {
   return useQuery({
     queryKey: connectedAppsKey,
     queryFn: async (): Promise<ConnectedApp[]> => {
-      const token = aepbase.authStore.token;
       const userId = aepbase.getCurrentUser()?.id || '';
-      const res = await fetch('/api/connections', {
-        headers: { Authorization: `Bearer ${token}`, 'X-User-Id': userId },
+      const res = await aepbase.authorizedFetch('/api/connections', {
+        headers: { 'X-User-Id': userId },
       });
       if (res.status === 404) return [];
       if (!res.ok) {

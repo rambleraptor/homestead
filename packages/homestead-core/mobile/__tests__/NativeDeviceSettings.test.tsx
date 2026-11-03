@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NativeDeviceSettings } from '../NativeDeviceSettings';
 const mocks = vi.hoisted(() => ({ request: vi.fn(), revoke: vi.fn(), viewAs: null as null | { id: string } }));
 vi.mock('../bridge', async (original) => ({ ...await original<typeof import('../bridge')>(), isNativeHomestead: () => true, nativeRequest: mocks.request, revokeNativeToken: mocks.revoke }));
-vi.mock('../../api/aepbase', () => ({ aepbase: { authStore: { token: 'SESSION', needsRenewal: false }, getCurrentUser: () => ({ id: 'owner' }) }, refreshSession: vi.fn() }));
+vi.mock('../../api/aepbase', () => ({ aepbase: { authStore: { token: 'SESSION', needsRenewal: false }, getCurrentUser: () => ({ id: 'owner' }), authorizedFetch: (input: string, init?: RequestInit) => fetch(input, init) }, refreshSession: vi.fn() }));
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ realUser: { id: 'owner' }, viewAs: mocks.viewAs }) }));
 vi.mock('../../apps/registry', () => ({ getAllApps: () => [{ id: 'groceries', name: 'Groceries' }, { id: 'todos', name: 'Todos' }] }));
 beforeEach(() => {
