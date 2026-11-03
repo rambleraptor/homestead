@@ -16,7 +16,7 @@
 import { missingKeyError, writesNeedingKey } from './encrypted-fields';
 import { describeSecrets, keepUnchangedSecrets, sealSecretWrites } from './secret-fields';
 import { errorResponse, HttpError, isUniqueConstraintError, jsonResponse } from './errors';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import {
   deleteAllFileFields,
@@ -65,6 +65,14 @@ import {
 } from './store';
 import type { Schema, StoredResource, User } from './types';
 import { STANDARD_FIELDS, TYPE_SUPERUSER } from './types';
+import {
+  computeEtag,
+  ifMatchHolds,
+  ifNoneMatchHits,
+  notModified,
+  preconditionFailed,
+  withEtag,
+} from './preconditions';
 import { applyDynamicDefaults } from './defaults';
 import {
   applyDefaults,
@@ -221,7 +229,27 @@ export function storedToMap(
   withFileDescriptors(r.schema, r.nestedFileFields, m, (id) =>
     storedFileDownloadUrl(reg.serverUrl, s.path, id),
   );
+  m.etag = computeEtag(m, fileStamps(reg, r, s));
   return m;
+}
+
+/**
+ * What the representation can't show about a record's top-level files: a file
+ * replaced under the same name keeps its download URL. Its size and
+ * modification time go into the etag instead.
+ */
+function fileStamps(reg: Registry, r: RegisteredResource, s: StoredResource): string {
+  if (r.fileFields.size === 0) return '';
+  const stamps: string[] = [];
+  for (const name of r.fileFields) {
+    try {
+      const st = statSync(filePath(reg.filesDir, s.path, name));
+      stamps.push(`${name}:${st.size}:${st.mtimeMs}`);
+    } catch {
+      // No file under this field.
+    }
+  }
+  return stamps.join(',');
 }
 
 /** Singletons have no "id" field in responses. */
@@ -235,6 +263,7 @@ function singletonToMap(r: RegisteredResource, s: StoredResource): Record<string
     if (propName in s.fields) m[propName] = s.fields[propName];
   }
   describeSecrets(r.schema, s.path, s.fields, m);
+  m.etag = computeEtag(m);
   return m;
 }
 
@@ -598,7 +627,7 @@ export async function handleCreate(
     record: created,
     previous: null,
   });
-  return jsonResponse(created, 201);
+  return withEtag(jsonResponse(created, 201), created.etag);
 }
 
 /**
@@ -610,12 +639,25 @@ function ownerFor(caller: User | null): string | null {
   return caller ? caller.id : null;
 }
 
-export function handleGet(reg: Registry, match: RouteMatch): Response {
+export function handleGet(reg: Registry, match: RouteMatch, req: Request): Response {
   const r = match.resource;
   const path = buildResourcePath(r, match.parentIds, match.id);
   const stored = getResource(reg.db, r.plural, path, r.schema);
   if (!stored) return errorResponse(404, `resource "${path}" not found`);
-  return jsonResponse(storedToMap(reg, r, stored));
+  return conditionalRead(req, path, storedToMap(reg, r, stored));
+}
+
+/** A single-resource read under AEP-154: 412 / 304 per the request's conditions, else the record with its ETag. */
+function conditionalRead(req: Request, path: string, record: Record<string, unknown>): Response {
+  const etag = record.etag as string;
+  if (!ifMatchHolds(req, etag)) return preconditionFailed(path);
+  if (ifNoneMatchHits(req, etag)) return notModified(etag);
+  return withEtag(jsonResponse(record), etag);
+}
+
+/** The current etag of a stored record. */
+function currentEtag(reg: Registry, r: RegisteredResource, s: StoredResource): string {
+  return storedToMap(reg, r, s).etag as string;
 }
 
 export function handleList(
@@ -689,6 +731,8 @@ export async function handleUpdate(
 
   const existing = getResource(reg.db, r.plural, path, r.schema);
   if (!existing) return errorResponse(404, `resource "${path}" not found`);
+  // AEP-154: fail fast on a stale If-Match, before reading or storing any file.
+  if (!ifMatchHolds(req, currentEtag(reg, r, existing))) return preconditionFailed(path);
 
   const { fields: patch, uploaded, parts } = await readCreateOrApplyBody(req, r, reg, path);
   preparePayload(r, patch, uploaded);
@@ -702,6 +746,12 @@ export async function handleUpdate(
   // Merge onto the record as it is now: nothing below awaits until the commit.
   const target = freshTarget(reg, r, path, files);
   if (target instanceof Response) return target;
+  // Checked again against the record as it is at commit: another write may
+  // have landed while this request's body was read.
+  if (!ifMatchHolds(req, currentEtag(reg, r, target))) {
+    discardNestedFiles(reg, path, files);
+    return preconditionFailed(path);
+  }
   // Snapshot the pre-state for the sync's `previous`, before the patch mutates
   // `target.fields`. Only materialized when a dispatcher is wired.
   const preState = reg.syncDispatcher ? storedToMap(reg, r, target) : null;
@@ -725,7 +775,7 @@ export async function handleUpdate(
     record: updated,
     previous: preState,
   });
-  return jsonResponse(updated);
+  return withEtag(jsonResponse(updated), updated.etag);
 }
 
 export async function handleApply(
@@ -736,6 +786,8 @@ export async function handleApply(
 ): Promise<Response> {
   const r = match.resource;
   const path = buildResourcePath(r, match.parentIds, match.id);
+  const before = getResource(reg.db, r.plural, path, r.schema);
+  if (!ifMatchHolds(req, before ? currentEtag(reg, r, before) : null)) return preconditionFailed(path);
 
   const { fields, uploaded, parts } = await readCreateOrApplyBody(req, r, reg, path);
   preparePayload(r, fields, uploaded);
@@ -750,6 +802,10 @@ export async function handleApply(
     const target = freshTarget(reg, r, path, files);
     if (target instanceof Response) return target;
     existing = target;
+  }
+  if (!ifMatchHolds(req, existing ? currentEtag(reg, r, existing) : null)) {
+    discardNestedFiles(reg, path, files);
+    return preconditionFailed(path);
   }
   try {
     return applyResolved(reg, match, caller, r, path, fields, uploaded, now, existing, files);
@@ -801,7 +857,7 @@ function applyResolved(
       record: updated,
       previous: preState,
     });
-    return jsonResponse(updated);
+    return withEtag(jsonResponse(updated), updated.etag);
   }
 
   // Apply that creates a new resource: fill defaults, then validate required.
@@ -827,7 +883,7 @@ function applyResolved(
     record: created,
     previous: null,
   });
-  return jsonResponse(created, 201);
+  return withEtag(jsonResponse(created, 201), created.etag);
 }
 
 /** The FK column naming a child row's direct parent (e.g. `credit_card_id`). */
@@ -940,6 +996,8 @@ export function handleDelete(reg: Registry, match: RouteMatch, req: Request): Re
 
   const existing = getResource(reg.db, r.plural, path, r.schema);
   if (!existing) return errorResponse(404, `resource "${path}" not found`);
+  // AEP-154: don't delete a version newer than the one the caller saw.
+  if (!ifMatchHolds(req, currentEtag(reg, r, existing))) return preconditionFailed(path);
 
   const force = new URL(req.url).searchParams.get('force') === 'true';
   if (!force && hasChildRows(reg, r, match.id)) {
@@ -983,7 +1041,7 @@ export function handleDelete(reg: Registry, match: RouteMatch, req: Request): Re
   return new Response(null, { status: 204 });
 }
 
-export function handleSingletonGet(reg: Registry, match: RouteMatch): Response {
+export function handleSingletonGet(reg: Registry, match: RouteMatch, req: Request): Response {
   const r = match.resource;
   const path = buildSingletonPath(reg, r, match.parentIds);
 
@@ -1004,7 +1062,7 @@ export function handleSingletonGet(reg: Registry, match: RouteMatch): Response {
     // (thread `caller` through and pass `ownerFor(caller)` like handleCreate).
     insertResource(reg.db, r.plural, stored, directParentIds(reg, r, match.parentIds), r.schema);
   }
-  return jsonResponse(singletonToMap(r, stored));
+  return conditionalRead(req, path, singletonToMap(r, stored));
 }
 
 export async function handleSingletonUpdate(
@@ -1035,6 +1093,9 @@ export async function handleSingletonUpdate(
   sealSecretWrites(r.schema, patch, nowRFC3339());
 
   const existing = getResource(reg.db, r.plural, path, r.schema);
+  if (!ifMatchHolds(req, existing ? (singletonToMap(r, existing).etag as string) : null)) {
+    return preconditionFailed(path);
+  }
   const now = nowRFC3339();
 
   if (!existing) {
@@ -1050,7 +1111,8 @@ export async function handleSingletonUpdate(
     // Ownerless by design — see handleSingletonGet: a singleton is household-
     // wide, so owner-model access doesn't apply and `_owner` stays null.
     insertResource(reg.db, r.plural, stored, directParentIds(reg, r, match.parentIds), r.schema);
-    return jsonResponse(singletonToMap(r, stored));
+    const created = singletonToMap(r, stored);
+    return withEtag(jsonResponse(created), created.etag);
   }
 
   const preState = reg.syncDispatcher ? singletonToMap(r, existing) : null;
@@ -1067,7 +1129,7 @@ export async function handleSingletonUpdate(
     record: updated,
     previous: preState,
   });
-  return jsonResponse(updated);
+  return withEtag(jsonResponse(updated), updated.etag);
 }
 
 /**

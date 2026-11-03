@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { authenticate } from '@rambleraptor/homestead-core/server/aepbase';
 import { operationStore } from '@rambleraptor/homestead-core/server/operations';
 import { dispatchCustomMethod } from '@rambleraptor/homestead-core/resources/custom-methods/dispatcher';
+import { unsupportedConditional } from '../engine/preconditions';
 import {
   allBulkImportCustomMethods,
   bulkImportCustomMethod,
@@ -76,6 +77,16 @@ export function makeAepGateway(engine: Engine, engineOrigin: string): Hono {
         ...getAllResourceCustomMethods(),
       });
       return Response.json(doc);
+    }
+
+    // AEP-154: a custom method (`…/{id}:verb`, `…/{plural}:verb`) has no
+    // precondition support, so a conditional header on one is refused rather
+    // than ignored. Standard methods pass through to the engine, which checks
+    // them.
+    const lastSegment = url.pathname.split('/').pop() ?? '';
+    if (lastSegment.includes(':')) {
+      const unsupported = unsupportedConditional(c.req.raw, 'a custom method');
+      if (unsupported) return unsupported;
     }
 
     // Auto-index uploads to `ai`-enabled file fields. Returns null for anything

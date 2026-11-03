@@ -77,6 +77,7 @@ function withStandardFields(schema: Schema, singleton: boolean): Schema {
   properties.path = { type: 'string', readOnly: true };
   properties.create_time = { type: 'string', format: 'date-time', readOnly: true };
   properties.update_time = { type: 'string', format: 'date-time', readOnly: true };
+  properties.etag = { type: 'string', readOnly: true };
   return { ...schema, properties };
 }
 

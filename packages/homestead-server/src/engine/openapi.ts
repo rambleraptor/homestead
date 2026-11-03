@@ -52,7 +52,33 @@ const STANDARD_FIELD_META: Record<string, { description: string; example: unknow
     description: 'The time this resource was last updated.',
     example: '2024-06-15T12:00:00Z',
   },
+  etag: {
+    description:
+      'An opaque, strong entity tag for this version of the resource (AEP-154). Send it as If-Match to make an update or delete conditional on no one having changed the resource since.',
+    example: '"Yw3dX0Pq2m9r8sB1tL6uVn4aZkE"',
+  },
 };
+
+/** AEP-154 conditional request headers, documented on each single-resource operation. */
+const IF_MATCH_PARAM: Json = {
+  name: 'If-Match',
+  in: 'header',
+  required: false,
+  description:
+    'Proceed only if the resource\'s current etag is one of these (strong comparison); otherwise 412 and nothing changes.',
+  schema: { type: 'string' },
+};
+const IF_NONE_MATCH_PARAM: Json = {
+  name: 'If-None-Match',
+  in: 'header',
+  required: false,
+  description: 'Answer 304 Not Modified, with no body, if the resource\'s current etag is one of these.',
+  schema: { type: 'string' },
+};
+const PRECONDITION_FAILED: Json = {
+  description: 'The resource has changed since the version named in If-Match (AEP-154).',
+};
+const NOT_MODIFIED: Json = { description: 'The resource still has the etag named in If-None-Match.' };
 
 const PARAM_META: Record<string, { description: string; example: unknown }> = {
   max_page_size: {
@@ -498,17 +524,19 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
         operationId: `Get${pascal(doc.singular)}`,
         description: `Retrieves a single ${name} by ID.`,
         tags: [name],
-        parameters: parentParams,
+        parameters: [...parentParams, IF_MATCH_PARAM, IF_NONE_MATCH_PARAM],
         responses: {
           '200': successRef(doc.singular, schemaExample),
+          '304': NOT_MODIFIED,
           '404': notFound,
+          '412': PRECONDITION_FAILED,
         },
       },
       patch: {
         operationId: `Update${pascal(doc.singular)}`,
         description: `Updates an existing ${name} using RFC 7396 JSON Merge Patch: fields present in the body are set, a field sent as null is cleared, omitted fields are left unchanged, and object fields are merged recursively.`,
         tags: [name],
-        parameters: parentParams,
+        parameters: [...parentParams, IF_MATCH_PARAM],
         requestBody: {
           description: `The fields to update on the ${name}.`,
           required: true,
@@ -522,6 +550,7 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
           '200': successRef(doc.singular, schemaExample),
           '400': badRequest,
           '404': notFound,
+          '412': PRECONDITION_FAILED,
         },
       },
     };
@@ -613,8 +642,17 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
       operationId: `Get${pascal(doc.singular)}`,
       description: `Retrieves a single ${name} by ID.`,
       tags: [name],
-      parameters: doc.links ? [...resourceParams, includeParam(doc.links)] : resourceParams,
-      responses: { '200': successRef(doc.singular, schemaExample), '404': notFound },
+      parameters: [
+        ...(doc.links ? [...resourceParams, includeParam(doc.links)] : resourceParams),
+        IF_MATCH_PARAM,
+        IF_NONE_MATCH_PARAM,
+      ],
+      responses: {
+        '200': successRef(doc.singular, schemaExample),
+        '304': NOT_MODIFIED,
+        '404': notFound,
+        '412': PRECONDITION_FAILED,
+      },
     };
   }
   if (doc.methods.update) {
@@ -622,7 +660,7 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
       operationId: `Update${pascal(doc.singular)}`,
       description: `Updates an existing ${name}. Only the fields provided in the request body are modified.`,
       tags: [name],
-      parameters: resourceParams,
+      parameters: [...resourceParams, IF_MATCH_PARAM],
       requestBody: {
         description: `The fields to update on the ${name}.`,
         required: true,
@@ -636,6 +674,7 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
         '200': successRef(doc.singular, schemaExample),
         '400': badRequest,
         '404': notFound,
+        '412': PRECONDITION_FAILED,
       },
     };
   }
@@ -644,7 +683,7 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
       operationId: `Apply${pascal(doc.singular)}`,
       description: `Creates or replaces a ${name}.`,
       tags: [name],
-      parameters: resourceParams,
+      parameters: [...resourceParams, IF_MATCH_PARAM],
       requestBody: {
         description: `The full ${name} to create or replace.`,
         required: true,
@@ -656,13 +695,15 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
         '200': successRef(doc.singular, schemaExample),
         '201': successRef(doc.singular),
         '400': badRequest,
+        '412': PRECONDITION_FAILED,
       },
     };
   }
   if (doc.methods.delete) {
-    const deleteParams = doc.hasChildren
-      ? [...resourceParams, queryParam('force', 'boolean')]
-      : resourceParams;
+    const deleteParams = [
+      ...(doc.hasChildren ? [...resourceParams, queryParam('force', 'boolean')] : resourceParams),
+      IF_MATCH_PARAM,
+    ];
     resourceOps.delete = {
       operationId: `Delete${pascal(doc.singular)}`,
       description: `Deletes a ${name} by ID.`,
@@ -674,6 +715,7 @@ function buildPaths(doc: ResourceDoc, schemaExample: Json | undefined): Record<s
           content: { 'application/json': { schema: { type: 'object' }, example: {} } },
         },
         '404': notFound,
+        '412': PRECONDITION_FAILED,
       },
     };
   }

@@ -23,6 +23,7 @@ import { OAuthRoutes, type OAuthConfig, type SessionIssuer } from './oauth';
 import { buildOpenApi } from './openapi';
 import { Registry, type RegisteredResource } from './registry';
 import { authorizeRecord, matchResourcePath, notFoundText, readTarget, routeDynamic } from './router';
+import { unsupportedConditional } from './preconditions';
 import { addIncluded, parseInclude } from './include';
 import { linksOf, type Link } from './links';
 import { originOf, runWithRequestContext } from './request-context';
@@ -426,6 +427,18 @@ export class Engine {
     if (this.accessCheck) {
       const denied = this.accessCheck(req, segments, caller);
       if (denied) return denied;
+    }
+
+    // AEP-154 preconditions are supported on dynamic resources only (see
+    // router.ts); everywhere else a conditional header is refused, not ignored.
+    if (
+      segments[0] === 'aep-resource-definitions' ||
+      (segments[0] === 'users' && segments.length <= 2) ||
+      segments[0] === 'oauth' ||
+      path === '/openapi.json'
+    ) {
+      const unsupported = unsupportedConditional(req);
+      if (unsupported) return unsupported;
     }
 
     if (req.method === 'GET' && path === '/openapi.json') {

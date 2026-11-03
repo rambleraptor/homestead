@@ -21,6 +21,7 @@ import {
   type RouteMatch,
 } from './crud';
 import { errorResponse } from './errors';
+import { IF_MATCH, unsupportedConditional } from './preconditions';
 import {
   enforceGrantWrite,
   credentialVisibilityClause,
@@ -358,9 +359,11 @@ export async function routeDynamic(
   if (match.kind === 'singleton') {
     if (req.method === 'GET') {
       authorizeRecordRead(reg, match, caller, ctx);
-      return handleSingletonGet(reg, match);
+      return handleSingletonGet(reg, match, req);
     }
     if (req.method === 'PATCH') {
+      const unsupported = unsupportedConditional(withoutIfMatch(req), 'an update (send If-Match)');
+      if (unsupported) return unsupported;
       checkSuperuserWrite(match, caller);
       enforce('write');
       return handleSingletonUpdate(reg, match, req);
@@ -369,6 +372,9 @@ export async function routeDynamic(
   }
 
   if (match.kind === 'collection') {
+    // AEP-154 preconditions apply to one resource; a list or a create has none.
+    const unsupported = unsupportedConditional(req, 'a collection');
+    if (unsupported) return unsupported;
     if (req.method === 'POST') {
       checkSuperuserWrite(match, caller);
       enforce('write');
@@ -408,6 +414,8 @@ export async function routeDynamic(
     match.id = rawId;
   }
   const recordPath = buildResourcePath(r, match.parentIds, match.id);
+  const unsupported = unsupportedResourceConditional(req, match.verb);
+  if (unsupported) return unsupported;
 
   switch (req.method) {
     case 'GET':
@@ -415,7 +423,7 @@ export async function routeDynamic(
         return errorResponse(404, `custom method "${match.verb}" not found`);
       }
       authorizeRecordRead(reg, match, caller, ctx);
-      return handleGet(reg, match);
+      return handleGet(reg, match, req);
     case 'POST':
       if (match.verb === '') {
         return errorResponse(405, 'POST is not allowed on individual resources; use PATCH to update');
@@ -459,6 +467,8 @@ async function routeGrant(
   const r = match.resource;
 
   if (match.kind === 'collection') {
+    const unsupported = unsupportedConditional(req, 'a collection');
+    if (unsupported) return unsupported;
     if (req.method === 'GET') return handleList(reg, match, req, null);
     if (req.method === 'POST') {
       const { bodyText, target, filter } = await readGrantTarget(req);
@@ -472,10 +482,12 @@ async function routeGrant(
 
   match.id = rawId;
   const path = buildResourcePath(r, match.parentIds, match.id);
+  const unsupported = unsupportedResourceConditional(req, '');
+  if (unsupported) return unsupported;
 
   switch (req.method) {
     case 'GET':
-      return handleGet(reg, match);
+      return handleGet(reg, match, req);
     case 'PATCH': {
       const { bodyText, target, filter } = await readGrantTarget(req, storedGrantTarget(reg, r.plural, path));
       enforceGrantWrite(ctx, reg, reg.db, caller, target);
@@ -554,6 +566,28 @@ function storedGrantTarget(reg: Registry, plural: string, path: string): GrantTa
   } catch {
     return {};
   }
+}
+
+/** The request as it would be without its If-Match (to check what else it carries). */
+function withoutIfMatch(req: Request): Request {
+  if (!req.headers.has(IF_MATCH)) return req;
+  const headers = new Headers(req.headers);
+  headers.delete(IF_MATCH);
+  return new Request(req.url, { method: req.method, headers });
+}
+
+/**
+ * AEP-154 support on one resource: a GET takes If-Match and If-None-Match; a
+ * PATCH, PUT or DELETE takes If-Match. Anything else conditional — a custom
+ * method, If-None-Match on a write — is refused rather than ignored.
+ */
+function unsupportedResourceConditional(req: Request, verb: string): Response | null {
+  if (verb !== '') return unsupportedConditional(req, 'a custom method');
+  if (req.method === 'GET') return null;
+  if (req.method === 'PATCH' || req.method === 'PUT' || req.method === 'DELETE') {
+    return unsupportedConditional(withoutIfMatch(req), 'a write (send If-Match)');
+  }
+  return unsupportedConditional(req);
 }
 
 function remakeJsonRequest(req: Request, bodyText: string): Request {

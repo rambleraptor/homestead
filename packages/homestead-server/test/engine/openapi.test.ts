@@ -77,7 +77,16 @@ beforeAll(async () => {
  * `include` (linked records, `src/engine/include.ts`) — set aside when
  * comparing against it, and checked on their own below.
  */
-const HOMESTEAD_EXTENSION_PARAMS = new Set(['include']);
+const HOMESTEAD_EXTENSION_PARAMS = new Set(['include', 'If-Match', 'If-None-Match']);
+
+/**
+ * AEP-154 preconditions, added after the baseline froze: every resource's
+ * output-only `etag`, the conditional request headers (set aside with the
+ * params above), and the 304 / 412 answers they make possible. Checked on
+ * their own below.
+ */
+const AEP_154_FIELDS = new Set(['etag']);
+const AEP_154_RESPONSES = new Set(['304', '412']);
 
 describe('AEP wire-contract invariants vs the baseline', () => {
   test('same path set', () => {
@@ -132,7 +141,7 @@ describe('AEP wire-contract invariants vs the baseline', () => {
     for (const [name, baselineSchema] of Object.entries(baselineSchemas)) {
       const ours = doc.components.schemas[name];
       expect(ours['x-aep-resource']).toEqual(baselineSchema['x-aep-resource']);
-      expect(Object.keys(ours.properties).sort()).toEqual(
+      expect(Object.keys(ours.properties).filter((p) => !AEP_154_FIELDS.has(p)).sort()).toEqual(
         Object.keys(baselineSchema['properties']).sort(),
       );
       expect(ours.required ?? []).toEqual(baselineSchema['required'] ?? []);
@@ -142,11 +151,28 @@ describe('AEP wire-contract invariants vs the baseline', () => {
   test('same response status codes per operation', () => {
     for (const [path, ops] of Object.entries(baseline.paths) as [string, Record<string, any>][]) {
       for (const [method, op] of Object.entries(ops) as [string, any][]) {
-        expect(Object.keys(doc.paths[path][method].responses).sort()).toEqual(
-          Object.keys(op['responses']).sort(),
-        );
+        expect(
+          Object.keys(doc.paths[path][method].responses)
+            .filter((code) => !AEP_154_RESPONSES.has(code))
+            .sort(),
+        ).toEqual(Object.keys(op['responses']).sort());
       }
     }
+  });
+
+  test('AEP-154: every resource has an output-only etag, and its single-resource operations take conditions', () => {
+    for (const [name, schema] of Object.entries(doc.components.schemas) as [string, any][]) {
+      if (!schema['x-aep-resource'] || name === 'user' || name === 'aep-resource-definition') continue;
+      expect(schema.properties.etag, name).toMatchObject({ type: 'string', readOnly: true });
+    }
+    const card = doc.paths['/gift-cards/{gift_card_id}'];
+    const params = (op: any) => (op.parameters as { name: string }[]).map((p) => p.name);
+    expect(params(card.get)).toEqual(expect.arrayContaining(['If-Match', 'If-None-Match']));
+    for (const method of ['patch', 'delete']) {
+      expect(params(card[method])).toContain('If-Match');
+      expect(Object.keys(card[method].responses)).toContain('412');
+    }
+    expect(Object.keys(card.get.responses)).toEqual(expect.arrayContaining(['304', '412']));
   });
 
   test('file fields carry x-aepbase-file-field', () => {

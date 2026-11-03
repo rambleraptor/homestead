@@ -279,10 +279,12 @@ interface RequestOptions {
   query?: Record<string, string | number | undefined>;
   // When true, send the body as application/merge-patch+json (used by PATCH).
   mergePatch?: boolean;
+  /** AEP-154: only write if the resource still has this etag (else 412). */
+  ifMatch?: string;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, mergePatch } = options;
+  const { method = 'GET', body, query, mergePatch, ifMatch } = options;
 
   let url = `${AEP_BASE}${path}`;
   if (query) {
@@ -296,6 +298,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const send = (): Promise<Response> => {
     const headers: Record<string, string> = { [CLIENT_ID_HEADER]: getClientId() };
+    if (ifMatch) headers['If-Match'] = ifMatch;
     if (authStore.token) {
       headers.Authorization = `Bearer ${authStore.token}`;
     }
@@ -399,6 +402,12 @@ interface ListResponse<T> {
 interface ItemOptions {
   parent?: ParentPath;
   /**
+   * AEP-154 precondition for `update` / `remove`: the etag of the version the
+   * change was based on. If someone has changed the resource since, the
+   * server writes nothing and answers 412.
+   */
+  ifMatch?: string;
+  /**
    * AEP-135 cascade delete. When true, a DELETE removes the resource *and*
    * its child subtree; without it, deleting a resource that still has
    * children fails with 409. Only meaningful on `remove`.
@@ -482,6 +491,7 @@ export async function update<T>(
     method: 'PATCH',
     body: encoded,
     mergePatch: !(encoded instanceof FormData),
+    ifMatch: options.ifMatch,
   });
 }
 
@@ -493,6 +503,7 @@ export async function remove(
   await request<void>(itemPath(plural, id, options.parent), {
     method: 'DELETE',
     query: options.force ? { force: 'true' } : undefined,
+    ifMatch: options.ifMatch,
   });
 }
 

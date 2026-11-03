@@ -129,4 +129,8 @@ export const TYPE_SUPERUSER = 'superuser';
 export const TYPE_REGULAR = 'regular';
 
 /** Columns managed by the engine on every resource table. */
-export const STANDARD_FIELDS = new Set(['id', 'path', 'create_time', 'update_time']);
+/**
+ * Engine-managed fields on every resource: stripped from writes, never a
+ * stored column (`etag` is computed from the record — see preconditions.ts).
+ */
+export const STANDARD_FIELDS = new Set(['id', 'path', 'create_time', 'update_time', 'etag']);
