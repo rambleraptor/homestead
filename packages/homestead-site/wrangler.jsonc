@@ -8,6 +8,9 @@
   //   Root directory:  packages/homestead-site
   //   Build command:   npm run build
   //   Deploy command:  npx wrangler versions upload   (reads this file)
+  //   Build watch paths (include): packages/homestead-site/*
+  //     — so pushes that only touch the server/CLI/apps don't rebuild the site.
+  //       Relative to the repo root; dashboard-only (no wrangler key). See README.
   //
   // `name` must match the Worker the build is attached to ("homestead").
   // `assets.directory` is the VitePress output; wrangler uploads it as the
