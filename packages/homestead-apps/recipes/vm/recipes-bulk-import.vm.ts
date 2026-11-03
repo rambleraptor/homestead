@@ -272,6 +272,35 @@ describe('Recipes bulk import — API', () => {
     expect(operation.response?.items?.[0].errors[0]).toContain('notes.txt');
   });
 
+  test('describes the method fully in /openapi.json', async () => {
+    const res = await fetch(`${getAppUrl()}/api/aep/openapi.json`);
+    const doc = (await res.json()) as { paths: Record<string, Record<string, any>> };
+    const op = doc.paths['/recipes:bulk-import']?.post;
+
+    expect(op.operationId).toBe('BulkImportRecipes');
+    const json = op.requestBody.content['application/json'].schema;
+    expect(json.properties.format.enum).toEqual(['url', 'social', 'screenshots', 'text', 'paprika']);
+    expect(json.properties.validate_only.type).toBe('boolean');
+    expect(op.requestBody.content['multipart/form-data'].encoding.body.contentType).toBe(
+      'application/json',
+    );
+    expect(op.responses['202'].content['application/json'].schema).toEqual({
+      $ref: '#/components/schemas/operation',
+    });
+    expect(op['x-aep-long-running-operation'].response.schema.oneOf).toHaveLength(2);
+    expect(op.responses['400'].content['application/json'].schema.required).toContain('detail');
+
+    // Still a document the CLI can load: aep-lib-ts, after the CLI drops the
+    // collection-level custom methods that library can't model.
+    const { APIClient } = await import('@aep_dev/aep-lib-ts');
+    const { withoutCollectionMethods } = await import(
+      '../../../homestead-cli/src/openapi-filter'
+    );
+    await expect(
+      APIClient.fromOpenAPI(withoutCollectionMethods(doc as never), getAppUrl()),
+    ).resolves.toBeDefined();
+  });
+
   test('advertises every format for discovery', async () => {
     // Unauthenticated, like Playwright's `request` fixture.
     const res = await fetch(`${getAppUrl()}/api/custom-methods`);

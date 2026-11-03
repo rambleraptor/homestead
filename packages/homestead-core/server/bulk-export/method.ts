@@ -41,11 +41,34 @@ export function bulkExportCustomMethod(
   verb: string,
 ): ResourceCustomMethod | undefined {
   if (verb !== BULK_EXPORT_VERB) return undefined;
-  if (!getResourceBulkExport(plural)) return undefined;
+  const def = getResourceBulkExport(plural);
+  if (!def) return undefined;
+  const query: NonNullable<ResourceCustomMethod['query']> = {
+    format: {
+      schema: { type: 'string', enum: def.formats.map((f) => f.id) },
+      description: `Output format; defaults to ${def.formats[0]?.id ?? 'the first'}. ${def.formats
+        .map((f) => `${f.id}: ${f.label}`)
+        .join('; ')}`,
+    },
+    filter: {
+      schema: { type: 'string' },
+      description: 'A list filter selecting the rows (e.g. id in ["a", "b"]); all rows when omitted.',
+    },
+    filename: { schema: { type: 'string' }, description: 'Download filename override.' },
+  };
+  for (const option of def.options ?? []) {
+    query[option.id] = {
+      schema: { type: 'boolean', ...(option.default !== undefined ? { default: option.default } : {}) },
+      description: option.label,
+    };
+  }
   return {
     target: 'collection',
     method: 'GET',
     title: `Bulk export ${plural}`,
+    description: `Download ${plural} as a file, in one of the declared formats.`,
+    query,
+    responseMediaTypes: [...new Set(def.formats.map((f) => f.mimeType))],
     load: () => import('./handler'),
   };
 }

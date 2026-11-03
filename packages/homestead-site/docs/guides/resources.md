@@ -461,6 +461,14 @@ placeholder convention record writes use for nested files; the shared client's
 `invoke` (and the SPA's `customMethod`) send a body holding `File`s this way via
 `encodeMethodBody`. Field names are snake_case, as everywhere else in the API.
 
+Describe a method with `request` / `response` JSON Schemas (and `query` /
+`responseMediaTypes` for a `GET` that returns a file); `/api/aep/openapi.json`
+publishes them — request body, query parameters, the problem-shaped errors, and
+for an async method the `operation` its `202` returns. Declare a file field with
+`uploadSchema()` (`resources/custom-methods/schema`): the published request then
+offers `multipart/form-data` too. The model tools leave a method that takes
+files out for now — a tool call has no way to hand over bytes.
+
 ## Errors from a custom method
 
 Every error the API returns has one shape — the engine's, the gateway's, and

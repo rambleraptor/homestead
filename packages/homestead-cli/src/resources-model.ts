@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { APIClient, Client, logger } from '@aep_dev/aep-lib-ts';
 import type { OpenAPI, Resource } from '@aep_dev/aep-lib-ts';
+import { withoutCollectionMethods } from './openapi-filter.ts';
 import { getProfile, type Profile } from './credentials.ts';
 
 // aep-lib-ts logs OpenAPI parsing at INFO; silence it so command output is clean.
@@ -79,7 +80,7 @@ export async function connect(opts: ConnectOptions): Promise<ResourceContext> {
   const { token, userId } = await resolveAuth(serverUrl, opts, profile);
   const openapi = await fetchOpenApi(serverUrl);
 
-  const apiClient = await APIClient.fromOpenAPI(openapi, serverUrl);
+  const apiClient = await APIClient.fromOpenAPI(withoutCollectionMethods(openapi), serverUrl);
   const resources = apiClient.resources();
   patchCreateMethods(resources, openapi);
   if (Object.keys(resources).length === 0) {
