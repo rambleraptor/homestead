@@ -30,7 +30,7 @@ interface OperationRow {
     items?: Array<{ index: number; label?: string; errors: string[] }>;
     summary: { total: number; valid: number; invalid: number };
   };
-  error?: { message?: string };
+  error?: { status?: number; detail?: string };
 }
 
 const RECIPE_TEXT = [

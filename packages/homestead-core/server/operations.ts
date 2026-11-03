@@ -17,6 +17,7 @@ import {
   type OperationStore,
   type UpdateMetadataInput,
 } from '../resources/operations';
+import { problem } from '../resources/problem';
 
 export const operationStore: OperationStore = {
   async create({ token, method, title, createdBy, status }: CreateOperationInput): Promise<Operation> {
@@ -110,10 +111,7 @@ export async function sweepStaleOperations({
       body: JSON.stringify({
         done: true,
         status: 'failed',
-        error: {
-          message: 'Operation interrupted by a server restart',
-          type: 'ServerRestart',
-        },
+        error: problem(503, 'Operation interrupted by a server restart'),
       }),
     });
   }

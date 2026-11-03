@@ -22,6 +22,7 @@ import type {
 } from '../../resources/bulk-export/types';
 import { getResourceBulkExport } from '../../apps/registry';
 import { serverClient } from '../client';
+import { problemResponse } from '../../resources/problem';
 
 /**
  * Stream the requested format for the requested rows. Query params:
@@ -119,5 +120,5 @@ function sanitizeFilename(name: string): string {
 }
 
 function problem(status: number, message: string): Response {
-  return Response.json({ error: message, message }, { status });
+  return problemResponse(status, message);
 }

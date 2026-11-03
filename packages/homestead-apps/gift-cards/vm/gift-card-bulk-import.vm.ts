@@ -29,7 +29,7 @@ interface OperationRow {
     items?: Array<{ index: number; errors: string[] }>;
     summary: { total: number; valid: number; invalid: number };
   };
-  error?: { message?: string };
+  error?: { status?: number; detail?: string };
 }
 
 const CSV = [
@@ -141,7 +141,7 @@ describe('Gift Cards bulk import — API', () => {
       selectedIndices: [1],
     });
 
-    expect(operation.error?.message).toContain('index 1 has errors');
+    expect(operation.error?.detail).toContain('index 1 has errors');
     expect(await e2eClient(userToken).collection<GiftCardRow>('gift-cards').listAll()).toHaveLength(0);
   });
 
