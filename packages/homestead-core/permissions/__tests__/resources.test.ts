@@ -82,12 +82,15 @@ describe('permission seed data', () => {
     const apps = householdApps([
       { id: 'chat', name: 'Chat' },
       { id: 'settings', name: 'Settings' },
+      { id: 'apps', name: 'All apps' },
       { id: 'recipes', name: 'Recipes', resources: [{ singular: 'recipe', plural: 'recipes', fields: {} }] },
     ] as never);
     // Chat has nothing to gate on, so a role must grant it explicitly.
     expect(apps).toContain('chat');
-    // Settings is visible without a grant, so granting it would be noise.
+    // Settings and the app drawer are visible without a grant, so granting
+    // them would be noise.
     expect(apps).not.toContain('settings');
+    expect(apps).not.toContain('apps');
     // Recipes is gated by its own collection.
     expect(apps).not.toContain('recipes');
   });

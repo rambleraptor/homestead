@@ -141,14 +141,16 @@ export function householdCollections(
  * Settings is where you manage *your own* preferences and notifications. Gating
  * it behind a grant would leave a Guest with no way to reach their own settings,
  * which is a worse failure than the openness is a risk: there is no household
- * data behind it. Everything else collection-less (Chat, Dashboard) is granted
- * normally.
+ * data behind it. The app drawer (`apps`) lists only what the viewer may
+ * already see, so it is the same kind of shell surface: even a Guest with no
+ * apps can open it and read that nothing has been shared with them. Everything
+ * else collection-less (Chat, Dashboard) is granted normally.
  *
  * Deliberately unconditional — not "visible unless denied". If blocking someone
  * from Settings ever becomes a real requirement, that's a feature to design, not
  * a default to lean on.
  */
-export const ALWAYS_VISIBLE_APPS: readonly string[] = ['settings'];
+export const ALWAYS_VISIBLE_APPS: readonly string[] = ['settings', 'apps'];
 
 /**
  * Apps whose visibility can only be granted at app scope: they own no

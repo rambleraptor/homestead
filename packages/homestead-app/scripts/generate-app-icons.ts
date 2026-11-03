@@ -61,6 +61,7 @@ const COLORS: Record<string, string> = {
   chat: '#0D9488',
   notifications: '#D97706',
   settings: '#52525B',
+  apps: '#1A2B4C',
 };
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
