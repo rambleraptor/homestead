@@ -20,6 +20,26 @@ export const recipesResources: ResourceDefinition[] = [
           load: () => import('./methods/bulk-import-url'),
         },
         {
+          id: 'social',
+          label: 'Social Post',
+          inputType: 'text',
+          description:
+            'Paste TikTok, Instagram, or YouTube links, one per line. The recipe is read from the caption, or from a recipe page the caption links to.',
+          requiresAi: true,
+          load: () => import('./methods/bulk-import-social'),
+        },
+        {
+          id: 'screenshots',
+          label: 'Screenshots',
+          inputType: 'file',
+          accept: 'image/png,image/jpeg,image/webp,image/gif',
+          multiple: true,
+          description:
+            'Upload screenshots of a recipe — a caption, a video frame, a cookbook page. Several screenshots of one recipe are read together.',
+          requiresAi: true,
+          load: () => import('./methods/bulk-import-screenshots'),
+        },
+        {
           id: 'text',
           label: 'Plain Text',
           inputType: 'text',

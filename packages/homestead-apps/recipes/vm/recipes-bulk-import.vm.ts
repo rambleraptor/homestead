@@ -15,6 +15,7 @@ import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harnes
 import { getAppUrl } from '../../../../tests/e2e/config/aepbase.setup';
 import { e2eClient, listOrEmpty, postCustomMethod } from '../../../../tests/e2e/utils/aepbase-helpers';
 import type { RecipeRecord } from '../e2e/helpers';
+import { RECIPE_MARKERS } from '../../../../tests/e2e/config/ai-stub';
 
 /** Long enough for the operation poll below (15s) plus the boot. */
 const BULK_IMPORT_TIMEOUT_MS = 30_000;
@@ -67,6 +68,16 @@ async function gzip(text: string): Promise<Buffer> {
   });
   const buf = await new Response(source.pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
   return Buffer.from(buf);
+}
+
+/**
+ * A PNG the AI stub recognizes: the real signature (the screenshots parser
+ * checks it), one pad byte so the marker starts on a 3-byte boundary, then the
+ * marker — so the marker's base64 appears verbatim in the image's.
+ */
+function screenshot(marker: string): string {
+  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00];
+  return Buffer.concat([Buffer.from(signature), Buffer.from(marker)]).toString('base64');
 }
 
 async function bulkImport(
@@ -161,6 +172,74 @@ describe('Recipes bulk import — API', () => {
     },
   );
 
+  test('imports a recipe read from a screenshot', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
+    const operation = await bulkImport(adminToken, {
+      format: 'screenshots',
+      data: [screenshot(RECIPE_MARKERS.one)],
+      filenames: ['caption.png'],
+    });
+
+    expect(operation.response?.created).toBe(1);
+    const [recipe] = await listOrEmpty<RecipeRecord>(adminToken, 'recipes');
+    expect(recipe.title).toBe('Garlic Fried Rice');
+    // The model's lines go through the app's own ingredient parser.
+    expect(recipe.parsed_ingredients[0]).toMatchObject({ qty: 2, unit: 'cups', item: 'jasmine rice' });
+    expect(recipe.parsed_ingredients[1]).toMatchObject({
+      unit: 'tbsp',
+      item: 'soy sauce',
+      notes: 'or tamari',
+      group: 'Sauce',
+    });
+    expect(recipe.steps).toEqual(['Rinse the rice.', 'Cook until tender.']);
+  });
+
+  test(
+    'previews every recipe the screenshots show, flagged for review',
+    { timeout: BULK_IMPORT_TIMEOUT_MS },
+    async () => {
+      const operation = await bulkImport(adminToken, {
+        format: 'screenshots',
+        data: [screenshot(RECIPE_MARKERS.two), screenshot(RECIPE_MARKERS.two)],
+        filenames: ['one.png', 'two.png'],
+        dryRun: true,
+      });
+
+      expect(operation.response?.summary).toEqual({ total: 2, valid: 2, invalid: 0 });
+      expect(operation.response?.items?.map((i) => i.label)).toEqual([
+        'Garlic Fried Rice',
+        'Scallion Pancakes',
+      ]);
+      expect(await listOrEmpty<RecipeRecord>(adminToken, 'recipes')).toHaveLength(0);
+    },
+  );
+
+  test(
+    "reports the model's reason when a screenshot holds no recipe",
+    { timeout: BULK_IMPORT_TIMEOUT_MS },
+    async () => {
+      const operation = await bulkImport(adminToken, {
+        format: 'screenshots',
+        data: [screenshot(RECIPE_MARKERS.none)],
+        filenames: ['dish.png'],
+        dryRun: true,
+      });
+
+      expect(operation.response?.summary).toEqual({ total: 1, valid: 0, invalid: 1 });
+      expect(operation.response?.items?.[0].errors[0]).toMatch(/no ingredients/i);
+    },
+  );
+
+  test('refuses a file that is not an image', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
+    const operation = await bulkImport(adminToken, {
+      format: 'screenshots',
+      data: [Buffer.from('just some text').toString('base64')],
+      filenames: ['notes.txt'],
+      dryRun: true,
+    });
+
+    expect(operation.response?.items?.[0].errors[0]).toContain('notes.txt');
+  });
+
   test('advertises every format for discovery', async () => {
     // Unauthenticated, like Playwright's `request` fixture.
     const res = await fetch(`${getAppUrl()}/api/custom-methods`);
@@ -177,7 +256,8 @@ describe('Recipes bulk import — API', () => {
     const formats = methods.find((m) => m.plural === 'recipes' && m.verb === 'bulk-import')
       ?.bulkImport?.formats;
     // Order matters: the import page selects the first format by default.
-    expect(formats?.map((f) => f.id)).toEqual(['url', 'text', 'paprika']);
+    expect(formats?.map((f) => f.id)).toEqual(['url', 'social', 'screenshots', 'text', 'paprika']);
+    expect(formats?.find((f) => f.id === 'screenshots')?.multiple).toBe(true);
     expect(formats?.find((f) => f.id === 'url')?.inputType).toBe('text');
     expect(formats?.find((f) => f.id === 'text')?.inputType).toBe('text');
     expect(formats?.find((f) => f.id === 'paprika')?.multiple).toBe(true);
@@ -223,6 +303,19 @@ describe('Recipes bulk import — page', () => {
 
     const recipes = await listOrEmpty<RecipeRecord>(adminToken, 'recipes');
     expect(recipes.map((r) => r.title)).toEqual(['Bacon Wrapped Asparagus']);
+  });
+
+  test('explains what the social-post format reads', async () => {
+    const d = h.driver;
+    await d.goto('/recipes/import');
+
+    await d.getByTestId('import-format-social').click();
+    await d.expect(d.getByTestId('bulk-import-format-description')).toContainText(/TikTok/);
+    await d.expect(d.getByTestId('import-text-input')).toBeVisible();
+
+    await d.getByTestId('import-format-screenshots').click();
+    await d.expect(d.getByTestId('bulk-import-format-description')).toContainText(/screenshots/i);
+    await d.expect(d.getByTestId('bulk-import-file-input')).toBeAttached();
   });
 
   test('offers a format picker and switches to the Paprika file input', async () => {

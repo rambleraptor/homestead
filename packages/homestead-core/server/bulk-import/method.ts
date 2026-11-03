@@ -16,6 +16,7 @@
  */
 
 import type { ResourceCustomMethod } from '../../resources/types';
+import { isAiConfigured } from '../ai/config';
 import { getAllResourceBulkImports, getResourceBulkImport } from '../../apps/registry';
 import type {
   BulkImportDef,
@@ -74,14 +75,20 @@ export async function bulkImportFormatInfo(
   const def = getResourceBulkImport(plural);
   if (!def) return undefined;
 
+  // Read per call, not at boot: an AI key stored in Credentials takes effect
+  // without a restart, so the list follows it.
+  const aiReady = isAiConfigured();
+  const offered = def.formats.filter((format) => aiReady || !format.requiresAi);
+
   return Promise.all(
-    def.formats.map(async (format) => ({
+    offered.map(async (format) => ({
       id: format.id,
       label: format.label,
       inputType: format.inputType,
       accept: format.accept,
       multiple: format.multiple ?? false,
       hasTemplate: format.hasTemplate ?? false,
+      ...(format.description ? { description: format.description } : {}),
       columns: await loadColumns(format),
     })),
   );

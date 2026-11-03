@@ -122,9 +122,49 @@ export const STUB_DOCUMENT_FAIL = {
   doc_type: 'not-a-real-document-type',
 };
 
+/**
+ * Recipe screenshot markers, keyed on like {@link DOC_MARKERS}: a spec uploads
+ * an image whose bytes carry one. Each is 21 characters — a multiple of 3 — so
+ * its base64 has no padding and appears verbatim inside the image's base64
+ * when it starts on a 3-byte boundary (see the recipes VM spec's `screenshot`).
+ */
+export const RECIPE_MARKERS = {
+  one: 'e2e-recipe-screenshot',
+  two: 'e2e-recipe-multi-shot',
+  none: 'e2e-recipe-none-found',
+} as const;
+
+/** One recipe, as the recipe extraction schema returns it. */
+const stubRecipe = (title: string) => ({
+  title,
+  ingredients: [
+    { line: '2 cups jasmine rice', group: null },
+    { line: '1 tbsp soy sauce (or tamari)', group: 'Sauce' },
+  ],
+  steps: ['Rinse the rice.', 'Cook until tender.'],
+  prep_time: '5 mins',
+  cook_time: '20 mins',
+  servings: 'serves 2',
+  tags: ['Dinner'],
+  notes: null,
+});
+
+export const STUB_RECIPE_ONE = { recipes: [stubRecipe('Garlic Fried Rice')], problem: null };
+export const STUB_RECIPE_TWO = {
+  recipes: [stubRecipe('Garlic Fried Rice'), stubRecipe('Scallion Pancakes')],
+  problem: null,
+};
+export const STUB_RECIPE_NONE = {
+  recipes: [],
+  problem: 'The screenshot shows a finished dish but no ingredients.',
+};
+
 /** Pick the model payload for a request body, marker-first. */
 function payloadForBody(body: string): unknown {
   const has = (marker: string) => body.includes(Buffer.from(marker).toString('base64'));
+  if (has(RECIPE_MARKERS.one)) return STUB_RECIPE_ONE;
+  if (has(RECIPE_MARKERS.two)) return STUB_RECIPE_TWO;
+  if (has(RECIPE_MARKERS.none)) return STUB_RECIPE_NONE;
   if (has(DOC_MARKERS.unknown)) return STUB_DOCUMENT_UNKNOWN;
   if (has(DOC_MARKERS.fail)) return STUB_DOCUMENT_FAIL;
   // Default (including the `match` marker) reads as a 1099-INT.

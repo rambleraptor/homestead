@@ -208,6 +208,15 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
             />
           )}
 
+          {format.description && (
+            <p
+              className="mb-4 text-sm text-muted-foreground"
+              data-testid="bulk-import-format-description"
+            >
+              {format.description}
+            </p>
+          )}
+
           {format.columns && format.columns.length > 0 && (
             <ColumnReference columns={format.columns} label={format.label} />
           )}
@@ -235,7 +244,9 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
               <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
                 {files.length > 0
                   ? files.map((f) => f.name).join(', ')
-                  : `Select a ${format.label} file containing your ${appNamePlural}.`}
+                  : format.description
+                    ? 'No files chosen yet.'
+                    : `Select a ${format.label} file containing your ${appNamePlural}.`}
               </p>
               <input
                 type="file"
