@@ -148,11 +148,27 @@ describe('App drawer', () => {
     await h.driver.expect(h.driver.getByTestId('sidebar-lists-right-empty')).toBeVisible();
   });
 
-  test('the superuser sees their own apps in the drawer', async () => {
+  test('Superuser and Settings are fixed: always in the sidebar, never in the drawer', async () => {
+    // Even a stored unpin can't remove them.
+    await seedPins(h.admin, { unpinned: ['superuser', 'settings'] });
     await h.loginAs(h.admin);
     await drawer.goto();
-    await drawer.expectInLeft('superuser');
     await drawer.expectInLeft('gift-cards');
+    await drawer.expectAbsent('superuser');
+    await drawer.expectAbsent('settings');
+    // Configuration apps stay on the Superuser landing, not in the lists.
+    await drawer.expectAbsent('flag-management');
+    await drawer.expectAbsent('sidebar-defaults');
+    await drawer.expectInSidebar(/^superuser$/i);
+    await drawer.expectInSidebar(/^settings$/i);
+  });
+
+  test('a member cannot lose Settings either', async () => {
+    await seedPins(h.member, { unpinned: ['settings'] });
+    await h.loginAs(h.member);
+    await drawer.goto();
+    await drawer.expectAbsent('settings');
+    await drawer.expectInSidebar(/^settings$/i);
   });
 });
 
