@@ -445,6 +445,22 @@ CLI), who are already deciding.
 
 ---
 
+## Request bodies and files
+
+A custom method reads its body with `readMethodBody(ctx.request)`
+(`@rambleraptor/homestead-core/resources/custom-methods/body`), which accepts:
+
+- `application/json` — the body object; or
+- `multipart/form-data` — the body object as JSON in a part named `body`, and
+  one part per file. Wherever the body needs a file it holds
+  `{"$upload": "<part>"}`, at the top level or nested in lists and objects.
+
+The reader returns the body with each placeholder replaced by its `File` (name
+and media type included), so a method never decodes base64. That's the same
+placeholder convention record writes use for nested files; the shared client's
+`invoke` (and the SPA's `customMethod`) send a body holding `File`s this way via
+`encodeMethodBody`. Field names are snake_case, as everywhere else in the API.
+
 ## Errors from a custom method
 
 Every error the API returns has one shape — the engine's, the gateway's, and

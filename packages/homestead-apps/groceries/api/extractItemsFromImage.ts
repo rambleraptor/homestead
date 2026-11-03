@@ -12,18 +12,6 @@
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { GROCERIES } from '../resources';
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Data = (reader.result as string).split(',')[1];
-      resolve(base64Data);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 export interface ExtractedGroceryItem {
   name: string;
 }
@@ -36,14 +24,9 @@ export interface ExtractedGroceryItem {
 export async function extractGroceryItemsFromImage(
   imageFile: File,
 ): Promise<ExtractedGroceryItem[]> {
-  const base64Image = await fileToBase64(imageFile);
-
   const response = await aepbase.customMethod<{
     items: ExtractedGroceryItem[];
     message: string;
-  }>(GROCERIES, 'process-image', {
-    image: base64Image,
-    mimeType: imageFile.type,
-  });
+  }>(GROCERIES, 'process-image', { image: imageFile });
   return response.items;
 }

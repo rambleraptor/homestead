@@ -35,12 +35,13 @@ interface OperationRow {
     items?: Array<{ index: number; label?: string; errors: string[] }>;
     summary: { total: number; valid: number; invalid: number };
   };
-  error?: { message?: string };
+  error?: { status?: number; detail?: string };
 }
 
 const HEADER = 'played_at,location,winning_word,notes,team_1,team_2,winner';
 
-const toBase64 = (s: string) => Buffer.from(s).toString('base64');
+/** A CSV for the `files` list; sent as a multipart part. */
+const csvFile = (s: string) => [new File([s], 'pictionary.csv', { type: 'text/csv' })];
 
 async function bulkImport(
   token: string,
@@ -82,7 +83,7 @@ describe('Pictionary bulk import', () => {
       '',
     ].join('\n');
 
-    const operation = await bulkImport(userToken, { format: 'csv', data: toBase64(csv) });
+    const operation = await bulkImport(userToken, { format: 'csv', files: csvFile(csv) });
     expect(operation.response?.created).toBe(1);
 
     const games = await listOrEmpty<GameRow>(userToken, 'pictionary-games');
@@ -110,7 +111,7 @@ describe('Pictionary bulk import', () => {
     const csv = [HEADER, '2026-04-25,,,,"Alice,Nobody","Alice",1', ''].join('\n');
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(csv),
+      files: csvFile(csv),
       validate_only: true,
     });
 
@@ -126,7 +127,7 @@ describe('Pictionary bulk import', () => {
     const csv = [HEADER, '2026-04-25,,,,"Alice","Bob",3', ''].join('\n');
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(csv),
+      files: csvFile(csv),
       validate_only: true,
     });
 
@@ -142,7 +143,7 @@ describe('Pictionary bulk import', () => {
     const csv = [HEADER, '2026-04-25,,,,"Alice","Bob",9', ''].join('\n');
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(csv),
+      files: csvFile(csv),
       validate_only: true,
     });
 
