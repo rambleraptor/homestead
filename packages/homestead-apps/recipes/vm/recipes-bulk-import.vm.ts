@@ -25,6 +25,7 @@ interface OperationRow {
   done: boolean;
   response?: {
     dryRun: boolean;
+    previewId?: string;
     created?: number;
     items?: Array<{ index: number; label?: string; errors: string[] }>;
     summary: { total: number; valid: number; invalid: number };
@@ -210,6 +211,37 @@ describe('Recipes bulk import — API', () => {
         'Scallion Pancakes',
       ]);
       expect(await listOrEmpty<RecipeRecord>(adminToken, 'recipes')).toHaveLength(0);
+    },
+  );
+
+  test(
+    'imports the previewed rows by preview id, without re-sending the screenshots',
+    { timeout: BULK_IMPORT_TIMEOUT_MS },
+    async () => {
+      const preview = await bulkImport(adminToken, {
+        format: 'screenshots',
+        data: [screenshot(RECIPE_MARKERS.two)],
+        filenames: ['two.png'],
+        dryRun: true,
+      });
+      const previewId = preview.response?.previewId;
+      expect(previewId).toBeTruthy();
+
+      const operation = await bulkImport(adminToken, {
+        format: 'screenshots',
+        previewId,
+        selectedIndices: [1],
+      });
+      expect(operation.response?.created).toBe(1);
+      const recipes = await listOrEmpty<RecipeRecord>(adminToken, 'recipes');
+      expect(recipes.map((r) => r.title)).toEqual(['Scallion Pancakes']);
+
+      // Spent: importing it again is refused before any operation starts.
+      const again = await postCustomMethod(adminToken, '/recipes:bulk-import', {
+        format: 'screenshots',
+        previewId,
+      });
+      expect(again.status).toBe(410);
     },
   );
 
