@@ -12,15 +12,30 @@ import { afterEach, beforeEach, describe, test } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { AppDrawerPage } from '../e2e/pages/AppDrawerPage';
 import { DashboardPage } from '../e2e/pages/DashboardPage';
-import { e2eClient } from '../e2e/utils/aepbase-helpers';
+import { e2eClient, setAppFlag } from '../e2e/utils/aepbase-helpers';
 
-/** Seed a sidebar unpin on `user`'s preference record, as the user. */
-async function unpinApps(user: { id: string; token: string }, appIds: string[]) {
+/** Seed sidebar pins on `user`'s preference record, as the user. */
+async function seedPins(
+  user: { id: string; token: string },
+  pins: { pinned?: string[]; unpinned?: string[] },
+) {
   await e2eClient(user.token)
     .collection('users')
     .record(user.id)
     .collection('preferences')
-    .create({ sidebar_unpinned_apps: JSON.stringify(appIds) });
+    .create({
+      sidebar_pinned_apps: JSON.stringify(pins.pinned ?? []),
+      sidebar_unpinned_apps: JSON.stringify(pins.unpinned ?? []),
+    });
+}
+
+async function unpinApps(user: { id: string; token: string }, appIds: string[]) {
+  await seedPins(user, { unpinned: appIds });
+}
+
+/** Seed the household's sidebar defaults, as the superuser. */
+async function seedDefaults(adminToken: string, overrides: Record<string, boolean>) {
+  await setAppFlag(adminToken, 'apps', 'sidebar_defaults', JSON.stringify(overrides));
 }
 
 describe('App drawer', () => {
@@ -123,6 +138,52 @@ describe('App drawer', () => {
 
     await drawer.search('zzz-nothing');
     await h.driver.expect(h.driver.getByTestId('app-drawer-no-matches')).toBeVisible();
+  });
+
+  test('a member has no household-defaults mode', async () => {
+    await h.loginAs(h.member);
+    await drawer.goto();
+    await drawer.expectCard('people');
+    await h.driver.expect(drawer.defaultsModeTab).toHaveCount(0);
+  });
+
+  test('a superuser changes a household default and a new member follows it', async () => {
+    await h.loginAs(h.admin);
+    await drawer.goto();
+    await drawer.switchToDefaults();
+    await h.driver.expect(drawer.previewEntry('games')).toBeVisible();
+
+    await drawer.toggleDefault('games');
+    await h.driver.expect(drawer.previewEntry('games')).toHaveCount(0);
+    await h.driver.expect(drawer.defaultSummary).toContainText(/^\d+ of \d+ in the sidebar by default$/);
+
+    // Sam has chosen nothing, so the household default decides their sidebar.
+    await h.loginAs(h.householdMember);
+    await drawer.goto();
+    await drawer.expectNotInSidebar(/^games$/i);
+    await drawer.expectCard('games');
+    await drawer.expectPinned('games', false);
+    await h.driver.expect(drawer.tag('games')).toHaveCount(0);
+
+    // Pinning it for themselves records an override over the default.
+    await drawer.togglePin('games');
+    await drawer.expectInSidebar(/^games$/i);
+    await h.driver.expect(drawer.tag('games')).toHaveText('Pinned by you');
+  });
+
+  test("a member's own pin survives a household default against it", async () => {
+    await seedDefaults(h.admin.token, { games: false });
+    await seedPins(h.member, { pinned: ['games'] });
+    await h.loginAs(h.member);
+    await drawer.goto();
+
+    await drawer.expectInSidebar(/^games$/i);
+    await h.driver.expect(drawer.tag('games')).toHaveText('Pinned by you');
+
+    // Reset drops the override, and the household default takes over.
+    await drawer.reset();
+    await drawer.expectNotInSidebar(/^games$/i);
+    await drawer.expectCard('games');
   });
 
   test('the superuser sees their own apps in the drawer', async () => {

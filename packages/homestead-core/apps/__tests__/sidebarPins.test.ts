@@ -5,7 +5,15 @@
 
 import { describe, expect, it } from 'vitest';
 import type { AppConfig } from '../types';
-import { pinnedApps, resolveSidebarPins, withPinChanged } from '../sidebarPins';
+import {
+  defaultPinIds,
+  isPinnedByDefault,
+  parseDefaultPinOverrides,
+  pinnedApps,
+  resolveSidebarPins,
+  withDefaultChanged,
+  withPinChanged,
+} from '../sidebarPins';
 
 function app(id: string): AppConfig {
   return { id, name: id, description: id } as unknown as AppConfig;
@@ -87,6 +95,45 @@ describe('withPinChanged', () => {
       pinned: [],
       unpinned: ['games'],
     });
+  });
+});
+
+describe('defaults', () => {
+  const quiet = { id: 'health', name: 'Health', web: { pinnedByDefault: false } } as unknown as AppConfig;
+  const loud = { id: 'todos', name: 'Todos', web: {} } as unknown as AppConfig;
+
+  it('parses the sidebar_defaults flag leniently', () => {
+    expect(parseDefaultPinOverrides('')).toEqual({});
+    expect(parseDefaultPinOverrides(undefined)).toEqual({});
+    expect(parseDefaultPinOverrides('not json')).toEqual({});
+    expect(parseDefaultPinOverrides('["games"]')).toEqual({});
+    expect(parseDefaultPinOverrides('{"games": false, "health": true, "x": "no"}')).toEqual({
+      games: false,
+      health: true,
+    });
+  });
+
+  it('follows the app declaration unless the household overrides it', () => {
+    expect(isPinnedByDefault(loud)).toBe(true);
+    expect(isPinnedByDefault(quiet)).toBe(false);
+    expect(isPinnedByDefault(quiet, { health: true })).toBe(true);
+    expect(isPinnedByDefault(loud, { todos: false })).toBe(false);
+    expect([...defaultPinIds([loud, quiet], { todos: false })]).toEqual([]);
+    expect([...defaultPinIds([loud, quiet])]).toEqual(['todos']);
+  });
+
+  it('keeps only exceptions to what the app declares', () => {
+    expect(withDefaultChanged({}, loud, false)).toEqual({ todos: false });
+    expect(withDefaultChanged({ todos: false }, loud, true)).toEqual({});
+    expect(withDefaultChanged({ games: false }, quiet, true)).toEqual({ games: false, health: true });
+    expect(withDefaultChanged({ health: true }, quiet, false)).toEqual({});
+  });
+
+  it('feeds the resolver: a person who chose nothing follows the household default', () => {
+    const defaults = defaultPinIds([loud, quiet], { todos: false });
+    const states = resolveSidebarPins([loud, quiet], undefined, { defaultIds: defaults });
+    expect(states.get('todos')).toEqual({ pinned: false, source: 'default' });
+    expect(states.get('health')).toEqual({ pinned: false, source: 'default' });
   });
 });
 

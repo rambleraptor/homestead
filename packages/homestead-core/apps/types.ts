@@ -235,6 +235,16 @@ export interface AppWebConfig {
   section?: string;
 
   /**
+   * Whether the app starts out pinned to each person's sidebar. The drawer at
+   * `/apps` lists every app a person can use; this only decides whether the
+   * sidebar lists it before anyone chooses. A superuser can override it for
+   * the household from the drawer, and each person can pin or unpin for
+   * themselves. Not a permission: visibility is still the permission system's.
+   * @default true
+   */
+  pinnedByDefault?: boolean;
+
+  /**
    * Optional filterable fields for the app's list view. A shared
    * `<FilterBar>` renders one input per decl and the list is filtered
    * in-memory client-side — no server round-trip.

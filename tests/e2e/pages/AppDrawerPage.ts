@@ -72,6 +72,48 @@ export class AppDrawerPage {
     await this.expect(this.pinButton(appId)).toHaveAttribute('aria-pressed', String(pinned));
   }
 
+  /** The superuser-only mode switch; absent for everyone else. */
+  get defaultsModeTab() {
+    return this.driver.getByTestId('app-drawer-mode-defaults');
+  }
+
+  async switchToDefaults() {
+    await this.defaultsModeTab.click();
+    await this.expect(this.defaultsModeTab).toHaveAttribute('aria-selected', 'true');
+  }
+
+  async switchToMine() {
+    await this.driver.getByTestId('app-drawer-mode-mine').click();
+    await this.expect(this.driver.getByTestId('app-drawer-summary')).toBeVisible();
+  }
+
+  defaultSwitch(appId: string) {
+    return this.driver.getByTestId(`app-drawer-default-${appId}`);
+  }
+
+  /** Toggle an app's household default and wait for the saved state. */
+  async toggleDefault(appId: string) {
+    const before = await this.defaultSwitch(appId).getAttribute('aria-checked');
+    await this.defaultSwitch(appId).click();
+    await this.expect(this.defaultSwitch(appId)).toHaveAttribute(
+      'aria-checked',
+      before === 'true' ? 'false' : 'true',
+    );
+  }
+
+  get defaultSummary() {
+    return this.driver.getByTestId('app-drawer-default-summary');
+  }
+
+  /** The "A new member's sidebar" preview entry for an app. */
+  previewEntry(appId: string) {
+    return this.driver.getByTestId(`app-drawer-preview-${appId}`);
+  }
+
+  tag(appId: string) {
+    return this.driver.getByTestId(`app-drawer-tag-${appId}`);
+  }
+
   /** A sidebar link for an app, by its visible name. */
   sidebarApp(name: string | RegExp) {
     return this.driver.getByRole('navigation').getByRole('link', { name });
