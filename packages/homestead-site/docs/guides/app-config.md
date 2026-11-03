@@ -146,9 +146,10 @@ Which apps a person may reach is decided by the permission system (see
 [Permissions](./permissions.md)); nothing in `web` grants access. Of the apps
 they can reach, the sidebar lists the ones they've **pinned**, and the fixed
 "All apps" entry at the bottom of the sidebar opens the drawer at `/apps`,
-which lists every reachable app whether pinned or not. Pins are a per-person
-preference (`sidebar_pinned_apps` / `sidebar_unpinned_apps` on their
-`user-preference` record); every app starts out pinned. An unpinned app still
+which lists every reachable app whether pinned or not, with a Pin toggle on
+each card and a reset back to the defaults. Pins are a per-person preference
+(`sidebar_pinned_apps` / `sidebar_unpinned_apps` on their `user-preference`
+record); every app starts out pinned. An unpinned app still
 opens from a link, a widget, or the assistant. `showInNav: false` is different:
 it keeps the app out of both the sidebar and the drawer.
 

@@ -37,6 +37,41 @@ export class AppDrawerPage {
     return this.driver.getByTestId(`app-drawer-card-${appId}`);
   }
 
+  pinButton(appId: string) {
+    return this.driver.getByTestId(`app-drawer-pin-${appId}`);
+  }
+
+  /** Toggle an app's pin and wait for the saved state to come back. */
+  async togglePin(appId: string) {
+    const before = await this.pinButton(appId).getAttribute('aria-pressed');
+    await this.pinButton(appId).click();
+    await this.expect(this.pinButton(appId)).toHaveAttribute(
+      'aria-pressed',
+      before === 'true' ? 'false' : 'true',
+    );
+  }
+
+  get summary() {
+    return this.driver.getByTestId('app-drawer-summary');
+  }
+
+  get resetButton() {
+    return this.driver.getByTestId('app-drawer-reset');
+  }
+
+  async reset() {
+    await this.resetButton.click();
+    await this.expect(this.resetButton).toHaveCount(0);
+  }
+
+  async search(text: string) {
+    await this.driver.getByTestId('app-drawer-search').fill(text);
+  }
+
+  async expectPinned(appId: string, pinned: boolean) {
+    await this.expect(this.pinButton(appId)).toHaveAttribute('aria-pressed', String(pinned));
+  }
+
   /** A sidebar link for an app, by its visible name. */
   sidebarApp(name: string | RegExp) {
     return this.driver.getByRole('navigation').getByRole('link', { name });

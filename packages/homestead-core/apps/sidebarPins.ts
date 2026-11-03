@@ -65,6 +65,28 @@ export function resolveSidebarPins(
   return out;
 }
 
+/**
+ * The preference lists after a person pins or unpins `appId`. An override
+ * is recorded only when the choice differs from the default; choosing the
+ * default again clears it, so "reset to defaults" and the "you changed this"
+ * markers stay honest. Entries for other apps are kept as they are — a stale
+ * id for an app the person can no longer see is harmless and comes back into
+ * effect if their access does.
+ */
+export function withPinChanged(
+  prefs: SidebarPinPreferences | undefined,
+  apps: readonly AppConfig[],
+  appId: string,
+  pinned: boolean,
+  options: ResolveSidebarPinsOptions = {},
+): { pinned: string[]; unpinned: string[] } {
+  const byDefault = resolveSidebarPins(apps, undefined, options).get(appId)?.pinned ?? true;
+  const pinnedList = (prefs?.pinned ?? []).filter((id) => id !== appId);
+  const unpinnedList = (prefs?.unpinned ?? []).filter((id) => id !== appId);
+  if (pinned !== byDefault) (pinned ? pinnedList : unpinnedList).push(appId);
+  return { pinned: pinnedList, unpinned: unpinnedList };
+}
+
 /** The subset of `apps` that resolve as pinned, in the order given. */
 export function pinnedApps(
   apps: readonly AppConfig[],

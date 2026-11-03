@@ -73,6 +73,58 @@ describe('App drawer', () => {
     await drawer.sidebarLink.waitFor({ state: 'visible' });
   });
 
+  test('unpinning from the drawer removes the app from the sidebar, and pinning restores it', async () => {
+    await h.loginAs(h.member);
+    await drawer.goto();
+    await drawer.expectInSidebar(/^games$/i);
+    await drawer.expectPinned('games', true);
+
+    await drawer.togglePin('games');
+    await drawer.expectNotInSidebar(/^games$/i);
+    await drawer.expectCard('games');
+
+    // The choice is on the record, so a fresh load reads the same sidebar.
+    await h.driver.reload();
+    await drawer.expectPinned('games', false);
+    await drawer.expectNotInSidebar(/^games$/i);
+
+    await drawer.togglePin('games');
+    await drawer.expectInSidebar(/^games$/i);
+  });
+
+  test('the summary counts pins, and reset clears every override', async () => {
+    await unpinApps(h.member, ['games', 'people']);
+    await h.loginAs(h.member);
+    await drawer.goto();
+
+    await h.driver.expect(drawer.summary).toContainText(/^\d+ of \d+ in your sidebar$/);
+    const before = (await drawer.summary.textContent()) ?? '';
+    const [pinnedCount, total] = before.match(/\d+/g)!.map(Number);
+    if (pinnedCount !== total - 2) {
+      throw new Error(`expected ${total - 2} pinned of ${total}, got: ${before}`);
+    }
+    await drawer.expectNotInSidebar(/^games$/i);
+    await drawer.expectNotInSidebar(/^people$/i);
+
+    await drawer.reset();
+    await h.driver.expect(drawer.summary).toHaveText(`${total} of ${total} in your sidebar`);
+    await drawer.expectInSidebar(/^games$/i);
+    await drawer.expectInSidebar(/^people$/i);
+  });
+
+  test('search narrows the drawer without touching the sidebar', async () => {
+    await h.loginAs(h.member);
+    await drawer.goto();
+
+    await drawer.search('gift');
+    await drawer.expectCard('gift-cards');
+    await drawer.expectNoCard('people');
+    await drawer.expectInSidebar(/people/i);
+
+    await drawer.search('zzz-nothing');
+    await h.driver.expect(h.driver.getByTestId('app-drawer-no-matches')).toBeVisible();
+  });
+
   test('the superuser sees their own apps in the drawer', async () => {
     await h.loginAs(h.admin);
     await drawer.goto();
