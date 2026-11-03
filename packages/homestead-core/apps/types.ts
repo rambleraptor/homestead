@@ -293,6 +293,62 @@ export interface ChatContextInput {
 /** Lines about the speaker the app knows, for one turn's prompt. */
 export type ChatContextProvider = (input: ChatContextInput) => Promise<string[]>;
 
+/**
+ * What a record card is given (see `RecordCardType`): a compact, live
+ * rendering of one record, used wherever the host doesn't know the resource —
+ * a tool call in a reply, a change toast, the notifications inbox, a reference
+ * field. The card refetches the record by id (`useCardRecord`), so it stays
+ * current when someone else changes it and reads as deleted when it's gone.
+ */
+export interface RecordCardProps {
+  id: string;
+  /**
+   * A point-in-time copy the caller already has (a tool result, a change
+   * event), as placeholder data until the live record arrives. It may be a
+   * capped preview rather than a record, so never rely on its fields.
+   */
+  snapshot?: unknown;
+  /** How much room there is: a row in a list or toast, or a standalone card. */
+  size: 'row' | 'card';
+}
+
+export interface RecordCardType {
+  component: LazyComponent<RecordCardProps>;
+}
+
+/** The actions a tool call on a resource can be: CRUD, or a `:verb` custom method. */
+export type ChatCardAction = 'create' | 'read' | 'update' | 'delete' | 'list' | `:${string}`;
+
+/**
+ * What a chat card is given (see `ChatCardType`): one tool call the assistant
+ * made on this resource, as the reply shows it. The action framing (what was
+ * sent, what came back, whether it's still waiting) is here; the record itself
+ * is the app's `records` card, which the generic card wraps when the app
+ * declares no chat card for the action.
+ */
+export interface ChatCardProps {
+  resource: ResourceDefinition;
+  action: ChatCardAction;
+  /** `proposed`: waiting on the person's approval. `running`: input known, no result yet. */
+  mode: 'proposed' | 'running' | 'done' | 'denied' | 'failed';
+  /** The call as the model made it: `fields`, `id`, ancestor ids, `body` for a `:verb`. */
+  input: Record<string, unknown>;
+  /**
+   * The executor's result on `done`: a record, `{ records, count }` for list,
+   * `{ deleted, id }` for delete, a method's response for a `:verb`. A large
+   * stored output is replaced by a preview, so it may not be a record at all.
+   */
+  result?: unknown;
+  /** Why it failed, on `failed`. */
+  error?: string;
+}
+
+export interface ChatCardType {
+  component: LazyComponent<ChatCardProps>;
+  /** The actions this card renders; the generic card takes the rest. Default: all. */
+  actions?: readonly ChatCardAction[];
+}
+
 /** An app's guidance for the AI chat (see `AppConfig.chat`). */
 export interface AppChatConfig {
   /** One note per entry, each a sentence or two of plain guidance. */
@@ -312,6 +368,15 @@ export interface AppChatConfig {
    * declaration wins, and core's own types (`phone`, `email`) come first.
    */
   values?: Readonly<Record<string, ChatValueType>>;
+  /**
+   * Cards for the app's tool calls, keyed by resource singular (`todo`), or
+   * `<singular>:<verb>` for a custom method (`notification:send`). For the
+   * cases where the action matters more than the record: a list result, a
+   * sent message. Any action a card doesn't claim gets the generic card, which
+   * wraps the app's `records` card when there is one — so an app that
+   * declares only `records` already gets good chat cards.
+   */
+  cards?: Readonly<Record<string, ChatCardType>>;
 }
 
 /**
@@ -343,6 +408,14 @@ export interface AppConfig {
    * least one of the app's tools. Describes the app, never data in it.
    */
   chat?: AppChatConfig;
+
+  /**
+   * Record cards by resource singular: how one of this app's records renders
+   * where the host doesn't know the resource (a tool call in an assistant
+   * reply, a change toast, the inbox, a reference field). Lazily imported; a
+   * resource without one renders as its title line.
+   */
+  records?: Readonly<Record<string, RecordCardType>>;
 
   /**
    * Additional app-specific metadata

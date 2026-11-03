@@ -17,8 +17,10 @@ import {
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
+import { ownerForTool } from '../cards';
 import { MessageAttachments } from './MessageAttachments';
 import { ApprovalCard } from './ApprovalCard';
+import { ResourceToolCall } from './ChatCard';
 import { ReplyLink, replyRehypePlugins, replyUrlTransform } from './ChatValue';
 import { plainReplyText } from '../values';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
@@ -49,17 +51,20 @@ function messageText(message: HomesteadUIMessage): string {
 }
 
 /**
- * A tool the assistant ran: the resource it touched and the action, with what
- * it sent and got back behind a disclosure.
+ * A tool the assistant ran. A call on one of Homestead's resources is a card
+ * (`./ChatCard`); an outside MCP tool or the search shows the tool's name and
+ * the action, with what it sent and got back behind a disclosure.
  */
 function ToolCall({ part }: { part: ToolUIPart }) {
   const mcp = useMcpToolLabel(part.type);
+  const owner = ownerForTool(part.type);
+  if (owner && !mcp) return <ResourceToolCall part={part} owner={owner} />;
   const resource = part.type.slice('tool-'.length);
   const action = toolAction(part.input);
   const title = mcp ? `${mcp.server} · ${mcp.tool}` : action ? `${resource} · ${action}` : resource;
   return (
     <Tool data-testid="chat-tool-call">
-      <ToolHeader type={part.type} state={part.state} title={title} />
+      <ToolHeader type={part.type} state={part.state} title={title} data-testid="chat-tool-toggle" />
       <ToolContent>
         <ToolInput input={part.input} />
         <ToolOutput output={part.output} errorText={part.errorText} />

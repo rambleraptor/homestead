@@ -12,6 +12,8 @@ import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehol
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
+import { ownerForTool } from '../cards';
+import { CardFace } from './ChatCard';
 
 /** `notifications` + `:send` → "Notifications: send". */
 function actionLabel(part: ToolUIPart): string {
@@ -20,13 +22,10 @@ function actionLabel(part: ToolUIPart): string {
   return `${resource[0]?.toUpperCase() ?? ''}${resource.slice(1)}: ${verb}`;
 }
 
-/** The text fields the call would send, as label/value rows. An outside tool's are its arguments. */
-function detailRows(input: unknown, outside: boolean): Array<[string, string]> {
-  const args = (input ?? {}) as Record<string, unknown>;
-  const body = outside
-    ? args
-    : (typeof args.body === 'object' && args.body) || (typeof args.fields === 'object' && args.fields) || {};
-  return Object.entries(body as Record<string, unknown>)
+/** An outside tool's arguments, as label/value rows (a Homestead call shows its card instead). */
+function detailRows(input: unknown): Array<[string, string]> {
+  const body = (input ?? {}) as Record<string, unknown>;
+  return Object.entries(body)
     .filter(([, v]) => typeof v === 'string' || typeof v === 'number')
     .map(([k, v]) => [k[0]!.toUpperCase() + k.slice(1).replace(/_/g, ' '), String(v)]);
 }
@@ -44,6 +43,7 @@ export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
   const toast = useToast();
   const [answering, setAnswering] = useState(false);
   const mcp = useMcpToolLabel(part.type);
+  const owner = mcp ? undefined : ownerForTool(part.type);
   const approvalId = part.approval?.id;
   const userId = (part.input as { user_id?: unknown } | undefined)?.user_id;
   const recipient =
@@ -72,11 +72,18 @@ export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
         <ShieldQuestion className="size-4 text-amber-600" aria-hidden />
         Approve this?
       </div>
-      <dl className="mb-3 space-y-1">
-        <div className="flex gap-2">
-          <dt className="text-gray-500">Action</dt>
-          <dd data-testid="chat-approval-action">{mcp ? mcp.tool : actionLabel(part)}</dd>
+      {owner && (
+        <div className="mb-3">
+          <CardFace part={part} owner={owner} mode="proposed" />
         </div>
+      )}
+      <dl className="mb-3 space-y-1">
+        {!owner && (
+          <div className="flex gap-2">
+            <dt className="text-gray-500">Action</dt>
+            <dd data-testid="chat-approval-action">{mcp ? mcp.tool : actionLabel(part)}</dd>
+          </div>
+        )}
         {mcp && (
           <div className="flex gap-2">
             <dt className="text-gray-500">On</dt>
@@ -89,12 +96,13 @@ export function ApprovalCard({ part, onAnswer, disabled }: ApprovalCardProps) {
             <dd data-testid="chat-approval-to">{recipient}</dd>
           </div>
         )}
-        {detailRows(part.input, mcp !== null).map(([label, value]) => (
-          <div key={label} className="flex gap-2">
-            <dt className="text-gray-500">{label}</dt>
-            <dd className="whitespace-pre-wrap break-words">{value}</dd>
-          </div>
-        ))}
+        {!owner &&
+          detailRows(part.input).map(([label, value]) => (
+            <div key={label} className="flex gap-2">
+              <dt className="text-gray-500">{label}</dt>
+              <dd className="whitespace-pre-wrap break-words">{value}</dd>
+            </div>
+          ))}
       </dl>
       <div className="flex gap-2">
         <Button
