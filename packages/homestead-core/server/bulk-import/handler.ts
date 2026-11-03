@@ -32,6 +32,7 @@ import { getAllResourceDefs, getResourceBulkImport } from '../../apps/registry';
 import { serverClient } from '../client';
 import { isAiConfigured } from '../ai/config';
 import { hasPreview, savePreview, takePreview, type PreviewOwner } from './previews';
+import { ProblemError, problemResponse } from '../../resources/problem';
 
 /**
  * Cap on the decoded input. Bulk import inherits the async dispatcher's
@@ -148,7 +149,7 @@ export default async function bulkImport(
     // Checked in validate(), but it can expire (or be taken by a concurrent
     // import) between that check and this run.
     const held = takePreview(body.previewId, owner);
-    if (!held) throw new Error(PREVIEW_GONE);
+    if (!held) throw new ProblemError(410, PREVIEW_GONE);
     items = held;
   } else {
     items = await parseInput(format, body, importCtx);
@@ -307,7 +308,7 @@ function previewOwner(ctx: CustomMethodContext, format: string): PreviewOwner {
 }
 
 function problem(status: number, message: string): Response {
-  return Response.json({ error: message, message }, { status });
+  return problemResponse(status, message);
 }
 
 export type { BulkImportDef };

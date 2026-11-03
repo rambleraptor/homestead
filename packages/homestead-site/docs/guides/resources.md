@@ -445,6 +445,25 @@ CLI), who are already deciding.
 
 ---
 
+## Errors from a custom method
+
+Every error the API returns has one shape — the engine's, the gateway's, and
+each custom method's: an RFC 9457 problem with the fields AEP-193 requires, plus
+the `error` envelope the clients read.
+
+```json
+{ "type": "about:blank", "title": "Not Found", "status": 404,
+  "detail": "No such list", "error": { "code": 404, "message": "No such list" } }
+```
+
+In a handler, `throw new ProblemError(status, message)` (from
+`@rambleraptor/homestead-core/resources/problem`) or return
+`problemResponse(status, message)`; anything else thrown is a `500`. An error
+response in another shape is rewritten into this one on the way out, so callers
+never see the difference. A failed long-running method's operation carries the
+same problem (without the envelope) as its `error`, keeping a `ProblemError`'s
+status.
+
 ## Wiring It Up
 
 Reference the definitions from your app config:
