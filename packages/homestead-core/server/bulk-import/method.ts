@@ -38,7 +38,15 @@ export function bulkImportCustomMethod(
   verb: string,
 ): ResourceCustomMethod | undefined {
   if (verb !== BULK_IMPORT_VERB) return undefined;
-  if (!getResourceBulkImport(plural)) return undefined;
+  const def = getResourceBulkImport(plural);
+  return def ? bulkImportMethodFrom(plural, def) : undefined;
+}
+
+/**
+ * The synthesized method for a resource's `bulkImport` declaration — what the
+ * gateway dispatches and what `/openapi.json` and the model tools describe.
+ */
+export function bulkImportMethodFrom(plural: string, def: BulkImportDef): ResourceCustomMethod {
   return {
     target: 'collection',
     method: 'POST',
@@ -48,8 +56,11 @@ export function bulkImportCustomMethod(
       `Import ${plural} from a file or pasted text. With validate_only, parses and returns a ` +
       'preview (and its preview_id) without writing; an import names the preview_id to write ' +
       'exactly those rows. Long-running: answers with an operation (AEP-151).',
-    request: bulkImportRequestSchema(offeredFormats(plural)),
+    request: bulkImportRequestSchema(offeredFormatsOf(def)),
     response: BULK_IMPORT_RESPONSE_SCHEMA,
+    // Writing asks first; a preview never does.
+    confirm: { unless: 'validate_only' },
+    untrustedResult: `${plural} parsed from the import input (pasted text, a web page, a file)`,
     load: () => import('./handler'),
   };
 }
@@ -57,7 +68,10 @@ export function bulkImportCustomMethod(
 /** The formats offered right now: AI-backed ones only while AI is set up. */
 function offeredFormats(plural: string): BulkImportDef['formats'] {
   const def = getResourceBulkImport(plural);
-  if (!def) return [];
+  return def ? offeredFormatsOf(def) : [];
+}
+
+function offeredFormatsOf(def: BulkImportDef): BulkImportDef['formats'] {
   const aiReady = isAiConfigured();
   return def.formats.filter((format) => aiReady || !format.requiresAi);
 }

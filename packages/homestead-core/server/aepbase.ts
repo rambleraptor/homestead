@@ -82,7 +82,10 @@ export async function aepbaseFetch(
     Authorization: `Bearer ${token}`,
   };
   let payload: BodyInit | undefined;
-  if (body !== undefined) {
+  if (body instanceof FormData) {
+    // Multipart (files): the runtime sets the boundary.
+    payload = body;
+  } else if (body !== undefined) {
     headers['Content-Type'] = mergePatch
       ? 'application/merge-patch+json'
       : 'application/json';
