@@ -16,17 +16,17 @@ export const appDrawerApp: AppConfig = {
   name: 'All apps',
   description: 'Everything you can use here',
   flags: {
-    // Edited from the drawer's "Household defaults" mode (superusers), not by
-    // hand: a JSON object of app id → whether it starts pinned, holding only
-    // the exceptions to each app's own `web.pinnedByDefault`. A person's own
-    // pins still win. Read by `useSidebarPins`.
+    // Edited from Superuser → Sidebar defaults, not by hand: a JSON object of
+    // app id → whether it starts in the sidebar, holding only the exceptions
+    // to each app's own `web.pinnedByDefault`. A person's own choices still
+    // win. Read by `useSidebarPins`.
     sidebar_defaults: {
       type: 'string',
       label: 'Sidebar defaults',
       description:
         'Which apps start out in everyone\'s sidebar, as a JSON object of app id to ' +
-        'true/false. Apps not listed follow their own config. Edit it from All apps → ' +
-        'Household defaults rather than here. Each person can still pin or unpin for themselves.',
+        'true/false. Apps not listed follow their own config. Edit it from Superuser → ' +
+        'Sidebar defaults rather than here. Each person can still change their own sidebar.',
       default: '',
     },
   },

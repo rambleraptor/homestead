@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Home, LayoutGrid, LogOut, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { AppIcon } from '@rambleraptor/homestead-core/apps/lazy';
-import { groupAppsBySection } from '@rambleraptor/homestead-core/apps/sections';
+import { groupEntriesBySection } from '@rambleraptor/homestead-core/apps/sections';
 import { useSidebarPins } from '@rambleraptor/homestead-core/apps/useSidebarPins';
 
 /** The drawer every sidebar links to, pinned or not — see `app-drawer/`. */
@@ -81,9 +81,10 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
 
   // The apps this viewer can use (superuser-only apps hidden from regular
   // users, the rest filtered by the permission resolver), narrowed to the ones
-  // they've pinned. The rest are a click away in the drawer.
-  const { visibleApps, pinnedApps } = useSidebarPins();
-  const sections = groupAppsBySection(pinnedApps);
+  // in their sidebar. The rest are a click away in the drawer. A nested child
+  // in the sidebar lists under its parent's section, indented.
+  const { entries, pinnedEntries } = useSidebarPins();
+  const sections = groupEntriesBySection(pinnedEntries);
 
   const handleLogout = () => {
     logout();
@@ -93,6 +94,16 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
   const isActive = (basePath: string) => {
     return pathname === basePath || pathname.startsWith(basePath + '/');
   };
+  // A parent isn't lit while one of its listed children is the better match.
+  const isEntryActive = (basePath: string) =>
+    isActive(basePath) &&
+    !pinnedEntries.some(
+      (e) =>
+        e.app.web &&
+        e.app.web.basePath !== basePath &&
+        e.app.web.basePath.startsWith(basePath + '/') &&
+        isActive(e.app.web.basePath),
+    );
 
   return (
     <>
@@ -140,19 +151,19 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
 
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
-            {visibleApps.length === 0 ? (
+            {entries.length === 0 ? (
               <div className="text-sm text-gray-500 text-center py-4">
                 No apps available
               </div>
-            ) : pinnedApps.length === 0 ? (
+            ) : pinnedEntries.length === 0 ? (
               <div
                 className="text-sm text-gray-500 text-center py-4"
-                data-testid="sidebar-nothing-pinned"
+                data-testid="sidebar-empty"
               >
-                Nothing pinned yet. Pin apps from All apps.
+                Your sidebar is empty. Add apps from All apps.
               </div>
             ) : (
-              sections.map(({ name: section, apps: sectionApps }) => {
+              sections.map(({ name: section, entries: sectionEntries }) => {
                 const collapsed = section ? collapsedSections.has(section) : false;
                 const contentId = `sidebar-section-${section || 'unsectioned'}`;
                 return (
@@ -179,16 +190,19 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
                     {/* Section Apps */}
                     {!collapsed && (
                       <div id={contentId} className="space-y-1">
-                        {sectionApps.map((app) => {
+                        {sectionEntries.map(({ app, parent }) => {
                           const web = app.web;
                           if (!web) return null;
-                          const active = isActive(web.basePath);
+                          const active = isEntryActive(web.basePath);
                           return (
                             <Link
                               key={app.id}
                               to={web.basePath}
                               onClick={onClose}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                              data-testid={parent ? `sidebar-nested-${app.id}` : undefined}
+                              className={`flex items-center gap-3 py-2 pr-3 rounded-lg transition-colors ${
+                                parent ? 'pl-9' : 'pl-3'
+                              } ${
                                 active
                                   ? 'bg-accent-terracotta/10 text-accent-terracotta'
                                   : 'text-brand-slate hover:bg-bg-pearl'

@@ -1,31 +1,32 @@
 /**
- * Grouping of navigation apps by their `web.section`, shared by the sidebar
- * and the app drawer so both list apps in the same order.
+ * Grouping of sidebar entries by section, shared by the sidebar and the app
+ * drawer so both list apps in the same order. A nested child files under its
+ * parent's section (`entrySection`).
  */
 
-import type { AppConfig } from './types';
+import { entrySection, type SidebarEntry } from './sidebarPins';
 
 /** Fixed order for the well-known sections; anything else sorts after, by name. */
 const SECTION_ORDER = ['Money', 'Food', 'Relationships', 'Games'];
 
-export interface AppSection {
+export interface EntrySection {
   /** The section name; `''` for apps that declare none. */
   name: string;
-  apps: AppConfig[];
+  entries: SidebarEntry[];
 }
 
 /**
- * Group `apps` (already sorted by `navOrder`) into sections. Settings always
+ * Group `entries` (already in nav order) into sections. Settings always
  * comes last; the well-known sections follow `SECTION_ORDER`, with any other
  * section slotting in before Settings alphabetically.
  */
-export function groupAppsBySection(apps: readonly AppConfig[]): AppSection[] {
-  const bySection = new Map<string, AppConfig[]>();
-  for (const app of apps) {
-    const name = app.web?.section || '';
+export function groupEntriesBySection(entries: readonly SidebarEntry[]): EntrySection[] {
+  const bySection = new Map<string, SidebarEntry[]>();
+  for (const entry of entries) {
+    const name = entrySection(entry);
     const list = bySection.get(name);
-    if (list) list.push(app);
-    else bySection.set(name, [app]);
+    if (list) list.push(entry);
+    else bySection.set(name, [entry]);
   }
   const names = [...bySection.keys()].sort((a, b) => {
     if (a === 'Settings') return 1;
@@ -36,5 +37,5 @@ export function groupAppsBySection(apps: readonly AppConfig[]): AppSection[] {
     const bOrder = bIndex === -1 ? SECTION_ORDER.length : bIndex;
     return aOrder - bOrder || a.localeCompare(b);
   });
-  return names.map((name) => ({ name, apps: bySection.get(name) ?? [] }));
+  return names.map((name) => ({ name, entries: bySection.get(name) ?? [] }));
 }

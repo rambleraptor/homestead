@@ -1,97 +1,117 @@
 /**
- * The sidebar pin resolver: a person's own pin or unpin wins over the default,
- * and with no default given every app is pinned.
+ * The sidebar pin resolver: a person's own choice wins over the household
+ * default, which wins over what the app declares; a top-level app starts in
+ * the sidebar and a nested child starts out of it.
  */
 
 import { describe, expect, it } from 'vitest';
 import type { AppConfig } from '../types';
 import {
+  declaredDefault,
   defaultPinIds,
+  entrySection,
   isPinnedByDefault,
   parseDefaultPinOverrides,
-  pinnedApps,
+  pinnedEntries,
   resolveSidebarPins,
+  sidebarEntries,
   withDefaultChanged,
   withPinChanged,
+  type SidebarEntry,
 } from '../sidebarPins';
 
-function app(id: string): AppConfig {
-  return { id, name: id, description: id } as unknown as AppConfig;
+function app(id: string, web: Record<string, unknown> = {}, children?: AppConfig[]): AppConfig {
+  return { id, name: id, description: id, web: { basePath: `/${id}`, ...web }, children } as unknown as AppConfig;
 }
 
-const APPS = [app('groceries'), app('recipes'), app('games')];
+const groceries = app('groceries', { section: 'Food' });
+const recipes = app('recipes', { section: 'Food' });
+const bridge = app('bridge');
+const minigolf = app('minigolf');
+const hidden = app('hidden', { showInNav: false });
+const games = app('games', { section: 'Relationships' }, [bridge, minigolf, hidden]);
 
-describe('resolveSidebarPins', () => {
-  it('pins every app by default when no preferences and no defaults are given', () => {
-    const states = resolveSidebarPins(APPS, undefined);
-    for (const a of APPS) {
-      expect(states.get(a.id)).toEqual({ pinned: true, source: 'default' });
-    }
+const ENTRIES: SidebarEntry[] = sidebarEntries([groceries, recipes, games], () => true);
+
+describe('sidebarEntries', () => {
+  it('lists each visible top-level app followed by its visible nav children', () => {
+    expect(ENTRIES.map((e) => e.app.id)).toEqual(['groceries', 'recipes', 'games', 'bridge', 'minigolf']);
+    expect(ENTRIES[3].parent?.id).toBe('games');
+    expect(ENTRIES[0].parent).toBeUndefined();
   });
 
-  it("an unpin in the person's preferences wins over the default", () => {
-    const states = resolveSidebarPins(APPS, { unpinned: ['games'] });
+  it('drops apps the viewer cannot see, children included', () => {
+    const entries = sidebarEntries([groceries, games], (a) => a.id !== 'bridge' && a.id !== 'recipes');
+    expect(entries.map((e) => e.app.id)).toEqual(['groceries', 'games', 'minigolf']);
+  });
+
+  it('files a child under its parent section', () => {
+    expect(entrySection(ENTRIES[3])).toBe('Relationships');
+    expect(entrySection(ENTRIES[0])).toBe('Food');
+  });
+});
+
+describe('resolveSidebarPins', () => {
+  it('starts top-level apps in the sidebar and children out of it', () => {
+    const states = resolveSidebarPins(ENTRIES, undefined);
+    expect(states.get('groceries')).toEqual({ pinned: true, source: 'default' });
+    expect(states.get('games')).toEqual({ pinned: true, source: 'default' });
+    expect(states.get('bridge')).toEqual({ pinned: false, source: 'default' });
+  });
+
+  it("the person's own choice wins over the default", () => {
+    const states = resolveSidebarPins(ENTRIES, { unpinned: ['games'], pinned: ['bridge'] });
     expect(states.get('games')).toEqual({ pinned: false, source: 'unpinned' });
+    expect(states.get('bridge')).toEqual({ pinned: true, source: 'pinned' });
     expect(states.get('recipes')).toEqual({ pinned: true, source: 'default' });
   });
 
-  it("a pin in the person's preferences wins over a default that leaves the app out", () => {
-    const states = resolveSidebarPins(APPS, { pinned: ['games'] }, {
-      defaultIds: new Set(['groceries']),
-    });
-    expect(states.get('games')).toEqual({ pinned: true, source: 'pinned' });
-    expect(states.get('groceries')).toEqual({ pinned: true, source: 'default' });
-    expect(states.get('recipes')).toEqual({ pinned: false, source: 'default' });
+  it('a given set of default ids replaces the declarations', () => {
+    const states = resolveSidebarPins(ENTRIES, undefined, { defaultIds: new Set(['bridge']) });
+    expect(states.get('bridge')?.pinned).toBe(true);
+    expect(states.get('groceries')?.pinned).toBe(false);
   });
 
   it('treats an id in both lists as pinned', () => {
-    const states = resolveSidebarPins(APPS, { pinned: ['games'], unpinned: ['games'] });
+    const states = resolveSidebarPins(ENTRIES, { pinned: ['games'], unpinned: ['games'] });
     expect(states.get('games')?.pinned).toBe(true);
   });
 
-  it('ignores preference ids for apps that are not in the list', () => {
-    const states = resolveSidebarPins(APPS, { pinned: ['nope'], unpinned: ['nah'] });
-    expect([...states.keys()]).toEqual(['groceries', 'recipes', 'games']);
+  it('ignores preference ids for apps that are not listed', () => {
+    const states = resolveSidebarPins(ENTRIES, { pinned: ['nope'], unpinned: ['nah'] });
+    expect([...states.keys()]).toEqual(['groceries', 'recipes', 'games', 'bridge', 'minigolf']);
   });
 });
 
 describe('withPinChanged', () => {
-  it('records an unpin as an override when the default is pinned', () => {
-    expect(withPinChanged(undefined, APPS, 'games', false)).toEqual({
-      pinned: [],
-      unpinned: ['games'],
-    });
+  it('records a choice as an override only when it differs from the default', () => {
+    expect(withPinChanged(undefined, ENTRIES, 'games', false)).toEqual({ pinned: [], unpinned: ['games'] });
+    expect(withPinChanged(undefined, ENTRIES, 'bridge', true)).toEqual({ pinned: ['bridge'], unpinned: [] });
+    expect(withPinChanged({ unpinned: ['games'] }, ENTRIES, 'games', true)).toEqual({ pinned: [], unpinned: [] });
+    expect(withPinChanged({ pinned: ['bridge'] }, ENTRIES, 'bridge', false)).toEqual({ pinned: [], unpinned: [] });
   });
 
-  it('clears the override when the person chooses the default again', () => {
-    const prefs = { pinned: [], unpinned: ['games'] };
-    expect(withPinChanged(prefs, APPS, 'games', true)).toEqual({ pinned: [], unpinned: [] });
-  });
-
-  it('records a pin as an override when the default leaves the app out', () => {
-    const defaults = { defaultIds: new Set(['groceries']) };
-    expect(withPinChanged(undefined, APPS, 'games', true, defaults)).toEqual({
-      pinned: ['games'],
-      unpinned: [],
-    });
-    // Unpinning it again is the default, so no override remains.
-    expect(withPinChanged({ pinned: ['games'] }, APPS, 'games', false, defaults)).toEqual({
+  it('honours household defaults when deciding what is an override', () => {
+    const defaults = { defaultIds: new Set(['bridge']) };
+    expect(withPinChanged(undefined, ENTRIES, 'bridge', false, defaults)).toEqual({
       pinned: [],
+      unpinned: ['bridge'],
+    });
+    expect(withPinChanged(undefined, ENTRIES, 'groceries', true, defaults)).toEqual({
+      pinned: ['groceries'],
       unpinned: [],
     });
   });
 
   it('leaves entries for other apps alone, including ids no longer visible', () => {
-    const prefs = { pinned: ['stale'], unpinned: ['recipes'] };
-    expect(withPinChanged(prefs, APPS, 'games', false)).toEqual({
+    expect(withPinChanged({ pinned: ['stale'], unpinned: ['recipes'] }, ENTRIES, 'games', false)).toEqual({
       pinned: ['stale'],
       unpinned: ['recipes', 'games'],
     });
   });
 
   it('never leaves an app in both lists', () => {
-    const prefs = { pinned: ['games'], unpinned: ['games'] };
-    expect(withPinChanged(prefs, APPS, 'games', false)).toEqual({
+    expect(withPinChanged({ pinned: ['games'], unpinned: ['games'] }, ENTRIES, 'games', false)).toEqual({
       pinned: [],
       unpinned: ['games'],
     });
@@ -99,8 +119,8 @@ describe('withPinChanged', () => {
 });
 
 describe('defaults', () => {
-  const quiet = { id: 'health', name: 'Health', web: { pinnedByDefault: false } } as unknown as AppConfig;
-  const loud = { id: 'todos', name: 'Todos', web: {} } as unknown as AppConfig;
+  const quiet = { app: app('health', { pinnedByDefault: false }) };
+  const loudChild = { app: app('bridge', { pinnedByDefault: true }), parent: games };
 
   it('parses the sidebar_defaults flag leniently', () => {
     expect(parseDefaultPinOverrides('')).toEqual({});
@@ -113,33 +133,34 @@ describe('defaults', () => {
     });
   });
 
-  it('follows the app declaration unless the household overrides it', () => {
-    expect(isPinnedByDefault(loud)).toBe(true);
-    expect(isPinnedByDefault(quiet)).toBe(false);
+  it('follows the declaration: top-level in, child out, unless the app says otherwise', () => {
+    expect(declaredDefault(ENTRIES[0])).toBe(true);
+    expect(declaredDefault(ENTRIES[3])).toBe(false);
+    expect(declaredDefault(quiet)).toBe(false);
+    expect(declaredDefault(loudChild)).toBe(true);
+  });
+
+  it('lets the household override the declaration', () => {
     expect(isPinnedByDefault(quiet, { health: true })).toBe(true);
-    expect(isPinnedByDefault(loud, { todos: false })).toBe(false);
-    expect([...defaultPinIds([loud, quiet], { todos: false })]).toEqual([]);
-    expect([...defaultPinIds([loud, quiet])]).toEqual(['todos']);
+    expect(isPinnedByDefault(ENTRIES[3], { bridge: true })).toBe(true);
+    expect([...defaultPinIds(ENTRIES, { games: false, bridge: true })]).toEqual([
+      'groceries',
+      'recipes',
+      'bridge',
+    ]);
   });
 
   it('keeps only exceptions to what the app declares', () => {
-    expect(withDefaultChanged({}, loud, false)).toEqual({ todos: false });
-    expect(withDefaultChanged({ todos: false }, loud, true)).toEqual({});
-    expect(withDefaultChanged({ games: false }, quiet, true)).toEqual({ games: false, health: true });
-    expect(withDefaultChanged({ health: true }, quiet, false)).toEqual({});
-  });
-
-  it('feeds the resolver: a person who chose nothing follows the household default', () => {
-    const defaults = defaultPinIds([loud, quiet], { todos: false });
-    const states = resolveSidebarPins([loud, quiet], undefined, { defaultIds: defaults });
-    expect(states.get('todos')).toEqual({ pinned: false, source: 'default' });
-    expect(states.get('health')).toEqual({ pinned: false, source: 'default' });
+    expect(withDefaultChanged({}, ENTRIES[2], false)).toEqual({ games: false });
+    expect(withDefaultChanged({ games: false }, ENTRIES[2], true)).toEqual({});
+    expect(withDefaultChanged({}, ENTRIES[3], true)).toEqual({ bridge: true });
+    expect(withDefaultChanged({ bridge: true }, ENTRIES[3], false)).toEqual({});
   });
 });
 
-describe('pinnedApps', () => {
-  it('keeps the input order and drops unpinned apps', () => {
-    const result = pinnedApps(APPS, { unpinned: ['recipes'] });
-    expect(result.map((a) => a.id)).toEqual(['groceries', 'games']);
+describe('pinnedEntries', () => {
+  it('keeps the input order and drops what is out of the sidebar', () => {
+    const result = pinnedEntries(ENTRIES, { unpinned: ['recipes'], pinned: ['minigolf'] });
+    expect(result.map((e) => e.app.id)).toEqual(['groceries', 'games', 'minigolf']);
   });
 });
