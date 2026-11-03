@@ -19,6 +19,7 @@ import type { CustomMethodHandler } from '../../resources/types';
 import { serverClient } from '../../server/client';
 import { cancelTurn } from '../../server/chat/turns';
 import { CONVERSATIONS } from '../resources';
+import { problemResponse } from '../../resources/problem';
 
 const cancel: CustomMethodHandler = async (ctx) => {
   const id = ctx.id!;
@@ -26,7 +27,7 @@ const cancel: CustomMethodHandler = async (ctx) => {
     await serverClient(ctx.auth.token).collection(CONVERSATIONS).record(id).update({});
   } catch (err) {
     if (err instanceof HomesteadError) {
-      return Response.json({ error: { code: err.code, message: err.message } }, { status: err.code });
+      return problemResponse(err.code, err.message);
     }
     throw err;
   }

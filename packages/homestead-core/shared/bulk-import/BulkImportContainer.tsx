@@ -91,7 +91,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
     setError(null);
     try {
       const result = await preview.mutateAsync(
-        format.inputType === 'text'
+        format.input_type === 'text'
           ? { format: format.id, text }
           : { format: format.id, files },
       );
@@ -104,7 +104,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
       }
 
       setItems(result.items as ParsedItem<T>[]);
-      setPreviewId(result.previewId);
+      setPreviewId(result.preview_id);
       // Pre-select everything importable — the common case is "import it all".
       setSelected(
         new Set(result.items.filter((i) => i.errors.length === 0).map((i) => i.index)),
@@ -186,7 +186,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
     );
   }, [validItems]);
 
-  const hasInput = format?.inputType === 'text' ? text.trim() !== '' : files.length > 0;
+  const hasInput = format?.input_type === 'text' ? text.trim() !== '' : files.length > 0;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -234,7 +234,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
             <ColumnReference columns={format.columns} label={format.label} />
           )}
 
-          {format.inputType === 'text' ? (
+          {format.input_type === 'text' ? (
             <div className="space-y-4">
               <label htmlFor="import-text" className="block font-medium">
                 Paste your {appNamePlural}
@@ -276,7 +276,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
               >
                 Choose File
               </label>
-              {format.hasTemplate && (
+              {format.has_template && (
                 <Button variant="secondary" onClick={handleDownloadTemplate} className="mt-6">
                   <Download className="mr-2 h-4 w-4" />
                   Download Template

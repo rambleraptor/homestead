@@ -24,8 +24,8 @@ interface OperationRow {
   id: string;
   done: boolean;
   response?: {
-    dryRun: boolean;
-    previewId?: string;
+    validate_only: boolean;
+    preview_id?: string;
     created?: number;
     items?: Array<{ index: number; label?: string; errors: string[] }>;
     summary: { total: number; valid: number; invalid: number };
@@ -162,7 +162,7 @@ describe('Recipes bulk import — API', () => {
         format: 'paprika',
         data: [Buffer.from('not a paprika file').toString('base64'), good.toString('base64')],
         filenames: ['broken.paprikarecipe', 'good.paprikarecipe'],
-        dryRun: true,
+        validate_only: true,
       });
 
       expect(operation.response?.summary).toEqual({ total: 2, valid: 1, invalid: 1 });
@@ -202,7 +202,7 @@ describe('Recipes bulk import — API', () => {
         format: 'screenshots',
         data: [screenshot(RECIPE_MARKERS.two), screenshot(RECIPE_MARKERS.two)],
         filenames: ['one.png', 'two.png'],
-        dryRun: true,
+        validate_only: true,
       });
 
       expect(operation.response?.summary).toEqual({ total: 2, valid: 2, invalid: 0 });
@@ -222,15 +222,15 @@ describe('Recipes bulk import — API', () => {
         format: 'screenshots',
         data: [screenshot(RECIPE_MARKERS.two)],
         filenames: ['two.png'],
-        dryRun: true,
+        validate_only: true,
       });
-      const previewId = preview.response?.previewId;
-      expect(previewId).toBeTruthy();
+      const preview_id = preview.response?.preview_id;
+      expect(preview_id).toBeTruthy();
 
       const operation = await bulkImport(adminToken, {
         format: 'screenshots',
-        previewId,
-        selectedIndices: [1],
+        preview_id,
+        selected_indices: [1],
       });
       expect(operation.response?.created).toBe(1);
       const recipes = await listOrEmpty<RecipeRecord>(adminToken, 'recipes');
@@ -239,7 +239,7 @@ describe('Recipes bulk import — API', () => {
       // Spent: importing it again is refused before any operation starts.
       const again = await postCustomMethod(adminToken, '/recipes:bulk-import', {
         format: 'screenshots',
-        previewId,
+        preview_id,
       });
       expect(again.status).toBe(410);
     },
@@ -253,7 +253,7 @@ describe('Recipes bulk import — API', () => {
         format: 'screenshots',
         data: [screenshot(RECIPE_MARKERS.none)],
         filenames: ['dish.png'],
-        dryRun: true,
+        validate_only: true,
       });
 
       expect(operation.response?.summary).toEqual({ total: 1, valid: 0, invalid: 1 });
@@ -266,7 +266,7 @@ describe('Recipes bulk import — API', () => {
       format: 'screenshots',
       data: [Buffer.from('just some text').toString('base64')],
       filenames: ['notes.txt'],
-      dryRun: true,
+      validate_only: true,
     });
 
     expect(operation.response?.items?.[0].errors[0]).toContain('notes.txt');
@@ -279,19 +279,19 @@ describe('Recipes bulk import — API', () => {
       methods: Array<{
         plural: string;
         verb: string;
-        bulkImport?: {
-          formats: Array<{ id: string; inputType: string; multiple: boolean }>;
+        bulk_import?: {
+          formats: Array<{ id: string; input_type: string; multiple: boolean }>;
         };
       }>;
     };
 
     const formats = methods.find((m) => m.plural === 'recipes' && m.verb === 'bulk-import')
-      ?.bulkImport?.formats;
+      ?.bulk_import?.formats;
     // Order matters: the import page selects the first format by default.
     expect(formats?.map((f) => f.id)).toEqual(['url', 'social', 'screenshots', 'text', 'paprika']);
     expect(formats?.find((f) => f.id === 'screenshots')?.multiple).toBe(true);
-    expect(formats?.find((f) => f.id === 'url')?.inputType).toBe('text');
-    expect(formats?.find((f) => f.id === 'text')?.inputType).toBe('text');
+    expect(formats?.find((f) => f.id === 'url')?.input_type).toBe('text');
+    expect(formats?.find((f) => f.id === 'text')?.input_type).toBe('text');
     expect(formats?.find((f) => f.id === 'paprika')?.multiple).toBe(true);
   });
 });

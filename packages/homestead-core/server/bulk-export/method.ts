@@ -82,7 +82,7 @@ export async function bulkExportFormatInfo(
     def.formats.map(async (format) => ({
       id: format.id,
       label: format.label,
-      mimeType: format.mimeType,
+      mime_type: format.mimeType,
       extension: format.extension,
       columns: await loadColumns(format),
     })),

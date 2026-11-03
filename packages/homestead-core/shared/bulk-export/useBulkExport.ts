@@ -28,7 +28,7 @@ interface BulkExportInfo {
 interface CustomMethodInfo {
   plural: string;
   verb: string;
-  bulkExport?: Partial<BulkExportInfo>;
+  bulk_export?: Partial<BulkExportInfo>;
 }
 
 /**
@@ -50,8 +50,8 @@ function useBulkExportInfo<T>(plural: string, select: (info: BulkExportInfo) => 
         (m) => m.plural === plural && m.verb === BULK_EXPORT_VERB,
       );
       return {
-        formats: method?.bulkExport?.formats ?? [],
-        options: method?.bulkExport?.options ?? [],
+        formats: method?.bulk_export?.formats ?? [],
+        options: method?.bulk_export?.options ?? [],
       };
     },
     select,

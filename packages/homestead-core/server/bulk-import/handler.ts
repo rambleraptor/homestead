@@ -76,14 +76,14 @@ export const validate: AsyncCustomMethodValidator = async (ctx) => {
     return problem(503, `Format ${format.id} needs AI, which isn't set up on this server`);
   }
 
-  if (body.previewId !== undefined) {
-    if (typeof body.previewId !== 'string' || body.previewId === '') {
-      return problem(400, '"previewId" must be the id a dry run returned');
+  if (body.preview_id !== undefined) {
+    if (typeof body.preview_id !== 'string' || body.preview_id === '') {
+      return problem(400, '"preview_id" must be the id a validate_only call returned');
     }
-    if (body.dryRun) {
-      return problem(400, '"previewId" imports a preview; it cannot be combined with "dryRun"');
+    if (body.validate_only) {
+      return problem(400, '"preview_id" imports a preview; it cannot be combined with "validate_only"');
     }
-    if (!hasPreview(body.previewId, previewOwner(ctx, format.id))) {
+    if (!hasPreview(body.preview_id, previewOwner(ctx, format.id))) {
       return problem(410, PREVIEW_GONE);
     }
   } else if (format.inputType === 'text') {
@@ -107,7 +107,7 @@ export const validate: AsyncCustomMethodValidator = async (ctx) => {
     }
   }
 
-  const selection = body.selectedIndices;
+  const selection = body.selected_indices;
   if (
     selection !== undefined &&
     selection !== SELECT_ALL_VALID &&
@@ -118,7 +118,7 @@ export const validate: AsyncCustomMethodValidator = async (ctx) => {
   ) {
     return problem(
       400,
-      `"selectedIndices" must be ${JSON.stringify(SELECT_ALL_VALID)} or an array of item indices`,
+      `"selected_indices" must be ${JSON.stringify(SELECT_ALL_VALID)} or an array of item indices`,
     );
   }
 
@@ -145,10 +145,10 @@ export default async function bulkImport(
   const owner = previewOwner(ctx, format.id);
 
   let items: ParsedItem[];
-  if (body.previewId !== undefined) {
+  if (body.preview_id !== undefined) {
     // Checked in validate(), but it can expire (or be taken by a concurrent
     // import) between that check and this run.
-    const held = takePreview(body.previewId, owner);
+    const held = takePreview(body.preview_id, owner);
     if (!held) throw new ProblemError(410, PREVIEW_GONE);
     items = held;
   } else {
@@ -156,14 +156,14 @@ export default async function bulkImport(
   }
   const summary = summarize(items);
 
-  if (body.dryRun) {
-    return { dryRun: true, previewId: savePreview(owner, items), items, summary };
+  if (body.validate_only) {
+    return { validate_only: true, preview_id: savePreview(owner, items), items, summary };
   }
 
-  const selected = resolveSelection(items, body.selectedIndices);
+  const selected = resolveSelection(items, body.selected_indices);
   const save = def.save ? (await def.save()).save : defaultSaver;
   const { created, failed } = await save({ items: selected, ctx: importCtx });
-  return { dryRun: false, created, failed, summary };
+  return { validate_only: false, created, failed, summary };
 }
 
 /** Decode the request payload into the parser's input shape and run it. */
@@ -181,7 +181,7 @@ async function parseInput(
   const items = await parser.parse(input, ctx);
 
   // Parsers index within their own input; renumber across the whole parse so
-  // `selectedIndices` is meaningful when several files were merged into one
+  // `selected_indices` is meaningful when several files were merged into one
   // list. Normalizing here keeps every parser from having to care.
   return items.map((item, index) => ({
     ...item,
@@ -209,7 +209,7 @@ function decodeBase64(encoded: string): Uint8Array {
 }
 
 /**
- * Resolve `selectedIndices` against the freshly parsed items.
+ * Resolve `selected_indices` against the freshly parsed items.
  *
  * `'*'` (and an omitted selection) means every importable item, which is what
  * makes a one-shot CLI/REST import possible. An explicit index that doesn't
@@ -219,7 +219,7 @@ function decodeBase64(encoded: string): Uint8Array {
  */
 export function resolveSelection(
   items: ParsedItem[],
-  selection: BulkImportRequest['selectedIndices'],
+  selection: BulkImportRequest['selected_indices'],
 ): ParsedItem[] {
   const importable = items.filter((item) => item.errors.length === 0);
   if (selection === undefined || selection === SELECT_ALL_VALID) {

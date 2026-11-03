@@ -16,9 +16,9 @@ import { describeConnectionError, listAllTools, withMcpServer } from '../../../s
 import { mergeTools } from '../tools';
 import { MCP_SERVERS } from '../resources';
 import type { McpServer } from '../types';
+import { problemResponse } from '../../../resources/problem';
 
-const error = (status: number, message: string) =>
-  Response.json({ error: { code: status, message } }, { status });
+const error = (status: number, message: string) => problemResponse(status, message);
 
 const refreshTools: CustomMethodHandler = async ({ auth, id }) => {
   if (auth.user.type !== 'superuser') return error(403, 'only superusers can check an MCP server');

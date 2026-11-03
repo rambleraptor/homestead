@@ -11,9 +11,9 @@ import { serverClient } from '../../../server/client';
 import { loadOAuthCredential, OAuthConnectionError } from '../../../server/mcp/oauth';
 import { MCP_SERVERS } from '../resources';
 import type { McpServer } from '../types';
+import { problemResponse } from '../../../resources/problem';
 
-export const error = (status: number, message: string) =>
-  Response.json({ error: { code: status, message } }, { status });
+export const error = (status: number, message: string) => problemResponse(status, message);
 
 type Loaded =
   | { ok: true; server: McpServer; credential: NonNullable<Awaited<ReturnType<typeof loadOAuthCredential>>> }
