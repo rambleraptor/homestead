@@ -8,6 +8,11 @@ import {
   MessageResponse,
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/message';
 import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from '@rambleraptor/homestead-core/shared/components/ai-elements/reasoning';
+import {
   Tool,
   ToolContent,
   ToolHeader,
@@ -38,6 +43,19 @@ const replyComponents = {
   // are ordinary links. See `../values`.
   a: ReplyLink,
 };
+
+/**
+ * What the model thought before answering, as one block: a step can carry
+ * several reasoning parts, and one disclosure reads better than one per part.
+ * Empty while the model has nothing to show (most providers send none).
+ */
+function reasoningText(message: HomesteadUIMessage): string {
+  return message.parts
+    .filter((p) => p.type === 'reasoning')
+    .map((p) => p.text)
+    .filter((text) => text.trim() !== '')
+    .join('\n\n');
+}
 
 /** The text of a message, for copying: typed values read as plain values. */
 function messageText(message: HomesteadUIMessage): string {
@@ -97,6 +115,10 @@ export function ChatMessage({
   const toast = useToast();
   const isUser = message.role === 'user';
   const text = messageText(message);
+  const reasoning = isUser ? '' : reasoningText(message);
+  // Open while the thinking is still arriving; it closes itself once the
+  // reply proper starts.
+  const reasoningStreaming = streaming && message.parts.at(-1)?.type === 'reasoning';
 
   const copy = async () => {
     try {
@@ -117,6 +139,12 @@ export function ChatMessage({
         />
       )}
       <MessageContent className={isUser && !text ? 'hidden' : undefined}>
+        {(reasoning || reasoningStreaming) && (
+          <Reasoning isStreaming={reasoningStreaming} data-testid="chat-reasoning">
+            <ReasoningTrigger />
+            <ReasoningContent>{reasoning}</ReasoningContent>
+          </Reasoning>
+        )}
         {message.parts.map((part, i) => {
           if (part.type === 'text') {
             return isUser ? (

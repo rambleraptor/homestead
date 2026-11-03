@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Loader2, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { MessageSquarePlus, Trash2 } from 'lucide-react';
+import { Loader } from '@rambleraptor/homestead-core/shared/components/ai-elements/loader';
 import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
@@ -90,7 +91,7 @@ export function ConversationList({
                 <span className="truncate">{c.title || 'Untitled conversation'}</span>
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   {c.status === 'running' && (
-                    <Loader2 className="size-3 animate-spin" aria-label="Working" />
+                    <Loader size={12} aria-label="Working" />
                   )}
                   {when(c)}
                 </span>

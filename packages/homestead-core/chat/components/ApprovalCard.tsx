@@ -1,7 +1,12 @@
 /**
  * A tool call waiting on the person (`confirm` custom methods — sending a
  * household member a message — and "ask first" tools on outside MCP servers):
- * what it would do, in their terms, and Approve or Deny. Nothing runs until they answer; the reply then carries on.
+ * what it would do, in their terms, and Approve or Deny. Nothing runs until
+ * they answer; the reply then carries on.
+ *
+ * Built on AI Elements' `Confirmation`, which keys off the tool part's
+ * `approval` and `state`: the request and its actions show only while the
+ * call is `approval-requested`.
  */
 
 import type { BulkImportPreview } from '@rambleraptor/homestead-client';
@@ -9,7 +14,13 @@ import { bulkImportBody, rowLabel, selectedRows } from '../importPreview';
 import { useState } from 'react';
 import { ShieldQuestion } from 'lucide-react';
 import type { ToolUIPart } from 'ai';
-import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
+import {
+  Confirmation,
+  ConfirmationAction,
+  ConfirmationActions,
+  ConfirmationRequest,
+  ConfirmationTitle,
+} from '@rambleraptor/homestead-core/shared/components/ai-elements/confirmation';
 import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehold';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
@@ -70,61 +81,61 @@ export function ApprovalCard({ part, onAnswer, disabled, findPreview }: Approval
   };
 
   return (
-    <div
-      className="w-full rounded-md border border-amber-300 bg-amber-50 p-3 text-sm"
+    <Confirmation
+      approval={part.approval}
+      state={part.state}
+      className="w-full border-amber-300 bg-amber-50"
       data-testid="chat-approval"
     >
-      <div className="mb-2 flex items-center gap-2 font-medium text-gray-900">
+      <ConfirmationTitle className="flex items-center gap-2 font-medium text-foreground">
         <ShieldQuestion className="size-4 text-amber-600" aria-hidden />
         Approve this?
-      </div>
-      <dl className="mb-3 space-y-1">
-        <div className="flex gap-2">
-          <dt className="text-gray-500">Action</dt>
-          <dd data-testid="chat-approval-action">{mcp ? mcp.tool : actionLabel(part)}</dd>
-        </div>
-        {mcp && (
+      </ConfirmationTitle>
+      <ConfirmationRequest>
+        <dl className="space-y-1 text-foreground">
           <div className="flex gap-2">
-            <dt className="text-gray-500">On</dt>
-            <dd data-testid="chat-approval-service">{mcp.server}</dd>
+            <dt className="text-muted-foreground">Action</dt>
+            <dd data-testid="chat-approval-action">{mcp ? mcp.tool : actionLabel(part)}</dd>
           </div>
-        )}
-        {recipient && (
-          <div className="flex gap-2">
-            <dt className="text-gray-500">To</dt>
-            <dd data-testid="chat-approval-to">{recipient}</dd>
-          </div>
-        )}
-        {importBody ? (
-          <ImportRows body={importBody} findPreview={findPreview} />
-        ) : null}
-        {(importBody ? [] : detailRows(part.input, mcp !== null)).map(([label, value]) => (
-          <div key={label} className="flex gap-2">
-            <dt className="text-gray-500">{label}</dt>
-            <dd className="whitespace-pre-wrap break-words">{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          onClick={() => void answer(true)}
-          disabled={disabled || answering}
-          data-testid="chat-approval-approve"
-        >
-          Approve
-        </Button>
-        <Button
-          size="sm"
+          {mcp && (
+            <div className="flex gap-2">
+              <dt className="text-muted-foreground">On</dt>
+              <dd data-testid="chat-approval-service">{mcp.server}</dd>
+            </div>
+          )}
+          {recipient && (
+            <div className="flex gap-2">
+              <dt className="text-muted-foreground">To</dt>
+              <dd data-testid="chat-approval-to">{recipient}</dd>
+            </div>
+          )}
+          {importBody ? <ImportRows body={importBody} findPreview={findPreview} /> : null}
+          {(importBody ? [] : detailRows(part.input, mcp !== null)).map(([label, value]) => (
+            <div key={label} className="flex gap-2">
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className="whitespace-pre-wrap break-words">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </ConfirmationRequest>
+      <ConfirmationActions>
+        <ConfirmationAction
           variant="outline"
           onClick={() => void answer(false)}
           disabled={disabled || answering}
           data-testid="chat-approval-deny"
         >
           Deny
-        </Button>
-      </div>
-    </div>
+        </ConfirmationAction>
+        <ConfirmationAction
+          onClick={() => void answer(true)}
+          disabled={disabled || answering}
+          data-testid="chat-approval-approve"
+        >
+          Approve
+        </ConfirmationAction>
+      </ConfirmationActions>
+    </Confirmation>
   );
 }
 
@@ -141,7 +152,7 @@ function ImportRows({
   if (!preview) {
     return (
       <div className="flex gap-2">
-        <dt className="text-gray-500">Import</dt>
+        <dt className="text-muted-foreground">Import</dt>
         <dd>{previewId ? 'the rows of an earlier preview' : 'the input, without a preview'}</dd>
       </div>
     );
@@ -149,7 +160,7 @@ function ImportRows({
   const rows = selectedRows(preview, body.selected_indices);
   return (
     <div>
-      <dt className="text-gray-500">
+      <dt className="text-muted-foreground">
         Import {rows.length} {rows.length === 1 ? 'row' : 'rows'}
       </dt>
       <dd>
@@ -158,7 +169,7 @@ function ImportRows({
             <li key={row.index}>
               {rowLabel(row)}
               {row.warnings.length > 0 && (
-                <span className="text-gray-500"> — {row.warnings.join('; ')}</span>
+                <span className="text-muted-foreground"> — {row.warnings.join('; ')}</span>
               )}
             </li>
           ))}

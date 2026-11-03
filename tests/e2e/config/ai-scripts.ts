@@ -34,6 +34,8 @@ export interface ScriptedToolCall {
 export interface ScriptStep {
   toolCalls?: ScriptedToolCall[];
   text?: string;
+  /** What the model "thought" first, as a reasoning summary ahead of the rest. */
+  reasoning?: string;
 }
 
 export interface ChatScript {
@@ -126,6 +128,8 @@ export const CHAT_MARKERS = {
   listUnchecked: 'e2e-chat-list-unchecked',
   /** Answer in text with no tool call — the plain streaming case. */
   hello: 'e2e-chat-hello',
+  /** Think first (a reasoning summary), then answer in text. */
+  reasonedReply: 'e2e-chat-reasoned-reply',
   /**
    * A long text reply (200 words, so ~1s at the VM's 5ms chunk pace): long
    * enough to cancel, interrupt, or collide with while it is still streaming.
@@ -160,6 +164,9 @@ export const CHAT_MARKERS = {
   /** Call the test MCP server's failing tool, then repeat what came back. */
   mcpFailing: 'e2e-chat-mcp-failing',
 } as const;
+
+/** The reasoned reply's thinking, exported so a spec can check it is shown. */
+export const REASONING_TEXT = 'A greeting is all that is needed here, so no tool is called.';
 
 /** The long reply's text, exported so a spec can check the whole of it arrived. */
 export const LONG_REPLY_TEXT = Array.from({ length: 200 }, (_, i) => `word${i + 1}`).join(' ');
@@ -241,6 +248,10 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
   {
     marker: CHAT_MARKERS.hello,
     steps: [{ text: 'Hello from the scripted assistant. How can I help?' }],
+  },
+  {
+    marker: CHAT_MARKERS.reasonedReply,
+    steps: [{ reasoning: REASONING_TEXT, text: 'Hello! I gave that some thought first.' }],
   },
   {
     marker: CHAT_MARKERS.longReply,

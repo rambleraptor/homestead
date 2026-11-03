@@ -38,6 +38,11 @@ import { resolveDashboardWidgets } from '@rambleraptor/homestead-core/settings/u
 import { useConversation } from '@rambleraptor/homestead-core/chat/hooks/useConversation';
 import { ChatThread } from '@rambleraptor/homestead-core/chat/components/ChatThread';
 import { ConversationList } from '@rambleraptor/homestead-core/chat/components/ConversationList';
+import { ConversationEmptyState } from '@rambleraptor/homestead-core/shared/components/ai-elements/conversation';
+import {
+  Suggestion,
+  Suggestions,
+} from '@rambleraptor/homestead-core/shared/components/ai-elements/suggestion';
 import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
 import {
   Sheet,
@@ -132,20 +137,20 @@ export function AgenticHome({ conversationId }: AgenticHomeProps) {
           </Button>
         )}
         {strip.length > 0 ? (
-          <div
-            className="flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            data-testid="agentic-strip"
-          >
-            {strip.map((w) => (
-              <WidgetChip
-                key={w.id}
-                widget={w}
-                summary={summaries.get(w.id)}
-                urgent={isUrgent(w.id)}
-                open={w.id === openId}
-                onToggle={() => setOpenId((cur) => (cur === w.id ? null : w.id))}
-              />
-            ))}
+          // The row shrinks to its slot and scrolls, never pushing the buttons beside it.
+          <div className="min-w-0 flex-1">
+            <Suggestions className="py-1" data-testid="agentic-strip">
+              {strip.map((w) => (
+                <WidgetChip
+                  key={w.id}
+                  widget={w}
+                  summary={summaries.get(w.id)}
+                  urgent={isUrgent(w.id)}
+                  open={w.id === openId}
+                  onToggle={() => setOpenId((cur) => (cur === w.id ? null : w.id))}
+                />
+              ))}
+            </Suggestions>
           </div>
         ) : (
           <div className="flex-1" />
@@ -249,24 +254,30 @@ function AssistantUnavailable({
   isSuperuser: boolean;
 }) {
   return (
-    <div
-      className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center"
+    <ConversationEmptyState
+      className="flex-1 [&_p]:max-w-sm"
       data-testid="home-assistant-unavailable"
       data-reason={reason}
     >
       <MessageCircleOff className="size-10 text-muted-foreground" aria-hidden />
-      <h2 className="font-medium text-sm">{greeting}</h2>
-      <p className="max-w-sm text-muted-foreground text-sm">{UNAVAILABLE[reason]}</p>
+      <div className="space-y-1">
+        <h2 className="font-medium text-sm">{greeting}</h2>
+        <p className="text-muted-foreground text-sm">{UNAVAILABLE[reason]}</p>
+      </div>
       {reason === 'not-configured' && isSuperuser && (
         <Button asChild size="sm" variant="outline" data-testid="home-set-ai-key">
           <Link to="/superuser/credentials">Set the AI key</Link>
         </Button>
       )}
-    </div>
+    </ConversationEmptyState>
   );
 }
 
-/** A widget's one line on the strip: its app's icon, its label, its headline. */
+/**
+ * A widget's one line on the strip: its app's icon, its label, its headline.
+ * A `Suggestion` pill, like the starters under the composer, with its own
+ * colors for urgent and open.
+ */
 function WidgetChip({
   widget,
   summary,
@@ -282,17 +293,17 @@ function WidgetChip({
 }) {
   const icon = getAppById(widget.appId)?.web?.icon;
   return (
-    <button
-      type="button"
+    <Suggestion
+      suggestion={widget.id}
       onClick={onToggle}
       aria-expanded={open}
       className={cn(
-        'flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors',
+        'h-auto shrink-0 gap-2 px-3 py-1.5 text-sm font-normal shadow-none',
         open
-          ? 'border-brand-navy bg-brand-navy text-white'
+          ? 'border-brand-navy bg-brand-navy text-white hover:bg-brand-navy hover:text-white'
           : urgent
-            ? 'border-accent-terracotta/30 bg-accent-terracotta/10 text-text-main hover:bg-accent-terracotta/15'
-            : 'border-gray-100 bg-surface-white text-text-main hover:bg-bg-pearl/60',
+            ? 'border-accent-terracotta/30 bg-accent-terracotta/10 text-text-main hover:bg-accent-terracotta/15 hover:text-text-main'
+            : 'border-gray-100 bg-surface-white text-text-main hover:bg-bg-pearl/60 hover:text-text-main',
       )}
       data-testid={`agentic-chip-${widget.id}`}
       data-urgent={urgent ? 'true' : undefined}
@@ -304,6 +315,6 @@ function WidgetChip({
           {summary.headline}
         </span>
       )}
-    </button>
+    </Suggestion>
   );
 }
