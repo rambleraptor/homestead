@@ -15,10 +15,7 @@ export function useSecurityStatus() {
   return useQuery({
     queryKey: ['homestead-information', 'security-status'],
     queryFn: async (): Promise<SecurityStatus> => {
-      const token = aepbase.authStore.token;
-      const res = await fetch('/api/security/status', {
-        headers: { Authorization: `Bearer ${token ?? ''}` },
-      });
+      const res = await aepbase.authorizedFetch('/api/security/status');
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       return (await res.json()) as SecurityStatus;
     },

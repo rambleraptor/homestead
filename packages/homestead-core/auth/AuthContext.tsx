@@ -2,8 +2,10 @@
  * Authentication Provider Component
  *
  * Talks to aepbase via the thin wrapper at `core/api/aepbase`. POST
- * `/users/:login` for sign-in, Bearer token persisted in localStorage,
- * onChange subscription for cross-tab auth sync.
+ * `/api/auth/login` for sign-in, Bearer token persisted in localStorage,
+ * onChange subscription for auth state (the store itself watches `storage`
+ * events, so a sign-in, token rotation, or sign-out in another tab lands here
+ * the same way).
  *
  * There is no `register` — aepbase has no self-serve signup endpoint; users
  * are provisioned by a superuser via `POST /users`. `refreshUser` re-fetches
@@ -104,7 +106,7 @@ async function hydrateUserPreferences(user: User): Promise<User> {
         return [] as UserPreferenceRecord[];
       }
     })(),
-    fetchPermissionContext(aepbase.authStore.token),
+    fetchPermissionContext(),
   ]);
 
   let merged: User = { ...user, permissions };

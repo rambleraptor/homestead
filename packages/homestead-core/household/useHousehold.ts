@@ -6,9 +6,7 @@ export const HOUSEHOLD_QUERY_KEY = ['household'] as const;
 
 /** Everyone who shares this Homestead, by name (`GET /api/household`). */
 export async function fetchHousehold(): Promise<HouseholdMember[]> {
-  const res = await fetch('/api/household', {
-    headers: { Authorization: `Bearer ${aepbase.authStore.token ?? ''}` },
-  });
+  const res = await aepbase.authorizedFetch('/api/household');
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? `HTTP ${res.status}`);

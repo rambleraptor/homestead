@@ -24,15 +24,10 @@ export function useMintPersonalAccessToken() {
   return useMutation({
     meta: { skipErrorToast: true },
     mutationFn: async (input: MintTokenInput): Promise<MintTokenResult> => {
-      const token = aepbase.authStore.token;
       const userId = aepbase.getCurrentUser()?.id || '';
-      const res = await fetch('/api/tokens', {
+      const res = await aepbase.authorizedFetch('/api/tokens', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-User-Id': userId,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'X-User-Id': userId, 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       });
       if (!res.ok) {

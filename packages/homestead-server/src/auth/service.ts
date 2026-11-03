@@ -102,8 +102,12 @@ export class AuthService {
 
   /**
    * Resolve an access token to its user, or null if it is unknown or expired.
-   * An expired token (and any refresh tokens tied to it) is deleted on the way
-   * out so dead rows don't accumulate. Wire this into
+   * An expired access token is deleted on the way out so dead rows don't
+   * accumulate — but its refresh token is left alone. Presenting an expired
+   * access token is routine client behaviour (a request racing the renewal,
+   * a tab that was asleep past the expiry, clock skew), not a reason to end
+   * the session; the refresh token has its own expiry and is single-use, and
+   * `rotateRefresh` is what retires it. Wire this into
    * `engine.setTokenValidator`.
    */
   validateAccessToken = (token: string): User | null => {
@@ -111,7 +115,6 @@ export class AuthService {
     if (!rec) return null;
     if (isExpired(rec.expires_at)) {
       deleteToken(this.db, token);
-      deleteRefreshTokensForAccess(this.db, token);
       deleteAccessTokenBinding(this.db, token);
       return null;
     }

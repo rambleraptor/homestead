@@ -17,15 +17,10 @@ export function useSendTestNotification() {
     // global mutation error toast here.
     meta: { skipErrorToast: true },
     mutationFn: async (subscriptionId?: string) => {
-      const token = aepbase.authStore.token;
       const userId = aepbase.getCurrentUser()?.id || '';
-      const res = await fetch('/api/notifications/send-test', {
+      const res = await aepbase.authorizedFetch('/api/notifications/send-test', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-User-Id': userId,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'X-User-Id': userId, 'Content-Type': 'application/json' },
         body: JSON.stringify(subscriptionId ? { subscriptionId } : {}),
       });
       if (!res.ok) {

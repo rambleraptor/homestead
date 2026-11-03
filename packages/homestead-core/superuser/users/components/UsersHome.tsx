@@ -9,7 +9,6 @@ import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/Co
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
-import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { fetchPermissionContextFor } from '@rambleraptor/homestead-core/permissions/client';
 import { useAddGroupMember } from '@rambleraptor/homestead-core/permissions/hooks';
 import { useUsers } from '../hooks/useUsers';
@@ -40,7 +39,7 @@ export function UsersHome() {
   const handleViewAs = async (u: ManagedUser) => {
     setViewAsPendingId(u.id);
     try {
-      const permissions = await fetchPermissionContextFor(u.id, aepbase.authStore.token);
+      const permissions = await fetchPermissionContextFor(u.id);
       if (!permissions) {
         toast.error("Couldn't load this user's permissions.");
         return;

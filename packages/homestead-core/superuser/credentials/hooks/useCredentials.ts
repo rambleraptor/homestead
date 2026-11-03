@@ -74,9 +74,7 @@ export function useCredentialSlots() {
   return useQuery({
     queryKey: SLOTS_KEY,
     queryFn: async (): Promise<CredentialSlotStatus[]> => {
-      const res = await fetch('/api/credential-slots', {
-        headers: { Authorization: `Bearer ${aepbase.authStore.token ?? ''}` },
-      });
+      const res = await aepbase.authorizedFetch('/api/credential-slots');
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error ?? `HTTP ${res.status}`);

@@ -56,7 +56,7 @@ describe('Authorize (consent page)', () => {
         return jsonResponse({ client_name: 'Test App', scopes: ['homestead'] });
       }
       if (String(url).includes('/oauth2/authorize/decision')) {
-        expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer session-tok');
+        expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
         expect(JSON.parse(String(init?.body))).toEqual({ request: 'req-1', approve: true });
         return jsonResponse({ redirect: 'https://client.example/cb?code=abc&state=st' });
       }

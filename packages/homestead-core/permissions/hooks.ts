@@ -127,7 +127,7 @@ export function useGroupMemberships(groupId: string) {
 export function useUserPermissionContext(userId: string | undefined) {
   return useQuery({
     queryKey: ['permissions', 'user-context', userId] as const,
-    queryFn: () => fetchPermissionContextFor(userId!, aepbase.authStore.token),
+    queryFn: () => fetchPermissionContextFor(userId!),
     enabled: !!userId,
   });
 }

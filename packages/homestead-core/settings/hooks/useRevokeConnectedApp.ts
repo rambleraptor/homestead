@@ -12,11 +12,10 @@ export function useRevokeConnectedApp() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (clientId: string): Promise<void> => {
-      const token = aepbase.authStore.token;
       const userId = aepbase.getCurrentUser()?.id || '';
-      const res = await fetch(`/api/connections/${encodeURIComponent(clientId)}`, {
+      const res = await aepbase.authorizedFetch(`/api/connections/${encodeURIComponent(clientId)}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'X-User-Id': userId },
+        headers: { 'X-User-Id': userId },
       });
       if (!res.ok) {
         const detail = await res.json().catch(() => ({}));
