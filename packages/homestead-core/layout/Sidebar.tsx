@@ -82,8 +82,9 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
   // The apps this viewer can use (superuser-only apps hidden from regular
   // users, the rest filtered by the permission resolver), narrowed to the ones
   // in their sidebar. The rest are a click away in the drawer. A nested child
-  // in the sidebar lists under its parent's section, indented.
-  const { entries, pinnedEntries } = useSidebarPins();
+  // in the sidebar lists under its parent's section, indented. Superuser and
+  // Settings are fixed: always listed, never movable.
+  const { pinnedEntries } = useSidebarPins();
   const sections = groupEntriesBySection(pinnedEntries);
 
   const handleLogout = () => {
@@ -151,16 +152,9 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
 
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
-            {entries.length === 0 ? (
+            {pinnedEntries.length === 0 ? (
               <div className="text-sm text-gray-500 text-center py-4">
                 No apps available
-              </div>
-            ) : pinnedEntries.length === 0 ? (
-              <div
-                className="text-sm text-gray-500 text-center py-4"
-                data-testid="sidebar-empty"
-              >
-                Your sidebar is empty. Add apps from All apps.
               </div>
             ) : (
               sections.map(({ name: section, entries: sectionEntries }) => {

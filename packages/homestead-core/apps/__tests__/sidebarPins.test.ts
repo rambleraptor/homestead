@@ -11,6 +11,7 @@ import {
   defaultPinIds,
   entrySection,
   isPinnedByDefault,
+  movableEntries,
   parseDefaultPinOverrides,
   pinnedEntries,
   resolveSidebarPins,
@@ -48,6 +49,31 @@ describe('sidebarEntries', () => {
   it('files a child under its parent section', () => {
     expect(entrySection(ENTRIES[3])).toBe('Relationships');
     expect(entrySection(ENTRIES[0])).toBe('Food');
+  });
+});
+
+describe('fixed apps', () => {
+  const users = app('users', { routes: [{ path: '', gates: ['superuser'] }] });
+  const superuser = app('superuser', { section: 'Settings', routes: [{ path: '', gates: ['superuser'] }] }, [users]);
+  const settings = app('settings', { section: 'Settings' });
+  const all = sidebarEntries([groceries, superuser, settings], () => true);
+
+  it('lists the Superuser tree and Settings as fixed, without children', () => {
+    expect(all.map((e) => [e.app.id, e.fixed ?? false])).toEqual([
+      ['groceries', false],
+      ['superuser', true],
+      ['settings', true],
+    ]);
+    expect(movableEntries(all).map((e) => e.app.id)).toEqual(['groceries']);
+  });
+
+  it('keeps a fixed app in the sidebar whatever the person or household says', () => {
+    const states = resolveSidebarPins(all, { unpinned: ['superuser', 'settings', 'groceries'] }, {
+      defaultIds: new Set(),
+    });
+    expect(states.get('superuser')).toEqual({ pinned: true, source: 'default' });
+    expect(states.get('settings')).toEqual({ pinned: true, source: 'default' });
+    expect(states.get('groceries')?.pinned).toBe(false);
   });
 });
 

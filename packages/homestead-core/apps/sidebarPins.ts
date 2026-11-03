@@ -25,12 +25,25 @@
  * Pure so the sidebar and the drawer run the same functions and can't disagree.
  */
 
+import { ALWAYS_VISIBLE_APPS } from '../permissions/household';
 import type { AppConfig } from './types';
+import { isSuperuserOnlyApp } from './useAppVisibility';
 
 /** A navigation app, with its parent when it's a nested child. */
 export interface SidebarEntry {
   app: AppConfig;
   parent?: AppConfig;
+  /**
+   * Always in the sidebar and never in the drawer's lists: configuration
+   * surfaces a person must not be able to lose. Superuser-only apps (the
+   * Superuser tree) and the always-visible shell apps (Settings, the drawer).
+   */
+  fixed?: true;
+}
+
+/** Whether `app` is one of the fixed navigation apps (see `SidebarEntry.fixed`). */
+export function isFixedNavApp(app: AppConfig): boolean {
+  return isSuperuserOnlyApp(app) || ALWAYS_VISIBLE_APPS.includes(app.id);
 }
 
 export type PinSource = 'default' | 'pinned' | 'unpinned';
@@ -57,7 +70,9 @@ export type DefaultPinOverrides = Record<string, boolean>;
 /**
  * The navigation entries a viewer can reach, in nav order: each top-level
  * navigation app, followed by its visible children. A child is listed when
- * it has a web config and isn't kept out of nav itself.
+ * it has a web config and isn't kept out of nav itself. A fixed app is one
+ * entry with no children of its own in the list — its children live on its
+ * landing page and can't be moved anywhere.
  */
 export function sidebarEntries(
   navApps: readonly AppConfig[],
@@ -66,6 +81,10 @@ export function sidebarEntries(
   const out: SidebarEntry[] = [];
   for (const app of navApps) {
     if (!isVisible(app)) continue;
+    if (isFixedNavApp(app)) {
+      out.push({ app, fixed: true });
+      continue;
+    }
     out.push({ app });
     for (const child of app.children ?? []) {
       if (!child.web || child.web.showInNav === false) continue;
@@ -74,6 +93,11 @@ export function sidebarEntries(
     }
   }
   return out;
+}
+
+/** The entries a person may move: everything but the fixed ones. */
+export function movableEntries(entries: readonly SidebarEntry[]): SidebarEntry[] {
+  return entries.filter((e) => !e.fixed);
 }
 
 /** The section an entry files under: its own, or its parent's for a child. */
@@ -137,9 +161,10 @@ export function withDefaultChanged(
 }
 
 /**
- * Resolve the pin state of every entry. An id present in both of a person's
- * lists is treated as pinned — the lists should never overlap, and showing an
- * app is the safer way to resolve a corrupt pair.
+ * Resolve the pin state of every entry. A fixed entry is always pinned,
+ * whatever the lists say. An id present in both of a person's lists is
+ * treated as pinned — the lists should never overlap, and showing an app is
+ * the safer way to resolve a corrupt pair.
  */
 export function resolveSidebarPins(
   entries: readonly SidebarEntry[],
@@ -152,7 +177,9 @@ export function resolveSidebarPins(
   for (const entry of entries) {
     const id = entry.app.id;
     const byDefault = options.defaultIds ? options.defaultIds.has(id) : declaredDefault(entry);
-    if (pinnedByUser.has(id)) {
+    if (entry.fixed) {
+      out.set(id, { pinned: true, source: 'default' });
+    } else if (pinnedByUser.has(id)) {
       out.set(id, { pinned: true, source: 'pinned' });
     } else if (unpinnedByUser.has(id)) {
       out.set(id, { pinned: false, source: 'unpinned' });
