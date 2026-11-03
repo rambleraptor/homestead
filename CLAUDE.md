@@ -818,6 +818,20 @@ the hooks in `homestead-core/api/remoteChanges.ts` (`useResourceEvents`,
 `RemoteChangeBadge` / `RemoteEditNotice` UI; events carry the writer's
 `actor_name` so no user lookup is needed.
 
+Offline writes **are** modeled, as AEP requests: every create, update and
+delete made through the `useResource*` hooks (the mutation factory,
+`homestead-core/api/registerResourceMutationDefaults.ts`) is queued in the
+outbox (`homestead-core/api/outbox.ts`) as the standard method it will be sent
+as — AEP-133 create with a client-chosen id, AEP-134 merge patch, AEP-135
+delete — addressed by the record's AEP-122 resource name (its `path`). The
+client picks a new record's id up front, so there are no temporary ids; queued
+writes to one name collapse; list reads apply what's still queued
+(`withPendingWrites`); and the queue is saved in IndexedDB (minus secret-bearing
+entries) and survives reloads and app updates. Pending-sync UI reads it
+(`usePendingSync`). Don't write a separate queue or retry loop for a resource
+write — go through the hooks so it lands in the outbox. See
+[`docs/guides/offline.md`](packages/homestead-site/docs/guides/offline.md).
+
 Row-level security **is** modeled and enforced: per-collection and per-record
 access is governed by the grant-based ACL system (`access-grant` records +
 the shared `resolve()` in `packages/homestead-core/permissions/resolve.ts`,

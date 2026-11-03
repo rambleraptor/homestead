@@ -117,3 +117,9 @@ export function defaultOfflineStore(): KeyValueStore | null {
     delete: async (key) => (await resolve()).delete(key),
   };
 }
+
+/**
+ * The one device store this page uses — the query cache snapshot and the
+ * outbox of queued writes share it (and its single database connection).
+ */
+export const deviceStore: KeyValueStore | null = defaultOfflineStore();

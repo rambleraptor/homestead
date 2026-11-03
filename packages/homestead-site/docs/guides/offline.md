@@ -27,12 +27,44 @@ While offline:
 - **Reads return cached data.** A `useQuery` (or a hook like `useGiftCards`)
   serves whatever it last loaded instead of failing.
 - **Writes apply immediately.** A create, update, or delete updates the screen
-  right away, then waits in a queue. Both the collection list and the edited
-  record's own detail view reflect the change, so the two never disagree.
-- **The queue drains on reconnect.** Queued writes replay in order, oldest
+  right away, then waits in the outbox. Both the collection list and the
+  edited record's own detail view reflect the change, so the two never
+  disagree.
+- **The outbox drains on reconnect.** Queued writes are sent in order, oldest
   first, and the affected lists refetch so the screen matches the server.
 - **A failed write rolls back.** If the server rejects a queued write when it
-  finally runs, the optimistic change is undone.
+  finally runs, the change is undone and the reason is shown as a toast.
+
+Online, a write still waits for the server's answer, so a validation error
+rejects `mutateAsync` as usual and a form can stay open to show it.
+
+### The outbox: writes as AEP requests
+
+Every queued write is stored as the AEP standard method it will be sent as,
+addressed by the record's AEP-122 resource name — the same `path` every record
+carries (`homestead-core/api/outbox.ts`):
+
+| Write | Sent as | Replaying it |
+|-------|---------|--------------|
+| create | AEP-133 `POST {parent}/{collection}?id={id}` — the client picks the id | A 409 on that id means an earlier attempt landed; that record is adopted |
+| update | AEP-134 `PATCH {name}`, an RFC 7396 JSON Merge Patch | Applying a merge patch twice changes nothing more |
+| delete | AEP-135 `DELETE {name}?force=true` | A 404 means it's already gone — done |
+
+Because the client chooses a new record's id, the record has its final id and
+name from the moment it's created, offline or not: you can link to it, edit
+it, or add children under it straight away, with nothing to reconcile later.
+And because each entry is a standard method on a named resource, the outbox
+can reason about writes without knowing which app made them:
+
+- **Writes to one record collapse.** A create then an update is sent as one
+  create; two updates as one merged patch; a create then a delete is never
+  sent at all (nor is anything created beneath it).
+- **Reads include what's queued.** A list read from the server, or restored
+  from the device, shows the queued creates, updates and deletes applied on
+  top — so a refetch mid-queue, or a cache snapshot older than the person's
+  last changes, never hides them.
+- **"Waiting to sync" survives a reload.** `usePendingSync` reads the outbox,
+  which is saved on the device after every change.
 
 The cache survives a page reload, too. A user can close the tab on the subway,
 reopen it still underground, and see their data (kept for up to 7 days). It is
@@ -50,10 +82,9 @@ input carries a secret (changing a PIN offline) stays queued in memory only:
 it syncs as long as the app stays open, but not across a restart.
 
 **Queued writes outlive the cache.** Cached reads are dropped when the server
-ships a new build or after 7 days, but writes still waiting to sync are kept
-either way and replay on the next connection — a server update or a week
-without signal never loses what someone did offline. Until they replay, those
-writes don't show in lists that were dropped with the old reads.
+ships a new build or after 7 days; the outbox is saved separately and is never
+dropped, so a server update or a week without signal never loses what someone
+did offline. Signing out (or a different person signing in) clears it.
 
 **The app itself opens offline, too.** The service worker precaches the app
 shell — `index.html`, styles, and the code of every app's screens — so an app
@@ -167,8 +198,8 @@ file-carrying write is online-only.
 
 The default offline behavior fits standard CRUD, and the factory derives
 everything it needs — list cache key, mutation keys, optimistic shape, request
-body, and the nested-resource URL parent chain — from the resource definition.
-There are no per-resource config overrides.
+body, and each record's resource name — from the resource definition. There
+are no per-resource config overrides.
 
 **Cascade a delete.** When deleting one record should also delete or fix up
 related records, compose the standard hooks in a hand-written hook rather than
@@ -191,14 +222,15 @@ deleteStore.mutate(storeId);
 
 Reading the member list from the cache (not the network) keeps the cascade
 working offline; each `deleteItem.mutate` inherits the grocery resource's
-optimistic removal, temp-id handling, and offline queueing.
+optimistic removal and its place in the outbox.
 
 **Nested resources need no wiring.** A resource with `parents` declared on
 its definition (e.g. a `perk` parented by `credit-card`, or a `redemption`
-two levels deep) gets full offline CRUD automatically: the factory builds the
-`/credit-cards/{id}/perks/{id}/redemptions` URL from the `parents` chain,
-resolving each ancestor id from the create variables or the cached record, and
-strips the parent foreign-key fields from the request body. Point your read
+two levels deep) gets full offline CRUD automatically. A create goes under its
+parent's resource name (the parent record's `path`, found through the parent
+field in the create variables); an update or delete uses the record's own
+`path`. The parent field stays on the cached record for joins but is never
+sent in the request body — the name carries it. Point your read
 hook at the resource's convention keys —
 `queryKeys.app(appId).resource(singular).list()` for a collection and
 `.detail(id)` for one record — so it reads from the same place the factory
@@ -217,6 +249,9 @@ invalidation to reconcile it.
 | `useResourceCreate` / `useResourceUpdate` / `useResourceDelete` | `@rambleraptor/homestead-core/api/resourceHooks` | Offline-ready CRUD hooks |
 | `resourceMutationKeys(appId, singular)` | `@rambleraptor/homestead-core/api/registerResourceMutationDefaults` | Mutation keys for a hand-written `useMutation` |
 | `useOnlineStatus()` | `@rambleraptor/homestead-core/shared/hooks/useOnlineStatus` | `{ isOnline, isOffline }`, reactive |
+| `usePendingSync(id)` / `usePendingSyncIds()` | `@rambleraptor/homestead-core/api/usePendingSync` | Which records have a write waiting for a connection |
+| `<PendingSyncBadge />` | `@rambleraptor/homestead-core/shared/components/PendingSyncBadge` | "Waiting to sync" marker for a row |
+| `outbox` | `@rambleraptor/homestead-core/api/outbox` | The queued AEP requests (read-only for apps) |
 | `<OfflineBanner />` | (in the app shell) | Global offline banner — already mounted |
 
 **Offline behavior at a glance:**
@@ -226,8 +261,9 @@ invalidation to reconcile it.
 | Open the app | Loads from the cached shell (network first, falls back after ~4s) |
 | Read a resource | Serves cached data (kept up to 7 days, survives reload) |
 | Read a secret field after an offline restart | Missing until the next refetch — never stored on the device |
-| Create / update / delete | Applies on screen, queues, syncs on reconnect (oldest first) |
-| App updated (or 7+ days) before reconnecting | Cached reads dropped; queued writes kept and replayed |
+| Create / update / delete | Applies on screen, queues in the outbox, syncs on reconnect (oldest first) |
+| Several writes to one record | Collapse into one request (or none, for create + delete) |
+| App updated (or 7+ days) before reconnecting | Cached reads dropped; the outbox is kept and sent |
 | Queued write rejected by server | Optimistic change rolls back |
 | Upload a file | Fails — uploads are online-only |
 | Action with no offline meaning | You disable it via `useOnlineStatus` |

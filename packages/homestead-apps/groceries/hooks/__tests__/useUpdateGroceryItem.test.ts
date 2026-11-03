@@ -1,15 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { clearTempIdMaps } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 import type { GroceryItem } from '../../types';
-import { groceryKeys, makeGroceriesClient, runMutation } from './testUtils';
+import { groceryKeys, makeGroceriesClient, resetOutbox, runMutation } from './testUtils';
 
 const ITEMS_KEY = queryKeys.app('groceries').resource('grocery').list();
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
-  clearTempIdMaps();
+  await resetOutbox();
 });
 
 describe('update-grocery mutation', () => {

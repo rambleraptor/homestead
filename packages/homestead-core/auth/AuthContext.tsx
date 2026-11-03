@@ -27,6 +27,7 @@ import { AuthContext } from './context';
 import { aepbase, AepbaseError } from '../api/aepbase';
 import { queryClient, queryKeys } from '../api/queryClient';
 import { clearPersistedQueryCache } from '../api/persistQueryClient';
+import { outbox } from '../api/outbox';
 import { logger } from '../utils/logger';
 import { fetchPermissionContext, isRowDependent } from '../permissions/client';
 
@@ -178,6 +179,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setViewAs(null);
         queryClient.clear();
         clearPersistedQueryCache();
+        void outbox.clear();
       } else {
         queryClient.invalidateQueries({ queryKey: queryKeys.auth.user() });
       }
@@ -223,6 +225,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
     queryClient.clear();
     clearPersistedQueryCache();
+    void outbox.clear();
   }, []);
 
   const startViewAs = useCallback((target: ViewAsIdentity) => {

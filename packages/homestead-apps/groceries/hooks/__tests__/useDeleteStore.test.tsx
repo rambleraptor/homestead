@@ -11,10 +11,9 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
-import { clearTempIdMaps } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
 import { useDeleteStore } from '../useDeleteStore';
 import type { GroceryItem, Store } from '../../types';
-import { makeGroceriesClient } from './testUtils';
+import { makeGroceriesClient, resetOutbox } from './testUtils';
 
 const STORES_KEY = queryKeys.app('groceries').resource('store').list();
 const ITEMS_KEY = queryKeys.app('groceries').resource('grocery').list();
@@ -30,9 +29,9 @@ function item(id: string, store: string): GroceryItem {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
-  clearTempIdMaps();
+  await resetOutbox();
 });
 
 describe('useDeleteStore', () => {

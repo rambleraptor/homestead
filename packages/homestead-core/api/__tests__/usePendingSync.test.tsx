@@ -1,227 +1,154 @@
 /**
- * Tests for `usePendingSync` / `usePendingSyncIds`.
+ * Tests for `usePendingSync` / `usePendingSyncIds` / `useHasQueuedWrites`.
  *
- * The behaviour that matters is the discrimination: a write genuinely stuck in
- * the offline queue must be reported, and an ordinary in-flight online write
- * must not — otherwise every save in the app flashes an "unsynced" marker for
- * the length of its round trip.
+ * The behaviour that matters is the discrimination: a write genuinely waiting
+ * in the outbox for a connection must be reported, and an ordinary write on
+ * its way to the server must not — otherwise every save in the app flashes an
+ * "unsynced" marker for the length of its round trip. And since the outbox is
+ * saved on the device, what's waiting is still known after a reload.
  */
 
-import type { ReactNode } from 'react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
-import {
-  MutationObserver,
-  QueryClient,
-  QueryClientProvider,
-  onlineManager,
-} from '@tanstack/react-query';
-import {
-  useHasQueuedWrites,
-  usePendingSync,
-  usePendingSyncIds,
-} from '../usePendingSync';
-import {
-  clearTempIdMaps,
-  registerResourceMutationDefaults,
-  resourceMutationKeys,
-} from '../registerResourceMutationDefaults';
+import { describe, it, expect } from 'vitest';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import type { KeyValueStore } from '../offlineStore';
+import { Outbox, type OutboxRequest } from '../outbox';
+import { useHasQueuedWrites, usePendingSync, usePendingSyncIds } from '../usePendingSync';
 
-vi.mock('../aepbase', () => ({
-  aepbase: {
-    create: vi.fn(async (_plural: string, body: Record<string, unknown>) => ({
-      id: 'real_1',
-      ...body,
-    })),
-    update: vi.fn(async () => ({ id: 'real_1' })),
-    remove: vi.fn(async () => undefined),
-    getCurrentUser: () => ({ id: 'u1' }),
-  },
-}));
-
-const keys = resourceMutationKeys('groceries', 'grocery');
-
-function makeClient(): QueryClient {
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: Infinity },
-      mutations: { retry: false },
-    },
-  });
-  registerResourceMutationDefaults(client, {
-    appId: 'groceries',
-    singular: 'grocery',
-    plural: 'groceries',
-  });
-  return client;
-}
-
-function wrapper(client: QueryClient) {
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+function memoryStore(): KeyValueStore {
+  const data = new Map<string, string>();
+  return {
+    get: async (key) => data.get(key) ?? null,
+    set: async (key, value) => void data.set(key, value),
+    delete: async (key) => void data.delete(key),
   };
 }
 
-/** Start a mutation without awaiting it, so it can be observed mid-flight. */
-function startMutation<TVars>(
-  client: QueryClient,
-  mutationKey: readonly unknown[],
-  variables: TVars,
-) {
-  const observer = new MutationObserver<unknown, Error, TVars>(client, {
-    mutationKey: mutationKey as unknown[],
+/** An outbox whose connection and server replies the test controls. */
+function controlledOutbox(store: KeyValueStore = memoryStore()) {
+  let online = true;
+  const replies: Array<() => void> = [];
+  const outbox = new Outbox({
+    store,
+    secretFields: () => ({ byCollection: new Map(), names: new Set() }),
+    isOnline: () => online,
+    transport: {
+      send: (r: OutboxRequest) =>
+        new Promise((resolve) => replies.push(() => resolve({ path: r.name }))),
+    },
   });
-  const promise = observer.mutate(variables).catch(() => undefined);
-  return { observer, promise };
+  return {
+    outbox,
+    goOffline: () => (online = false),
+    goOnline: () => {
+      online = true;
+      return outbox.drain();
+    },
+    /** Answer every request the server has received so far. */
+    answerAll: () => replies.splice(0).forEach((reply) => reply()),
+  };
 }
-
-let client: QueryClient;
-
-beforeEach(() => {
-  clearTempIdMaps();
-  client = makeClient();
-  onlineManager.setOnline(true);
-});
-
-afterEach(() => {
-  onlineManager.setOnline(true);
-  client.clear();
-});
 
 describe('usePendingSyncIds', () => {
   it('is empty when nothing is queued', () => {
-    const { result } = renderHook(() => usePendingSyncIds(), {
-      wrapper: wrapper(client),
-    });
-
+    const { outbox } = controlledOutbox();
+    const { result } = renderHook(() => usePendingSyncIds(outbox));
     expect(result.current.size).toBe(0);
   });
 
-  it('reports a create queued while offline', async () => {
-    onlineManager.setOnline(false);
-    const { result } = renderHook(() => usePendingSyncIds(), {
-      wrapper: wrapper(client),
+  it('reports each record with a write waiting offline, by its id', () => {
+    const { outbox, goOffline } = controlledOutbox();
+    goOffline();
+    const { result } = renderHook(() => usePendingSyncIds(outbox));
+    act(() => {
+      outbox.enqueue('create', 'groceries/new1', { name: 'Milk' });
+      outbox.enqueue('update', 'groceries/old1', { checked: true });
+      outbox.enqueue('delete', 'credit-cards/c1/perks/p1');
     });
-
-    startMutation(client, keys.create, { tempId: 'tmp_a', name: 'Milk' });
-
-    await waitFor(() => expect(result.current.has('tmp_a')).toBe(true));
+    expect([...result.current].sort()).toEqual(['new1', 'old1', 'p1']);
   });
 
-  it('reports a queued update by its record id', async () => {
-    onlineManager.setOnline(false);
-    const { result } = renderHook(() => usePendingSyncIds(), {
-      wrapper: wrapper(client),
+  it('ignores an ordinary online write on its way to the server', async () => {
+    const { outbox, answerAll } = controlledOutbox();
+    const { result } = renderHook(() => usePendingSyncIds(outbox));
+    act(() => {
+      outbox.enqueue('update', 'groceries/old1', { checked: true });
     });
-
-    startMutation(client, keys.update, { id: 'rec_1', data: { name: 'Eggs' } });
-
-    await waitFor(() => expect(result.current.has('rec_1')).toBe(true));
-  });
-
-  it('reports a queued delete passed as a bare id', async () => {
-    onlineManager.setOnline(false);
-    const { result } = renderHook(() => usePendingSyncIds(), {
-      wrapper: wrapper(client),
-    });
-
-    startMutation(client, keys.delete, 'rec_2');
-
-    await waitFor(() => expect(result.current.has('rec_2')).toBe(true));
-  });
-
-  it('ignores an ordinary online write', async () => {
-    // The whole reason the hook gates on `isPaused` rather than `pending`:
-    // an online create resolves in milliseconds and should never be marked.
-    const { result } = renderHook(() => usePendingSyncIds(), {
-      wrapper: wrapper(client),
-    });
-
-    const { promise } = startMutation(client, keys.create, {
-      tempId: 'tmp_b',
-      name: 'Bread',
-    });
-    await promise;
-
-    expect(result.current.has('tmp_b')).toBe(false);
+    expect(outbox.requests()).toHaveLength(1);
+    expect(result.current.size).toBe(0);
+    await act(async () => answerAll());
   });
 
   it('clears the id once the queue drains', async () => {
-    onlineManager.setOnline(false);
-    const { result } = renderHook(() => usePendingSyncIds(), {
-      wrapper: wrapper(client),
+    const { outbox, goOffline, goOnline, answerAll } = controlledOutbox();
+    goOffline();
+    const { result } = renderHook(() => usePendingSyncIds(outbox));
+    act(() => {
+      outbox.enqueue('update', 'groceries/old1', { checked: true });
     });
+    expect(result.current.has('old1')).toBe(true);
 
-    startMutation(client, keys.create, { tempId: 'tmp_c', name: 'Jam' });
-    await waitFor(() => expect(result.current.has('tmp_c')).toBe(true));
+    await act(async () => {
+      const draining = goOnline();
+      answerAll();
+      await draining;
+    });
+    await waitFor(() => expect(result.current.size).toBe(0));
+  });
 
-    onlineManager.setOnline(true);
+  it('still knows what is waiting after a reload', async () => {
+    const store = memoryStore();
+    const before = controlledOutbox(store);
+    before.goOffline();
+    before.outbox.enqueue('create', 'groceries/new1', { name: 'Milk' });
+    await new Promise((r) => setTimeout(r, 0)); // let the save land
 
-    await waitFor(() => expect(result.current.has('tmp_c')).toBe(false));
+    const after = controlledOutbox(store);
+    after.goOffline();
+    await after.outbox.load();
+    const { result } = renderHook(() => usePendingSyncIds(after.outbox));
+    expect(result.current.has('new1')).toBe(true);
   });
 });
 
 describe('usePendingSync', () => {
-  it('treats an unsent temp id as pending while offline', () => {
-    // Safety net for the reload case: the persisted cache still holds the
-    // `tmp_` record even if its mutation hasn't re-registered as paused.
-    onlineManager.setOnline(false);
-    const { result } = renderHook(() => usePendingSync('tmp_orphan'), {
-      wrapper: wrapper(client),
+  it('answers for one record', () => {
+    const { outbox, goOffline } = controlledOutbox();
+    goOffline();
+    const { result } = renderHook(() => ({
+      queued: usePendingSync('old1', outbox),
+      other: usePendingSync('old2', outbox),
+    }));
+    act(() => {
+      outbox.enqueue('update', 'groceries/old1', { checked: true });
     });
-
-    expect(result.current).toBe(true);
-  });
-
-  it('does not mark a temp id while online', () => {
-    const { result } = renderHook(() => usePendingSync('tmp_orphan'), {
-      wrapper: wrapper(client),
-    });
-
-    expect(result.current).toBe(false);
-  });
-
-  it('does not mark a settled record', () => {
-    onlineManager.setOnline(false);
-    const { result } = renderHook(() => usePendingSync('rec_9'), {
-      wrapper: wrapper(client),
-    });
-
-    expect(result.current).toBe(false);
+    expect(result.current).toEqual({ queued: true, other: false });
   });
 });
 
 describe('useHasQueuedWrites', () => {
   it('is false with an empty queue', () => {
-    const { result } = renderHook(() => useHasQueuedWrites(), {
-      wrapper: wrapper(client),
-    });
-
+    const { outbox } = controlledOutbox();
+    const { result } = renderHook(() => useHasQueuedWrites(outbox));
     expect(result.current).toBe(false);
   });
 
-  it('is true while a write waits for connectivity', async () => {
-    onlineManager.setOnline(false);
-    const { result } = renderHook(() => useHasQueuedWrites(), {
-      wrapper: wrapper(client),
+  it('is true while a write waits for connectivity', () => {
+    const { outbox, goOffline } = controlledOutbox();
+    goOffline();
+    const { result } = renderHook(() => useHasQueuedWrites(outbox));
+    act(() => {
+      outbox.enqueue('update', 'groceries/old1', { checked: true });
     });
-
-    startMutation(client, keys.update, { id: 'rec_3', data: { checked: true } });
-
-    await waitFor(() => expect(result.current).toBe(true));
+    expect(result.current).toBe(true);
   });
 
   it('ignores an ordinary online write', async () => {
-    const { result } = renderHook(() => useHasQueuedWrites(), {
-      wrapper: wrapper(client),
+    const { outbox, answerAll } = controlledOutbox();
+    const { result } = renderHook(() => useHasQueuedWrites(outbox));
+    act(() => {
+      outbox.enqueue('update', 'groceries/old1', { checked: true });
     });
-
-    const { promise } = startMutation(client, keys.create, {
-      tempId: 'tmp_d',
-      name: 'Butter',
-    });
-    await promise;
-
     expect(result.current).toBe(false);
+    await act(async () => answerAll());
   });
 });
