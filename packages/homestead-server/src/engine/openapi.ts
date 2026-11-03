@@ -20,6 +20,7 @@ import type { RegisteredResource, Registry } from './registry';
 import { linksOf } from './links';
 import type { Schema, SchemaProperty } from './types';
 import { isSecretProperty } from './encrypted-fields';
+import { REASON_PHRASES } from '@rambleraptor/homestead-core/resources/problem';
 
 type Json = Record<string, unknown>;
 
@@ -124,13 +125,24 @@ function pathParam(name: string): Json {
   };
 }
 
-function errorResponseSchema(): Json {
+/**
+ * The API's one error body: an RFC 9457 / AEP-193 problem plus the
+ * `error: { code, message }` envelope (see `homestead-core/resources/problem`).
+ * Inline rather than a component, so the component set stays the AEP
+ * contract's resource schemas.
+ */
+export function errorResponseSchema(): Json {
   return {
     type: 'object',
+    description: 'An RFC 9457 problem (AEP-193).',
     properties: {
+      type: { type: 'string', description: 'Problem type URI; about:blank for plain HTTP errors.', example: 'about:blank' },
+      title: { type: 'string', description: 'The HTTP reason phrase.', example: 'Bad Request' },
+      status: { type: 'integer', description: 'The HTTP status code.', example: 400 },
+      detail: { type: 'string', description: 'A human-readable explanation.', example: 'something went wrong' },
       error: {
         type: 'object',
-        description: 'Error details.',
+        description: 'Error details (the same code and message).',
         properties: {
           code: { type: 'integer', description: 'The HTTP status code.', example: 400 },
           message: {
@@ -139,19 +151,27 @@ function errorResponseSchema(): Json {
             example: 'something went wrong',
           },
         },
+        required: ['code', 'message'],
         example: { code: 400, message: 'something went wrong' },
       },
     },
+    required: ['type', 'title', 'status', 'detail', 'error'],
   };
 }
 
-function errResp(code: number, description: string, message: string): Json {
+export function errResp(code: number, description: string, message: string): Json {
   return {
     description,
     content: {
       'application/json': {
         schema: errorResponseSchema(),
-        example: { error: { code, message } },
+        example: {
+          type: 'about:blank',
+          title: REASON_PHRASES[code] ?? 'Error',
+          status: code,
+          detail: message,
+          error: { code, message },
+        },
       },
     },
   };
