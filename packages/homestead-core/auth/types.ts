@@ -32,6 +32,10 @@ export interface User {
   dashboard_widget_order?: string[];
   /** Dashboard widget ids the user has hidden (parsed from preferences). */
   dashboard_hidden_widgets?: string[];
+  /** App ids the user pinned to their sidebar over the default (parsed from preferences). */
+  sidebar_pinned_apps?: string[];
+  /** App ids the user unpinned from their sidebar over the default (parsed from preferences). */
+  sidebar_unpinned_apps?: string[];
   type?: UserType;
   /**
    * The caller's permission context (group ids + expanded grants + whether
