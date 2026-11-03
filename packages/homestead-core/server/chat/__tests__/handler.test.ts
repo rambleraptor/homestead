@@ -159,7 +159,26 @@ describe('confirm methods', () => {
   };
 
   it('are the actions that ask first, by tool', () => {
-    expect(confirmActions([INBOX, GIFT_CARD])).toEqual(new Map([['notifications', new Set([':send'])]]));
+    const actions = confirmActions([INBOX, GIFT_CARD]);
+    expect([...actions.keys()]).toEqual(['notifications']);
+    expect([...actions.get('notifications')!.keys()]).toEqual([':send']);
+  });
+
+  it('ask for a bulk import that writes, never for a validate_only preview', async () => {
+    const RECIPES: ResourceDefinition = {
+      singular: 'recipe',
+      plural: 'recipes',
+      fields: { title: { type: 'string' } },
+      bulkImport: {
+        formats: [{ id: 'text', label: 'Text', inputType: 'text', load: async () => ({ default: { parse: () => [] } }) }],
+      },
+    };
+    const { toolSet } = buildChatToolSet([RECIPES], 't');
+    const needs = toolSet.recipes!.needsApproval as (input: unknown) => boolean;
+    expect(needs({ action: ':bulk-import', body: { format: 'text', text: 'x', validate_only: true } })).toBe(false);
+    expect(needs({ action: ':bulk-import', body: { format: 'text', preview_id: 'p1' } })).toBe(true);
+    expect(needs({ action: ':bulk-import' })).toBe(true);
+    expect(needs({ action: 'list' })).toBe(false);
   });
 
   it("make the tool need approval for that action only", async () => {

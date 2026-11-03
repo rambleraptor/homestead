@@ -72,10 +72,21 @@ export function renderResourceHelp(
     lines.push(`  homestead resources ${parentPrefix}${resource.singular} ${usageForVerb(verb, fields, resource)}`);
   }
   for (const m of customMethodsFor(resource, customMethods)) {
-    const idHint = m.target === 'item' ? '<id> ' : '';
-    lines.push(
-      `  homestead resources ${parentPrefix}${resource.singular} ${m.verb} ${idHint}[--@data body.json]`,
-    );
+    const prefix = `  homestead resources ${parentPrefix}${resource.singular} ${m.verb}`;
+    if (m.bulk_import) {
+      lines.push(
+        `${prefix} --format <id> (--file <path>... | --text <text> | --text-file <path>) [--validate-only] [--select 0,2]`,
+        `${prefix} --format <id> --preview-id <id> [--select 0,2]`,
+      );
+      continue;
+    }
+    if (m.bulk_export) {
+      lines.push(`${prefix} [--format <id>] [--filter <expr>] [--out <file>]`);
+      continue;
+    }
+    const idHint = m.target === 'item' ? ' <id>' : '';
+    const wait = m.async ? ' [--no-wait]' : '';
+    lines.push(`${prefix}${idHint} [--@data body.json] [--upload field=path ...]${wait}`);
   }
 
   const settable = fields.filter((f) => !f.fileField);
@@ -101,8 +112,31 @@ export function renderResourceHelp(
     const width = Math.max(...methods.map((m) => m.verb.length), 4);
     for (const m of methods) {
       const scope = m.target === 'item' ? 'per-record (pass <id>)' : 'collection';
-      lines.push(`  ${m.verb.padEnd(width)}  ${m.method} :${m.verb}  (${scope})`);
+      const lro = m.async ? ', long-running: waits for the result' : '';
+      lines.push(`  ${m.verb.padEnd(width)}  ${m.method} :${m.verb}  (${scope}${lro})`);
     }
+  }
+
+  const importer = methods.find((m) => m.bulk_import);
+  const formats = importer?.bulk_import?.formats ?? [];
+  if (formats.length > 0) {
+    lines.push('', 'Import formats (bulk-import --format):');
+    const width = Math.max(...formats.map((f) => f.id.length), 4);
+    for (const f of formats) {
+      const input = f.input_type === 'file' ? `file${f.multiple ? 's' : ''}` : 'text';
+      const about = f.description ?? f.label;
+      lines.push(`  ${f.id.padEnd(width)}  ${input.padEnd(5)}  ${about}`);
+    }
+    lines.push(
+      '  --validate-only previews without writing and prints a preview_id;',
+      '  --preview-id <id> then imports exactly those rows.',
+    );
+  }
+
+  const exportFormats = methods.find((m) => m.bulk_export)?.bulk_export?.formats ?? [];
+  if (exportFormats.length > 0) {
+    lines.push('', 'Export formats (bulk-export --format):');
+    for (const f of exportFormats) lines.push(`  ${f.id}  ${f.label} (.${f.extension})`);
   }
 
   if (parents.length > 0) {

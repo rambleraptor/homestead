@@ -7,7 +7,9 @@
       "@homestead/config": ["../../homestead.config.ts"]
     },
     "types": ["node"],
-    "incremental": false
+    "incremental": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
   "include": [
     "**/*.ts",

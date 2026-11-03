@@ -15,6 +15,7 @@
  * do directly.
  */
 
+import { methodsOf } from './custom-methods';
 import { authenticate, type AuthedUser } from '../aepbase';
 import { getAllResourceDefs } from '../../apps/registry';
 import { BUILTIN_RESOURCE_DEFS } from '../../resources/builtins';
@@ -157,9 +158,7 @@ export function buildChatToolSet(
       inputSchema: spec.inputSchema,
       // A `confirm` custom method waits for the person's Approve; the turn
       // ends with the request, and resumes on their answer (`./turns`).
-      ...(asks
-        ? { needsApproval: (input: unknown) => asks.has(String((input as { action?: unknown })?.action)) }
-        : {}),
+      ...(asks ? { needsApproval: (input: unknown) => needsApproval(asks, input) } : {}),
       execute: async (rawArgs: unknown) => {
         const args = (rawArgs ?? {}) as Record<string, unknown>;
         const out = await surface.execute(name, args, token);
@@ -176,18 +175,40 @@ export function buildChatToolSet(
   return { toolSet, hasDocSearch: searchTool !== null };
 }
 
+/** Whether one action's call needs approval, given its body. */
+type ApprovalRule = (body: Record<string, unknown>) => boolean;
+
 /**
  * The actions that need the person's approval, by tool name: each resource's
- * `confirm` custom methods, as the per-resource surface names them
- * (`notifications` → `:send`).
+ * `confirm` custom methods — the synthesized `:bulk-import` among them — as the
+ * per-resource surface names them (`notifications` → `:send`). A
+ * `confirm: { unless: field }` method asks only when that body field isn't true.
  */
-export function confirmActions(defs: readonly ResourceDefinition[]): Map<string, Set<string>> {
-  const out = new Map<string, Set<string>>();
+export function confirmActions(
+  defs: readonly ResourceDefinition[],
+): Map<string, Map<string, ApprovalRule>> {
+  const out = new Map<string, Map<string, ApprovalRule>>();
   for (const def of defs) {
-    const verbs = Object.entries(def.customMethods ?? {}).filter(([, m]) => m.confirm);
-    if (verbs.length > 0) out.set(snake(def.plural), new Set(verbs.map(([verb]) => `:${verb}`)));
+    const rules = new Map<string, ApprovalRule>();
+    for (const [verb, method] of methodsOf(def)) {
+      const confirm = method.confirm;
+      if (!confirm) continue;
+      rules.set(
+        `:${verb}`,
+        confirm === true ? () => true : (body) => body[confirm.unless] !== true,
+      );
+    }
+    if (rules.size > 0) out.set(snake(def.plural), rules);
   }
   return out;
+}
+
+/** Apply a tool's approval rules to one call's input (`{ action, body }`). */
+export function needsApproval(rules: Map<string, ApprovalRule>, input: unknown): boolean {
+  const { action, body } = (input ?? {}) as { action?: unknown; body?: unknown };
+  const rule = rules.get(String(action));
+  if (!rule) return false;
+  return rule(body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {});
 }
 
 export async function handleChat(request: Request): Promise<Response> {

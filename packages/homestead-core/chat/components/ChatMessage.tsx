@@ -19,6 +19,7 @@ import { toolAction } from '../hooks/useConversation';
 import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
 import { MessageAttachments } from './MessageAttachments';
 import { ApprovalCard } from './ApprovalCard';
+import type { BulkImportPreview } from '@rambleraptor/homestead-client';
 import { ReplyLink, replyRehypePlugins, replyUrlTransform } from './ChatValue';
 import { plainReplyText } from '../values';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
@@ -80,6 +81,8 @@ export interface ChatMessageProps {
   onAnswerApproval?: (approvalId: string, approved: boolean) => Promise<void>;
   /** A turn is running, so a waiting call can't be answered yet. */
   busy?: boolean;
+  /** Look up an earlier bulk-import preview, for an approval about importing it. */
+  findPreview?: (previewId: string) => BulkImportPreview | null;
 }
 
 export function ChatMessage({
@@ -89,6 +92,7 @@ export function ChatMessage({
   streaming,
   onAnswerApproval,
   busy,
+  findPreview,
 }: ChatMessageProps) {
   const toast = useToast();
   const isUser = message.role === 'user';
@@ -134,7 +138,13 @@ export function ChatMessage({
           if (isStaticToolUIPart(part)) {
             if (part.state === 'approval-requested' && onAnswerApproval) {
               return (
-                <ApprovalCard key={part.toolCallId} part={part} onAnswer={onAnswerApproval} disabled={busy} />
+                <ApprovalCard
+                  key={part.toolCallId}
+                  part={part}
+                  onAnswer={onAnswerApproval}
+                  disabled={busy}
+                  findPreview={findPreview}
+                />
               );
             }
             return <ToolCall key={part.toolCallId} part={part} />;

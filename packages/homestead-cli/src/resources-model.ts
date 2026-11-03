@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { APIClient, Client, logger } from '@aep_dev/aep-lib-ts';
 import type { OpenAPI, Resource } from '@aep_dev/aep-lib-ts';
+import type { BulkImportFormatInfo } from '@rambleraptor/homestead-client';
 import { withoutCollectionMethods } from './openapi-filter.ts';
 import { getProfile, type Profile } from './credentials.ts';
 
@@ -36,6 +37,15 @@ export interface CustomMethodInfo {
   target: 'collection' | 'item';
   /** HTTP method the gateway expects (default POST). */
   method: string;
+  /** Long-running (AEP-151): answers with an operation. */
+  async?: boolean;
+  /** Present on `:bulk-import` — the formats this server offers. */
+  bulk_import?: { formats: BulkImportFormatInfo[] };
+  /** Present on `:bulk-export` — its formats and options. */
+  bulk_export?: {
+    formats: Array<{ id: string; label: string; mime_type: string; extension: string }>;
+    options: Array<{ id: string; label: string; type: 'boolean'; default?: boolean }>;
+  };
 }
 
 /** Everything a verb handler needs to talk to aepbase + the sidecar. */

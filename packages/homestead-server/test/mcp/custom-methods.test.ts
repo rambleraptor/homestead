@@ -239,3 +239,157 @@ describe('executeCustomMethod', () => {
     expect((out as { error: string }).error).toContain('not found');
   });
 });
+
+// ───────────────────────── files and bulk import ─────────────────────────
+
+const UPLOAD = {
+  type: 'object',
+  properties: { $upload: { type: 'string' } },
+  required: ['$upload'],
+  'x-homestead-upload': true,
+};
+
+const PHOTOS: ResourceDefinition = {
+  singular: 'photo',
+  plural: 'photos',
+  fields: { name: { type: 'string' } },
+  customMethods: {
+    read: {
+      description: 'Read a photo.',
+      request: { type: 'object', properties: { image: UPLOAD }, required: ['image'] },
+      load: noop,
+    },
+    album: {
+      request: {
+        type: 'object',
+        properties: { title: { type: 'string' }, pages: { type: 'array', items: UPLOAD } },
+      },
+      load: noop,
+    },
+  },
+};
+
+const RECIPES: ResourceDefinition = {
+  singular: 'recipe',
+  plural: 'recipes',
+  fields: { title: { type: 'string' } },
+  bulkImport: {
+    formats: [
+      { id: 'text', label: 'Text', inputType: 'text', load: async () => ({ default: { parse: () => [] } }) },
+      { id: 'photos', label: 'Photos', inputType: 'file', multiple: true, load: async () => ({ default: { parse: () => [] } }) },
+    ],
+  },
+};
+
+/** Answer each request in turn from `responses`, recording them. */
+function sequenceFetch(responses: Response[]) {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    calls.push({ url: String(url), init });
+    return responses.shift() ?? new Response('{}');
+  }) as typeof fetch;
+  restoreFetch = () => (globalThis.fetch = original);
+  return calls;
+}
+
+const attachments = async (id: string) => new File([`bytes of ${id}`], `${id}.png`, { type: 'image/png' });
+
+describe('custom methods that take files', () => {
+  it('take attachment ids where the surface has attachments', () => {
+    const { tools } = buildCustomMethodTools([PHOTOS], undefined, { files: true });
+    expect(params(tools.read_photos.inputSchema)).toEqual({ image: true });
+    const image = (tools.read_photos.inputSchema as z.ZodObject).shape.image;
+    expect(image.description).toMatch(/attachment id/);
+    expect(params(tools.album_photos.inputSchema)).toEqual({ title: false, pages: false });
+  });
+
+  it('without attachments, drop an optional file field and skip a required one', () => {
+    const { tools } = buildCustomMethodTools([PHOTOS]);
+    expect(tools).not.toHaveProperty('read_photos');
+    expect(params(tools.album_photos.inputSchema)).toEqual({ title: false });
+  });
+
+  it('send the attached files as multipart $upload parts', async () => {
+    const { bindings } = buildCustomMethodTools([PHOTOS], undefined, { files: true });
+    const calls = sequenceFetch([new Response('{"items":[]}')]);
+    const out = await executeCustomMethod('album_photos', { title: 'Trip', pages: ['a1', 'a2'] }, bindings, 'tok', {
+      attachments,
+    });
+    expect(out.ok).toBe(true);
+    const form = calls[0]!.init.body as FormData;
+    expect(form).toBeInstanceOf(FormData);
+    expect(JSON.parse(form.get('body') as string)).toEqual({
+      title: 'Trip',
+      pages: [{ $upload: '$upload-0' }, { $upload: '$upload-1' }],
+    });
+    expect((form.get('$upload-1') as File).name).toBe('a2.png');
+  });
+
+  it('refuse attachment ids where there is nothing to resolve them', async () => {
+    const { bindings } = buildCustomMethodTools([PHOTOS], undefined, { files: true });
+    sequenceFetch([]);
+    const out = await executeCustomMethod('read_photos', { image: 'a1' }, bindings, 'tok');
+    expect(out).toEqual({ ok: false, error: '"image" takes files, which can only be attached in the chat' });
+  });
+});
+
+describe('bulk import as a tool', () => {
+  it('is offered from the bulkImport declaration, with the standard body', () => {
+    const { tools } = buildCustomMethodTools([RECIPES], undefined, { files: true });
+    const shape = (tools.bulk_import_recipes.inputSchema as z.ZodObject).shape;
+    expect(Object.keys(shape).sort()).toEqual(
+      ['files', 'format', 'preview_id', 'selected_indices', 'text', 'validate_only'].sort(),
+    );
+    expect(shape.format.safeParse('photos').success).toBe(true);
+    expect(shape.format.safeParse('nope').success).toBe(false);
+    expect(shape.selected_indices.safeParse([0, 2]).success).toBe(true);
+    expect(shape.selected_indices.safeParse('*').success).toBe(true);
+    expect(tools.bulk_import_recipes.description).toContain('validate_only');
+  });
+
+  it('leaves files out on a surface without attachments', () => {
+    const { tools } = buildCustomMethodTools([RECIPES]);
+    expect((tools.bulk_import_recipes.inputSchema as z.ZodObject).shape).not.toHaveProperty('files');
+  });
+
+  it('waits for the operation and labels the preview as untrusted', async () => {
+    const { bindings } = buildCustomMethodTools([RECIPES], undefined, { files: true });
+    const preview = { validate_only: true, preview_id: 'p1', items: [], summary: { total: 0, valid: 0, invalid: 0 } };
+    const calls = sequenceFetch([
+      new Response('{"id":"op1","done":false}', { status: 202 }),
+      new Response('{"id":"op1","done":false}'),
+      new Response(JSON.stringify({ id: 'op1', done: true, response: preview })),
+    ]);
+    const out = await executeCustomMethod(
+      'bulk_import_recipes',
+      { format: 'text', text: 'https://www.tiktok.com/@a/video/1', validate_only: true },
+      bindings,
+      'tok',
+    );
+    expect(calls.map((c) => c.url.replace(/^.*\/api\/aep/, ''))).toEqual([
+      '/recipes:bulk-import',
+      '/operations/op1',
+      '/operations/op1',
+    ]);
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
+      format: 'text',
+      text: 'https://www.tiktok.com/@a/video/1',
+      validate_only: true,
+    });
+    expect(out).toEqual({
+      ok: true,
+      result: { untrusted: true, source: expect.stringContaining('recipes parsed'), content: preview },
+    });
+  });
+
+  it("reports a failed operation's problem detail", async () => {
+    const { bindings } = buildCustomMethodTools([RECIPES]);
+    sequenceFetch([
+      new Response('{"id":"op1","done":false}', { status: 202 }),
+      new Response(JSON.stringify({ id: 'op1', done: true, error: { status: 410, detail: 'preview expired' } })),
+    ]);
+    const out = await executeCustomMethod('bulk_import_recipes', { format: 'text', preview_id: 'p1' }, bindings, 'tok');
+    expect(out).toEqual({ ok: false, error: 'operation op1 failed: preview expired' });
+  });
+});
