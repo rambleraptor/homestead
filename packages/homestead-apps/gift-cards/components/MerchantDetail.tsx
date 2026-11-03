@@ -68,6 +68,17 @@ export function MerchantDetail({
     return '•'.repeat(Math.min(str.length, 16));
   };
 
+  // The offline cache never keeps card numbers on the device, so after an
+  // offline start a card arrives without one until it can be refetched.
+  const cardNumber = (card: GiftCard) =>
+    card.card_number ? (
+      maskString(card.card_number, visibleNumbers.has(card.id))
+    ) : (
+      <span className="font-sans text-gray-500" data-testid="card-number-unavailable">
+        Available when online
+      </span>
+    );
+
   const handleDecrementAmount = (card: GiftCard, cardId: string) => {
     const amount = parseFloat(transactionAmount[cardId] || '0');
     if (amount <= 0) return;
@@ -225,23 +236,25 @@ export function MerchantDetail({
                     <label className="text-sm font-medium text-gray-700">
                       Card Number
                     </label>
-                    <button
-                      onClick={() => toggleNumberVisibility(card.id)}
-                      className="text-xs text-accent-terracotta hover:underline flex items-center gap-1"
-                    >
-                      {visibleNumbers.has(card.id) ? (
-                        <>
-                          <EyeOff className="w-3 h-3" /> Hide
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-3 h-3" /> Show
-                        </>
-                      )}
-                    </button>
+                    {card.card_number && (
+                      <button
+                        onClick={() => toggleNumberVisibility(card.id)}
+                        className="text-xs text-accent-terracotta hover:underline flex items-center gap-1"
+                      >
+                        {visibleNumbers.has(card.id) ? (
+                          <>
+                            <EyeOff className="w-3 h-3" /> Hide
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3 h-3" /> Show
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                   <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
-                    {maskString(card.card_number, visibleNumbers.has(card.id))}
+                    {cardNumber(card)}
                   </p>
                 </div>
 
@@ -385,23 +398,25 @@ export function MerchantDetail({
                         <label className="text-sm font-medium text-gray-700">
                           Card Number
                         </label>
-                        <button
-                          onClick={() => toggleNumberVisibility(card.id)}
-                          className="text-xs text-accent-terracotta hover:underline flex items-center gap-1"
-                        >
-                          {visibleNumbers.has(card.id) ? (
-                            <>
-                              <EyeOff className="w-3 h-3" /> Hide
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="w-3 h-3" /> Show
-                            </>
-                          )}
-                        </button>
+                        {card.card_number && (
+                          <button
+                            onClick={() => toggleNumberVisibility(card.id)}
+                            className="text-xs text-accent-terracotta hover:underline flex items-center gap-1"
+                          >
+                            {visibleNumbers.has(card.id) ? (
+                              <>
+                                <EyeOff className="w-3 h-3" /> Hide
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3 h-3" /> Show
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                       <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
-                        {maskString(card.card_number, visibleNumbers.has(card.id))}
+                        {cardNumber(card)}
                       </p>
                     </div>
 

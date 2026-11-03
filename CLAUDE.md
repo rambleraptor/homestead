@@ -662,8 +662,10 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    (remove the field instead). Without a key, the boot schema sync logs which
    encrypted fields can't be saved, and `homestead doctor` lists them
    (`engine/key-check.ts`, `tools/encrypted-fields.ts`). The VM and e2e servers
-   run with a fixed test key. Ask before marking an existing field — it's a
-   schema change. Encrypted today: gift-card `card_number`/`pin`, household
+   run with a fixed test key. The SPA keeps encrypted (and secret) fields out
+   of the offline cache it saves on the device (`homestead-core/api/redactSecrets.ts`),
+   so a screen showing one must cope with it missing after an offline start.
+   Ask before marking an existing field — it's a schema change. Encrypted today: gift-card `card_number`/`pin`, household
    (and legacy address) `wifi_password`.
 9. **`secret: true`** (or `{ hint: n }`) is `encrypted` plus write-only
    (`x-aepbase-secret`; `homestead-server/src/engine/secret-fields.ts`): every

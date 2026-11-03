@@ -25,7 +25,11 @@ import {
   PERSIST_BUSTER,
   PERSIST_MAX_AGE_MS,
   PERSISTER_STORAGE_KEY,
+  LEGACY_PERSISTER_STORAGE_KEY,
 } from '../persistQueryClient';
+import type { KeyValueStore } from '../offlineStore';
+import { secretFieldIndex } from '../redactSecrets';
+import type { ResourceDefinition } from '../../resources/types';
 
 const dehydrate = persistOptions.dehydrateOptions!;
 
@@ -119,48 +123,169 @@ describe('isPersistableKey', () => {
   });
 });
 
+/** An in-memory stand-in for the device store. */
+function memoryStore(): KeyValueStore & { data: Map<string, string> } {
+  const data = new Map<string, string>();
+  return {
+    data,
+    get: async (key) => data.get(key) ?? null,
+    set: async (key, value) => void data.set(key, value),
+    delete: async (key) => void data.delete(key),
+  };
+}
+
+const GIFT_CARD_SECRETS = () =>
+  secretFieldIndex([
+    {
+      singular: 'gift-card',
+      plural: 'gift-cards',
+      fields: {
+        merchant: { type: 'string' },
+        card_number: { type: 'string', encrypted: true },
+        pin: { type: 'string', encrypted: true },
+      },
+    } as unknown as ResourceDefinition,
+  ]);
+
+function clientWith(queries: unknown[], mutations: unknown[] = []): PersistedClient {
+  return {
+    buster: PERSIST_BUSTER,
+    timestamp: Date.now(),
+    clientState: { queries, mutations } as unknown as PersistedClient['clientState'],
+  };
+}
+
+const giftCardList = (data: unknown) => ({
+  queryKey: ['app', 'gift-cards', 'gift-card', 'list'],
+  queryHash: '["app","gift-cards","gift-card","list"]',
+  state: { data, status: 'success' },
+});
+
 describe('createOfflinePersister', () => {
-  beforeEach(() => {
-    window.localStorage.clear();
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('returns a non-null persister in the browser environment', () => {
-    expect(createOfflinePersister()).not.toBeNull();
+  it('is null without anywhere to store', () => {
+    expect(createOfflinePersister({ store: null })).toBeNull();
   });
 
-  it('reads previously stored client state through restoreClient', async () => {
-    const state = {
-      buster: PERSIST_BUSTER,
-      timestamp: Date.now(),
-      clientState: { mutations: [], queries: [] },
-    };
-    window.localStorage.setItem('homeos:rq:v2', JSON.stringify(state));
-    const persister = createOfflinePersister();
-    const restored = await persister!.restoreClient();
-    expect(restored).toEqual(state);
+  it('saves at most once per throttle window, latest snapshot wins', async () => {
+    vi.useFakeTimers();
+    const store = memoryStore();
+    const persister = createOfflinePersister({ store, legacy: null })!;
+    persister.persistClient(clientWith([giftCardList([{ id: 'a' }])]));
+    persister.persistClient(clientWith([giftCardList([{ id: 'b' }])]));
+    expect(store.data.size).toBe(0);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(store.data.get(PERSISTER_STORAGE_KEY)).toContain('"id":"b"');
+    expect(store.data.get(PERSISTER_STORAGE_KEY)).not.toContain('"id":"a"');
   });
 
-  it('does not throw when localStorage.setItem throws (quota exceeded)', async () => {
-    const persister = createOfflinePersister();
-    const spy = vi
-      .spyOn(Storage.prototype, 'setItem')
-      .mockImplementation(() => {
-        throw new DOMException('quota', 'QuotaExceededError');
-      });
+  it('flush writes a pending save right away', async () => {
+    const store = memoryStore();
+    const persister = createOfflinePersister({ store, legacy: null })!;
+    persister.persistClient(clientWith([giftCardList([{ id: 'a' }])]));
+    await persister.flush();
+    expect(store.data.get(PERSISTER_STORAGE_KEY)).toContain('"id":"a"');
+  });
 
-    let threw = false;
-    try {
-      await persister!.persistClient({
-        buster: 'test',
-        timestamp: Date.now(),
-        clientState: { mutations: [], queries: [] },
-      });
-    } catch {
-      threw = true;
-    }
-    expect(threw).toBe(false);
+  it('reads back what it saved', async () => {
+    const store = memoryStore();
+    const persister = createOfflinePersister({ store, legacy: null })!;
+    const saved = clientWith([giftCardList([{ id: 'a', merchant: 'Acme' }])]);
+    persister.persistClient(saved);
+    await persister.flush();
+    expect(await persister.restoreClient()).toEqual(saved);
+  });
 
-    spy.mockRestore();
+  it('never writes a secret field to the store', async () => {
+    const store = memoryStore();
+    const persister = createOfflinePersister({ store, legacy: null, secretFields: GIFT_CARD_SECRETS })!;
+    persister.persistClient(
+      clientWith([
+        giftCardList([
+          { id: 'a', path: 'gift-cards/a', merchant: 'Acme', card_number: '4111 2222', pin: '9876' },
+        ]),
+      ]),
+    );
+    await persister.flush();
+    const saved = store.data.get(PERSISTER_STORAGE_KEY)!;
+    expect(saved).toContain('Acme');
+    expect(saved).not.toContain('4111 2222');
+    expect(saved).not.toContain('9876');
+  });
+
+  it('removeClient deletes the snapshot and cancels a pending save', async () => {
+    vi.useFakeTimers();
+    const store = memoryStore();
+    const persister = createOfflinePersister({ store, legacy: null })!;
+    persister.persistClient(clientWith([giftCardList([{ id: 'a' }])]));
+    await persister.flush();
+    persister.persistClient(clientWith([giftCardList([{ id: 'b' }])]));
+    await persister.removeClient();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(store.data.has(PERSISTER_STORAGE_KEY)).toBe(false);
+  });
+
+  describe('moving a snapshot out of localStorage', () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    const legacySnapshot = () =>
+      clientWith(
+        [giftCardList([{ id: 'a', path: 'gift-cards/a', merchant: 'Acme', card_number: '4111 2222' }])],
+        [
+          {
+            mutationKey: ['app', 'groceries', 'create-grocery'],
+            state: { status: 'pending', isPaused: true, variables: { name: 'milk' } },
+          },
+        ],
+      );
+
+    it('hands the old snapshot to this session, whole', async () => {
+      const snapshot = legacySnapshot();
+      window.localStorage.setItem(LEGACY_PERSISTER_STORAGE_KEY, JSON.stringify(snapshot));
+      const persister = createOfflinePersister({
+        store: memoryStore(),
+        legacy: window.localStorage,
+        secretFields: GIFT_CARD_SECRETS,
+      })!;
+      expect(await persister.restoreClient()).toEqual(snapshot);
+    });
+
+    it('stores it redacted, then removes it from localStorage', async () => {
+      window.localStorage.setItem(LEGACY_PERSISTER_STORAGE_KEY, JSON.stringify(legacySnapshot()));
+      const store = memoryStore();
+      const persister = createOfflinePersister({
+        store,
+        legacy: window.localStorage,
+        secretFields: GIFT_CARD_SECRETS,
+      })!;
+      await persister.restoreClient();
+      expect(window.localStorage.getItem(LEGACY_PERSISTER_STORAGE_KEY)).toBeNull();
+      const moved = store.data.get(PERSISTER_STORAGE_KEY)!;
+      expect(moved).toContain('milk');
+      expect(moved).toContain('Acme');
+      expect(moved).not.toContain('4111 2222');
+    });
+
+    it('prefers the new store once it has a snapshot', async () => {
+      window.localStorage.setItem(LEGACY_PERSISTER_STORAGE_KEY, JSON.stringify(legacySnapshot()));
+      const store = memoryStore();
+      const current = clientWith([giftCardList([{ id: 'new' }])]);
+      store.data.set(PERSISTER_STORAGE_KEY, JSON.stringify(current));
+      const persister = createOfflinePersister({ store, legacy: window.localStorage })!;
+      expect(await persister.restoreClient()).toEqual(current);
+    });
+
+    it('drops an unreadable old snapshot', async () => {
+      window.localStorage.setItem(LEGACY_PERSISTER_STORAGE_KEY, '{not json');
+      const persister = createOfflinePersister({ store: memoryStore(), legacy: window.localStorage })!;
+      expect(await persister.restoreClient()).toBeUndefined();
+      expect(window.localStorage.getItem(LEGACY_PERSISTER_STORAGE_KEY)).toBeNull();
+    });
   });
 });
 
@@ -237,10 +362,6 @@ describe('salvageQueuedWrites', () => {
 describe('restoring a snapshot from an earlier build', () => {
   const KEY = ['app', 'groceries', 'create-grocery'];
 
-  beforeEach(() => {
-    window.localStorage.clear();
-  });
-
   afterEach(() => {
     onlineManager.setOnline(true);
   });
@@ -259,7 +380,8 @@ describe('restoring a snapshot from an earlier build', () => {
       timestamp: Date.now(),
       clientState: dehydrateClient(before, persistOptions.dehydrateOptions),
     };
-    window.localStorage.setItem(PERSISTER_STORAGE_KEY, JSON.stringify(stale));
+    const store = memoryStore();
+    store.data.set(PERSISTER_STORAGE_KEY, JSON.stringify(stale));
 
     // The new build restores through the real React Query path.
     const sent = vi.fn(async (vars: { name: string }) => vars.name);
@@ -267,7 +389,7 @@ describe('restoring a snapshot from an earlier build', () => {
     after.setMutationDefaults(KEY, { mutationFn: sent, networkMode: 'online' });
     await persistQueryClientRestore({
       queryClient: after,
-      persister: createOfflinePersister()!,
+      persister: createOfflinePersister({ store, legacy: null })!,
       buster: PERSIST_BUSTER,
       maxAge: PERSIST_MAX_AGE_MS,
     });
