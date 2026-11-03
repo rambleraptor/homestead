@@ -95,6 +95,16 @@ export class ChatPage {
     await this.toolCalls.nth(index).getByRole('button').first().click();
   }
 
+  /** The disclosure over a reply that shows what the model thought first. */
+  get reasoning(): Locator {
+    return this.driver.getByTestId('chat-reasoning');
+  }
+
+  /** Open or close the thinking behind a reply. */
+  async toggleReasoning() {
+    await this.reasoning.getByRole('button').first().click();
+  }
+
   /** The "assistant is working" row, present until the reply starts. */
   get pending(): Locator {
     return this.driver.getByTestId('chat-pending');

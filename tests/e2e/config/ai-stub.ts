@@ -387,14 +387,25 @@ type RoundStep = ScriptStep & { round?: number };
 
 /** The step as a non-streaming Responses reply (what `generateText` reads). */
 function scriptedReply(step: RoundStep) {
-  const output: unknown[] = (step.toolCalls ?? []).map((call, i) => ({
-    type: 'function_call',
-    id: `fc_stub_${i}`,
-    call_id: callId(i, step.round),
-    name: call.name,
-    arguments: JSON.stringify(call.args),
-    status: 'completed',
-  }));
+  const output: unknown[] = [];
+  if (step.reasoning !== undefined) {
+    output.push({
+      type: 'reasoning',
+      id: 'rs_stub',
+      encrypted_content: null,
+      summary: [{ type: 'summary_text', text: step.reasoning }],
+    });
+  }
+  for (const [i, call] of (step.toolCalls ?? []).entries()) {
+    output.push({
+      type: 'function_call',
+      id: `fc_stub_${i}`,
+      call_id: callId(i, step.round),
+      name: call.name,
+      arguments: JSON.stringify(call.args),
+      status: 'completed',
+    });
+  }
   if (step.text !== undefined) {
     output.push({
       type: 'message',
@@ -415,7 +426,8 @@ function scriptedReply(step: RoundStep) {
 }
 
 /**
- * The step as the Responses event stream (what `streamText` reads): tool calls
+ * The step as the Responses event stream (what `streamText` reads): a
+ * reasoning summary first (a word at a time, like the text), then tool calls
  * as added → arguments → done items, then the text a word at a time, then
  * `response.completed`. Only the events the provider parses are sent.
  */
@@ -427,6 +439,20 @@ function scriptedStream(step: RoundStep): Response {
   ];
 
   let index = 0;
+  if (step.reasoning !== undefined) {
+    const item = { type: 'reasoning', id: 'rs_stub', encrypted_content: null, summary: [] };
+    events.push({ type: 'response.output_item.added', output_index: index, item });
+    for (const word of step.reasoning.match(/\S+\s*|\s+/g) ?? []) {
+      events.push({
+        type: 'response.reasoning_summary_text.delta',
+        item_id: item.id,
+        summary_index: 0,
+        delta: word,
+      });
+    }
+    events.push({ type: 'response.output_item.done', output_index: index, item });
+    index++;
+  }
   for (const [i, call] of (step.toolCalls ?? []).entries()) {
     const item = { type: 'function_call', id: `fc_stub_${i}`, call_id: callId(i, step.round), name: call.name };
     const args = JSON.stringify(call.args);

@@ -8,8 +8,8 @@ than installed, and are licensed under the Apache License 2.0 (see `LICENSE`).
 They render against the shadcn semantic tokens, which
 `homestead-app/src/shadcn-chat.css` maps onto the Homestead palette, and the
 shadcn primitives under `../ui/` (Collapsible, Badge, ScrollArea, Tooltip,
-InputGroup and Select came in alongside them, from shadcn/ui's new-york-v4
-registry, MIT).
+InputGroup, Select and Alert came in alongside them, from shadcn/ui's
+new-york-v4 registry, MIT).
 
 ## What was changed from upstream
 
@@ -26,6 +26,9 @@ that:
 | `code-block.tsx` | As upstream (Shiki highlighting, copy button, language selector), with the same `border-border` on its container and header. Shiki is pinned to upstream's version. |
 | `suggestion.tsx` | As upstream. |
 | `shimmer.tsx` | The sweep is a CSS animation (`animate-text-shimmer` in `globals.css`) instead of `motion`, so no animation library is needed. |
+| `confirmation.tsx` | As upstream, with `border-border` on the alert for the same reason as `tool.tsx`. |
+| `reasoning.tsx` | Streamdown core only, like `message.tsx`. Open/duration state is a local controllable-state hook: `radix-ui` (this app's Radix dependency) doesn't re-export `@radix-ui/react-use-controllable-state`. |
+| `loader.tsx` | As upstream (from the registry). |
 
 To take a newer upstream version, diff against these notes rather than
 overwriting: the changes above are deliberate.

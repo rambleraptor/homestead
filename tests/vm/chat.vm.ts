@@ -11,7 +11,7 @@ import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harnes
 import { ChatPage } from '../e2e/pages/ChatPage';
 import { SettingsPage } from '../e2e/pages/SettingsPage';
 import { e2eClient } from '../e2e/utils/aepbase-helpers';
-import { CHAT_MARKERS, LONG_REPLY_TEXT } from '../e2e/config/ai-scripts';
+import { CHAT_MARKERS, LONG_REPLY_TEXT, REASONING_TEXT } from '../e2e/config/ai-scripts';
 
 interface GroceryItemRecord {
   id: string;
@@ -255,6 +255,28 @@ describe('Chat', () => {
     await d.expect(chat.messages).toContainText('Hello from the scripted assistant. How can I help?');
     await d.expect(chat.toolCalls).toHaveCount(0);
     await chat.expectSettled(/Hi there/);
+  });
+
+  test('what the model thought first is there behind a disclosure, and after a reload', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Hi there ${CHAT_MARKERS.reasonedReply}`);
+
+    await d.expect(chat.messages).toContainText('Hello! I gave that some thought first.');
+    await chat.expectSettled(/Hi there/);
+    // Open while it streamed; it closes itself once the reply is in.
+    await d.expect(chat.reasoning).toContainText(/Thought for/);
+    await d.expect(chat.reasoning).not.toContainText(REASONING_TEXT);
+    await chat.toggleReasoning();
+    await d.expect(chat.reasoning).toContainText(REASONING_TEXT);
+
+    // Stored with the message, so it comes back closed.
+    await d.reload();
+    await d.expect(chat.reasoning).toContainText('Thought for a few seconds');
+    await d.expect(chat.reasoning).not.toContainText(REASONING_TEXT);
+    await chat.toggleReasoning();
+    await d.expect(chat.reasoning).toContainText(REASONING_TEXT);
   });
 
   // These two use the short reply on purpose: what they check is the stored
