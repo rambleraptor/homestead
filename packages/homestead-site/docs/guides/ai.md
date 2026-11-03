@@ -138,6 +138,12 @@ API by running `homestead resources`.
 | `--email=… --password=…`      | Authenticate with superuser credentials instead of minting.    |
 | `--server-url=URL`            | Target a remote engine (default `http://127.0.0.1:<port>/api/aep`). |
 | `--@data=PATH`                | Supply a JSON body from a file (for create or custom methods). |
+| `--upload=FIELD=PATH`         | Attach a file to a custom method's body (repeat a field for a list); sent as multipart. |
+| `--no-wait`                   | Print a long-running method's operation instead of waiting for its result. |
+| `--format`, `--file`, `--text`, `--text-file` | Bulk import input (`--file` repeats). |
+| `--validate-only`             | Bulk import: preview without writing; prints the `preview_id`. |
+| `--preview-id=ID`, `--select=0,2` | Bulk import: write exactly those rows of a preview. |
+| `--out=PATH`, `--filter=EXPR` | Bulk export: where to write the file, and which rows. |
 | `--data-dir=PATH`             | Where the SQLite database lives (default `<project>/data`).    |
 
 ---

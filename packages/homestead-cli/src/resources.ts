@@ -17,6 +17,7 @@ import {
   ID_FLAG,
   type RawFlags,
 } from './resources-flags.ts';
+import { CUSTOM_METHOD_FLAGS, runCustomMethod, type RepeatedFlags } from './resources-custom.ts';
 import {
   customMethodsFor,
   renderIndex,
@@ -44,7 +45,7 @@ const ctx = {};
  * with a resource but no verb it prints that resource's help.
  */
 export async function resourcesCmd(args: string[]): Promise<number> {
-  const { flags, positionals } = parseFlags(args);
+  const { flags, positionals, repeated } = parseFlags(args);
   const [resourceName, verbArg, idArg] = positionals;
 
   let model: ResourceContext;
@@ -87,7 +88,7 @@ export async function resourcesCmd(args: string[]): Promise<number> {
 
   try {
     const result = custom
-      ? await runCustomMethod(model, resource, custom, idArg, flags)
+      ? await runCustom(model, resource, custom, idArg, flags, repeated)
       : await runVerb(model, resource, verbArg as Verb, idArg, flags);
     if (result !== undefined) console.log(JSON.stringify(result, null, 2));
     return 0;
@@ -99,15 +100,17 @@ export async function resourcesCmd(args: string[]): Promise<number> {
 }
 
 /**
- * Invoke an AEP-136 custom method on `resource` via the /api/aep gateway:
- * `POST /api/aep/<plural>[/<id>]:<verb>`. The body comes from `--@data`.
+ * Invoke an AEP-136 custom method on `resource`: `POST /api/aep/<plural>[/<id>]:<verb>`
+ * through the shared client (see `./resources-custom`). The body comes from
+ * `--@data`, files from `--upload field=path`; bulk import/export have their own flags.
  */
-async function runCustomMethod(
+async function runCustom(
   model: ResourceContext,
   resource: Resource,
   method: CustomMethodInfo,
   idArg: string | undefined,
   flags: RawFlags,
+  repeated: RepeatedFlags,
 ): Promise<unknown> {
   const parentParams = collectParentParams(resource, flags);
   let resourcePath: string;
@@ -118,38 +121,15 @@ async function runCustomMethod(
           `homestead resources ${resource.singular} ${method.verb} <id>`,
       );
     }
-    resourcePath = buildItemPath(resource, parentParams, idArg);
+    resourcePath = buildItemPath(resource, parentParams, idArg).replace(/^\//, '');
   } else {
     resourcePath = buildCollectionPath(resource, parentParams);
   }
-
   const body = readCustomMethodBody(flags);
-  const url = `${model.sidecarUrl}/api/aep/${resourcePath}:${method.verb}`;
-  const res = await fetch(url, {
-    method: method.method || 'POST',
-    headers: {
-      Authorization: `Bearer ${model.token}`,
-      'X-User-Id': model.userId,
-      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-
-  const text = await res.text();
-  let parsed: unknown = undefined;
-  if (text) {
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      // non-JSON; surface raw text below
-    }
+  if (body !== undefined && (typeof body !== 'object' || body === null || Array.isArray(body))) {
+    throw new FlagError('--@data must hold a JSON object');
   }
-  if (!res.ok) {
-    const detail =
-      parsed !== undefined ? JSON.stringify(parsed) : text || `HTTP ${res.status}`;
-    throw new Error(`${resource.plural}:${method.verb} → ${res.status}: ${detail}`);
-  }
-  return parsed ?? text;
+  return runCustomMethod(model, method, resourcePath, body as Record<string, unknown> | undefined, flags, repeated);
 }
 
 /** Collection path for a (possibly nested) resource: drop the trailing id. */
@@ -232,7 +212,13 @@ function requireId(idArg: string | undefined, verb: Verb): string {
 
 /** Body-field flags are everything except globals, parents, --@data and --id. */
 function reservedFlags(resource: Resource): Set<string> {
-  return new Set([...GLOBAL_FLAGS, ...parentPlaceholders(resource), DATA_FLAG, ID_FLAG]);
+  return new Set([
+    ...GLOBAL_FLAGS,
+    ...CUSTOM_METHOD_FLAGS,
+    ...parentPlaceholders(resource),
+    DATA_FLAG,
+    ID_FLAG,
+  ]);
 }
 
 function connectOptions(flags: RawFlags): ConnectOptions {
@@ -279,12 +265,19 @@ function fail(err: unknown, code: number): number {
 interface ParsedFlags {
   flags: RawFlags;
   positionals: string[];
+  /** Every value of each flag, in order (for `--file`, `--upload`). */
+  repeated: RepeatedFlags;
 }
 
 /** Minimal flag parser: --flag, --flag=value, --flag value (mirrors cli.ts). */
-function parseFlags(args: string[]): ParsedFlags {
+export function parseFlags(args: string[]): ParsedFlags {
   const flags: RawFlags = {};
+  const repeated: RepeatedFlags = {};
   const positionals: string[] = [];
+  const set = (name: string, value: string | boolean) => {
+    flags[name] = value;
+    if (typeof value === 'string') (repeated[name] ??= []).push(value);
+  };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (!a.startsWith('--')) {
@@ -292,20 +285,21 @@ function parseFlags(args: string[]): ParsedFlags {
       continue;
     }
     const eq = a.indexOf('=');
+    // `--upload=image=./list.png` splits at the first `=` only.
     if (eq !== -1) {
-      flags[a.slice(2, eq)] = a.slice(eq + 1);
+      set(a.slice(2, eq), a.slice(eq + 1));
       continue;
     }
     const name = a.slice(2);
     const next = args[i + 1];
     if (next !== undefined && !next.startsWith('--')) {
-      flags[name] = next;
+      set(name, next);
       i++;
     } else {
-      flags[name] = true;
+      set(name, true);
     }
   }
-  return { flags, positionals };
+  return { flags, positionals, repeated };
 }
 
 function str(v: string | boolean | undefined): string | undefined {

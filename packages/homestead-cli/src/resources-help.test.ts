@@ -71,3 +71,29 @@ test('renderResourceHelp prefixes nested usage with parent flags', () => {
   expect(out).toContain('--gift-card <id> transaction list');
   expect(out).not.toContain('transaction update'); // no update verb
 });
+
+test('renderResourceHelp shows bulk import usage and the formats on offer', () => {
+  const out = renderResourceHelp(giftCard, [
+    {
+      plural: 'gift-cards',
+      verb: 'bulk-import',
+      target: 'collection',
+      method: 'POST',
+      async: true,
+      bulk_import: {
+        formats: [
+          { id: 'csv', label: 'CSV', input_type: 'file', multiple: false, has_template: true },
+          { id: 'notes', label: 'Notes', input_type: 'text', multiple: false, has_template: false, description: 'Pasted notes.' },
+        ],
+      },
+    },
+    { plural: 'gift-cards', verb: 'reprice', target: 'item', method: 'POST', async: true },
+  ]);
+  expect(out).toContain('gift-card bulk-import --format <id> (--file <path>...');
+  expect(out).toContain('gift-card bulk-import --format <id> --preview-id <id>');
+  expect(out).toContain('Import formats (bulk-import --format):');
+  expect(out).toMatch(/csv\s+file\s+CSV/);
+  expect(out).toMatch(/notes\s+text\s+Pasted notes\./);
+  expect(out).toContain('gift-card reprice <id> [--@data body.json] [--upload field=path ...] [--no-wait]');
+  expect(out).toContain('long-running: waits for the result');
+});
