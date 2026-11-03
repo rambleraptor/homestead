@@ -15,6 +15,7 @@ import { credentialsApp } from './credentials/app.config';
 import { mcpServersApp } from './mcp-servers/app.config';
 import { operationsApp } from '@rambleraptor/homestead-core/operations/app.config';
 import { permissionsApp } from '@rambleraptor/homestead-core/permissions/app.config';
+import { sidebarDefaultsApp } from './sidebar-defaults/app.config';
 
 export const superuserApp: AppConfig = {
   id: 'superuser',
@@ -24,6 +25,7 @@ export const superuserApp: AppConfig = {
     usersApp,
     permissionsApp,
     flagManagementApp,
+    sidebarDefaultsApp,
     credentialsApp,
     mcpServersApp,
     operationsApp,

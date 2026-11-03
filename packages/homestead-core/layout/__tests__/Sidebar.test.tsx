@@ -14,8 +14,8 @@ vi.mock('../../auth/useAuth', () => ({ useAuth: vi.fn() }));
 // household defaults flag); this test is about the chrome around it.
 vi.mock('@rambleraptor/homestead-core/apps/useSidebarPins', () => ({
   useSidebarPins: () => ({
-    visibleApps: [],
-    pinnedApps: [],
+    entries: [],
+    pinnedEntries: [],
     states: new Map(),
     defaultIds: new Set(),
     defaultOverrides: {},

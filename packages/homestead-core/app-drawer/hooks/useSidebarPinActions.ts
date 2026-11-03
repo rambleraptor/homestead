@@ -1,8 +1,8 @@
 /**
- * Pin, unpin, and reset for the signed-in person's sidebar, on top of
- * `useSidebarPins`. Each action writes the whole pair of lists, computed by
- * the pure `withPinChanged`, so a choice that matches the default clears its
- * override instead of recording one.
+ * Move an entry into or out of the signed-in person's sidebar, and reset, on
+ * top of `useSidebarPins`. Each action writes the whole pair of lists,
+ * computed by the pure `withPinChanged`, so a choice that matches the default
+ * clears its override instead of recording one.
  */
 
 import { useCallback } from 'react';
@@ -25,15 +25,15 @@ export function useSidebarPinActions(): SidebarPinActions {
   const update = useUpdateSidebarPins();
   const pinned = user?.sidebar_pinned_apps;
   const unpinned = user?.sidebar_unpinned_apps;
-  const { visibleApps, defaultIds } = pins;
+  const { entries, defaultIds } = pins;
 
   const setPinned = useCallback(
     async (appId: string, next: boolean) => {
       await update.mutateAsync(
-        withPinChanged({ pinned, unpinned }, visibleApps, appId, next, { defaultIds }),
+        withPinChanged({ pinned, unpinned }, entries, appId, next, { defaultIds }),
       );
     },
-    [update, pinned, unpinned, visibleApps, defaultIds],
+    [update, pinned, unpinned, entries, defaultIds],
   );
 
   const reset = useCallback(async () => {

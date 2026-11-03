@@ -1,25 +1,87 @@
 /**
  * App Drawer Page Object Model
  *
- * The `/apps` page listing every app the viewer can use, and the sidebar's
- * fixed "All apps" entry that opens it. Written against the shared `Driver`,
- * so it drives both the Playwright suite and the in-process VM tier.
+ * The `/apps` page: two lists, "Your sidebar" and "More apps", with one
+ * button moving an entry between them; and the sidebar's fixed "All apps"
+ * entry that opens it. The superuser's Sidebar defaults page uses the same
+ * two lists, so `SidebarDefaultsPage` below shares the helpers.
+ *
+ * Written against the shared `Driver`, so it drives both the Playwright
+ * suite and the in-process VM tier.
  */
 
 import type { Driver, Locator } from '../../../packages/homestead-test-harness/driver/Driver';
 
-export class AppDrawerPage {
+export class SidebarListsPage {
   constructor(readonly driver: Driver) {}
 
-  private expect(locator: Locator) {
+  protected expect(locator: Locator) {
     return this.driver.expect(locator);
   }
 
+  /** The "open" link of an entry, in whichever list it sits. */
+  open(appId: string) {
+    return this.driver.getByTestId(`app-drawer-open-${appId}`);
+  }
+
+  /** An entry's row in the left list. */
+  row(appId: string) {
+    return this.driver.getByTestId(`app-drawer-row-${appId}`);
+  }
+
+  /** An entry's tile in the right list (a parent with children is a folder). */
+  tile(appId: string) {
+    return this.driver.getByTestId(`app-drawer-tile-${appId}`);
+  }
+
+  folder(appId: string) {
+    return this.driver.getByTestId(`app-drawer-folder-${appId}`);
+  }
+
+  /** Move an entry into the left list and wait for it to land. */
+  async add(appId: string) {
+    await this.driver.getByTestId(`app-drawer-add-${appId}`).click();
+    await this.expect(this.row(appId)).toBeVisible();
+  }
+
+  /** Move an entry out of the left list and wait for it to land. */
+  async remove(appId: string) {
+    await this.driver.getByTestId(`app-drawer-remove-${appId}`).click();
+    await this.expect(this.row(appId)).toHaveCount(0);
+  }
+
+  async expectInLeft(appId: string) {
+    await this.expect(this.row(appId)).toBeVisible();
+  }
+
+  async expectInRight(appId: string) {
+    await this.expect(this.tile(appId).or(this.folder(appId))).toBeVisible();
+  }
+
+  async expectAbsent(appId: string) {
+    await this.expect(this.open(appId)).toHaveCount(0);
+  }
+
+  /** A sidebar link for an app, by its visible name. */
+  sidebarApp(name: string | RegExp) {
+    return this.driver.getByRole('navigation').getByRole('link', { name });
+  }
+
+  async expectInSidebar(name: string | RegExp) {
+    await this.expect(this.sidebarApp(name)).toBeVisible();
+  }
+
+  async expectNotInSidebar(name: string | RegExp) {
+    await this.expect(this.sidebarApp(name)).toHaveCount(0);
+  }
+}
+
+export class AppDrawerPage extends SidebarListsPage {
   async goto() {
     await this.driver.goto('/apps');
   }
 
-  /** The sidebar's fixed entry, outside the pinned sections. */
+  /** The sidebar's fixed entry, outside the sections. */
   get sidebarLink() {
     return this.driver.getByTestId('sidebar-all-apps-link');
   }
@@ -33,105 +95,26 @@ export class AppDrawerPage {
     return this.driver.getByTestId('app-drawer');
   }
 
-  card(appId: string) {
-    return this.driver.getByTestId(`app-drawer-card-${appId}`);
-  }
-
-  pinButton(appId: string) {
-    return this.driver.getByTestId(`app-drawer-pin-${appId}`);
-  }
-
-  /** Toggle an app's pin and wait for the saved state to come back. */
-  async togglePin(appId: string) {
-    const before = await this.pinButton(appId).getAttribute('aria-pressed');
-    await this.pinButton(appId).click();
-    await this.expect(this.pinButton(appId)).toHaveAttribute(
-      'aria-pressed',
-      before === 'true' ? 'false' : 'true',
-    );
-  }
-
-  get summary() {
-    return this.driver.getByTestId('app-drawer-summary');
-  }
-
-  get resetButton() {
+  get resetLink() {
     return this.driver.getByTestId('app-drawer-reset');
   }
 
   async reset() {
-    await this.resetButton.click();
-    await this.expect(this.resetButton).toHaveCount(0);
+    await this.resetLink.click();
+    await this.expect(this.resetLink).toHaveCount(0);
   }
 
   async search(text: string) {
     await this.driver.getByTestId('app-drawer-search').fill(text);
   }
+}
 
-  async expectPinned(appId: string, pinned: boolean) {
-    await this.expect(this.pinButton(appId)).toHaveAttribute('aria-pressed', String(pinned));
+export class SidebarDefaultsPage extends SidebarListsPage {
+  async goto() {
+    await this.driver.goto('/superuser/sidebar-defaults');
   }
 
-  /** The superuser-only mode switch; absent for everyone else. */
-  get defaultsModeTab() {
-    return this.driver.getByTestId('app-drawer-mode-defaults');
-  }
-
-  async switchToDefaults() {
-    await this.defaultsModeTab.click();
-    await this.expect(this.defaultsModeTab).toHaveAttribute('aria-selected', 'true');
-  }
-
-  async switchToMine() {
-    await this.driver.getByTestId('app-drawer-mode-mine').click();
-    await this.expect(this.driver.getByTestId('app-drawer-summary')).toBeVisible();
-  }
-
-  defaultSwitch(appId: string) {
-    return this.driver.getByTestId(`app-drawer-default-${appId}`);
-  }
-
-  /** Toggle an app's household default and wait for the saved state. */
-  async toggleDefault(appId: string) {
-    const before = await this.defaultSwitch(appId).getAttribute('aria-checked');
-    await this.defaultSwitch(appId).click();
-    await this.expect(this.defaultSwitch(appId)).toHaveAttribute(
-      'aria-checked',
-      before === 'true' ? 'false' : 'true',
-    );
-  }
-
-  get defaultSummary() {
-    return this.driver.getByTestId('app-drawer-default-summary');
-  }
-
-  /** The "A new member's sidebar" preview entry for an app. */
-  previewEntry(appId: string) {
-    return this.driver.getByTestId(`app-drawer-preview-${appId}`);
-  }
-
-  tag(appId: string) {
-    return this.driver.getByTestId(`app-drawer-tag-${appId}`);
-  }
-
-  /** A sidebar link for an app, by its visible name. */
-  sidebarApp(name: string | RegExp) {
-    return this.driver.getByRole('navigation').getByRole('link', { name });
-  }
-
-  async expectCard(appId: string) {
-    await this.expect(this.card(appId)).toBeVisible();
-  }
-
-  async expectNoCard(appId: string) {
-    await this.expect(this.card(appId)).toHaveCount(0);
-  }
-
-  async expectInSidebar(name: string | RegExp) {
-    await this.expect(this.sidebarApp(name)).toBeVisible();
-  }
-
-  async expectNotInSidebar(name: string | RegExp) {
-    await this.expect(this.sidebarApp(name)).toHaveCount(0);
+  get page() {
+    return this.driver.getByTestId('sidebar-defaults');
   }
 }
