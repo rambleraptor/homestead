@@ -1,6 +1,6 @@
 # Agent cards — Design and implementation plan
 
-**Status:** Proposed · **Audience:** contributors
+**Status:** Phase 1 implemented, phases 2–3 proposed · **Audience:** contributors
 
 > How a tool call in an assistant reply renders as a card the person can read
 > and act on, instead of a JSON disclosure — and how the record half of that
@@ -67,6 +67,7 @@ export interface RecordCardType {
   component: LazyComponent<RecordCardProps>;
 }
 
+/** The tool calls a single read `get`; the card contract names it `read`, after the CRUD op it is. */
 export type ChatCardAction = 'create' | 'read' | 'update' | 'delete' | 'list' | `:${string}`;
 
 /** A tool call rendered in a reply: the action framing around a record (or a list of them). */
@@ -243,7 +244,7 @@ pass over `message.parts` in `ChatMessage` before rendering.
 Each phase is one PR, green on `make ci && make test`, with VM specs through
 scripted turns in `tests/e2e/config/ai-scripts.ts`.
 
-### Phase 1 — platform: generic cards for every tool call
+### Phase 1 — platform: generic cards for every tool call (done)
 
 No app changes. Every reply reads better immediately.
 
@@ -258,12 +259,14 @@ No app changes. Every reply reads better immediately.
 - `ApprovalCard` renders the proposed card above its buttons.
 - Page object: `ChatPage.cards` (`chat-card`), `cardFor(singular)`
   (`chat-card-<singular>`), `cardTitle`.
-- VM specs (`tests/vm/chat-cards.vm.ts`): `addMilk` shows a grocery create
-  card titled "Milk"; `listUnchecked` shows a list card with a count; a new
-  `updateTodo` script shows was/now; a new `deleteTodo` script shows the
-  struck title; `messageSam` approval shows the proposed card; `mcpCheckLight`
-  still renders the MCP header. Reopening a conversation from history renders
-  the same cards from stored parts.
+- VM specs (`tests/vm/chat-cards.vm.ts`, plus the card assertions in
+  `chat.vm.ts`): `addMilk` shows a grocery create card titled "Milk";
+  `listUnchecked` shows a list card with a count; the `updateTodo`, `readTodo`
+  and `deleteTodo` scripts act on a todo the spec seeds with the client-chosen
+  id `TODO_ID` (not seeding it gives the failed card); `messageSam` approval
+  shows the proposed card and Deny the denied one; `mcpCheckLight` still
+  renders the MCP header. Reopening a conversation from history renders the
+  same cards from stored parts.
 
 ### Phase 2 — app cards: todos, groceries, notifications
 

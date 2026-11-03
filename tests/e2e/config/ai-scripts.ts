@@ -157,6 +157,12 @@ export const CHAT_MARKERS = {
   importRecipe: 'e2e-chat-import-recipe',
   /** Preview the attached screenshot as recipes, then repeat what came back. */
   previewScreenshot: 'e2e-chat-preview-screenshot',
+  /** Move the seeded todo (see TODO_ID) to Do Later, then say so. */
+  updateTodo: 'e2e-chat-update-todo',
+  /** Remove the seeded todo (see TODO_ID), then say so. */
+  deleteTodo: 'e2e-chat-delete-todo',
+  /** Look the seeded todo (see TODO_ID) up, then say so. */
+  readTodo: 'e2e-chat-read-todo',
   /** Read a light's state from the test MCP server, then repeat what came back. */
   mcpCheckLight: 'e2e-chat-mcp-check-light',
   /** Unlock the front door on the test MCP server (an "ask first" tool), then say so. */
@@ -167,6 +173,12 @@ export const CHAT_MARKERS = {
 
 /** The reasoned reply's thinking, exported so a spec can check it is shown. */
 export const REASONING_TEXT = 'A greeting is all that is needed here, so no tool is called.';
+/**
+ * The id the todo scripts act on. A script is static, so a spec seeds the todo
+ * with this client-chosen id (`todo` allows one) before sending the marker — or
+ * doesn't, to see the call fail.
+ */
+export const TODO_ID = 'e2e-chat-todo';
 
 /** The long reply's text, exported so a spec can check the whole of it arrived. */
 export const LONG_REPLY_TEXT = Array.from({ length: 200 }, (_, i) => `word${i + 1}`).join(' ');
@@ -351,6 +363,27 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
       // After the person's answer: the call ran (or was denied), and the
       // model has its outcome.
       { text: 'Done.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.updateTodo,
+    steps: [
+      { toolCalls: [{ name: 'todos', args: { action: 'update', id: TODO_ID, fields: { status: 'do_later' } } }] },
+      { text: 'Moved it to Do Later.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.deleteTodo,
+    steps: [
+      { toolCalls: [{ name: 'todos', args: { action: 'delete', id: TODO_ID } }] },
+      { text: 'Removed it.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.readTodo,
+    steps: [
+      { toolCalls: [{ name: 'todos', args: { action: 'get', id: TODO_ID } }] },
+      { text: 'Here it is.' },
     ],
   },
   {

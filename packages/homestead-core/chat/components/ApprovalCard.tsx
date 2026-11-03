@@ -6,7 +6,9 @@
  *
  * Built on AI Elements' `Confirmation`, which keys off the tool part's
  * `approval` and `state`: the request and its actions show only while the
- * call is `approval-requested`.
+ * call is `approval-requested`. A call on one of Homestead's resources shows
+ * as its card in `proposed` mode (`./ChatCard`); a bulk import shows the rows
+ * it would save; an outside tool its arguments.
  */
 
 import type { BulkImportPreview } from '@rambleraptor/homestead-client';
@@ -25,6 +27,8 @@ import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehol
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
+import { ownerForTool } from '../cards';
+import { CardFace } from './ChatCard';
 
 /** `notifications` + `:send` → "Notifications: send". */
 function actionLabel(part: ToolUIPart): string {
@@ -67,6 +71,7 @@ export function ApprovalCard({ part, onAnswer, disabled, findPreview }: Approval
       : undefined;
 
   const importBody = mcp ? null : bulkImportBody(part.input);
+  const owner = mcp || importBody ? undefined : ownerForTool(part.type);
 
   const answer = async (approved: boolean) => {
     if (!approvalId) return;
@@ -92,11 +97,14 @@ export function ApprovalCard({ part, onAnswer, disabled, findPreview }: Approval
         Approve this?
       </ConfirmationTitle>
       <ConfirmationRequest>
-        <dl className="space-y-1 text-foreground">
-          <div className="flex gap-2">
-            <dt className="text-muted-foreground">Action</dt>
-            <dd data-testid="chat-approval-action">{mcp ? mcp.tool : actionLabel(part)}</dd>
-          </div>
+        {owner && <CardFace part={part} owner={owner} mode="proposed" />}
+        <dl className="space-y-1 text-foreground empty:hidden">
+          {!owner && (
+            <div className="flex gap-2">
+              <dt className="text-muted-foreground">Action</dt>
+              <dd data-testid="chat-approval-action">{mcp ? mcp.tool : actionLabel(part)}</dd>
+            </div>
+          )}
           {mcp && (
             <div className="flex gap-2">
               <dt className="text-muted-foreground">On</dt>
@@ -110,7 +118,7 @@ export function ApprovalCard({ part, onAnswer, disabled, findPreview }: Approval
             </div>
           )}
           {importBody ? <ImportRows body={importBody} findPreview={findPreview} /> : null}
-          {(importBody ? [] : detailRows(part.input, mcp !== null)).map(([label, value]) => (
+          {(importBody || owner ? [] : detailRows(part.input, mcp !== null)).map(([label, value]) => (
             <div key={label} className="flex gap-2">
               <dt className="text-muted-foreground">{label}</dt>
               <dd className="whitespace-pre-wrap break-words">{value}</dd>

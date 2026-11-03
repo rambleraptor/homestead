@@ -90,9 +90,24 @@ export class ChatPage {
     return this.driver.getByTestId('chat-tool-call');
   }
 
-  /** Open a tool card to show what it sent and got back. */
+  /** Open a tool card's details: what it sent and what came back. */
   async openToolCall(index = 0) {
-    await this.toolCalls.nth(index).getByRole('button').first().click();
+    await this.toolCalls.nth(index).getByTestId('chat-tool-toggle').click();
+  }
+
+  /** The card for a call on one of Homestead's resources, by the resource's singular. */
+  card(singular: string): Locator {
+    return this.driver.getByTestId(`chat-card-${singular}`);
+  }
+
+  /** A card's headline: what the call did ("Added grocery"). */
+  get cardHeadlines(): Locator {
+    return this.driver.getByTestId('chat-card-headline');
+  }
+
+  /** The record titles cards show. */
+  get cardTitles(): Locator {
+    return this.driver.getByTestId('chat-card-title');
   }
 
   /** The disclosure over a reply that shows what the model thought first. */

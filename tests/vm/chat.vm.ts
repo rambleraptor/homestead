@@ -79,7 +79,9 @@ describe('Chat', () => {
 
     await d.expect(chat.messages).toContainText('Added milk to the grocery list.');
     await d.expect(chat.toolCalls).toHaveCount(1);
-    await d.expect(chat.toolCalls.first()).toContainText('groceries · create');
+    await d.expect(chat.card('grocery')).toHaveAttribute('data-mode', 'done');
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Added grocery');
+    await d.expect(chat.cardTitles.first()).toHaveText('Milk');
     await d.expect(chat.toolCalls.first()).toContainText('Completed');
     await d.expect(chat.pending).toHaveCount(0);
     await chat.expectSettled(/Add milk to the grocery list/);
@@ -123,7 +125,7 @@ describe('Chat', () => {
       await ask(chat);
       await chat.answerApproval(true);
       await d.expect(chat.messages).toContainText('Done.');
-      await d.expect(chat.toolCalls.first()).toContainText('notifications · :send');
+      await d.expect(chat.cardHeadlines.first()).toHaveText('Notification: send');
       await d.expect(chat.toolCalls.first()).toContainText('Completed');
       expect(await samInbox()).toEqual([
         expect.objectContaining({ title: 'Running late', from_user: `users/${h.member.id}` }),
@@ -164,7 +166,9 @@ describe('Chat', () => {
     await chat.send(`What's still on the list? ${CHAT_MARKERS.listUnchecked}`);
 
     await d.expect(chat.messages).toContainText('Here is what is still on the list.');
-    await d.expect(chat.toolCalls.first()).toContainText('groceries · list');
+    await d.expect(chat.cardHeadlines.first()).toHaveText('1 grocery');
+    await d.expect(chat.card('grocery')).toContainText('Eggs');
+    await d.expect(chat.card('grocery')).not.toContainText('Bread');
     await chat.expectSettled(/still on the list/);
     // A read leaves the data as it was.
     expect((await groceries.listAll()).map((i) => i.name).sort()).toEqual(['Bread', 'Eggs']);
@@ -182,7 +186,7 @@ describe('Chat', () => {
     await chat.send(`What's Jake's address? ${CHAT_MARKERS.findPerson}`);
 
     await d.expect(chat.messages).toContainText('Here is who I found.');
-    await d.expect(chat.toolCalls.first()).toContainText('people · list');
+    await d.expect(chat.cardHeadlines.first()).toHaveText('2 people');
     await d.expect(chat.toolCalls.first()).toContainText('Completed');
     await chat.openToolCall();
     await d.expect(chat.toolCalls.first()).toContainText('"name": "Jake Miller"');
@@ -396,7 +400,10 @@ describe('Chat', () => {
       await chat.send(`Save this gift card ${CHAT_MARKERS.fileGiftCard}`);
 
       await d.expect(chat.messages).toContainText('Saved the REI gift card with its photo.');
-      await d.expect(chat.toolCalls.first()).toContainText('gift_cards · create');
+      await d.expect(chat.cardHeadlines.first()).toHaveText('Added gift card');
+      await d.expect(chat.cardTitles.first()).toHaveText('REI');
+      // The card number is encrypted, so the card never shows it.
+      await d.expect(chat.card('gift-card')).not.toContainText('1234');
       await chat.expectSettled(/Save this gift card/);
       const cards = await e2eClient(token).collection<{ front_image?: string }>('gift-cards').listAll();
       expect(cards).toHaveLength(1);

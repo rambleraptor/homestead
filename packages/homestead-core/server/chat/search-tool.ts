@@ -21,6 +21,7 @@ import { fileEmbeds } from '../../resources/ai-fields';
 import { referenceFields, referenceId } from '../../resources/references';
 import type { ResourceDefinition } from '../../resources/types';
 import { getVectorStore } from '../vectors/store';
+import { recordTitle } from '../../resources/display';
 
 /** Built-in user root — searchable resources may reference it (`created_by`). */
 const USER_PLURAL = 'users';
@@ -54,23 +55,6 @@ function embeddedResources(defs: ResourceDefinition[]): ResourceDefinition[] {
   return defs.filter(
     (def) => !def.parents?.length && Object.values(def.fields).some(fileEmbeds),
   );
-}
-
-/** A resource's display title from a fetched record, if it has one. */
-function pickTitle(record: unknown): string | undefined {
-  if (!record || typeof record !== 'object') return undefined;
-  const r = record as {
-    title?: unknown;
-    name?: unknown;
-    display_name?: unknown;
-    email?: unknown;
-  };
-  if (typeof r.title === 'string' && r.title) return r.title;
-  if (typeof r.name === 'string' && r.name) return r.name.split('/').filter(Boolean).pop();
-  // Users carry no title/name; fall back to their display name, then email.
-  if (typeof r.display_name === 'string' && r.display_name) return r.display_name;
-  if (typeof r.email === 'string' && r.email) return r.email;
-  return undefined;
 }
 
 /**
@@ -165,7 +149,7 @@ export function makeSearchTool(opts: {
         if (labelCache.has(ck)) return labelCache.get(ck);
         let label: string | undefined;
         try {
-          label = pickTitle(await hs.collection(plural).get(referenceId(id, plural)));
+          label = recordTitle(await hs.collection(plural).get(referenceId(id, plural)));
         } catch {
           label = undefined; // inaccessible target — leave the id unlabeled
         }
@@ -220,7 +204,7 @@ export function makeSearchTool(opts: {
           try {
             const record = await hs.collection(plural).get(hit.record);
             rec = {
-              title: pickTitle(record),
+              title: recordTitle(record),
               references: await resolveReferences(hit.resource, record),
             };
           } catch {

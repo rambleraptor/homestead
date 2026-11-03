@@ -150,8 +150,10 @@ export function pickListParams(args: Record<string, unknown>): Record<string, un
 }
 const USER_ROOT_PLURAL = 'users';
 
-/** Tool names are snake_case, so kebab-case resource names lose their hyphens. */
-export const snake = (s: string): string => s.replace(/-/g, '_');
+// Tool names are snake_case, so kebab-case resource names lose their hyphens.
+// Shared with the SPA, which reads a part's type back to its resource.
+import { snake } from '../../chat/tool-names';
+export { snake };
 
 /** Apply a description to a Zod schema only when one is present. */
 function described<T extends z.ZodTypeAny>(schema: T, description?: string): T {

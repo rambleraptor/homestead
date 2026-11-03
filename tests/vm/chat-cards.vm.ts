@@ -1,0 +1,139 @@
+/**
+ * Cards: a tool call on one of Homestead's resources renders in the reply as
+ * what it did, in the person's terms — the record's title and readable fields
+ * — with the raw parameters and result behind a Details toggle. The scripts
+ * (tests/e2e/config/ai-scripts.ts) run their calls for real, so each spec
+ * also checks the data the card describes.
+ */
+
+import { afterEach, beforeEach, describe, test, expect } from 'vitest';
+import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
+import { ChatPage } from '../e2e/pages/ChatPage';
+import { e2eClient } from '../e2e/utils/aepbase-helpers';
+import { CHAT_MARKERS, TODO_ID } from '../e2e/config/ai-scripts';
+
+interface TodoRecord {
+  id: string;
+  title: string;
+  status: string;
+}
+
+describe('Chat cards', () => {
+  let h: Harness;
+  let token: string;
+  const todos = () => e2eClient(token).collection<TodoRecord>('todos');
+  const seedTodo = () => todos().create({ title: 'Call the plumber', status: 'pending' }, { id: TODO_ID });
+
+  beforeEach(async () => {
+    h = await bootHomestead();
+    ({ token } = await h.loginAs(h.member));
+  });
+
+  afterEach(async () => {
+    await h.close();
+  });
+
+  test('an update shows the record and the fields that changed', async () => {
+    const d = h.driver;
+    await seedTodo();
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Move the plumber to later ${CHAT_MARKERS.updateTodo}`);
+
+    await d.expect(chat.messages).toContainText('Moved it to Do Later.');
+    const card = chat.card('todo');
+    await d.expect(card).toHaveAttribute('data-action', 'update');
+    await d.expect(card).toHaveAttribute('data-mode', 'done');
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Changed todo');
+    await d.expect(chat.cardTitles.first()).toHaveText('Call the plumber');
+    // The enum value reads as words, labeled by field.
+    await d.expect(card).toContainText('Status');
+    await d.expect(card).toContainText('Do later');
+    await d.expect(card).not.toContainText('do_later');
+    expect((await todos().get(TODO_ID)).status).toBe('do_later');
+
+    // The JSON is still there, behind Details.
+    await d.expect(chat.toolCalls.first()).not.toContainText('Parameters');
+    await chat.openToolCall();
+    await d.expect(chat.toolCalls.first()).toContainText('Parameters');
+    await d.expect(chat.toolCalls.first()).toContainText('"status": "do_later"');
+    await d.expect(chat.toolCalls.first()).toContainText('Result');
+  });
+
+  test('a delete strikes the record through', async () => {
+    const d = h.driver;
+    await seedTodo();
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Remove the plumber todo ${CHAT_MARKERS.deleteTodo}`);
+
+    await d.expect(chat.messages).toContainText('Removed it.');
+    await d.expect(chat.card('todo')).toHaveAttribute('data-mode', 'done');
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Removed todo');
+    await d.expect(chat.toolCalls.first()).toContainText('Completed');
+    expect(await todos().listAll()).toEqual([]);
+  });
+
+  test('a read shows the record', async () => {
+    const d = h.driver;
+    await seedTodo();
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`What's the plumber todo? ${CHAT_MARKERS.readTodo}`);
+
+    await d.expect(chat.messages).toContainText('Here it is.');
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Looked up todo');
+    await d.expect(chat.cardTitles.first()).toHaveText('Call the plumber');
+    await d.expect(chat.card('todo')).toContainText('Pending');
+  });
+
+  test('a call that fails says so on the card, and is badged as an error', async () => {
+    const d = h.driver;
+    // No seeded todo: the update has nothing to change.
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Move the plumber to later ${CHAT_MARKERS.updateTodo}`);
+
+    await d.expect(chat.messages).toContainText('Moved it to Do Later.');
+    const card = chat.card('todo');
+    await d.expect(card).toHaveAttribute('data-mode', 'failed');
+    await d.expect(chat.cardHeadlines.first()).toHaveText("Couldn't change todo");
+    await d.expect(d.getByTestId('chat-card-error')).toBeVisible();
+    await d.expect(chat.toolCalls.first()).toContainText('Error');
+    await d.expect(chat.toolCalls.first()).not.toContainText('Completed');
+  });
+
+  test('a stored conversation renders its cards again from history', async () => {
+    const d = h.driver;
+    await seedTodo();
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Move the plumber to later ${CHAT_MARKERS.updateTodo}`);
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Changed todo');
+    await chat.expectSettled(/plumber/);
+
+    await d.reload();
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Changed todo');
+    await d.expect(chat.cardTitles.first()).toHaveText('Call the plumber');
+    await d.expect(chat.card('todo')).toHaveAttribute('data-mode', 'done');
+  });
+
+  test('a proposed call shows its card before the person answers', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Tell Sam I'm running late ${CHAT_MARKERS.messageSam}`);
+
+    await d.expect(chat.approvalCard).toBeVisible();
+    const card = chat.approvalCard.getByTestId('chat-card-notification');
+    await d.expect(card).toHaveAttribute('data-mode', 'proposed');
+    await d.expect(card).toContainText('Notification: send');
+    await d.expect(card).toContainText('Running late');
+    await d.expect(card).toContainText('Be there by 6:30');
+    await d.expect(d.getByTestId('chat-approval-to')).toHaveText('Sam');
+
+    await chat.answerApproval(false);
+    await d.expect(chat.card('notification')).toHaveAttribute('data-mode', 'denied');
+    await d.expect(chat.toolCalls.first()).toContainText('Denied');
+  });
+});
