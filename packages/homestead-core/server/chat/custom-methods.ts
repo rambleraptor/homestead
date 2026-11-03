@@ -27,6 +27,7 @@ import type {
   ResourceDefinition,
 } from '../../resources/types';
 import { aepbaseFetch } from '../aepbase';
+import { takesUploads } from '../../resources/custom-methods/schema';
 import { logger } from '../../utils/logger';
 import {
   indexBySingular,
@@ -191,6 +192,10 @@ export function buildCustomMethodTools(
     const parentPlurals = parentChain.map((s) => pluralOf(s, bySingular));
 
     for (const [verb, method] of Object.entries(def.customMethods ?? {})) {
+      // A method that takes files can't be called by a model yet: a tool call
+      // has no way to hand over bytes. (Chat attachments will be the way.)
+      if (takesUploads(method.request)) continue;
+
       const target = method.target ?? 'collection';
       const name = customMethodToolName(def, verb, target);
       if (taken.has(name) || name in tools) {

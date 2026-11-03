@@ -445,6 +445,49 @@ CLI), who are already deciding.
 
 ---
 
+## Request bodies and files
+
+A custom method reads its body with `readMethodBody(ctx.request)`
+(`@rambleraptor/homestead-core/resources/custom-methods/body`), which accepts:
+
+- `application/json` — the body object; or
+- `multipart/form-data` — the body object as JSON in a part named `body`, and
+  one part per file. Wherever the body needs a file it holds
+  `{"$upload": "<part>"}`, at the top level or nested in lists and objects.
+
+The reader returns the body with each placeholder replaced by its `File` (name
+and media type included), so a method never decodes base64. That's the same
+placeholder convention record writes use for nested files; the shared client's
+`invoke` (and the SPA's `customMethod`) send a body holding `File`s this way via
+`encodeMethodBody`. Field names are snake_case, as everywhere else in the API.
+
+Describe a method with `request` / `response` JSON Schemas (and `query` /
+`responseMediaTypes` for a `GET` that returns a file); `/api/aep/openapi.json`
+publishes them — request body, query parameters, the problem-shaped errors, and
+for an async method the `operation` its `202` returns. Declare a file field with
+`uploadSchema()` (`resources/custom-methods/schema`): the published request then
+offers `multipart/form-data` too. The model tools leave a method that takes
+files out for now — a tool call has no way to hand over bytes.
+
+## Errors from a custom method
+
+Every error the API returns has one shape — the engine's, the gateway's, and
+each custom method's: an RFC 9457 problem with the fields AEP-193 requires, plus
+the `error` envelope the clients read.
+
+```json
+{ "type": "about:blank", "title": "Not Found", "status": 404,
+  "detail": "No such list", "error": { "code": 404, "message": "No such list" } }
+```
+
+In a handler, `throw new ProblemError(status, message)` (from
+`@rambleraptor/homestead-core/resources/problem`) or return
+`problemResponse(status, message)`; anything else thrown is a `500`. An error
+response in another shape is rewritten into this one on the way out, so callers
+never see the difference. A failed long-running method's operation carries the
+same problem (without the envelope) as its `error`, keeping a `ProblemError`'s
+status.
+
 ## Wiring It Up
 
 Reference the definitions from your app config:

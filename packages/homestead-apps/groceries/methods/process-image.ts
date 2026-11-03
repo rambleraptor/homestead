@@ -2,12 +2,15 @@
  * `grocery-items:process-image` custom method (AEP-136).
  *
  * Lives on the grocery collection; dispatched by the sidecar gateway as
- * `POST /api/aep/groceries:process-image`. Body: `{ image: base64, mimeType }`.
+ * `POST /api/aep/groceries:process-image`. Body: `{ image }` — the photo as an
+ * uploaded file (multipart, the custom-method body convention).
  * Returns `{ items: [{ name }], message }`.
  */
 
 import type { CustomMethodHandler } from '@rambleraptor/homestead-core/resources/types';
 import { isAiConfigured } from '@rambleraptor/homestead-core/server/ai/config';
+import { readMethodBody } from '@rambleraptor/homestead-core/resources/custom-methods/body';
+import { problemResponse } from '@rambleraptor/homestead-core/resources/problem';
 import {
   aiGenerateText,
   type ModelMessage,
@@ -64,32 +67,28 @@ Lettuce
 
 const handler: CustomMethodHandler = async ({ request, auth }) => {
   if (!isAiConfigured()) {
-    return Response.json(
-      { error: 'Service unavailable', message: 'AI is not configured on the server' },
-      { status: 503 },
-    );
+    return problemResponse(503, 'AI is not configured on the server');
   }
 
-  const data = await request.json().catch(() => null);
-  if (!data || !data.image || !data.mimeType) {
-    return Response.json(
-      { error: 'Bad request', message: 'Missing required fields: image, mimeType' },
-      { status: 400 },
-    );
+  const { image } = await readMethodBody<{ image?: unknown }>(request);
+  if (!(image instanceof File)) {
+    return problemResponse(400, 'Send the photo as "image": an uploaded file (multipart)');
   }
-
-  const { image, mimeType } = data;
-  if (typeof mimeType !== 'string' || !mimeType.startsWith('image/')) {
-    return Response.json(
-      { error: 'Bad request', message: 'Invalid file type. Must be an image.' },
-      { status: 400 },
-    );
+  const mimeType = image.type;
+  if (!mimeType.startsWith('image/')) {
+    return problemResponse(400, 'Invalid file type. Must be an image.');
   }
+  const bytes = new Uint8Array(await image.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  const imageBase64 = btoa(binary);
 
   console.log(`Processing grocery image for user ${auth.user.id}`);
 
   try {
-    const items = await extractGroceryItemsFromImage(image, mimeType);
+    const items = await extractGroceryItemsFromImage(imageBase64, mimeType);
     if (items.length === 0) {
       return Response.json({ items: [], message: 'No grocery items found in the image' });
     }
@@ -99,15 +98,9 @@ const handler: CustomMethodHandler = async ({ request, auth }) => {
     });
   } catch (error) {
     console.error('Failed to extract grocery items from image:', error);
-    return Response.json(
-      {
-        error: 'Processing failed',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to process image. Please try again.',
-      },
-      { status: 500 },
+    return problemResponse(
+      500,
+      error instanceof Error ? error.message : 'Failed to process image. Please try again.',
     );
   }
 };

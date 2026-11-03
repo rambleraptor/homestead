@@ -9,6 +9,8 @@
  * `packages/homestead-core/server/operations.ts`.
  */
 
+import { toProblem } from './problem';
+
 /**
  * Plural of the `operation` collection. The resource *definition* is owned by
  * the operations app (`@rambleraptor/homestead-core/operations/resources`); the
@@ -174,15 +176,11 @@ export function makeOperationLogger(
 }
 
 /**
- * Coerce an arbitrary thrown value into an AEP-151 `error` payload
- * (loosely AEP-193 "problem"-shaped). Pure — safe to use anywhere.
+ * Coerce an arbitrary thrown value into an AEP-151 `error` payload: an
+ * AEP-193 problem (`{ type, title, status, detail }`), the same shape every
+ * error response has. A thrown `ProblemError` keeps its status; anything else
+ * is a 500. Pure — safe to use anywhere.
  */
 export function toOperationError(err: unknown): Record<string, unknown> {
-  if (err instanceof Error) {
-    return { message: err.message, type: err.name };
-  }
-  if (err && typeof err === 'object') {
-    return err as Record<string, unknown>;
-  }
-  return { message: String(err) };
+  return { ...toProblem(err) };
 }

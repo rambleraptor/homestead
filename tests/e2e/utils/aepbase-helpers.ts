@@ -13,6 +13,7 @@
 import {
   createHomesteadClient,
   bearerToken,
+  encodeMethodBody,
   HomesteadError,
   type HomesteadClient,
   type RecordRef,
@@ -105,9 +106,10 @@ export async function postCustomMethod(
   path: string,
   body?: unknown,
 ): Promise<Response> {
+  // Files in the body go as multipart ($upload placeholders), like every client.
   return e2eClient(token).raw(path, {
     method: 'POST',
-    body: (body ?? {}) as Record<string, unknown>,
+    body: encodeMethodBody((body ?? {}) as Record<string, unknown>),
   });
 }
 

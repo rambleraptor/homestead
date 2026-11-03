@@ -56,6 +56,11 @@ export const chatResources: ResourceDefinition[] = [
       cancel: {
         target: 'item',
         description: 'Stop the turn running in this conversation, if any.',
+        response: {
+          type: 'object',
+          properties: { cancelled: { type: 'boolean', description: 'Whether a running turn was stopped.' } },
+          required: ['cancelled'],
+        },
         load: () => import('./methods/cancel'),
       },
     },

@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AepbaseError } from '@rambleraptor/homestead-core/api/aepbase';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -53,6 +54,8 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
   const [files, setFiles] = useState<File[]>([]);
   const [text, setText] = useState('');
   const [items, setItems] = useState<ParsedItem<T>[] | null>(null);
+  /** Names the shown preview; the import writes exactly its rows. */
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
@@ -70,6 +73,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
     setFiles([]);
     setText('');
     setItems(null);
+    setPreviewId(null);
     setSelected(new Set());
     setError(null);
   }, []);
@@ -87,7 +91,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
     setError(null);
     try {
       const result = await preview.mutateAsync(
-        format.inputType === 'text'
+        format.input_type === 'text'
           ? { format: format.id, text }
           : { format: format.id, files },
       );
@@ -100,6 +104,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
       }
 
       setItems(result.items as ParsedItem<T>[]);
+      setPreviewId(result.preview_id);
       // Pre-select everything importable — the common case is "import it all".
       setSelected(
         new Set(result.items.filter((i) => i.errors.length === 0).map((i) => i.index)),
@@ -118,17 +123,15 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
   }, [format, files, text, preview, appNamePlural, toast]);
 
   const handleImport = useCallback(async () => {
-    if (!format || !items) return;
+    if (!format || !items || !previewId) return;
     const allValid = items.filter((i) => i.errors.length === 0);
     const selectedIndices =
       selected.size === allValid.length ? '*' : [...selected].sort((a, b) => a - b);
 
     try {
-      const result = await run.mutateAsync({
-        format: format.id,
-        ...(format.inputType === 'text' ? { text } : { files }),
-        selectedIndices,
-      });
+      const result = await run.mutateAsync({ format: format.id, previewId, selectedIndices });
+      // Spent either way: a retry would import the rows that did succeed again.
+      setPreviewId(null);
 
       if (result.created > 0) {
         toast.success(`Imported ${result.created} ${appNamePlural}`);
@@ -143,10 +146,20 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
       }
       navigate(backRoute);
     } catch (e) {
+      if (e instanceof AepbaseError && e.code === 410) {
+        // The server no longer holds this preview (it expired, or the server
+        // restarted). Back to the input — still filled in — to preview again.
+        const message = 'This preview has expired. Preview it again to import.';
+        setItems(null);
+        setPreviewId(null);
+        setError(message);
+        toast.error(message);
+        return;
+      }
       const message = e instanceof Error ? e.message : `Could not import ${appNamePlural}`;
       toast.error(message);
     }
-  }, [format, items, selected, text, files, run, toast, appNamePlural, navigate, backRoute]);
+  }, [format, items, previewId, selected, run, toast, appNamePlural, navigate, backRoute]);
 
   const handleDownloadTemplate = useCallback(() => {
     if (!format) return;
@@ -173,7 +186,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
     );
   }, [validItems]);
 
-  const hasInput = format?.inputType === 'text' ? text.trim() !== '' : files.length > 0;
+  const hasInput = format?.input_type === 'text' ? text.trim() !== '' : files.length > 0;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -221,7 +234,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
             <ColumnReference columns={format.columns} label={format.label} />
           )}
 
-          {format.inputType === 'text' ? (
+          {format.input_type === 'text' ? (
             <div className="space-y-4">
               <label htmlFor="import-text" className="block font-medium">
                 Paste your {appNamePlural}
@@ -263,7 +276,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
               >
                 Choose File
               </label>
-              {format.hasTemplate && (
+              {format.has_template && (
                 <Button variant="secondary" onClick={handleDownloadTemplate} className="mt-6">
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
@@ -331,7 +344,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
               </span>
               <Button
                 onClick={handleImport}
-                disabled={selected.size === 0 || run.isPending}
+                disabled={selected.size === 0 || run.isPending || !previewId}
                 data-testid="import-button"
               >
                 {run.isPending ? 'Importing…' : `Import ${selected.size} ${appName}`}

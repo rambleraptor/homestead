@@ -5,6 +5,7 @@
  * test stays isolated from the real resource registry.
  */
 
+import { ProblemError } from '../../problem';
 import { describe, it, expect, vi } from 'vitest';
 import {
   dispatchCustomMethod,
@@ -231,7 +232,12 @@ describe('dispatchCustomMethod', () => {
       passthrough: neverPassthrough,
     });
     expect(res.status).toBe(500);
-    expect(await res.json()).toMatchObject({ error: 'Internal server error' });
+    expect(await res.json()).toMatchObject({
+      type: 'about:blank',
+      status: 500,
+      detail: 'Failed to load custom method',
+      error: { code: 500, message: 'Failed to load custom method' },
+    });
   });
 
   it('returns 500 when the handler throws, surfacing the message', async () => {
@@ -247,9 +253,62 @@ describe('dispatchCustomMethod', () => {
     });
     expect(res.status).toBe(500);
     expect(await res.json()).toMatchObject({
-      error: 'Internal server error',
-      message: 'handler exploded',
+      status: 500,
+      detail: 'handler exploded',
+      error: { code: 500, message: 'handler exploded' },
     });
+  });
+
+  it('keeps the status a thrown ProblemError carries', async () => {
+    const handler = vi.fn(async () => {
+      throw new ProblemError(422, 'that image is blank');
+    });
+    const res = await dispatchCustomMethod({
+      request: makeRequest('POST'),
+      path: '/grocery-items:process-image',
+      resolveMethod: () => makeMethod(handler),
+      authenticate: async () => fakeAuth,
+      passthrough: neverPassthrough,
+    });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ title: 'Unprocessable Content', detail: 'that image is blank' });
+  });
+
+  it("brings a handler's own error body into the standard shape", async () => {
+    const handler = vi.fn(async () =>
+      Response.json(
+        { error: 'Bad request', message: 'Missing image' },
+        { status: 400, headers: { 'Retry-After': '5' } },
+      ),
+    );
+    const res = await dispatchCustomMethod({
+      request: makeRequest('POST'),
+      path: '/grocery-items:process-image',
+      resolveMethod: () => makeMethod(handler),
+      authenticate: async () => fakeAuth,
+      passthrough: neverPassthrough,
+    });
+    expect(res.status).toBe(400);
+    expect(res.headers.get('Retry-After')).toBe('5');
+    expect(await res.json()).toEqual({
+      type: 'about:blank',
+      title: 'Bad Request',
+      status: 400,
+      detail: 'Missing image',
+      error: { code: 400, message: 'Missing image' },
+    });
+  });
+
+  it('answers 401 in the standard shape', async () => {
+    const res = await dispatchCustomMethod({
+      request: makeRequest('POST'),
+      path: '/grocery-items:process-image',
+      resolveMethod: () => makeMethod(vi.fn()),
+      authenticate: async () => null,
+      passthrough: neverPassthrough,
+    });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ status: 401, error: { code: 401 } });
   });
 
   describe('async (AEP-151) methods', () => {

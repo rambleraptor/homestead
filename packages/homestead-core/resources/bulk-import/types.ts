@@ -73,8 +73,8 @@ export interface BulkImportContext {
 export interface ParsedItem<T = unknown> {
   /**
    * Zero-based position within this parse. Stable across the dry-run and the
-   * real call for the same input, which is what makes `selectedIndices`
-   * meaningful — see {@link BulkImportRequest.selectedIndices}.
+   * real call for the same input, which is what makes `selected_indices`
+   * meaningful — see {@link BulkImportRequest.selected_indices}.
    */
   index: number;
   /** The candidate record. Only meaningful when `errors` is empty. */
@@ -206,27 +206,42 @@ export interface BulkImportRequest {
   /** Format id, matching a {@link BulkImportFormat.id} on the resource. */
   format: string;
   /**
-   * Base64-encoded file bytes for `file` formats. A bare string is one file;
-   * an array is several (requires the format to declare `multiple`).
+   * The uploads for `file` formats: more than one only when the format
+   * declares `multiple`. On the wire the request is multipart — the body in a
+   * `body` part, each file in its own part, named here by an
+   * `{ "$upload": "<part>" }` placeholder (the custom-method body convention;
+   * the shared client's `encodeMethodBody` builds it). The handler sees `File`s,
+   * with their names and media types.
    */
-  data?: string | string[];
-  /** File names, positionally matching `data`. Optional but improves errors. */
-  filenames?: string[];
+  files?: Array<File | { $upload: string }>;
   /** Raw input for `text` formats. */
   text?: string;
-  /** Parse and report without writing anything. */
-  dryRun?: boolean;
+  /**
+   * Parse and report without writing anything — AEP-163 change validation.
+   * The response is a {@link BulkImportPreview}.
+   */
+  validate_only?: boolean;
+  /**
+   * Import the rows of an earlier dry run instead of parsing again — the
+   * `preview_id` its response carried. Same caller, resource and `format` only;
+   * single-use, and forgotten after an hour or a server restart (a `410` says
+   * to preview again). `text` / `files` are not needed alongside it.
+   *
+   * Omit it to parse the input afresh, as a one-shot CLI or REST import does.
+   */
+  preview_id?: string;
   /**
    * Which parsed items to write. An explicit index list, or `'*'` for every
    * importable item. Defaults to `'*'`, so a CLI or REST caller can post a file
    * and get everything importable without a preview round-trip.
    *
-   * Indices refer to the parse of *this* request's input — the server re-parses
-   * rather than trusting client-supplied records, so it stays the only parser.
+   * Indices refer to the server's own parse — the held preview named by
+   * `preview_id`, or else this request's input, parsed afresh. Records are never
+   * taken from the client, so the server stays the only parser.
    * Selecting an index whose item has errors is rejected rather than silently
    * skipped.
    */
-  selectedIndices?: number[] | typeof SELECT_ALL_VALID;
+  selected_indices?: number[] | typeof SELECT_ALL_VALID;
 }
 
 /** Tallies shared by the dry-run and the real response. */
@@ -237,7 +252,7 @@ export interface BulkImportSummary {
 }
 
 /**
- * Operation `response` payload when `dryRun` is true.
+ * Operation `response` payload when `validate_only` is true (AEP-163).
  *
  * Like every bulk-import call this runs as an AEP-151 operation: the request
  * gets `202` + a pending operation, and the caller polls it (the browser via
@@ -245,14 +260,19 @@ export interface BulkImportSummary {
  * same progress and restart-recovery treatment as the import itself.
  */
 export interface BulkImportPreview<T = unknown> {
-  dryRun: true;
+  validate_only: true;
+  /**
+   * Names this parse for the import that follows (see
+   * {@link BulkImportRequest.preview_id}), so it writes exactly these items.
+   */
+  preview_id: string;
   items: ParsedItem<T>[];
   summary: BulkImportSummary;
 }
 
 /** Operation `response` payload for a real import. */
 export interface BulkImportResult {
-  dryRun: false;
+  validate_only: false;
   created: number;
   failed: Array<{ index: number; error: string }>;
   summary: BulkImportSummary;
@@ -262,10 +282,10 @@ export interface BulkImportResult {
 export interface BulkImportFormatInfo {
   id: string;
   label: string;
-  inputType: BulkImportInputType;
+  input_type: BulkImportInputType;
   accept?: string;
   multiple: boolean;
-  hasTemplate: boolean;
+  has_template: boolean;
   description?: string;
   /** From the parser's {@link BulkImportParser.columns}; drives the page's format reference. */
   columns?: BulkImportColumnInfo[];
