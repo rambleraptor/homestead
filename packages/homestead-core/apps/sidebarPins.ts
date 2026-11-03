@@ -11,12 +11,63 @@
  *
  *   1. the person's own override (`sidebar_pinned_apps` / `sidebar_unpinned_apps`
  *      on their `user-preference` record);
- *   2. otherwise the default — every app, until household defaults land.
+ *   2. the household's override for that app (the drawer app's
+ *      `sidebar_defaults` flag, a JSON object of app id → boolean holding only
+ *      the exceptions, so an app installed later follows its own config);
+ *   3. the app's own `web.pinnedByDefault`, true unless it says otherwise.
  *
  * Pure so the sidebar and the drawer run the same function and can't disagree.
  */
 
 import type { AppConfig } from './types';
+
+/** Household overrides of apps' declared defaults: app id → pinned by default. */
+export type DefaultPinOverrides = Record<string, boolean>;
+
+/** Parse the `sidebar_defaults` flag. Anything but a JSON object of booleans is "no overrides". */
+export function parseDefaultPinOverrides(raw: unknown): DefaultPinOverrides {
+  if (typeof raw !== 'string' || raw.trim() === '') return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: DefaultPinOverrides = {};
+    for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value === 'boolean') out[id] = value;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Whether `app` is pinned by default, before any person's choice. */
+export function isPinnedByDefault(app: AppConfig, overrides: DefaultPinOverrides = {}): boolean {
+  return overrides[app.id] ?? app.web?.pinnedByDefault !== false;
+}
+
+/** The ids of the apps in `apps` that are pinned by default. */
+export function defaultPinIds(
+  apps: readonly AppConfig[],
+  overrides: DefaultPinOverrides = {},
+): Set<string> {
+  return new Set(apps.filter((app) => isPinnedByDefault(app, overrides)).map((app) => app.id));
+}
+
+/**
+ * The household overrides after a superuser sets `appId`'s default. Only an
+ * exception to the app's own declaration is kept, so returning to what the
+ * app declares removes the entry.
+ */
+export function withDefaultChanged(
+  overrides: DefaultPinOverrides,
+  app: AppConfig,
+  pinned: boolean,
+): DefaultPinOverrides {
+  const next = { ...overrides };
+  delete next[app.id];
+  if (pinned !== (app.web?.pinnedByDefault !== false)) next[app.id] = pinned;
+  return next;
+}
 
 export type PinSource = 'default' | 'pinned' | 'unpinned';
 

@@ -25,13 +25,15 @@ export function useSidebarPinActions(): SidebarPinActions {
   const update = useUpdateSidebarPins();
   const pinned = user?.sidebar_pinned_apps;
   const unpinned = user?.sidebar_unpinned_apps;
-  const { visibleApps } = pins;
+  const { visibleApps, defaultIds } = pins;
 
   const setPinned = useCallback(
     async (appId: string, next: boolean) => {
-      await update.mutateAsync(withPinChanged({ pinned, unpinned }, visibleApps, appId, next));
+      await update.mutateAsync(
+        withPinChanged({ pinned, unpinned }, visibleApps, appId, next, { defaultIds }),
+      );
     },
-    [update, pinned, unpinned, visibleApps],
+    [update, pinned, unpinned, visibleApps, defaultIds],
   );
 
   const reset = useCallback(async () => {

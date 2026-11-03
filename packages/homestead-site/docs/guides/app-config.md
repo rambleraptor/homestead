@@ -134,6 +134,7 @@ Everything about how the app surfaces in the browser. Lives under the required
 | `topBarBadge`      | `LazyComponent`                             | —           | Badge inside a topbar app's button (fetches its own data).          |
 | `navOrder`         | `number`                                    | `100`       | Sort order within a section (lower first).                          |
 | `section`          | `string`                                    | —           | Grouping header in the sidebar. Unsectioned apps render last.       |
+| `pinnedByDefault`  | `boolean`                                   | `true`      | Whether the app starts out pinned to each person's sidebar ([below](#the-sidebar-and-the-app-drawer)). |
 | `filters`          | `AppFilterDecl[]`                           | —           | Client-side, in-memory list filters.                               |
 | `settingsWidget`   | `LazyComponent`                             | —           | Custom settings-page UI in place of the auto-generated form.       |
 | `widgets`          | `DashboardWidget[]`                         | —           | Dashboard summary cards ([below](#adding-dashboard-widgets)).      |
@@ -149,9 +150,22 @@ they can reach, the sidebar lists the ones they've **pinned**, and the fixed
 which lists every reachable app whether pinned or not, with a Pin toggle on
 each card and a reset back to the defaults. Pins are a per-person preference
 (`sidebar_pinned_apps` / `sidebar_unpinned_apps` on their `user-preference`
-record); every app starts out pinned. An unpinned app still
-opens from a link, a widget, or the assistant. `showInNav: false` is different:
-it keeps the app out of both the sidebar and the drawer.
+record). An unpinned app still opens from a link, a widget, or the assistant.
+`showInNav: false` is different: it keeps the app out of both the sidebar and
+the drawer.
+
+What an app starts out as, before anyone chooses, is decided in two layers:
+
+1. The app's own `web.pinnedByDefault` (`true` unless it says otherwise), so a
+   quiet app can ship out of the sidebar but still a click away in the drawer.
+2. The household's overrides, which a superuser sets from the drawer's
+   **Household defaults** mode. They live in the drawer app's `sidebar_defaults`
+   flag as a JSON object of app id → boolean holding only the exceptions, so an
+   app installed later follows its own config. Changing a default never touches
+   anyone's own pins; people who have customized keep their choices.
+
+None of this is a permission: an app a person isn't granted appears in neither
+the sidebar nor the drawer, whatever the defaults say.
 
 > Server-side endpoints aren't declared here. They're AEP-136 custom methods on
 > a resource definition (`ResourceDefinition.customMethods`), addressed as

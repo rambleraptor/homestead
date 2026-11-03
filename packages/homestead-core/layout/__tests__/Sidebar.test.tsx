@@ -10,8 +10,16 @@ import { Sidebar } from '../Sidebar';
 import { useAuth } from '../../auth/useAuth';
 
 vi.mock('../../auth/useAuth', () => ({ useAuth: vi.fn() }));
-vi.mock('@rambleraptor/homestead-core/apps/useAppVisibility', () => ({
-  useAppVisible: () => () => true,
+// The nav list is the pins hook's business (and needs a QueryClient for the
+// household defaults flag); this test is about the chrome around it.
+vi.mock('@rambleraptor/homestead-core/apps/useSidebarPins', () => ({
+  useSidebarPins: () => ({
+    visibleApps: [],
+    pinnedApps: [],
+    states: new Map(),
+    defaultIds: new Set(),
+    defaultOverrides: {},
+  }),
 }));
 
 function renderSidebar(props: Partial<Parameters<typeof Sidebar>[0]> = {}) {
