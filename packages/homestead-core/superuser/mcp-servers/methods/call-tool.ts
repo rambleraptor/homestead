@@ -10,9 +10,9 @@
 
 import type { CustomMethodHandler } from '../../../resources/types';
 import { callConnectionTool } from '../../../server/mcp/broker';
+import { problemResponse } from '../../../resources/problem';
 
-const error = (status: number, message: string) =>
-  Response.json({ error: { code: status, message } }, { status });
+const error = (status: number, message: string) => problemResponse(status, message);
 
 const callTool: CustomMethodHandler = async ({ request, auth, id }) => {
   if (!id) return error(400, 'address a server: /mcp-servers/{id}:call-tool');

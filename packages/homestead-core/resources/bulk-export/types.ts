@@ -175,7 +175,7 @@ export interface BulkExportDef<T = unknown> {
 export interface BulkExportFormatInfo {
   id: string;
   label: string;
-  mimeType: string;
+  mime_type: string;
   extension: string;
   /** From the serializer's {@link BulkExportSerializer.columns}. */
   columns?: BulkExportColumnInfo[];

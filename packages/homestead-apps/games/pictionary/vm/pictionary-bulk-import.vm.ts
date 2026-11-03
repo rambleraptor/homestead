@@ -111,7 +111,7 @@ describe('Pictionary bulk import', () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(csv),
-      dryRun: true,
+      validate_only: true,
     });
 
     expect(operation.response?.summary).toEqual({ total: 1, valid: 0, invalid: 1 });
@@ -127,7 +127,7 @@ describe('Pictionary bulk import', () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(csv),
-      dryRun: true,
+      validate_only: true,
     });
 
     expect(operation.response?.summary.invalid).toBe(1);
@@ -143,7 +143,7 @@ describe('Pictionary bulk import', () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(csv),
-      dryRun: true,
+      validate_only: true,
     });
 
     expect(operation.response?.summary.invalid).toBe(1);

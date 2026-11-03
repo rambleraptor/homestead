@@ -68,15 +68,15 @@ beforeEach(() => {
 });
 
 async function preview(text = 'https://www.tiktok.com/@a/video/1') {
-  const res = await bulkImport(ctx({ format: 'social', text, dryRun: true }));
-  if (!res.dryRun) throw new Error('expected a preview');
+  const res = await bulkImport(ctx({ format: 'social', text, validate_only: true }));
+  if (!res.validate_only) throw new Error('expected a preview');
   return res;
 }
 
 describe('importing a preview', () => {
   it('writes the previewed rows without parsing again', async () => {
     parse.mockResolvedValueOnce([item(0, 'Fried Rice'), item(1, 'Pancakes')]);
-    const { previewId, items } = await preview();
+    const { preview_id, items } = await preview();
     expect(items.map((i) => i.label ?? (i.data as { title: string }).title)).toEqual([
       'Fried Rice',
       'Pancakes',
@@ -84,10 +84,10 @@ describe('importing a preview', () => {
 
     // A second parse would read the input differently — it must not happen.
     parse.mockResolvedValue([item(0, 'Something else')]);
-    const result = await bulkImport(ctx({ format: 'social', previewId, selectedIndices: [1] }));
+    const result = await bulkImport(ctx({ format: 'social', preview_id, selected_indices: [1] }));
 
     expect(parse).toHaveBeenCalledTimes(1);
-    expect(result).toMatchObject({ dryRun: false, created: 1 });
+    expect(result).toMatchObject({ validate_only: false, created: 1 });
     expect(save.mock.calls[0][0].items.map((i: ParsedItem) => i.data)).toEqual([
       { title: 'Pancakes' },
     ]);
@@ -95,46 +95,46 @@ describe('importing a preview', () => {
 
   it('is single-use', async () => {
     parse.mockResolvedValueOnce([item(0, 'Fried Rice')]);
-    const { previewId } = await preview();
-    await bulkImport(ctx({ format: 'social', previewId }));
+    const { preview_id } = await preview();
+    await bulkImport(ctx({ format: 'social', preview_id }));
 
-    const res = await validate(ctx({ format: 'social', previewId }));
+    const res = await validate(ctx({ format: 'social', preview_id }));
     expect(res?.status).toBe(410);
-    await expect(bulkImport(ctx({ format: 'social', previewId }))).rejects.toThrow(/preview/i);
+    await expect(bulkImport(ctx({ format: 'social', preview_id }))).rejects.toThrow(/preview/i);
   });
 
   it("can't be imported by someone else, or under another format", async () => {
     parse.mockResolvedValueOnce([item(0, 'Fried Rice')]);
-    const { previewId } = await preview();
+    const { preview_id } = await preview();
 
-    expect((await validate(ctx({ format: 'social', previewId }, 'u2')))?.status).toBe(410);
-    expect((await validate(ctx({ format: 'text', previewId })))?.status).toBe(410);
+    expect((await validate(ctx({ format: 'social', preview_id }, 'u2')))?.status).toBe(410);
+    expect((await validate(ctx({ format: 'text', preview_id })))?.status).toBe(410);
     // Still there for its owner.
-    expect(await validate(ctx({ format: 'social', previewId }))).toBeUndefined();
+    expect(await validate(ctx({ format: 'social', preview_id }))).toBeUndefined();
   });
 
-  it('needs no input alongside a preview id, and refuses one with dryRun', async () => {
+  it('needs no input alongside a preview id, and refuses one with validate_only', async () => {
     parse.mockResolvedValueOnce([item(0, 'Fried Rice')]);
-    const { previewId } = await preview();
-    expect(await validate(ctx({ format: 'social', previewId }))).toBeUndefined();
+    const { preview_id } = await preview();
+    expect(await validate(ctx({ format: 'social', preview_id }))).toBeUndefined();
     expect(
-      (await validate(ctx({ format: 'social', previewId, dryRun: true })))?.status,
+      (await validate(ctx({ format: 'social', preview_id, validate_only: true })))?.status,
     ).toBe(400);
-    expect((await validate(ctx({ format: 'social', previewId: '' })))?.status).toBe(400);
+    expect((await validate(ctx({ format: 'social', preview_id: '' })))?.status).toBe(400);
   });
 
   it('still parses afresh when no preview is named', async () => {
     parse.mockResolvedValue([item(0, 'Fried Rice')]);
     const result = await bulkImport(ctx({ format: 'social', text: 'https://youtu.be/x' }));
     expect(parse).toHaveBeenCalledTimes(1);
-    expect(result).toMatchObject({ dryRun: false, created: 1 });
+    expect(result).toMatchObject({ validate_only: false, created: 1 });
   });
 
   it('refuses a selected row the preview marked as errored', async () => {
     parse.mockResolvedValueOnce([{ ...item(0, 'Bad'), errors: ['no recipe'] }]);
-    const { previewId } = await preview();
+    const { preview_id } = await preview();
     await expect(
-      bulkImport(ctx({ format: 'social', previewId, selectedIndices: [0] })),
+      bulkImport(ctx({ format: 'social', preview_id, selected_indices: [0] })),
     ).rejects.toThrow(/has errors/);
   });
 });

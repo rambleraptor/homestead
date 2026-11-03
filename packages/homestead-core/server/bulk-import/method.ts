@@ -84,10 +84,10 @@ export async function bulkImportFormatInfo(
     offered.map(async (format) => ({
       id: format.id,
       label: format.label,
-      inputType: format.inputType,
+      input_type: format.inputType,
       accept: format.accept,
       multiple: format.multiple ?? false,
-      hasTemplate: format.hasTemplate ?? false,
+      has_template: format.hasTemplate ?? false,
       ...(format.description ? { description: format.description } : {}),
       columns: await loadColumns(format),
     })),

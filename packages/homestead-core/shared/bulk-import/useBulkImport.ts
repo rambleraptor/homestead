@@ -3,7 +3,7 @@
  *
  * The browser is a thin client here: it uploads the file, the server parses it,
  * and the preview the user sees is the server's own parse — which the import
- * then writes by its `previewId`, without uploading or parsing again. Both the preview and
+ * then writes by its `preview_id`, without uploading or parsing again. Both the preview and
  * the import run as AEP-151 operations, so each call is a `202` + a poll.
  *
  * Nothing in here is app-specific — the standardized page drives any resource
@@ -32,7 +32,7 @@ const PREVIEW_POLL_MS = 300;
 interface CustomMethodInfo {
   plural: string;
   verb: string;
-  bulkImport?: { formats: BulkImportFormatInfo[] };
+  bulk_import?: { formats: BulkImportFormatInfo[] };
 }
 
 /**
@@ -54,7 +54,7 @@ export function useBulkImportFormats(plural: string) {
       const method = methods.find(
         (m) => m.plural === plural && m.verb === BULK_IMPORT_VERB,
       );
-      return method?.bulkImport?.formats ?? [];
+      return method?.bulk_import?.formats ?? [];
     },
   });
 }
@@ -98,7 +98,7 @@ export function useBulkImportPreview(plural: string) {
     // The import page shows its own inline error + toast for parse failures.
     meta: { skipErrorToast: true },
     mutationFn: async (input: BulkImportInputPayload): Promise<BulkImportPreview> => {
-      const body = await buildRequest(input, { dryRun: true });
+      const body = await buildRequest(input, { validate_only: true });
       const operation = await aepbase.customMethod<Operation>(
         plural,
         BULK_IMPORT_VERB,
@@ -135,8 +135,8 @@ export function useBulkImportRun(plural: string, queryKey: readonly unknown[]) {
     mutationFn: async (input: RunBulkImportInput): Promise<BulkImportResult> => {
       const body: BulkImportRequest = {
         format: input.format,
-        previewId: input.previewId,
-        selectedIndices: input.selectedIndices,
+        preview_id: input.previewId,
+        selected_indices: input.selectedIndices,
       };
       const operation = await aepbase.customMethod<Operation>(
         plural,

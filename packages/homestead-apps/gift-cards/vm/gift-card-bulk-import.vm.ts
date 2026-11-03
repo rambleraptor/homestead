@@ -23,7 +23,7 @@ interface OperationRow {
   id: string;
   done: boolean;
   response?: {
-    dryRun: boolean;
+    validate_only: boolean;
     created?: number;
     failed?: Array<{ index: number; error: string }>;
     items?: Array<{ index: number; errors: string[] }>;
@@ -83,15 +83,15 @@ describe('Gift Cards bulk import — API', () => {
       format: 'csv',
       data: toBase64(CSV),
       filenames: ['cards.csv'],
-      dryRun: true,
+      validate_only: true,
     });
 
-    expect(operation.response?.dryRun).toBe(true);
+    expect(operation.response?.validate_only).toBe(true);
     expect(operation.response?.summary).toEqual({ total: 3, valid: 3, invalid: 0 });
     expect(await e2eClient(userToken).collection<GiftCardRow>('gift-cards').listAll()).toHaveLength(0);
   });
 
-  test('imports every valid row when selectedIndices is omitted', async () => {
+  test('imports every valid row when selected_indices is omitted', async () => {
     // The one-shot case: a CLI or script posts a file and gets everything
     // importable, with no preview round-trip.
     const operation = await bulkImport(userToken, {
@@ -114,7 +114,7 @@ describe('Gift Cards bulk import — API', () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(CSV),
-      selectedIndices: [0, 2],
+      selected_indices: [0, 2],
     });
 
     expect(operation.response?.created).toBe(2);
@@ -138,7 +138,7 @@ describe('Gift Cards bulk import — API', () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(MIXED_CSV),
-      selectedIndices: [1],
+      selected_indices: [1],
     });
 
     expect(operation.error?.detail).toContain('index 1 has errors');
@@ -167,7 +167,7 @@ describe('Gift Cards bulk import — API', () => {
         plural: string;
         verb: string;
         async: boolean;
-        bulkImport?: {
+        bulk_import?: {
           formats: Array<{
             id: string;
             accept?: string;
@@ -180,12 +180,12 @@ describe('Gift Cards bulk import — API', () => {
     const method = methods.find((m) => m.plural === 'gift-cards' && m.verb === 'bulk-import');
     expect(method).toBeDefined();
     expect(method?.async).toBe(true);
-    expect(method?.bulkImport?.formats.map((f) => f.id)).toEqual(['csv']);
-    expect(method?.bulkImport?.formats[0].accept).toBe('.csv');
+    expect(method?.bulk_import?.formats.map((f) => f.id)).toEqual(['csv']);
+    expect(method?.bulk_import?.formats[0].accept).toBe('.csv');
 
     // The column docs the page renders come from the parser's schema, so an app
     // describes a column once, next to the validator that enforces it.
-    const columns = method?.bulkImport?.formats[0].columns;
+    const columns = method?.bulk_import?.formats[0].columns;
     expect(columns?.filter((c) => c.required).map((c) => c.name)).toEqual([
       'merchant',
       'card_number',
@@ -204,7 +204,7 @@ describe('Gift Cards bulk import — API', () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
       data: toBase64(template),
-      dryRun: true,
+      validate_only: true,
     });
     expect(operation.response?.summary.invalid).toBe(0);
     expect(operation.response?.summary.valid).toBeGreaterThan(0);

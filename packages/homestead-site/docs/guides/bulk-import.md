@@ -192,7 +192,7 @@ Link to `/<app>/import` from your app's home:
 
 ```http
 POST /api/aep/gift-cards:bulk-import
-{ "format": "csv", "data": "<base64>", "filenames": ["cards.csv"], "dryRun": true }
+{ "format": "csv", "data": "<base64>", "filenames": ["cards.csv"], "validate_only": true }
 
 → 202 { "id": "op_123", "done": false }
 ```
@@ -202,8 +202,8 @@ Poll `GET /api/aep/operations/op_123` until `done`:
 ```json
 {
   "response": {
-    "dryRun": true,
-    "previewId": "6f1c…",
+    "validate_only": true,
+    "preview_id": "6f1c…",
     "items": [
       { "index": 0, "data": { "merchant": "Amazon" }, "errors": [], "warnings": [], "label": "Amazon" }
     ],
@@ -216,9 +216,9 @@ Then import the rows you want from that preview:
 
 ```http
 POST /api/aep/gift-cards:bulk-import
-{ "format": "csv", "previewId": "6f1c…", "selectedIndices": [0, 1, 3] }
+{ "format": "csv", "preview_id": "6f1c…", "selected_indices": [0, 1, 3] }
 
-→ 202 → { "response": { "dryRun": false, "created": 3, "failed": [], "summary": {…} } }
+→ 202 → { "response": { "validate_only": false, "created": 3, "failed": [], "summary": {…} } }
 ```
 
 The import writes the rows the server held for that preview — it doesn't parse
@@ -228,9 +228,10 @@ A preview is held in server memory for an hour, only for the person who made it
 and the same resource and format, and is used up by the import. A restart or a
 second import gets `410 Gone`: preview again.
 
-Without `previewId`, the request's own `data` / `text` is parsed afresh:
+Without `preview_id`, the request's own `data` / `text` is parsed afresh.
 
-`selectedIndices` accepts an explicit list or `"*"` for every importable row, and
+
+`selected_indices` accepts an explicit list or `"*"` for every importable row, and
 **defaults to `"*"`** — so a script can post a file and be done:
 
 ```bash
