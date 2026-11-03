@@ -45,6 +45,7 @@ function ctx(body: unknown, userId = 'u1') {
     auth: { token: 't', user: { id: userId, path: `users/${userId}`, email: 'a@b.c' } },
     request: new Request('http://x/recipes:bulk-import', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
   } as never;

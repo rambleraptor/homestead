@@ -113,6 +113,37 @@ export function encodeBody(body: RecordBody | FormData): RecordBody | FormData {
   return form;
 }
 
+/**
+ * Encode a custom method's request body (AEP-136). Without files it's the
+ * object itself, sent as JSON. With files, it's multipart: every `Blob`/`File`
+ * — at the top level or nested — becomes an `{"$upload": "<part>"}`
+ * placeholder, the object goes as JSON in a part named `body`, and each file in
+ * its own part (with its name). The server's `readMethodBody` reverses it.
+ */
+export function encodeMethodBody(body: RecordBody): RecordBody | FormData {
+  if (!containsBlob(body)) return body;
+  const form = new FormData();
+  const files: Array<[string, Blob]> = [];
+  const lift = (value: unknown): unknown => {
+    if (value instanceof Blob) {
+      const part = `$upload-${files.length}`;
+      files.push([part, value]);
+      return { $upload: part };
+    }
+    if (Array.isArray(value)) return value.map(lift);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, lift(v)]));
+    }
+    return value;
+  };
+  form.append('body', JSON.stringify(lift(body)));
+  for (const [part, blob] of files) {
+    if (blob instanceof File) form.append(part, blob, blob.name);
+    else form.append(part, blob);
+  }
+  return form;
+}
+
 /** The `include` query value: link names, comma-separated; none, no param. */
 function includeParam(include: string[] | undefined): string | undefined {
   return include && include.length > 0 ? include.join(',') : undefined;
@@ -180,7 +211,7 @@ export class CollectionRefImpl<T> implements CollectionRef<T> {
   invoke<R = unknown>(verb: string, body?: RecordBody): Promise<R> {
     return this.http.request<R>(`${this.path}:${verb}`, {
       method: 'POST',
-      body,
+      body: body === undefined ? undefined : encodeMethodBody(body),
       includeUserId: true,
     });
   }
@@ -238,7 +269,7 @@ export class RecordRefImpl<T> implements RecordRef<T> {
   invoke<R = unknown>(verb: string, body?: RecordBody): Promise<R> {
     return this.http.request<R>(`${this.path}:${verb}`, {
       method: 'POST',
-      body,
+      body: body === undefined ? undefined : encodeMethodBody(body),
       includeUserId: true,
     });
   }

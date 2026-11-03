@@ -206,12 +206,14 @@ export interface BulkImportRequest {
   /** Format id, matching a {@link BulkImportFormat.id} on the resource. */
   format: string;
   /**
-   * Base64-encoded file bytes for `file` formats. A bare string is one file;
-   * an array is several (requires the format to declare `multiple`).
+   * The uploads for `file` formats: more than one only when the format
+   * declares `multiple`. On the wire the request is multipart — the body in a
+   * `body` part, each file in its own part, named here by an
+   * `{ "$upload": "<part>" }` placeholder (the custom-method body convention;
+   * the shared client's `encodeMethodBody` builds it). The handler sees `File`s,
+   * with their names and media types.
    */
-  data?: string | string[];
-  /** File names, positionally matching `data`. Optional but improves errors. */
-  filenames?: string[];
+  files?: Array<File | { $upload: string }>;
   /** Raw input for `text` formats. */
   text?: string;
   /**
@@ -223,7 +225,7 @@ export interface BulkImportRequest {
    * Import the rows of an earlier dry run instead of parsing again — the
    * `preview_id` its response carried. Same caller, resource and `format` only;
    * single-use, and forgotten after an hour or a server restart (a `410` says
-   * to preview again). `text` / `data` are not needed alongside it.
+   * to preview again). `text` / `files` are not needed alongside it.
    *
    * Omit it to parse the input afresh, as a one-shot CLI or REST import does.
    */

@@ -24,6 +24,7 @@ import { takeOAuthReturnUrl } from '../auth/oauthReturn';
 import {
   downloadBody,
   encodeBody,
+  encodeMethodBody,
   type DownloadTarget,
   type FileDescriptor,
 } from '@rambleraptor/homestead-client';
@@ -554,7 +555,7 @@ interface CustomMethodOptions {
 
 /**
  * Invoke an AEP-136 custom method that lives on a resource, e.g.
- * `customMethod('grocery-items', 'process-image', { image, mimeType })` →
+ * `customMethod('groceries', 'process-image', { image: file })` →
  * `POST /api/aep/grocery-items:process-image`. Pass `options.id` to address a
  * single record (`/<plural>/<id>:<verb>`).
  *
@@ -581,8 +582,17 @@ export async function customMethod<T>(
 
   const init: RequestInit = { method: options.method ?? 'POST', headers };
   if (body !== undefined) {
-    headers['Content-Type'] = 'application/json';
-    init.body = JSON.stringify(body);
+    // Files in the body go as multipart ($upload placeholders); otherwise JSON.
+    const encoded =
+      body && typeof body === 'object' && !Array.isArray(body)
+        ? encodeMethodBody(body as Record<string, unknown>)
+        : body;
+    if (encoded instanceof FormData) {
+      init.body = encoded;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(encoded);
+    }
   }
 
   const res = await fetchOrNetworkError(url, init);

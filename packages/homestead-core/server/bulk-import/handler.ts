@@ -32,6 +32,7 @@ import { getAllResourceDefs, getResourceBulkImport } from '../../apps/registry';
 import { serverClient } from '../client';
 import { isAiConfigured } from '../ai/config';
 import { hasPreview, savePreview, takePreview, type PreviewOwner } from './previews';
+import { readMethodBody } from '../../resources/custom-methods/body';
 import { ProblemError, problemResponse } from '../../resources/problem';
 
 /**
@@ -40,9 +41,6 @@ import { ProblemError, problemResponse } from '../../resources/problem';
  * the operation's lifetime, so the ceiling is deliberate rather than implied.
  */
 const MAX_INPUT_BYTES = 25 * 1024 * 1024;
-
-/** Base64 inflates ~4/3, so bound the encoded payload before decoding it. */
-const MAX_ENCODED_CHARS = Math.ceil((MAX_INPUT_BYTES * 4) / 3) + 1024;
 
 /**
  * Pre-flight (AEP-151): reject a call that can't start before any operation
@@ -55,12 +53,7 @@ export const validate: AsyncCustomMethodValidator = async (ctx) => {
     return problem(404, `${ctx.plural} does not support bulk import`);
   }
 
-  let body: BulkImportRequest;
-  try {
-    body = (await ctx.request.json()) as BulkImportRequest;
-  } catch {
-    return problem(400, 'Request body must be JSON');
-  }
+  const body = await readMethodBody<BulkImportRequest>(ctx.request);
 
   const format = def.formats.find((f) => f.id === body.format);
   if (!format) {
@@ -94,15 +87,17 @@ export const validate: AsyncCustomMethodValidator = async (ctx) => {
       return problem(413, `Input exceeds the ${MAX_INPUT_BYTES} byte limit`);
     }
   } else {
-    const data = asArray(body.data);
-    if (data.length === 0) {
-      return problem(400, `Format ${format.id} requires base64 "data"`);
+    const files = uploadsOf(body);
+    if (files === undefined) {
+      return problem(400, `Format ${format.id} takes "files": uploaded files, sent as multipart`);
     }
-    if (data.length > 1 && !format.multiple) {
+    if (files.length === 0) {
+      return problem(400, `Format ${format.id} requires at least one file in "files"`);
+    }
+    if (files.length > 1 && !format.multiple) {
       return problem(400, `Format ${format.id} accepts only one file`);
     }
-    const encoded = data.reduce((sum, d) => sum + d.length, 0);
-    if (encoded > MAX_ENCODED_CHARS) {
+    if (files.reduce((sum, f) => sum + f.size, 0) > MAX_INPUT_BYTES) {
       return problem(413, `Input exceeds the ${MAX_INPUT_BYTES} byte limit`);
     }
   }
@@ -137,7 +132,7 @@ export default async function bulkImport(
   // detached and must not depend on validate having been wired up.
   if (!def) throw new Error(`${ctx.plural} does not support bulk import`);
 
-  const body = (await ctx.request.json()) as BulkImportRequest;
+  const body = await readMethodBody<BulkImportRequest>(ctx.request);
   const format = def.formats.find((f) => f.id === body.format);
   if (!format) throw new Error(`Unknown format ${body.format}`);
 
@@ -175,7 +170,7 @@ async function parseInput(
   const input: BulkImportInput =
     format.inputType === 'text'
       ? { text: body.text ?? '' }
-      : { files: decodeFiles(body) };
+      : { files: await decodeFiles(body) };
 
   const { default: parser } = await format.load();
   const items = await parser.parse(input, ctx);
@@ -191,21 +186,24 @@ async function parseInput(
   }));
 }
 
-function decodeFiles(body: BulkImportRequest): BulkImportFile[] {
-  const data = asArray(body.data);
-  return data.map((encoded, i) => ({
-    name: body.filenames?.[i] ?? `upload-${i + 1}`,
-    bytes: decodeBase64(encoded),
-  }));
+/**
+ * The `files` the body carries, once `readMethodBody` has resolved their
+ * placeholders. Undefined when `files` is missing or holds anything but files
+ * (e.g. a JSON request, which can't carry uploads).
+ */
+function uploadsOf(body: BulkImportRequest): File[] | undefined {
+  if (!Array.isArray(body.files)) return undefined;
+  return body.files.every((f) => f instanceof File) ? (body.files as File[]) : undefined;
 }
 
-function decodeBase64(encoded: string): Uint8Array {
-  // atob is the one decoder available in every runtime this ships on (Bun,
-  // Node >= 22, and the test environment) without a node:buffer import.
-  const binary = atob(encoded);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
+async function decodeFiles(body: BulkImportRequest): Promise<BulkImportFile[]> {
+  return Promise.all(
+    (uploadsOf(body) ?? []).map(async (file, i) => ({
+      name: file.name || `upload-${i + 1}`,
+      ...(file.type ? { mimeType: file.type } : {}),
+      bytes: new Uint8Array(await file.arrayBuffer()),
+    })),
+  );
 }
 
 /**
@@ -293,11 +291,6 @@ function resourceHasCreatedBy(plural: string): boolean {
 function summarize(items: ParsedItem[]): BulkImportSummary {
   const valid = items.filter((item) => item.errors.length === 0).length;
   return { total: items.length, valid, invalid: items.length - valid };
-}
-
-function asArray(data: string | string[] | undefined): string[] {
-  if (data === undefined) return [];
-  return Array.isArray(data) ? data : [data];
 }
 
 const PREVIEW_GONE =

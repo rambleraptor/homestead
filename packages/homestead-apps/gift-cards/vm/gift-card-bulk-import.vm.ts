@@ -45,7 +45,8 @@ const MIXED_CSV = ['merchant,card_number,amount', 'Amazon,1234-5678,100.00', ',9
   '\n',
 );
 
-const toBase64 = (s: string) => Buffer.from(s).toString('base64');
+/** A CSV for the `files` list; sent as a multipart part. */
+const csvFile = (s: string) => [new File([s], 'cards.csv', { type: 'text/csv' })];
 
 /** Drive a bulk-import call to completion: 202 → poll the operation. */
 async function bulkImport(
@@ -81,8 +82,7 @@ describe('Gift Cards bulk import — API', () => {
   test('a dry run reports rows without writing anything', async () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(CSV),
-      filenames: ['cards.csv'],
+      files: csvFile(CSV),
       validate_only: true,
     });
 
@@ -96,7 +96,7 @@ describe('Gift Cards bulk import — API', () => {
     // importable, with no preview round-trip.
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(CSV),
+      files: csvFile(CSV),
     });
 
     expect(operation.response?.created).toBe(3);
@@ -113,7 +113,7 @@ describe('Gift Cards bulk import — API', () => {
   test('imports only the selected rows', async () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(CSV),
+      files: csvFile(CSV),
       selected_indices: [0, 2],
     });
 
@@ -125,7 +125,7 @@ describe('Gift Cards bulk import — API', () => {
   test('skips invalid rows and imports the rest', async () => {
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(MIXED_CSV),
+      files: csvFile(MIXED_CSV),
     });
 
     expect(operation.response?.summary).toEqual({ total: 2, valid: 1, invalid: 1 });
@@ -137,7 +137,7 @@ describe('Gift Cards bulk import — API', () => {
     // Silently skipping it would report "imported 0" with no reason why.
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(MIXED_CSV),
+      files: csvFile(MIXED_CSV),
       selected_indices: [1],
     });
 
@@ -151,7 +151,7 @@ describe('Gift Cards bulk import — API', () => {
     const before = await e2eClient(userToken).collection<OperationRow>('operations').listAll();
     const res = await postCustomMethod(userToken, '/gift-cards:bulk-import', {
       format: 'nonsense',
-      data: toBase64(CSV),
+      files: csvFile(CSV),
     });
 
     expect(res.status).toBe(400);
@@ -203,7 +203,7 @@ describe('Gift Cards bulk import — API', () => {
 
     const operation = await bulkImport(userToken, {
       format: 'csv',
-      data: toBase64(template),
+      files: csvFile(template),
       validate_only: true,
     });
     expect(operation.response?.summary.invalid).toBe(0);

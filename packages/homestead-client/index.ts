@@ -35,6 +35,7 @@ export { HomesteadError, AepbaseError } from './src/errors';
 export {
   downloadBody,
   encodeBody,
+  encodeMethodBody,
   type CollectionRef,
   type RecordRef,
 } from './src/refs';

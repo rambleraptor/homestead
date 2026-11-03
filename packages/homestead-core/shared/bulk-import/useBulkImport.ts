@@ -1,7 +1,7 @@
 /**
  * Client hooks for the bulk-import API.
  *
- * The browser is a thin client here: it uploads the file, the server parses it,
+ * The browser is a thin client here: it uploads the files (multipart), the server parses them,
  * and the preview the user sees is the server's own parse — which the import
  * then writes by its `preview_id`, without uploading or parsing again. Both the preview and
  * the import run as AEP-151 operations, so each call is a `202` + a poll.
@@ -59,37 +59,20 @@ export function useBulkImportFormats(plural: string) {
   });
 }
 
-/** Base64-encode a file for the JSON request body. */
-async function encodeFile(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = '';
-  // Chunked: spreading a multi-MB array into fromCharCode blows the argument
-  // limit.
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
-}
-
 export interface BulkImportInputPayload {
   format: string;
   files?: File[];
   text?: string;
 }
 
-async function buildRequest(
+function buildRequest(
   input: BulkImportInputPayload,
   extra: Partial<BulkImportRequest>,
-): Promise<BulkImportRequest> {
+): BulkImportRequest {
   const base: BulkImportRequest = { format: input.format, ...extra };
   if (input.text !== undefined) return { ...base, text: input.text };
-  const files = input.files ?? [];
-  return {
-    ...base,
-    data: await Promise.all(files.map(encodeFile)),
-    filenames: files.map((f) => f.name),
-  };
+  // `customMethod` sends the files as multipart parts ($upload placeholders).
+  return { ...base, files: input.files ?? [] };
 }
 
 /** Parse without writing, returning the server's candidate items. */
@@ -98,7 +81,7 @@ export function useBulkImportPreview(plural: string) {
     // The import page shows its own inline error + toast for parse failures.
     meta: { skipErrorToast: true },
     mutationFn: async (input: BulkImportInputPayload): Promise<BulkImportPreview> => {
-      const body = await buildRequest(input, { validate_only: true });
+      const body = buildRequest(input, { validate_only: true });
       const operation = await aepbase.customMethod<Operation>(
         plural,
         BULK_IMPORT_VERB,

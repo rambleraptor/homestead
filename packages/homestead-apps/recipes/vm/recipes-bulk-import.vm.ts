@@ -76,9 +76,14 @@ async function gzip(text: string): Promise<Buffer> {
  * checks it), one pad byte so the marker starts on a 3-byte boundary, then the
  * marker — so the marker's base64 appears verbatim in the image's.
  */
-function screenshot(marker: string): string {
+function screenshot(marker: string): Buffer {
   const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00];
-  return Buffer.concat([Buffer.from(signature), Buffer.from(marker)]).toString('base64');
+  return Buffer.concat([Buffer.from(signature), Buffer.from(marker)]);
+}
+
+/** A file for a bulk-import `files` list; sent as a multipart part. */
+function upload(name: string, content: Uint8Array | string): File {
+  return new File([typeof content === 'string' ? content : new Uint8Array(content)], name);
 }
 
 async function bulkImport(
@@ -125,8 +130,7 @@ describe('Recipes bulk import — API', () => {
     const file = await gzip(JSON.stringify(paprikaJson('Bacon Wrapped Asparagus')));
     const operation = await bulkImport(adminToken, {
       format: 'paprika',
-      data: file.toString('base64'),
-      filenames: ['asparagus.paprikarecipe'],
+      files: [upload('asparagus.paprikarecipe', file)],
     });
 
     expect(operation.response?.created).toBe(1);
@@ -143,8 +147,7 @@ describe('Recipes bulk import — API', () => {
 
     const operation = await bulkImport(adminToken, {
       format: 'paprika',
-      data: [a.toString('base64'), b.toString('base64')],
-      filenames: ['a.paprikarecipe', 'b.paprikarecipe'],
+      files: [upload('a.paprikarecipe', a), upload('b.paprikarecipe', b)],
     });
 
     expect(operation.response?.created).toBe(2);
@@ -160,8 +163,7 @@ describe('Recipes bulk import — API', () => {
       const good = await gzip(JSON.stringify(paprikaJson('Recipe A')));
       const operation = await bulkImport(adminToken, {
         format: 'paprika',
-        data: [Buffer.from('not a paprika file').toString('base64'), good.toString('base64')],
-        filenames: ['broken.paprikarecipe', 'good.paprikarecipe'],
+        files: [upload('broken.paprikarecipe', 'not a paprika file'), upload('good.paprikarecipe', good)],
         validate_only: true,
       });
 
@@ -176,8 +178,7 @@ describe('Recipes bulk import — API', () => {
   test('imports a recipe read from a screenshot', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
     const operation = await bulkImport(adminToken, {
       format: 'screenshots',
-      data: [screenshot(RECIPE_MARKERS.one)],
-      filenames: ['caption.png'],
+      files: [upload('caption.png', screenshot(RECIPE_MARKERS.one))],
     });
 
     expect(operation.response?.created).toBe(1);
@@ -200,8 +201,10 @@ describe('Recipes bulk import — API', () => {
     async () => {
       const operation = await bulkImport(adminToken, {
         format: 'screenshots',
-        data: [screenshot(RECIPE_MARKERS.two), screenshot(RECIPE_MARKERS.two)],
-        filenames: ['one.png', 'two.png'],
+        files: [
+          upload('one.png', screenshot(RECIPE_MARKERS.two)),
+          upload('two.png', screenshot(RECIPE_MARKERS.two)),
+        ],
         validate_only: true,
       });
 
@@ -220,8 +223,7 @@ describe('Recipes bulk import — API', () => {
     async () => {
       const preview = await bulkImport(adminToken, {
         format: 'screenshots',
-        data: [screenshot(RECIPE_MARKERS.two)],
-        filenames: ['two.png'],
+        files: [upload('two.png', screenshot(RECIPE_MARKERS.two))],
         validate_only: true,
       });
       const preview_id = preview.response?.preview_id;
@@ -251,8 +253,7 @@ describe('Recipes bulk import — API', () => {
     async () => {
       const operation = await bulkImport(adminToken, {
         format: 'screenshots',
-        data: [screenshot(RECIPE_MARKERS.none)],
-        filenames: ['dish.png'],
+        files: [upload('dish.png', screenshot(RECIPE_MARKERS.none))],
         validate_only: true,
       });
 
@@ -264,8 +265,7 @@ describe('Recipes bulk import — API', () => {
   test('refuses a file that is not an image', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
     const operation = await bulkImport(adminToken, {
       format: 'screenshots',
-      data: [Buffer.from('just some text').toString('base64')],
-      filenames: ['notes.txt'],
+      files: [upload('notes.txt', 'just some text')],
       validate_only: true,
     });
 
