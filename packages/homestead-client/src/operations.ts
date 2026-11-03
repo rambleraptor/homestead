@@ -6,8 +6,8 @@ export interface Operation<T = unknown> {
   path?: string;
   /** False while running; true once settled. */
   done: boolean;
-  /** Present when the operation settled with a failure. */
-  error?: { code?: number; message?: unknown } | null;
+  /** Present when the operation settled with a failure: an AEP-193 problem. */
+  error?: { type?: string; title?: string; status?: number; detail?: unknown } | null;
   /** The result payload, present on successful completion. */
   response?: T;
   metadata?: unknown;
@@ -76,7 +76,7 @@ export class OperationsApi {
       if (op.done) {
         if (op.error) {
           const message =
-            typeof op.error.message === 'string' ? op.error.message : 'Operation failed';
+            typeof op.error.detail === 'string' ? op.error.detail : 'Operation failed';
           throw new OperationFailedError(message, op);
         }
         return op.response as T;

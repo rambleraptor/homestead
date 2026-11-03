@@ -18,9 +18,10 @@ import type { CustomMethodHandler } from '../../resources/types';
 import { canWriteCollection } from '../../server/collection-access';
 import { householdMembers } from '../../server/household';
 import { checkMessage, MessageError, sendMessage, takeMessageSlot } from '../../server/messages';
+import { problemResponse } from '../../resources/problem';
 
 const error = (status: number, message: string, headers?: Record<string, string>) =>
-  Response.json({ error: { code: status, message } }, { status, headers });
+  problemResponse(status, message, headers);
 
 const send: CustomMethodHandler = async ({ auth, parent, request }) => {
   const to = parent?.[0] === 'users' ? parent[1] : undefined;

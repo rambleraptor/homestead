@@ -62,7 +62,7 @@ function statusLabel(operation: Operation): string {
 
 function OperationRow({ operation }: { operation: Operation }) {
   const errorMessage =
-    typeof operation.error?.message === 'string' ? operation.error.message : null;
+    typeof operation.error?.detail === 'string' ? operation.error.detail : null;
   const logs = readLogs(operation);
 
   return (

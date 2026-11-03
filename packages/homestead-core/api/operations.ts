@@ -60,9 +60,7 @@ export async function awaitOperation<T = unknown>(
     if (operation.done) {
       if (operation.error) {
         const message =
-          typeof operation.error.message === 'string'
-            ? operation.error.message
-            : 'Operation failed';
+          typeof operation.error.detail === 'string' ? operation.error.detail : 'Operation failed';
         throw new OperationFailedError(message, operation);
       }
       return operation.response as T;

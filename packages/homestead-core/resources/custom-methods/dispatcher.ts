@@ -26,6 +26,7 @@ import type {
 } from '../types';
 import { makeOperationLogger, type OperationStore } from '../operations';
 import { runOperationJob } from '../operation-runner';
+import { normalizeErrorResponse, problemResponse, toProblem } from '../problem';
 
 export interface DispatchOptions {
   request: Request;
@@ -130,18 +131,14 @@ export async function dispatchCustomMethod({
 
   const expectedMethod = method.method ?? 'POST';
   if (request.method !== expectedMethod) {
-    return Response.json(
-      { error: 'Method not allowed', expected: expectedMethod },
-      { status: 405, headers: { Allow: expectedMethod } },
-    );
+    return problemResponse(405, `${parsed.plural}:${parsed.verb} accepts ${expectedMethod}`, {
+      Allow: expectedMethod,
+    });
   }
 
   const auth = await authenticate(request);
   if (!auth) {
-    return Response.json(
-      { error: 'Unauthorized - authentication required' },
-      { status: 401 },
-    );
+    return problemResponse(401, 'Authentication required');
   }
 
   let handler: CustomMethodHandler | AsyncCustomMethodHandler;
@@ -155,10 +152,7 @@ export async function dispatchCustomMethod({
       `Failed to load custom method ${parsed.plural}:${parsed.verb}:`,
       error,
     );
-    return Response.json(
-      { error: 'Internal server error', message: 'Failed to load custom method' },
-      { status: 500 },
-    );
+    return problemResponse(500, 'Failed to load custom method');
   }
 
   const ctx: CustomMethodContext = {
@@ -179,10 +173,7 @@ export async function dispatchCustomMethod({
       console.error(
         `Async custom method ${parsed.plural}:${parsed.verb} dispatched without an operation store`,
       );
-      return Response.json(
-        { error: 'Internal server error', message: 'Async methods are not configured' },
-        { status: 500 },
-      );
+      return problemResponse(500, 'Async methods are not configured');
     }
     return dispatchAsync(ctx, handler as AsyncCustomMethodHandler, operations, {
       title: method.title,
@@ -191,19 +182,14 @@ export async function dispatchCustomMethod({
   }
 
   try {
-    return await (handler as CustomMethodHandler)(ctx);
+    // A handler may answer errors in any shape; callers always get a problem.
+    return await normalizeErrorResponse(await (handler as CustomMethodHandler)(ctx));
   } catch (error) {
-    console.error(
-      `Custom method ${parsed.plural}:${parsed.verb} threw:`,
-      error,
-    );
-    return Response.json(
-      {
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+    const problem = toProblem(error);
+    if (problem.status >= 500) {
+      console.error(`Custom method ${parsed.plural}:${parsed.verb} threw:`, error);
+    }
+    return problemResponse(problem.status, problem.detail);
   }
 }
 
@@ -229,10 +215,7 @@ async function dispatchAsync(
     replay = await bufferBody(ctx.request);
   } catch (error) {
     console.error(`Failed to read body for ${methodName}:`, error);
-    return Response.json(
-      { error: 'Bad request', message: 'Could not read request body' },
-      { status: 400 },
-    );
+    return problemResponse(400, 'Could not read request body');
   }
 
   // Pre-flight: reject before any operation exists (AEP-151 — errors that stop
@@ -240,16 +223,11 @@ async function dispatchAsync(
   if (validate) {
     try {
       const rejection = await validate({ ...ctx, request: replay() });
-      if (rejection) return rejection;
+      if (rejection) return await normalizeErrorResponse(rejection);
     } catch (error) {
-      console.error(`Pre-flight check for ${methodName} threw:`, error);
-      return Response.json(
-        {
-          error: 'Internal server error',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        },
-        { status: 500 },
-      );
+      const problem = toProblem(error);
+      if (problem.status >= 500) console.error(`Pre-flight check for ${methodName} threw:`, error);
+      return problemResponse(problem.status, problem.detail);
     }
   }
 
@@ -266,10 +244,7 @@ async function dispatchAsync(
     });
   } catch (error) {
     console.error(`Failed to create operation for ${methodName}:`, error);
-    return Response.json(
-      { error: 'Internal server error', message: 'Failed to start operation' },
-      { status: 500 },
-    );
+    return problemResponse(500, 'Failed to start operation');
   }
 
   // Per-operation logger: the handler appends progress via `ctx.log(...)`, and

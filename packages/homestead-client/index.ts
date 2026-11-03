@@ -35,6 +35,7 @@ export { HomesteadError, AepbaseError } from './src/errors';
 export {
   downloadBody,
   encodeBody,
+  encodeMethodBody,
   type CollectionRef,
   type RecordRef,
 } from './src/refs';
@@ -53,6 +54,27 @@ export type {
   FileDescriptor,
   DownloadTarget,
 } from './src/types';
+
+export {
+  BULK_EXPORT_VERB,
+  BULK_IMPORT_VERB,
+  type BulkExportOptions,
+  type BulkImportApi,
+  type BulkImportSelection,
+  type BulkImportSource,
+} from './src/bulk';
+
+export {
+  SELECT_ALL_VALID,
+  type BulkImportColumnInfo,
+  type BulkImportFormatInfo,
+  type BulkImportInputType,
+  type BulkImportPreview,
+  type BulkImportRequest,
+  type BulkImportResult,
+  type BulkImportSummary,
+  type ParsedItem,
+} from './src/bulk-import-types';
 
 export {
   OperationsApi,

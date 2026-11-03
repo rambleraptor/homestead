@@ -24,15 +24,26 @@
  *   }
  */
 
-import type { CustomMethodAuth } from '../types';
+// The wire contract is defined by the shared client; re-exported here so the
+// server framework and the client compile against one definition.
+export { SELECT_ALL_VALID } from '@rambleraptor/homestead-client';
+export type {
+  BulkImportColumnInfo,
+  BulkImportFormatInfo,
+  BulkImportInputType,
+  BulkImportPreview,
+  BulkImportRequest,
+  BulkImportResult,
+  BulkImportSummary,
+  ParsedItem,
+} from '@rambleraptor/homestead-client';
+import type {
+  BulkImportColumnInfo,
+  BulkImportInputType,
+  ParsedItem,
+} from '@rambleraptor/homestead-client';
 
-/**
- * Where a format's input comes from.
- *
- * - `file` → the UI shows a file picker (filtered by {@link BulkImportFormat.accept}).
- * - `text` → the UI shows a textarea (e.g. recipes' paste-a-webpage importer).
- */
-export type BulkImportInputType = 'file' | 'text';
+import type { CustomMethodAuth } from '../types';
 
 /** A single uploaded file, decoded from the request's base64 payload. */
 export interface BulkImportFile {
@@ -61,40 +72,6 @@ export interface BulkImportContext {
   auth: CustomMethodAuth;
   /** Plural of the resource being imported into, e.g. `gift-cards`. */
   plural: string;
-}
-
-/**
- * One candidate record produced by a parser.
- *
- * A parser reports problems per item rather than throwing, so one bad row
- * never sinks the whole file: items carrying `errors` are shown in the preview
- * as un-importable but leave their neighbours importable.
- */
-export interface ParsedItem<T = unknown> {
-  /**
-   * Zero-based position within this parse. Stable across the dry-run and the
-   * real call for the same input, which is what makes `selectedIndices`
-   * meaningful — see {@link BulkImportRequest.selectedIndices}.
-   */
-  index: number;
-  /** The candidate record. Only meaningful when `errors` is empty. */
-  data: T;
-  /** Problems that make this item un-importable. Empty means importable. */
-  errors: string[];
-  /** Problems worth surfacing that don't block import. */
-  warnings: string[];
-  /**
-   * Human-readable label for the preview row (e.g. a recipe title, a
-   * cardholder name). Falls back to `Row <index + 1>` in the UI.
-   */
-  label?: string;
-}
-
-/** One input column/field, described for the import page's format reference. */
-export interface BulkImportColumnInfo {
-  name: string;
-  required: boolean;
-  description?: string;
 }
 
 /**
@@ -198,75 +175,3 @@ export interface BulkImportDef<T = unknown> {
 // Wire shapes
 // ----------------------------------------------------------------------------
 
-/** Selects every item the parser reported as importable (no errors). */
-export const SELECT_ALL_VALID = '*';
-
-/** Request body for `POST /<plural>:bulk-import`. */
-export interface BulkImportRequest {
-  /** Format id, matching a {@link BulkImportFormat.id} on the resource. */
-  format: string;
-  /**
-   * Base64-encoded file bytes for `file` formats. A bare string is one file;
-   * an array is several (requires the format to declare `multiple`).
-   */
-  data?: string | string[];
-  /** File names, positionally matching `data`. Optional but improves errors. */
-  filenames?: string[];
-  /** Raw input for `text` formats. */
-  text?: string;
-  /** Parse and report without writing anything. */
-  dryRun?: boolean;
-  /**
-   * Which parsed items to write. An explicit index list, or `'*'` for every
-   * importable item. Defaults to `'*'`, so a CLI or REST caller can post a file
-   * and get everything importable without a preview round-trip.
-   *
-   * Indices refer to the parse of *this* request's input — the server re-parses
-   * rather than trusting client-supplied records, so it stays the only parser.
-   * Selecting an index whose item has errors is rejected rather than silently
-   * skipped.
-   */
-  selectedIndices?: number[] | typeof SELECT_ALL_VALID;
-}
-
-/** Tallies shared by the dry-run and the real response. */
-export interface BulkImportSummary {
-  total: number;
-  valid: number;
-  invalid: number;
-}
-
-/**
- * Operation `response` payload when `dryRun` is true.
- *
- * Like every bulk-import call this runs as an AEP-151 operation: the request
- * gets `202` + a pending operation, and the caller polls it (the browser via
- * `awaitOperation`). A preview of a large archive is real work, so it gets the
- * same progress and restart-recovery treatment as the import itself.
- */
-export interface BulkImportPreview<T = unknown> {
-  dryRun: true;
-  items: ParsedItem<T>[];
-  summary: BulkImportSummary;
-}
-
-/** Operation `response` payload for a real import. */
-export interface BulkImportResult {
-  dryRun: false;
-  created: number;
-  failed: Array<{ index: number; error: string }>;
-  summary: BulkImportSummary;
-}
-
-/** Format metadata served by `GET /api/custom-methods` for the UI's picker. */
-export interface BulkImportFormatInfo {
-  id: string;
-  label: string;
-  inputType: BulkImportInputType;
-  accept?: string;
-  multiple: boolean;
-  hasTemplate: boolean;
-  description?: string;
-  /** From the parser's {@link BulkImportParser.columns}; drives the page's format reference. */
-  columns?: BulkImportColumnInfo[];
-}

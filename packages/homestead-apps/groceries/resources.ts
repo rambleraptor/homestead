@@ -1,4 +1,5 @@
 import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/types';
+import { uploadSchema } from '@rambleraptor/homestead-core/resources/custom-methods/schema';
 
 export const STORES = 'stores' as const;
 export const GROCERIES = 'groceries' as const;
@@ -44,10 +45,28 @@ export const groceriesResources: ResourceDefinition[] = [
     customMethods: {
       'process-image': {
         target: 'collection',
+        description: 'Read a photo of a grocery list and return the items on it (not saved).',
+        request: {
+          type: 'object',
+          properties: { image: uploadSchema('The photo of the list (an image).') },
+          required: ['image'],
+        },
+        response: {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+            },
+            message: { type: 'string' },
+          },
+          required: ['items', 'message'],
+        },
         load: () => import('./methods/process-image'),
       },
       'send-notification': {
         target: 'collection',
+        description: 'Tell the household the grocery list changed (a push notification).',
         load: () => import('./methods/send-notification'),
       },
     },

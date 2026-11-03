@@ -5,6 +5,7 @@ import {
   type OperationStore,
   type UpdateMetadataInput,
 } from '../operations';
+import { ProblemError } from '../problem';
 
 /**
  * A store that records every metadata write and can be gated so tests can
@@ -104,8 +105,18 @@ describe('makeOperationLogger', () => {
 
 describe('toOperationError', () => {
   test('coerces Error, object, and primitive throws', () => {
-    expect(toOperationError(new Error('x'))).toEqual({ message: 'x', type: 'Error' });
-    expect(toOperationError({ code: 42 })).toEqual({ code: 42 });
-    expect(toOperationError('plain')).toEqual({ message: 'plain' });
+    const internal = { type: 'about:blank', title: 'Internal Server Error', status: 500 };
+    expect(toOperationError(new Error('x'))).toEqual({ ...internal, detail: 'x' });
+    expect(toOperationError({ message: 'odd' })).toEqual({ ...internal, detail: 'odd' });
+    expect(toOperationError('plain')).toEqual({ ...internal, detail: 'plain' });
+  });
+
+  test('keeps the status a ProblemError carries', () => {
+    expect(toOperationError(new ProblemError(410, 'gone'))).toEqual({
+      type: 'about:blank',
+      title: 'Gone',
+      status: 410,
+      detail: 'gone',
+    });
   });
 });

@@ -5,6 +5,7 @@
  * renders it.
  */
 
+import { findImportPreview } from '../importPreview';
 import { MessageCircle } from 'lucide-react';
 import {
   Conversation,
@@ -12,6 +13,7 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/conversation';
+import { Loader } from '@rambleraptor/homestead-core/shared/components/ai-elements/loader';
 import { Message, MessageContent } from '@rambleraptor/homestead-core/shared/components/ai-elements/message';
 import {
   PromptInput,
@@ -99,7 +101,11 @@ export function ChatThread({
       <Conversation className="min-h-0" data-testid="chat-messages">
         <ConversationContent>
           {messages.length === 0 && !busy ? (
-            conversationId && chat.history.isPending ? null : (
+            conversationId && chat.history.isPending ? (
+              <ConversationEmptyState data-testid="chat-loading">
+                <Loader className="text-muted-foreground" aria-label="Opening the conversation" />
+              </ConversationEmptyState>
+            ) : (
               <ConversationEmptyState
                 icon={<MessageCircle className="size-10" />}
                 title={empty.title}
@@ -116,6 +122,7 @@ export function ChatThread({
                 streaming={busy && i === messages.length - 1 && message.role === 'assistant'}
                 onAnswerApproval={chat.answerApproval}
                 busy={busy}
+                findPreview={(previewId) => findImportPreview(messages, previewId)}
               />
             ))
           )}

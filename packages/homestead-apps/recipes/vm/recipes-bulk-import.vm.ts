@@ -24,12 +24,13 @@ interface OperationRow {
   id: string;
   done: boolean;
   response?: {
-    dryRun: boolean;
+    validate_only: boolean;
+    preview_id?: string;
     created?: number;
     items?: Array<{ index: number; label?: string; errors: string[] }>;
     summary: { total: number; valid: number; invalid: number };
   };
-  error?: { message?: string };
+  error?: { status?: number; detail?: string };
 }
 
 const RECIPE_TEXT = [
@@ -75,9 +76,14 @@ async function gzip(text: string): Promise<Buffer> {
  * checks it), one pad byte so the marker starts on a 3-byte boundary, then the
  * marker — so the marker's base64 appears verbatim in the image's.
  */
-function screenshot(marker: string): string {
+function screenshot(marker: string): Buffer {
   const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00];
-  return Buffer.concat([Buffer.from(signature), Buffer.from(marker)]).toString('base64');
+  return Buffer.concat([Buffer.from(signature), Buffer.from(marker)]);
+}
+
+/** A file for a bulk-import `files` list; sent as a multipart part. */
+function upload(name: string, content: Uint8Array | string): File {
+  return new File([typeof content === 'string' ? content : new Uint8Array(content)], name);
 }
 
 async function bulkImport(
@@ -124,8 +130,7 @@ describe('Recipes bulk import — API', () => {
     const file = await gzip(JSON.stringify(paprikaJson('Bacon Wrapped Asparagus')));
     const operation = await bulkImport(adminToken, {
       format: 'paprika',
-      data: file.toString('base64'),
-      filenames: ['asparagus.paprikarecipe'],
+      files: [upload('asparagus.paprikarecipe', file)],
     });
 
     expect(operation.response?.created).toBe(1);
@@ -142,8 +147,7 @@ describe('Recipes bulk import — API', () => {
 
     const operation = await bulkImport(adminToken, {
       format: 'paprika',
-      data: [a.toString('base64'), b.toString('base64')],
-      filenames: ['a.paprikarecipe', 'b.paprikarecipe'],
+      files: [upload('a.paprikarecipe', a), upload('b.paprikarecipe', b)],
     });
 
     expect(operation.response?.created).toBe(2);
@@ -159,9 +163,8 @@ describe('Recipes bulk import — API', () => {
       const good = await gzip(JSON.stringify(paprikaJson('Recipe A')));
       const operation = await bulkImport(adminToken, {
         format: 'paprika',
-        data: [Buffer.from('not a paprika file').toString('base64'), good.toString('base64')],
-        filenames: ['broken.paprikarecipe', 'good.paprikarecipe'],
-        dryRun: true,
+        files: [upload('broken.paprikarecipe', 'not a paprika file'), upload('good.paprikarecipe', good)],
+        validate_only: true,
       });
 
       expect(operation.response?.summary).toEqual({ total: 2, valid: 1, invalid: 1 });
@@ -175,8 +178,7 @@ describe('Recipes bulk import — API', () => {
   test('imports a recipe read from a screenshot', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
     const operation = await bulkImport(adminToken, {
       format: 'screenshots',
-      data: [screenshot(RECIPE_MARKERS.one)],
-      filenames: ['caption.png'],
+      files: [upload('caption.png', screenshot(RECIPE_MARKERS.one))],
     });
 
     expect(operation.response?.created).toBe(1);
@@ -199,9 +201,11 @@ describe('Recipes bulk import — API', () => {
     async () => {
       const operation = await bulkImport(adminToken, {
         format: 'screenshots',
-        data: [screenshot(RECIPE_MARKERS.two), screenshot(RECIPE_MARKERS.two)],
-        filenames: ['one.png', 'two.png'],
-        dryRun: true,
+        files: [
+          upload('one.png', screenshot(RECIPE_MARKERS.two)),
+          upload('two.png', screenshot(RECIPE_MARKERS.two)),
+        ],
+        validate_only: true,
       });
 
       expect(operation.response?.summary).toEqual({ total: 2, valid: 2, invalid: 0 });
@@ -214,14 +218,43 @@ describe('Recipes bulk import — API', () => {
   );
 
   test(
+    'imports the previewed rows by preview id, without re-sending the screenshots',
+    { timeout: BULK_IMPORT_TIMEOUT_MS },
+    async () => {
+      const preview = await bulkImport(adminToken, {
+        format: 'screenshots',
+        files: [upload('two.png', screenshot(RECIPE_MARKERS.two))],
+        validate_only: true,
+      });
+      const preview_id = preview.response?.preview_id;
+      expect(preview_id).toBeTruthy();
+
+      const operation = await bulkImport(adminToken, {
+        format: 'screenshots',
+        preview_id,
+        selected_indices: [1],
+      });
+      expect(operation.response?.created).toBe(1);
+      const recipes = await listOrEmpty<RecipeRecord>(adminToken, 'recipes');
+      expect(recipes.map((r) => r.title)).toEqual(['Scallion Pancakes']);
+
+      // Spent: importing it again is refused before any operation starts.
+      const again = await postCustomMethod(adminToken, '/recipes:bulk-import', {
+        format: 'screenshots',
+        preview_id,
+      });
+      expect(again.status).toBe(410);
+    },
+  );
+
+  test(
     "reports the model's reason when a screenshot holds no recipe",
     { timeout: BULK_IMPORT_TIMEOUT_MS },
     async () => {
       const operation = await bulkImport(adminToken, {
         format: 'screenshots',
-        data: [screenshot(RECIPE_MARKERS.none)],
-        filenames: ['dish.png'],
-        dryRun: true,
+        files: [upload('dish.png', screenshot(RECIPE_MARKERS.none))],
+        validate_only: true,
       });
 
       expect(operation.response?.summary).toEqual({ total: 1, valid: 0, invalid: 1 });
@@ -232,12 +265,40 @@ describe('Recipes bulk import — API', () => {
   test('refuses a file that is not an image', { timeout: BULK_IMPORT_TIMEOUT_MS }, async () => {
     const operation = await bulkImport(adminToken, {
       format: 'screenshots',
-      data: [Buffer.from('just some text').toString('base64')],
-      filenames: ['notes.txt'],
-      dryRun: true,
+      files: [upload('notes.txt', 'just some text')],
+      validate_only: true,
     });
 
     expect(operation.response?.items?.[0].errors[0]).toContain('notes.txt');
+  });
+
+  test('describes the method fully in /openapi.json', async () => {
+    const res = await fetch(`${getAppUrl()}/api/aep/openapi.json`);
+    const doc = (await res.json()) as { paths: Record<string, Record<string, any>> };
+    const op = doc.paths['/recipes:bulk-import']?.post;
+
+    expect(op.operationId).toBe('BulkImportRecipes');
+    const json = op.requestBody.content['application/json'].schema;
+    expect(json.properties.format.enum).toEqual(['url', 'social', 'screenshots', 'text', 'paprika']);
+    expect(json.properties.validate_only.type).toBe('boolean');
+    expect(op.requestBody.content['multipart/form-data'].encoding.body.contentType).toBe(
+      'application/json',
+    );
+    expect(op.responses['202'].content['application/json'].schema).toEqual({
+      $ref: '#/components/schemas/operation',
+    });
+    expect(op['x-aep-long-running-operation'].response.schema.oneOf).toHaveLength(2);
+    expect(op.responses['400'].content['application/json'].schema.required).toContain('detail');
+
+    // Still a document the CLI can load: aep-lib-ts, after the CLI drops the
+    // collection-level custom methods that library can't model.
+    const { APIClient } = await import('@aep_dev/aep-lib-ts');
+    const { withoutCollectionMethods } = await import(
+      '../../../homestead-cli/src/openapi-filter'
+    );
+    await expect(
+      APIClient.fromOpenAPI(withoutCollectionMethods(doc as never), getAppUrl()),
+    ).resolves.toBeDefined();
   });
 
   test('advertises every format for discovery', async () => {
@@ -247,19 +308,19 @@ describe('Recipes bulk import — API', () => {
       methods: Array<{
         plural: string;
         verb: string;
-        bulkImport?: {
-          formats: Array<{ id: string; inputType: string; multiple: boolean }>;
+        bulk_import?: {
+          formats: Array<{ id: string; input_type: string; multiple: boolean }>;
         };
       }>;
     };
 
     const formats = methods.find((m) => m.plural === 'recipes' && m.verb === 'bulk-import')
-      ?.bulkImport?.formats;
+      ?.bulk_import?.formats;
     // Order matters: the import page selects the first format by default.
     expect(formats?.map((f) => f.id)).toEqual(['url', 'social', 'screenshots', 'text', 'paprika']);
     expect(formats?.find((f) => f.id === 'screenshots')?.multiple).toBe(true);
-    expect(formats?.find((f) => f.id === 'url')?.inputType).toBe('text');
-    expect(formats?.find((f) => f.id === 'text')?.inputType).toBe('text');
+    expect(formats?.find((f) => f.id === 'url')?.input_type).toBe('text');
+    expect(formats?.find((f) => f.id === 'text')?.input_type).toBe('text');
     expect(formats?.find((f) => f.id === 'paprika')?.multiple).toBe(true);
   });
 });

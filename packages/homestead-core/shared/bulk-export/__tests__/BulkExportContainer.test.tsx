@@ -106,7 +106,7 @@ describe('BulkExportContainer', () => {
       {
         plural: 'people',
         verb: 'bulk-export',
-        bulkExport: {
+        bulk_export: {
           formats: [],
           options: [
             { id: 'combine_households', type: 'boolean', default: false, label: 'Combine household members into one row' },

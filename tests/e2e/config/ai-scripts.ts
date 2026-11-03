@@ -34,6 +34,8 @@ export interface ScriptedToolCall {
 export interface ScriptStep {
   toolCalls?: ScriptedToolCall[];
   text?: string;
+  /** What the model "thought" first, as a reasoning summary ahead of the rest. */
+  reasoning?: string;
 }
 
 export interface ChatScript {
@@ -75,6 +77,27 @@ export const CONTEXT_PLACEHOLDER = '{context}';
 export const TOOL_OUTPUT_PLACEHOLDER = '{tool-output}';
 
 /**
+ * In a step's tool-call args, `{output:<key>}` is replaced by the value of the
+ * first `<key>` found (at any depth) in the turn's latest tool output — so a
+ * script can carry an id from one call to the next, as a model would (e.g. a
+ * bulk-import preview's `preview_id`).
+ */
+export const OUTPUT_VALUE_PLACEHOLDER = /\{output:([a-z_]+)\}/g;
+
+/** A recipe pasted into the chat for the import scripts. */
+export const CHAT_IMPORT_RECIPE_TEXT = [
+  'Garlic Noodles',
+  '',
+  'Ingredients:',
+  '8 ounces spaghetti',
+  '4 cloves garlic, minced',
+  '',
+  'Directions:',
+  'Boil the noodles.',
+  'Toss with the garlic.',
+].join('\n');
+
+/**
  * The id the MCP chat specs give their test server, so a script can name its
  * tools (`mcp_<server id>__<tool>`, see `mcpToolName`).
  */
@@ -105,6 +128,8 @@ export const CHAT_MARKERS = {
   listUnchecked: 'e2e-chat-list-unchecked',
   /** Answer in text with no tool call — the plain streaming case. */
   hello: 'e2e-chat-hello',
+  /** Think first (a reasoning summary), then answer in text. */
+  reasonedReply: 'e2e-chat-reasoned-reply',
   /**
    * A long text reply (200 words, so ~1s at the VM's 5ms chunk pace): long
    * enough to cancel, interrupt, or collide with while it is still streaming.
@@ -128,6 +153,10 @@ export const CHAT_MARKERS = {
   jakesAddress: 'e2e-chat-jakes-address',
   /** Message Sam (an approval-gated `:send`), then say so. */
   messageSam: 'e2e-chat-message-sam',
+  /** Preview a pasted recipe with `:bulk-import`, then import it (approval-gated). */
+  importRecipe: 'e2e-chat-import-recipe',
+  /** Preview the attached screenshot as recipes, then repeat what came back. */
+  previewScreenshot: 'e2e-chat-preview-screenshot',
   /** Move the seeded todo (see TODO_ID) to Do Later, then say so. */
   updateTodo: 'e2e-chat-update-todo',
   /** Remove the seeded todo (see TODO_ID), then say so. */
@@ -142,6 +171,8 @@ export const CHAT_MARKERS = {
   mcpFailing: 'e2e-chat-mcp-failing',
 } as const;
 
+/** The reasoned reply's thinking, exported so a spec can check it is shown. */
+export const REASONING_TEXT = 'A greeting is all that is needed here, so no tool is called.';
 /**
  * The id the todo scripts act on. A script is static, so a spec seeds the todo
  * with this client-chosen id (`todo` allows one) before sending the marker — or
@@ -231,6 +262,10 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
     steps: [{ text: 'Hello from the scripted assistant. How can I help?' }],
   },
   {
+    marker: CHAT_MARKERS.reasonedReply,
+    steps: [{ reasoning: REASONING_TEXT, text: 'Hello! I gave that some thought first.' }],
+  },
+  {
     marker: CHAT_MARKERS.longReply,
     steps: [{ text: LONG_REPLY_TEXT }],
   },
@@ -266,6 +301,48 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
         ],
       },
       { text: 'Saved the REI gift card with its photo.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.importRecipe,
+    steps: [
+      {
+        toolCalls: [
+          {
+            name: 'recipes',
+            args: {
+              action: ':bulk-import',
+              body: { format: 'text', text: CHAT_IMPORT_RECIPE_TEXT, validate_only: true },
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            name: 'recipes',
+            args: { action: ':bulk-import', body: { format: 'text', preview_id: '{output:preview_id}' } },
+          },
+        ],
+      },
+      { text: 'Imported it.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.previewScreenshot,
+    steps: [
+      {
+        toolCalls: [
+          {
+            name: 'recipes',
+            args: {
+              action: ':bulk-import',
+              body: { format: 'screenshots', files: [ATTACHMENT_ID_PLACEHOLDER], validate_only: true },
+            },
+          },
+        ],
+      },
+      { text: `Preview: ${TOOL_OUTPUT_PLACEHOLDER}` },
     ],
   },
   {

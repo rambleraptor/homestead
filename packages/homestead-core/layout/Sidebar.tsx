@@ -7,11 +7,14 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Home, LogOut, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Home, LayoutGrid, LogOut, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
-import { getNavigationApps } from '@rambleraptor/homestead-core/apps/registry';
 import { AppIcon } from '@rambleraptor/homestead-core/apps/lazy';
-import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
+import { groupEntriesBySection } from '@rambleraptor/homestead-core/apps/sections';
+import { useSidebarPins } from '@rambleraptor/homestead-core/apps/useSidebarPins';
+
+/** The drawer every sidebar links to, pinned or not — see `app-drawer/`. */
+const ALL_APPS_PATH = '/apps';
 
 interface SidebarProps {
   /** Mobile drawer state (below lg). */
@@ -76,33 +79,13 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
     });
   };
 
-  // Show the apps this viewer can use: superuser-only apps are hidden from
-  // regular users, everything else is filtered by the permission resolver.
-  const isVisible = useAppVisible();
-  const apps = user ? getNavigationApps().filter(isVisible) : [];
-
-  // Group apps by section
-  const appsBySection = apps.reduce((acc, app) => {
-    const section = app.web?.section || '';
-    if (!acc[section]) {
-      acc[section] = [];
-    }
-    acc[section].push(app);
-    return acc;
-  }, {} as Record<string, typeof apps>);
-
-  // Settings always renders last; other sections follow the defined order,
-  // with any unlisted sections slotting in before Settings.
-  const sectionOrder = ['Money', 'Food', 'Relationships', 'Games'];
-  const sections = Object.keys(appsBySection).sort((a, b) => {
-    if (a === 'Settings') return 1;
-    if (b === 'Settings') return -1;
-    const aIndex = sectionOrder.indexOf(a);
-    const bIndex = sectionOrder.indexOf(b);
-    const aOrder = aIndex === -1 ? sectionOrder.length : aIndex;
-    const bOrder = bIndex === -1 ? sectionOrder.length : bIndex;
-    return aOrder - bOrder || a.localeCompare(b);
-  });
+  // The apps this viewer can use (superuser-only apps hidden from regular
+  // users, the rest filtered by the permission resolver), narrowed to the ones
+  // in their sidebar. The rest are a click away in the drawer. A nested child
+  // in the sidebar lists under its parent's section, indented. Superuser and
+  // Settings are fixed: always listed, never movable.
+  const { pinnedEntries } = useSidebarPins();
+  const sections = groupEntriesBySection(pinnedEntries);
 
   const handleLogout = () => {
     logout();
@@ -112,6 +95,16 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
   const isActive = (basePath: string) => {
     return pathname === basePath || pathname.startsWith(basePath + '/');
   };
+  // A parent isn't lit while one of its listed children is the better match.
+  const isEntryActive = (basePath: string) =>
+    isActive(basePath) &&
+    !pinnedEntries.some(
+      (e) =>
+        e.app.web &&
+        e.app.web.basePath !== basePath &&
+        e.app.web.basePath.startsWith(basePath + '/') &&
+        isActive(e.app.web.basePath),
+    );
 
   return (
     <>
@@ -159,12 +152,12 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
 
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
-            {apps.length === 0 ? (
+            {pinnedEntries.length === 0 ? (
               <div className="text-sm text-gray-500 text-center py-4">
                 No apps available
               </div>
             ) : (
-              sections.map((section) => {
+              sections.map(({ name: section, entries: sectionEntries }) => {
                 const collapsed = section ? collapsedSections.has(section) : false;
                 const contentId = `sidebar-section-${section || 'unsectioned'}`;
                 return (
@@ -191,16 +184,19 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
                     {/* Section Apps */}
                     {!collapsed && (
                       <div id={contentId} className="space-y-1">
-                        {appsBySection[section].map((app) => {
+                        {sectionEntries.map(({ app, parent }) => {
                           const web = app.web;
                           if (!web) return null;
-                          const active = isActive(web.basePath);
+                          const active = isEntryActive(web.basePath);
                           return (
                             <Link
                               key={app.id}
                               to={web.basePath}
                               onClick={onClose}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                              data-testid={parent ? `sidebar-nested-${app.id}` : undefined}
+                              className={`flex items-center gap-3 py-2 pr-3 rounded-lg transition-colors ${
+                                parent ? 'pl-9' : 'pl-3'
+                              } ${
                                 active
                                   ? 'bg-accent-terracotta/10 text-accent-terracotta'
                                   : 'text-brand-slate hover:bg-bg-pearl'
@@ -224,6 +220,23 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
 
           {/* Bottom Actions */}
           <div className="p-4 border-t border-gray-100 space-y-1">
+            {/* The drawer: every app the viewer can use, pinned or not. Fixed
+                here so it survives an empty sidebar and can't be unpinned. */}
+            {user && (
+              <Link
+                to={ALL_APPS_PATH}
+                onClick={onClose}
+                data-testid="sidebar-all-apps-link"
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                  isActive(ALL_APPS_PATH)
+                    ? 'bg-accent-terracotta/10 text-accent-terracotta'
+                    : 'text-brand-slate hover:bg-bg-pearl'
+                }`}
+              >
+                <LayoutGrid className="w-5 h-5 flex-shrink-0" />
+                <span className="font-medium">All apps</span>
+              </Link>
+            )}
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-brand-slate hover:bg-bg-pearl transition-colors"

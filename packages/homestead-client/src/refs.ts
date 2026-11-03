@@ -1,4 +1,5 @@
 import type { Http } from './http';
+import { BulkImportApiImpl, bulkExport, type BulkExportOptions, type BulkImportApi } from './bulk';
 import { errorFromResponse } from './errors';
 import type {
   CreateOptions,
@@ -35,9 +36,14 @@ export interface CollectionRef<T> {
   record(id: string): RecordRef<T>;
   /**
    * Invoke an AEP-136 collection-target custom method
-   * (`POST /<plural>:<verb>`), sending `X-User-Id` for the gateway.
+   * (`POST /<plural>:<verb>`), sending `X-User-Id` for the gateway. A body
+   * holding `Blob`s goes as multipart ({@link encodeMethodBody}).
    */
   invoke<R = unknown>(verb: string, body?: RecordBody): Promise<R>;
+  /** The collection's `:bulk-import` method: preview, import a preview, or both at once. */
+  readonly bulkImport: BulkImportApi<T>;
+  /** Download the collection (or the rows `filter` selects) via `:bulk-export`. */
+  bulkExport(options?: BulkExportOptions): Promise<Blob>;
 }
 
 /** A handle to a single record. */
@@ -113,6 +119,37 @@ export function encodeBody(body: RecordBody | FormData): RecordBody | FormData {
   return form;
 }
 
+/**
+ * Encode a custom method's request body (AEP-136). Without files it's the
+ * object itself, sent as JSON. With files, it's multipart: every `Blob`/`File`
+ * — at the top level or nested — becomes an `{"$upload": "<part>"}`
+ * placeholder, the object goes as JSON in a part named `body`, and each file in
+ * its own part (with its name). The server's `readMethodBody` reverses it.
+ */
+export function encodeMethodBody(body: RecordBody): RecordBody | FormData {
+  if (!containsBlob(body)) return body;
+  const form = new FormData();
+  const files: Array<[string, Blob]> = [];
+  const lift = (value: unknown): unknown => {
+    if (value instanceof Blob) {
+      const part = `$upload-${files.length}`;
+      files.push([part, value]);
+      return { $upload: part };
+    }
+    if (Array.isArray(value)) return value.map(lift);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, lift(v)]));
+    }
+    return value;
+  };
+  form.append('body', JSON.stringify(lift(body)));
+  for (const [part, blob] of files) {
+    if (blob instanceof File) form.append(part, blob, blob.name);
+    else form.append(part, blob);
+  }
+  return form;
+}
+
 /** The `include` query value: link names, comma-separated; none, no param. */
 function includeParam(include: string[] | undefined): string | undefined {
   return include && include.length > 0 ? include.join(',') : undefined;
@@ -125,11 +162,19 @@ export function downloadBody(target: DownloadTarget): { field: string } | { file
 }
 
 export class CollectionRefImpl<T> implements CollectionRef<T> {
+  readonly bulkImport: BulkImportApi<T>;
+
   constructor(
     private readonly http: Http,
     /** Collection path with a leading slash, no trailing slash. */
     private readonly path: string,
-  ) {}
+  ) {
+    this.bulkImport = new BulkImportApiImpl<T>(http, path);
+  }
+
+  bulkExport(options?: BulkExportOptions): Promise<Blob> {
+    return bulkExport(this.http, this.path, options);
+  }
 
   async page(options: PageOptions = {}): Promise<Page<T>> {
     const env = await this.http.request<ListEnvelope<T>>(this.path, {
@@ -180,7 +225,7 @@ export class CollectionRefImpl<T> implements CollectionRef<T> {
   invoke<R = unknown>(verb: string, body?: RecordBody): Promise<R> {
     return this.http.request<R>(`${this.path}:${verb}`, {
       method: 'POST',
-      body,
+      body: body === undefined ? undefined : encodeMethodBody(body),
       includeUserId: true,
     });
   }
@@ -238,7 +283,7 @@ export class RecordRefImpl<T> implements RecordRef<T> {
   invoke<R = unknown>(verb: string, body?: RecordBody): Promise<R> {
     return this.http.request<R>(`${this.path}:${verb}`, {
       method: 'POST',
-      body,
+      body: body === undefined ? undefined : encodeMethodBody(body),
       includeUserId: true,
     });
   }

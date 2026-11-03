@@ -50,6 +50,16 @@ const STATIC_PROPERTIES: Record<string, Record<string, unknown>> = {
     type: 'string',
     description: 'JSON-encoded array of dashboard widget ids the user has hidden.',
   },
+  sidebar_pinned_apps: {
+    type: 'string',
+    description:
+      'JSON-encoded array of app ids the user has pinned to their sidebar over the household default.',
+  },
+  sidebar_unpinned_apps: {
+    type: 'string',
+    description:
+      'JSON-encoded array of app ids the user has unpinned from their sidebar over the household default.',
+  },
 };
 
 interface AepResourceDefinition {

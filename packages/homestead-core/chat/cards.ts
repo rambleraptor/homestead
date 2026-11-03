@@ -133,6 +133,9 @@ export function humanizeName(name: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** A row's value is cut here: a pasted document belongs behind Details, not on the card. */
+const ROW_VALUE_MAX = 160;
+
 /** A scalar as a row reads it; undefined for anything a row can't show. */
 function rowValue(field: FieldDef | undefined, value: unknown): string | undefined {
   if (value === null || value === undefined || value === '') return undefined;
@@ -144,7 +147,7 @@ function rowValue(field: FieldDef | undefined, value: unknown): string | undefin
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
   }
-  return value;
+  return value.length > ROW_VALUE_MAX ? `${value.slice(0, ROW_VALUE_MAX).trimEnd()}…` : value;
 }
 
 /**

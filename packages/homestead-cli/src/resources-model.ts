@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { APIClient, Client, logger } from '@aep_dev/aep-lib-ts';
 import type { OpenAPI, Resource } from '@aep_dev/aep-lib-ts';
+import type { BulkImportFormatInfo } from '@rambleraptor/homestead-client';
+import { withoutCollectionMethods } from './openapi-filter.ts';
 import { getProfile, type Profile } from './credentials.ts';
 
 // aep-lib-ts logs OpenAPI parsing at INFO; silence it so command output is clean.
@@ -35,6 +37,15 @@ export interface CustomMethodInfo {
   target: 'collection' | 'item';
   /** HTTP method the gateway expects (default POST). */
   method: string;
+  /** Long-running (AEP-151): answers with an operation. */
+  async?: boolean;
+  /** Present on `:bulk-import` — the formats this server offers. */
+  bulk_import?: { formats: BulkImportFormatInfo[] };
+  /** Present on `:bulk-export` — its formats and options. */
+  bulk_export?: {
+    formats: Array<{ id: string; label: string; mime_type: string; extension: string }>;
+    options: Array<{ id: string; label: string; type: 'boolean'; default?: boolean }>;
+  };
 }
 
 /** Everything a verb handler needs to talk to aepbase + the sidecar. */
@@ -79,7 +90,7 @@ export async function connect(opts: ConnectOptions): Promise<ResourceContext> {
   const { token, userId } = await resolveAuth(serverUrl, opts, profile);
   const openapi = await fetchOpenApi(serverUrl);
 
-  const apiClient = await APIClient.fromOpenAPI(openapi, serverUrl);
+  const apiClient = await APIClient.fromOpenAPI(withoutCollectionMethods(openapi), serverUrl);
   const resources = apiClient.resources();
   patchCreateMethods(resources, openapi);
   if (Object.keys(resources).length === 0) {

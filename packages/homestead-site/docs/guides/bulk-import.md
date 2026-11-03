@@ -190,19 +190,29 @@ Link to `/<app>/import` from your app's home:
 
 ## The API
 
-```http
-POST /api/aep/gift-cards:bulk-import
-{ "format": "csv", "data": "<base64>", "filenames": ["cards.csv"], "dryRun": true }
+A file format's request is multipart, the way every custom method takes files:
+the JSON body in a `body` part, each file in its own part, named in the body by
+an `{"$upload": "<part>"}` placeholder. (The shared client's `invoke` and the
+SPA's `customMethod` build this from a body holding `File`s.)
+
+```bash
+curl -X POST "$HOMESTEAD/api/aep/gift-cards:bulk-import" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F 'body={"format": "csv", "files": [{"$upload": "f0"}], "validate_only": true}' \
+  -F 'f0=@cards.csv;type=text/csv'
 
 → 202 { "id": "op_123", "done": false }
 ```
+
+Text formats send plain JSON, with `text` instead of `files`.
 
 Poll `GET /api/aep/operations/op_123` until `done`:
 
 ```json
 {
   "response": {
-    "dryRun": true,
+    "validate_only": true,
+    "preview_id": "6f1c…",
     "items": [
       { "index": 0, "data": { "merchant": "Amazon" }, "errors": [], "warnings": [], "label": "Amazon" }
     ],
@@ -211,28 +221,55 @@ Poll `GET /api/aep/operations/op_123` until `done`:
 }
 ```
 
-Then import the rows you want:
+Then import the rows you want from that preview:
 
 ```http
 POST /api/aep/gift-cards:bulk-import
-{ "format": "csv", "data": "<base64>", "selectedIndices": [0, 1, 3] }
+{ "format": "csv", "preview_id": "6f1c…", "selected_indices": [0, 1, 3] }
 
-→ 202 → { "response": { "dryRun": false, "created": 3, "failed": [], "summary": {…} } }
+→ 202 → { "response": { "validate_only": false, "created": 3, "failed": [], "summary": {…} } }
 ```
 
-`selectedIndices` accepts an explicit list or `"*"` for every importable row, and
+The import writes the rows the server held for that preview — it doesn't parse
+again, so what's saved is exactly what was previewed, and a parser that calls a
+model (recipes' Social Post and Screenshots) runs once. The file isn't re-sent.
+A preview is held in server memory for an hour, only for the person who made it
+and the same resource and format, and is used up by the import. A restart or a
+second import gets `410 Gone`: preview again.
+
+Without `preview_id`, the request's own `files` / `text` is parsed afresh.
+
+`selected_indices` accepts an explicit list or `"*"` for every importable row, and
 **defaults to `"*"`** — so a script can post a file and be done:
 
 ```bash
-homestead resources gift-cards bulk-import --@data '{
-  "format": "csv",
-  "data": "'"$(base64 -i cards.csv)"'"
-}'
+curl -X POST "$HOMESTEAD/api/aep/gift-cards:bulk-import" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F 'body={"format": "csv", "files": [{"$upload": "f0"}]}' \
+  -F 'f0=@cards.csv;type=text/csv'
+```
+
+The CLI and the shared client do all of this for you — encoding the files and
+waiting on the operation:
+
+```bash
+homestead resources gift-card bulk-import --format csv --file cards.csv --validate-only
+# → the preview, and on stderr: --preview-id <id> to import it
+homestead resources gift-card bulk-import --format csv --preview-id <id> --select 0,2
+```
+
+```ts
+const preview = await hs.collection('gift-cards').bulkImport.preview({ format: 'csv', files: [file] });
+await hs.collection('gift-cards').bulkImport.importPreview({
+  format: 'csv', previewId: preview.preview_id, selected: [0, 2],
+});
 ```
 
 Selecting a row that has errors is rejected rather than skipped: a caller that
-named a specific row should hear that it couldn't be imported. Text formats send
-`text` instead of `data`.
+named a specific row should hear that it couldn't be imported.
+
+Errors are the API's standard problem bodies; a failed operation's `error` is
+the same problem (`{ type, title, status, detail }`).
 
 ## Adding another file type
 

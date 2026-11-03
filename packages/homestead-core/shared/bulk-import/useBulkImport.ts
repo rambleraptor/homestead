@@ -1,8 +1,9 @@
 /**
  * Client hooks for the bulk-import API.
  *
- * The browser is a thin client here: it uploads the file, the server parses it,
- * and the preview the user sees is the server's own parse. Both the preview and
+ * The browser is a thin client here: it uploads the files (multipart), the server parses them,
+ * and the preview the user sees is the server's own parse — which the import
+ * then writes by its `preview_id`, without uploading or parsing again. Both the preview and
  * the import run as AEP-151 operations, so each call is a `202` + a poll.
  *
  * Nothing in here is app-specific — the standardized page drives any resource
@@ -31,7 +32,7 @@ const PREVIEW_POLL_MS = 300;
 interface CustomMethodInfo {
   plural: string;
   verb: string;
-  bulkImport?: { formats: BulkImportFormatInfo[] };
+  bulk_import?: { formats: BulkImportFormatInfo[] };
 }
 
 /**
@@ -53,22 +54,9 @@ export function useBulkImportFormats(plural: string) {
       const method = methods.find(
         (m) => m.plural === plural && m.verb === BULK_IMPORT_VERB,
       );
-      return method?.bulkImport?.formats ?? [];
+      return method?.bulk_import?.formats ?? [];
     },
   });
-}
-
-/** Base64-encode a file for the JSON request body. */
-async function encodeFile(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = '';
-  // Chunked: spreading a multi-MB array into fromCharCode blows the argument
-  // limit.
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
 }
 
 export interface BulkImportInputPayload {
@@ -77,18 +65,14 @@ export interface BulkImportInputPayload {
   text?: string;
 }
 
-async function buildRequest(
+function buildRequest(
   input: BulkImportInputPayload,
   extra: Partial<BulkImportRequest>,
-): Promise<BulkImportRequest> {
+): BulkImportRequest {
   const base: BulkImportRequest = { format: input.format, ...extra };
   if (input.text !== undefined) return { ...base, text: input.text };
-  const files = input.files ?? [];
-  return {
-    ...base,
-    data: await Promise.all(files.map(encodeFile)),
-    filenames: files.map((f) => f.name),
-  };
+  // `customMethod` sends the files as multipart parts ($upload placeholders).
+  return { ...base, files: input.files ?? [] };
 }
 
 /** Parse without writing, returning the server's candidate items. */
@@ -97,7 +81,7 @@ export function useBulkImportPreview(plural: string) {
     // The import page shows its own inline error + toast for parse failures.
     meta: { skipErrorToast: true },
     mutationFn: async (input: BulkImportInputPayload): Promise<BulkImportPreview> => {
-      const body = await buildRequest(input, { dryRun: true });
+      const body = buildRequest(input, { validate_only: true });
       const operation = await aepbase.customMethod<Operation>(
         plural,
         BULK_IMPORT_VERB,
@@ -110,12 +94,15 @@ export function useBulkImportPreview(plural: string) {
   });
 }
 
-export interface RunBulkImportInput extends BulkImportInputPayload {
+export interface RunBulkImportInput {
+  format: string;
   /**
-   * Indices from the preview, or `'*'` for everything importable. The server
-   * re-parses the same input rather than trusting client-supplied records, so
-   * these address its parse, not ours.
+   * The preview being imported. The server writes the rows it held for it
+   * rather than parsing again, so the import is exactly what was shown — and a
+   * parser that calls a model runs once, not twice. The input isn't re-sent.
    */
+  previewId: string;
+  /** Indices from that preview, or `'*'` for everything importable in it. */
   selectedIndices: number[] | '*';
 }
 
@@ -129,9 +116,11 @@ export function useBulkImportRun(plural: string, queryKey: readonly unknown[]) {
     // The import page shows its own message for full and partial failures.
     meta: { skipErrorToast: true },
     mutationFn: async (input: RunBulkImportInput): Promise<BulkImportResult> => {
-      const body = await buildRequest(input, {
-        selectedIndices: input.selectedIndices,
-      });
+      const body: BulkImportRequest = {
+        format: input.format,
+        preview_id: input.previewId,
+        selected_indices: input.selectedIndices,
+      };
       const operation = await aepbase.customMethod<Operation>(
         plural,
         BULK_IMPORT_VERB,

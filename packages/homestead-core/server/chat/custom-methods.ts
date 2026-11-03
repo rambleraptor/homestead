@@ -14,9 +14,16 @@
  * CLI take, so dispatch, auth, and AEP-151 operation bookkeeping all behave
  * identically no matter who calls.
  *
- * The synthesized `:bulk-import` / `:bulk-export` methods are deliberately not
- * exposed: they move files (multipart in, CSV/JSON text out) rather than JSON a
- * model can compose, and `read_*` already lists records.
+ * The synthesized `:bulk-import` joins them — it's a custom method like any
+ * other, so a model imports with the same body every client sends: a
+ * `validate_only` preview first, then the `preview_id` (and the rows it picked),
+ * which asks the person first (`confirm: { unless: 'validate_only' }`).
+ * `:bulk-export` stays out: it returns a file, and `read_*` already lists.
+ *
+ * A method that takes files gets them by **attachment id** on a surface that
+ * has attachments (the chat: files the person attached to the conversation);
+ * the executor turns each id into the upload. Without attachments (MCP), an
+ * optional file field is left out and a method that requires one isn't offered.
  */
 
 import { z } from 'zod';
@@ -26,7 +33,10 @@ import type {
   ResourceCustomMethod,
   ResourceDefinition,
 } from '../../resources/types';
+import { encodeMethodBody } from '@rambleraptor/homestead-client';
 import { aepbaseFetch } from '../aepbase';
+import { takesUploads, UPLOAD_MARKER } from '../../resources/custom-methods/schema';
+import { BULK_IMPORT_VERB, bulkImportMethodFrom } from '../bulk-import/method';
 import { logger } from '../../utils/logger';
 import {
   indexBySingular,
@@ -62,7 +72,14 @@ export interface CustomMethodBinding {
   bodyFields: Set<string>;
   /** True when the body comes from the JSON-encoded {@link BODY_PARAM} instead. */
   freeFormBody: boolean;
+  /** Body fields that hold files, taken as attachment ids: one id, or a list. */
+  uploadFields?: Map<string, 'one' | 'many'>;
+  /** Where an untrusted result came from (`ResourceCustomMethod.untrustedResult`). */
+  untrusted?: string;
 }
+
+/** Resolves an attachment id (a file the person attached to the conversation) to the file. */
+export type AttachmentFiles = (id: string) => Promise<File>;
 
 export interface BuiltCustomMethodTools {
   tools: Record<string, ToolSpec>;
@@ -94,6 +111,12 @@ function schemaToZod(schema: JsonSchema): z.ZodTypeAny {
   const values = stringsOf(schema.enum);
   if (values.length > 0) {
     return describe(z.enum(values as [string, ...string[]]));
+  }
+
+  const options = Array.isArray(schema.oneOf) ? schema.oneOf.filter(isSchema) : [];
+  if (options.length >= 2) {
+    const [a, b, ...rest] = options.map(schemaToZod);
+    return describe(z.union([a!, b!, ...rest]));
   }
 
   switch (schema.type) {
@@ -166,10 +189,79 @@ function describeMethod(
   // An async method answers with the operation, not the result — say so, since
   // the model has to poll for the outcome instead of reading it off the reply.
   const lro = method.async
-    ? ' Long-running: returns an AEP-151 operation immediately; poll read_operation' +
-      ' with the returned id until `done` is true, then read its `response`.'
+    ? ` Long-running: the call waits up to ${LRO_WAIT_MS / 1000}s for the result; if it isn't` +
+      ' done by then it returns the AEP-151 operation — poll read_operation with its id until' +
+      ' `done` is true, then read its `response`.'
     : '';
   return `${what}${nesting}${lro}`;
+}
+
+/** How long a tool call waits on a long-running method before handing back the operation. */
+export const LRO_WAIT_MS = 90_000;
+const LRO_POLL_MS = 500;
+
+/**
+ * The custom methods a resource exposes to the model tools: its declared ones,
+ * plus the synthesized `:bulk-import` when it declares `bulkImport`.
+ */
+export function methodsOf(def: ResourceDefinition): Array<[string, ResourceCustomMethod]> {
+  const declared = Object.entries(def.customMethods ?? {});
+  return def.bulkImport
+    ? [...declared, [BULK_IMPORT_VERB, bulkImportMethodFrom(def.plural, def.bulkImport)]]
+    : declared;
+}
+
+function isUpload(schema: unknown): boolean {
+  return isSchema(schema) && schema[UPLOAD_MARKER] === true;
+}
+
+/**
+ * A request schema as the model tools offer it. Top-level file fields become
+ * attachment ids when the surface has attachments; otherwise optional ones are
+ * dropped. Null when the method can't be offered: a required file without
+ * attachments, or a file below the top level.
+ */
+function toolRequest(
+  request: JsonSchema,
+  files: boolean,
+): { schema: JsonSchema; uploads: Map<string, 'one' | 'many'> } | null {
+  if (!isSchema(request.properties)) return { schema: request, uploads: new Map() };
+  const required = new Set(stringsOf(request.required));
+  const properties: Record<string, unknown> = {};
+  const uploads = new Map<string, 'one' | 'many'>();
+  const attachmentId = (about: unknown) => ({
+    type: 'string',
+    description:
+      'The attachment id of a file the person attached to this conversation' +
+      (typeof about === 'string' ? ` — ${about}` : '.'),
+  });
+  for (const [key, value] of Object.entries(request.properties)) {
+    const many = isSchema(value) && value.type === 'array' && isUpload(value.items);
+    if (isUpload(value) || many) {
+      if (!files) {
+        if (required.has(key)) return null;
+        continue;
+      }
+      uploads.set(key, many ? 'many' : 'one');
+      properties[key] = many
+        ? {
+            type: 'array',
+            items: attachmentId(undefined),
+            description: `${(value as JsonSchema).description ?? 'Files.'} By attachment id.`,
+          }
+        : attachmentId((value as JsonSchema).description);
+      continue;
+    }
+    properties[key] = value;
+  }
+  const schema: JsonSchema = {
+    ...request,
+    properties,
+    required: [...required].filter((k) => k in properties),
+  };
+  // A file somewhere deeper can't be expressed as an attachment id here.
+  if (takesUploads(schema)) return null;
+  return { schema, uploads };
 }
 
 /**
@@ -181,6 +273,10 @@ function describeMethod(
 export function buildCustomMethodTools(
   defs: ResourceDefinition[],
   taken: ReadonlySet<string> = new Set(),
+  { files = false }: {
+    /** The surface resolves attachment ids to files (the chat); without it, file fields are left out. */
+    files?: boolean;
+  } = {},
 ): BuiltCustomMethodTools {
   const bySingular = indexBySingular(defs);
   const tools: Record<string, ToolSpec> = {};
@@ -190,7 +286,11 @@ export function buildCustomMethodTools(
     const parentChain = resolveParentChain(def, bySingular);
     const parentPlurals = parentChain.map((s) => pluralOf(s, bySingular));
 
-    for (const [verb, method] of Object.entries(def.customMethods ?? {})) {
+    for (const [verb, method] of methodsOf(def)) {
+      const request = isSchema(method.request) ? toolRequest(method.request, files) : undefined;
+      // A method whose files this surface can't hand over isn't offered.
+      if (request === null) continue;
+
       const target = method.target ?? 'collection';
       const name = customMethodToolName(def, verb, target);
       if (taken.has(name) || name in tools) {
@@ -213,7 +313,7 @@ export function buildCustomMethodTools(
 
       // A declared request schema becomes typed params; without one, the body
       // is opaque, so offer a single JSON-encoded escape hatch.
-      const bodyShape = isSchema(method.request) ? objectShape(method.request) : null;
+      const bodyShape = request ? objectShape(request.schema) : null;
       const freeFormBody = bodyShape === null;
       if (bodyShape) {
         for (const [key, zod] of Object.entries(bodyShape)) {
@@ -245,6 +345,8 @@ export function buildCustomMethodTools(
         parentPlurals,
         bodyFields: new Set(bodyShape ? Object.keys(bodyShape) : []),
         freeFormBody,
+        uploadFields: request?.uploads,
+        untrusted: method.untrustedResult,
       });
     }
   }
@@ -320,24 +422,85 @@ function parseBody(text: string): unknown {
   }
 }
 
+/** Replace attachment ids in the body's file fields with the files they name. */
+async function resolveUploads(
+  binding: CustomMethodBinding,
+  body: unknown,
+  attachments: AttachmentFiles | undefined,
+): Promise<unknown> {
+  if (!binding.uploadFields?.size || !body || typeof body !== 'object') return body;
+  const out = { ...(body as Record<string, unknown>) };
+  for (const [field, kind] of binding.uploadFields) {
+    const value = out[field];
+    if (value === undefined) continue;
+    const ids = kind === 'one' ? [value] : value;
+    if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string' && id)) {
+      throw new Error(`"${field}" takes ${kind === 'one' ? 'an attachment id' : 'a list of attachment ids'}`);
+    }
+    if (!attachments) throw new Error(`"${field}" takes files, which can only be attached in the chat`);
+    const files = await Promise.all((ids as string[]).map((id) => attachments(id)));
+    out[field] = kind === 'one' ? files[0] : files;
+  }
+  return out;
+}
+
+/** Wait (bounded) for a long-running method's operation; the operation itself if it isn't done in time. */
+async function awaitOperation(operation: { id: string }, token: string): Promise<CustomMethodResult> {
+  const deadline = Date.now() + LRO_WAIT_MS;
+  for (;;) {
+    const res = await aepbaseFetch(`/operations/${encodeURIComponent(operation.id)}`, { token });
+    const op = parseBody(await res.text()) as {
+      done?: boolean;
+      response?: unknown;
+      error?: { detail?: unknown };
+    } | null;
+    if (!res.ok || !op) return { ok: false, error: `could not read operation ${operation.id}` };
+    if (op.done) {
+      if (op.error) {
+        const detail = typeof op.error.detail === 'string' ? op.error.detail : JSON.stringify(op.error);
+        return { ok: false, error: `operation ${operation.id} failed: ${detail}` };
+      }
+      return { ok: true, result: op.response ?? null };
+    }
+    if (Date.now() >= deadline) {
+      return {
+        ok: true,
+        result: { ...op, note: 'Still running — poll read_operation with this id for the result.' },
+      };
+    }
+    await new Promise((r) => setTimeout(r, LRO_POLL_MS));
+  }
+}
+
 /**
  * Invoke a custom method through the `/api/aep` gateway under `token`, so the
- * caller's own permissions apply. Never throws: a bad argument or a failing
- * method comes back as `{ ok: false, error }` for the model to act on.
+ * caller's own permissions apply — the body as JSON, or multipart when it
+ * carries files (attachment ids resolved through `attachments`). A
+ * long-running method is awaited for up to {@link LRO_WAIT_MS}. Never throws: a
+ * bad argument or a failing method comes back as `{ ok: false, error }` for the
+ * model to act on.
  */
 export async function executeCustomMethod(
   name: string,
   args: Record<string, unknown>,
   bindings: Map<string, CustomMethodBinding>,
   token: string,
+  { attachments }: { attachments?: AttachmentFiles } = {},
 ): Promise<CustomMethodResult> {
   const binding = bindings.get(name);
   if (!binding) return { ok: false, error: `unknown tool "${name}"` };
 
   try {
     const path = buildPath(binding, args);
-    const body = buildBody(binding, args);
-    const res = await aepbaseFetch(path, { token, method: binding.httpMethod, body });
+    const body = await resolveUploads(binding, buildBody(binding, args), attachments);
+    const res = await aepbaseFetch(path, {
+      token,
+      method: binding.httpMethod,
+      body:
+        body && typeof body === 'object' && !Array.isArray(body)
+          ? encodeMethodBody(body as Record<string, unknown>)
+          : body,
+    });
     const parsed = parseBody(await res.text());
     if (!res.ok) {
       const detail = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
@@ -346,7 +509,17 @@ export async function executeCustomMethod(
         error: `${binding.plural}:${binding.verb} failed (${res.status}): ${detail}`,
       };
     }
-    return { ok: true, result: parsed };
+    const id = (parsed as { id?: unknown } | null)?.id;
+    const out =
+      binding.async && res.status === 202 && typeof id === 'string'
+        ? await awaitOperation({ id }, token)
+        : ({ ok: true, result: parsed } as const);
+    // Content from outside the household is labelled, so instructions inside
+    // it read as data (as outside MCP tools' results are).
+    if (out.ok && binding.untrusted) {
+      return { ok: true, result: { untrusted: true, source: binding.untrusted, content: out.result } };
+    }
+    return out;
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

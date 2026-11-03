@@ -48,9 +48,9 @@ export async function customMethodsResponse(): Promise<Response> {
         target: def.target ?? 'collection',
         method: def.method ?? 'POST',
         async: def.async ?? false,
-        ...(bulkImport ? { bulkImport: { formats: bulkImport } } : {}),
+        ...(bulkImport ? { bulk_import: { formats: bulkImport } } : {}),
         ...(bulkExport
-          ? { bulkExport: { formats: bulkExport, options: exportOptions ?? [] } }
+          ? { bulk_export: { formats: bulkExport, options: exportOptions ?? [] } }
           : {}),
       };
     }),

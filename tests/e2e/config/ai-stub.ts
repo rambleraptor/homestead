@@ -32,6 +32,7 @@ import {
   TOOLS_PLACEHOLDER,
   CONTEXT_PLACEHOLDER,
   TOOL_OUTPUT_PLACEHOLDER,
+  OUTPUT_VALUE_PLACEHOLDER,
   SCRIPT_EXHAUSTED_TEXT,
   scriptFor,
   type ScriptStep,
@@ -290,7 +291,7 @@ function textOf(item: InputItem): string {
  * The scripted step this request asks for, or null when it isn't a chat
  * request carrying a script's marker. See `./ai-scripts.ts` for the rule.
  */
-export function scriptedStep(body: unknown): ScriptStep | null {
+export function scriptedStep(body: unknown): (ScriptStep & { round?: number }) | null {
   const input = (body as { input?: unknown })?.input;
   if (!Array.isArray(input)) return null;
   const items = input as InputItem[];
@@ -307,7 +308,7 @@ export function scriptedStep(body: unknown): ScriptStep | null {
   if (!script) return null;
 
   const round = items.slice(lastUser + 1).filter((item) => item.type === 'function_call_output').length;
-  let step = script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT };
+  let step: RoundStep = { ...(script.steps[round] ?? { text: SCRIPT_EXHAUSTED_TEXT }), round };
   if (step.text?.includes(CONTEXT_PLACEHOLDER)) {
     step = { ...step, text: step.text.replace(CONTEXT_PLACEHOLDER, contextSummary(items)) };
   }
@@ -341,6 +342,27 @@ export function scriptedStep(body: unknown): ScriptStep | null {
       ),
     };
   }
+  if (step.toolCalls && JSON.stringify(step.toolCalls).includes('{output:')) {
+    const outputs = items.slice(lastUser + 1).filter((item) => item.type === 'function_call_output');
+    const latest = outputs.at(-1)?.output;
+    let parsed: unknown = latest;
+    if (typeof latest === 'string') {
+      try {
+        parsed = JSON.parse(latest);
+      } catch {
+        parsed = undefined;
+      }
+    }
+    step = {
+      ...step,
+      toolCalls: JSON.parse(
+        JSON.stringify(step.toolCalls).replace(OUTPUT_VALUE_PLACEHOLDER, (_, key: string) => {
+          const value = findKey(parsed, key);
+          return typeof value === 'string' ? value : 'no-such-output';
+        }),
+      ),
+    };
+  }
   if (step.toolCalls && JSON.stringify(step.toolCalls).includes(ATTACHMENT_ID_PLACEHOLDER)) {
     const id = /attachment id: ([A-Za-z0-9_-]+)/.exec(textOf(items[lastUser]!))?.[1] ?? 'no-attachment';
     step = {
@@ -351,21 +373,39 @@ export function scriptedStep(body: unknown): ScriptStep | null {
   return step;
 }
 
-/** Stable ids for a step's output items, so a reply is reproducible. */
-function callId(index: number): string {
-  return `call_stub_${index}`;
+/**
+ * Stable ids for a step's output items, so a reply is reproducible — unique
+ * across the turn's rounds (`round`), as a real model's are: a second round's
+ * call must not reuse the first's id, or the client merges the two parts.
+ */
+function callId(index: number, round = 0): string {
+  return round === 0 ? `call_stub_${index}` : `call_stub_${round}_${index}`;
 }
 
+/** A step, with the round of the turn it answers. */
+type RoundStep = ScriptStep & { round?: number };
+
 /** The step as a non-streaming Responses reply (what `generateText` reads). */
-function scriptedReply(step: ScriptStep) {
-  const output: unknown[] = (step.toolCalls ?? []).map((call, i) => ({
-    type: 'function_call',
-    id: `fc_stub_${i}`,
-    call_id: callId(i),
-    name: call.name,
-    arguments: JSON.stringify(call.args),
-    status: 'completed',
-  }));
+function scriptedReply(step: RoundStep) {
+  const output: unknown[] = [];
+  if (step.reasoning !== undefined) {
+    output.push({
+      type: 'reasoning',
+      id: 'rs_stub',
+      encrypted_content: null,
+      summary: [{ type: 'summary_text', text: step.reasoning }],
+    });
+  }
+  for (const [i, call] of (step.toolCalls ?? []).entries()) {
+    output.push({
+      type: 'function_call',
+      id: `fc_stub_${i}`,
+      call_id: callId(i, step.round),
+      name: call.name,
+      arguments: JSON.stringify(call.args),
+      status: 'completed',
+    });
+  }
   if (step.text !== undefined) {
     output.push({
       type: 'message',
@@ -386,11 +426,12 @@ function scriptedReply(step: ScriptStep) {
 }
 
 /**
- * The step as the Responses event stream (what `streamText` reads): tool calls
+ * The step as the Responses event stream (what `streamText` reads): a
+ * reasoning summary first (a word at a time, like the text), then tool calls
  * as added → arguments → done items, then the text a word at a time, then
  * `response.completed`. Only the events the provider parses are sent.
  */
-function scriptedStream(step: ScriptStep): Response {
+function scriptedStream(step: RoundStep): Response {
   const encoder = new TextEncoder();
   const delay = chunkDelayMs();
   const events: unknown[] = [
@@ -398,8 +439,22 @@ function scriptedStream(step: ScriptStep): Response {
   ];
 
   let index = 0;
+  if (step.reasoning !== undefined) {
+    const item = { type: 'reasoning', id: 'rs_stub', encrypted_content: null, summary: [] };
+    events.push({ type: 'response.output_item.added', output_index: index, item });
+    for (const word of step.reasoning.match(/\S+\s*|\s+/g) ?? []) {
+      events.push({
+        type: 'response.reasoning_summary_text.delta',
+        item_id: item.id,
+        summary_index: 0,
+        delta: word,
+      });
+    }
+    events.push({ type: 'response.output_item.done', output_index: index, item });
+    index++;
+  }
   for (const [i, call] of (step.toolCalls ?? []).entries()) {
-    const item = { type: 'function_call', id: `fc_stub_${i}`, call_id: callId(i), name: call.name };
+    const item = { type: 'function_call', id: `fc_stub_${i}`, call_id: callId(i, step.round), name: call.name };
     const args = JSON.stringify(call.args);
     events.push(
       { type: 'response.output_item.added', output_index: index, item: { ...item, arguments: '' } },
@@ -507,4 +562,15 @@ export async function stopAiStub(): Promise<void> {
   server = null;
   if (!active) return;
   await new Promise<void>((resolve) => active.close(() => resolve()));
+}
+
+/** The first value under `key`, at any depth (arrays and objects). */
+function findKey(value: unknown, key: string): unknown {
+  if (!value || typeof value !== 'object') return undefined;
+  if (!Array.isArray(value) && key in value) return (value as Record<string, unknown>)[key];
+  for (const child of Object.values(value)) {
+    const found = findKey(child, key);
+    if (found !== undefined) return found;
+  }
+  return undefined;
 }

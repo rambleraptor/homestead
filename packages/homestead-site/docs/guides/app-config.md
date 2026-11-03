@@ -134,11 +134,50 @@ Everything about how the app surfaces in the browser. Lives under the required
 | `topBarBadge`      | `LazyComponent`                             | —           | Badge inside a topbar app's button (fetches its own data).          |
 | `navOrder`         | `number`                                    | `100`       | Sort order within a section (lower first).                          |
 | `section`          | `string`                                    | —           | Grouping header in the sidebar. Unsectioned apps render last.       |
+| `pinnedByDefault`  | `boolean`                                   | `true`, children `false` | Whether the app starts out in each person's sidebar ([below](#the-sidebar-and-the-app-drawer)). |
 | `filters`          | `AppFilterDecl[]`                           | —           | Client-side, in-memory list filters.                               |
 | `settingsWidget`   | `LazyComponent`                             | —           | Custom settings-page UI in place of the auto-generated form.       |
 | `widgets`          | `DashboardWidget[]`                         | —           | Dashboard summary cards ([below](#adding-dashboard-widgets)).      |
 
 `*` = required.
+
+#### The sidebar and the app drawer
+
+Which apps a person may reach is decided by the permission system (see
+[Permissions](./permissions.md)); nothing in `web` grants access. Of the apps
+they can reach, the sidebar lists the ones in their **sidebar list**, and the
+fixed "All apps" entry at the bottom of the sidebar opens the drawer at
+`/apps`. The drawer shows every reachable app in two lists, "Your sidebar"
+(the sidebar, in its order) and "More apps"; one button moves an app between
+them, and tapping an app opens it. The choice is a per-person preference
+(`sidebar_pinned_apps` / `sidebar_unpinned_apps` on their `user-preference`
+record), with a link back to the household's defaults once they've strayed.
+An app in More apps still opens from a link, a widget, or the assistant.
+`showInNav: false` is different: it keeps the app out of both the sidebar and
+the drawer.
+
+Superuser (with its configuration apps) and Settings are **fixed**: always in
+the sidebar and never in the drawer's lists, since a person must not be able
+to lose them. The Superuser landing keeps listing its children.
+
+A nested child (`children`, like Bridge under Games) is an entry of its own:
+it can be in the sidebar while its parent isn't, or the other way round, and
+it lists under its parent's section, indented. In More apps a parent with
+children is a folder tile.
+
+What an app starts out as, before anyone chooses, is decided in two layers:
+
+1. The app's own `web.pinnedByDefault`: `true` for a top-level app and `false`
+   for a child, unless it says otherwise, so a quiet app can ship out of the
+   sidebar but still a click away in the drawer.
+2. The household's overrides, which a superuser sets under **Superuser →
+   Sidebar defaults** with the same two lists. They live in the drawer app's
+   `sidebar_defaults` flag as a JSON object of app id → boolean holding only the
+   exceptions, so an app installed later follows its own config. Changing a
+   default never touches anyone's own choices.
+
+None of this is a permission: an app a person isn't granted appears in neither
+the sidebar nor the drawer, whatever the defaults say.
 
 > Server-side endpoints aren't declared here. They're AEP-136 custom methods on
 > a resource definition (`ResourceDefinition.customMethods`), addressed as

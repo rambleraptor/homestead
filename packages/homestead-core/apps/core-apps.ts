@@ -10,6 +10,7 @@
  * can't drift.
  */
 
+import { appDrawerApp } from '../app-drawer/app.config';
 import { chatApp } from '../chat/app.config';
 import { dashboardApp } from '../dashboard/app.config';
 import { notificationsApp } from '../notifications/app.config';
@@ -31,6 +32,7 @@ export const ALWAYS_INSTALLED_APPS: AppConfig[] = [
   dashboardApp,
   superuserApp,
   settingsApp,
+  appDrawerApp,
   chatApp,
   notificationsApp,
 ];

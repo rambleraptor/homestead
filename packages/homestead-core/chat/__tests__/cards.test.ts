@@ -157,6 +157,15 @@ describe('cards', () => {
     expect(cardRows(def, 'preview')).toEqual([]);
   });
 
+  it('cuts a long value short, so a pasted document stays behind Details', () => {
+    const def = ownerForTool('tool-todos')!.def;
+    const long = 'word '.repeat(60).trim();
+    const [row] = cardRows(def, { extra: long });
+    expect(row!.value.length).toBeLessThan(long.length);
+    expect(row!.value.endsWith('…')).toBe(true);
+    expect(cardRows(def, { extra: 'short' })[0]!.value).toBe('short');
+  });
+
   it('labels resources and records', () => {
     expect(humanizeName('annual_fee')).toBe('Annual fee');
     expect(resourceLabel({ singular: 'gift-card', plural: 'gift-cards' })).toBe('Gift card');

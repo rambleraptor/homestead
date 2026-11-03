@@ -206,6 +206,27 @@ export const documentsResources: ResourceDefinition[] = [
         target: 'item',
         async: true,
         title: 'Classify document',
+        description:
+          'Read the stored file: pick its document type (or use doc_type) and extract its fields. ' +
+          'Long-running: answers with an operation (AEP-151).',
+        request: {
+          type: 'object',
+          properties: {
+            doc_type: {
+              type: 'string',
+              description: 'Force this document type instead of letting the AI choose.',
+            },
+          },
+        },
+        response: {
+          type: 'object',
+          properties: {
+            doc_type: { type: 'string' },
+            confidence: { type: 'number' },
+            parse_status: { type: 'string', enum: ['parsed', 'unmatched'] },
+            message: { type: 'string' },
+          },
+        },
         load: () => import('./methods/classify'),
       },
       // POST /api/aep/documents/{id}:split — reads the stored PDF, splits a
@@ -216,6 +237,9 @@ export const documentsResources: ResourceDefinition[] = [
         target: 'item',
         async: true,
         title: 'Split bundle into documents',
+        description:
+          'Split the stored PDF bundle into one document per form it contains, and classify each. ' +
+          'Long-running: answers with an operation (AEP-151).',
         load: () => import('./methods/split'),
       },
       // Migration support for the full_text → file_text backfill; called by

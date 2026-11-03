@@ -73,7 +73,7 @@ describe('bulkExportFormatInfo', () => {
       {
         id: 'csv',
         label: 'CSV',
-        mimeType: 'text/csv',
+        mime_type: 'text/csv',
         extension: 'csv',
         columns: [{ name: 'name', description: undefined }],
       },

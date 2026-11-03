@@ -227,8 +227,11 @@ the restriction from absent tools. The executor still rejects a write under a
 read-only token (defense in depth, matching `generic`'s
 `` `${name} needs write access` ``).
 
-`:bulk-import` / `:bulk-export` stay unexposed on this surface too — they move
-files, not model-composable JSON.
+`:bulk-import` joins the `action` enum like any custom method (a
+`validate_only` preview, then the `preview_id` to write); its result is labelled
+untrusted. File fields take chat attachment ids, so on MCP an optional file field
+is left out and a method requiring one isn't offered. `:bulk-export` stays out —
+it returns a file.
 
 The same narrowing applies **per resource** to what the caller can reach, on
 every surface and in the chat. Before building tools, the route asks the

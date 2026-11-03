@@ -45,6 +45,8 @@ interface UserPreferenceRecord {
   people__map_provider?: MapProvider;
   dashboard_widget_order?: string;
   dashboard_hidden_widgets?: string;
+  sidebar_pinned_apps?: string;
+  sidebar_unpinned_apps?: string;
 }
 
 function parseStringArray(value: string | undefined): string[] | undefined {
@@ -130,6 +132,8 @@ async function hydrateUserPreferences(user: User): Promise<User> {
       map_provider: mapProvider,
       dashboard_widget_order: parseStringArray(record.dashboard_widget_order),
       dashboard_hidden_widgets: parseStringArray(record.dashboard_hidden_widgets),
+      sidebar_pinned_apps: parseStringArray(record.sidebar_pinned_apps),
+      sidebar_unpinned_apps: parseStringArray(record.sidebar_unpinned_apps),
     };
   }
 
