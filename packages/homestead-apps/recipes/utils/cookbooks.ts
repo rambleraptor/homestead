@@ -1,10 +1,20 @@
 /**
- * Pure helpers over cookbook membership. Membership is the cookbook's ordered
+ * Pure helpers over collection membership. Membership is the cookbook's
  * `recipes` list, so every operation here returns a new list for a merge-patch
- * (`{ recipes }`), which replaces the whole array.
+ * (`{ recipes }`), which replaces the whole array. The list's order carries no
+ * meaning.
  */
 
-import type { Cookbook } from '../types';
+import type { Cookbook, Recipe } from '../types';
+
+/**
+ * The collection's recipes that still exist, in the order `recipes` is in —
+ * the library's own order — not the order they were added.
+ */
+export function membersOf(cookbook: Pick<Cookbook, 'recipes'>, recipes: Recipe[] | undefined): Recipe[] {
+  const ids = new Set(cookbook.recipes ?? []);
+  return (recipes ?? []).filter((r) => ids.has(r.id));
+}
 
 /** Cookbooks that contain `recipeId`, in the order given. */
 export function cookbooksContaining(
@@ -36,17 +46,6 @@ export function withRecipes(recipes: string[] | undefined, ids: string[]): strin
       next.push(id);
     }
   }
-  return next;
-}
-
-/** `recipes` with the entry at `from` moved to `to`. Out-of-range moves are no-ops. */
-export function moveRecipe(recipes: string[], from: number, to: number): string[] {
-  if (from === to || from < 0 || to < 0 || from >= recipes.length || to >= recipes.length) {
-    return recipes;
-  }
-  const next = [...recipes];
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved);
   return next;
 }
 

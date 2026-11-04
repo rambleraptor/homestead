@@ -1,11 +1,12 @@
 /**
- * A cookbook's cover: a 2×2 mosaic of its first four recipes' photos. A recipe
+ * A collection's cover: a 2×2 mosaic of four of its recipes' photos. A recipe
  * without a photo gets a tinted tile with its initial, and an empty cookbook a
  * single book tile — so a cover is never blank and never needs an upload.
  */
 
 import { BookOpen } from 'lucide-react';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
+import { membersOf } from '../../utils/cookbooks';
 import type { Cookbook, Recipe } from '../../types';
 import { RecipeImage } from '../RecipeImage';
 
@@ -25,16 +26,9 @@ function tileColor(title: string): string {
   return TILE_COLORS[hash % TILE_COLORS.length];
 }
 
-/** The first four member recipes that still exist, in cookbook order. */
+/** Up to four member recipes that still exist, newest first like the library. */
 export function coverRecipes(cookbook: Cookbook, recipes: Recipe[] | undefined): Recipe[] {
-  const byId = new Map((recipes ?? []).map((r) => [r.id, r]));
-  const out: Recipe[] = [];
-  for (const id of cookbook.recipes ?? []) {
-    const recipe = byId.get(id);
-    if (recipe) out.push(recipe);
-    if (out.length === 4) break;
-  }
-  return out;
+  return membersOf(cookbook, recipes).slice(0, 4);
 }
 
 export function CookbookCover({ cookbook, recipes, className }: CookbookCoverProps) {

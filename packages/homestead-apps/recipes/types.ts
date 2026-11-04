@@ -68,10 +68,11 @@ export interface RecipeFormData {
 }
 
 /**
- * Cookbook record from aepbase — a named, ordered collection of recipes.
+ * Cookbook record from aepbase — a named collection of recipes, shown to
+ * people as a "collection".
  *
- * Matches the schema in `resources.ts`. `recipes` holds recipe ids in display
- * order; `auto` is set only on the server-kept "From social" cookbook.
+ * Matches the schema in `resources.ts`. `recipes` holds member recipe ids
+ * (unordered); `auto` is set only on the server-kept "From social" one.
  */
 export interface Cookbook {
   id: string;

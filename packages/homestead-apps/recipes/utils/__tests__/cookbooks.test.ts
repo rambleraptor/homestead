@@ -3,12 +3,12 @@ import {
   byName,
   cookbooksContaining,
   isAutoCookbook,
-  moveRecipe,
+  membersOf,
   neighbours,
   withRecipe,
   withRecipes,
 } from '../cookbooks';
-import type { Cookbook } from '../../types';
+import type { Cookbook, Recipe } from '../../types';
 
 const cb = (id: string, name: string, recipes: string[] = [], auto?: 'social'): Cookbook => ({
   id,
@@ -39,11 +39,14 @@ describe('cookbook list helpers', () => {
     expect(withRecipes(['r1'], ['r2', 'r1', 'r3', 'r2'])).toEqual(['r1', 'r2', 'r3']);
   });
 
-  it('moves an entry and ignores out-of-range moves', () => {
-    expect(moveRecipe(['a', 'b', 'c'], 0, 2)).toEqual(['b', 'c', 'a']);
-    expect(moveRecipe(['a', 'b', 'c'], 2, 1)).toEqual(['a', 'c', 'b']);
-    expect(moveRecipe(['a', 'b', 'c'], 0, -1)).toEqual(['a', 'b', 'c']);
-    expect(moveRecipe(['a', 'b', 'c'], 2, 3)).toEqual(['a', 'b', 'c']);
+  it('lists members in the library order, skipping ids whose recipe is gone', () => {
+    const recipe = (id: string) => ({ id, title: id }) as Recipe;
+    const library = [recipe('r3'), recipe('r1'), recipe('r2')];
+    expect(membersOf(cb('a', 'A', ['r1', 'gone', 'r3']), library).map((r) => r.id)).toEqual([
+      'r3',
+      'r1',
+    ]);
+    expect(membersOf(cb('a', 'A'), undefined)).toEqual([]);
   });
 
   it('knows the automatic cookbook', () => {

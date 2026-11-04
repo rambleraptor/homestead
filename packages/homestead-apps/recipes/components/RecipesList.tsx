@@ -1,8 +1,10 @@
 /**
  * Recipes List Component
  *
- * Renders a grid of recipe cards with edit / delete affordances. Pure
- * presentation — data fetching is handled by the caller.
+ * Renders a grid of recipe cards. Pure presentation — data fetching is
+ * handled by the caller. In the library each card offers edit and delete; in
+ * a collection (`onRemove`) it offers only "remove from collection", which
+ * leaves the recipe itself alone.
  *
  * The cards arrive as a cascade: each rises into place on a delay set by
  * its index, capped so a long list doesn't keep the last cards waiting.
@@ -12,7 +14,7 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { ChefHat, Clock, Pencil, SearchX, Trash2 } from 'lucide-react';
+import { ChefHat, Clock, Pencil, SearchX, Trash2, X } from 'lucide-react';
 import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import type { Recipe } from '../types';
@@ -32,7 +34,9 @@ function cardEnterStyle(index: number): React.CSSProperties {
 
 interface RecipesListProps {
   recipes: Recipe[];
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
+  /** Showing a collection: each card can be taken out of it. */
+  onRemove?: (recipe: Recipe) => void;
   /**
    * There are recipes, just none that pass the filters — so the empty list
    * offers to clear them rather than to add a first recipe.
@@ -41,7 +45,13 @@ interface RecipesListProps {
   onClearFilters?: () => void;
 }
 
-export function RecipesList({ recipes, onDelete, filtered = false, onClearFilters }: RecipesListProps) {
+export function RecipesList({
+  recipes,
+  onDelete,
+  onRemove,
+  filtered = false,
+  onClearFilters,
+}: RecipesListProps) {
   const navigate = useNavigate();
 
   if (recipes.length === 0 && filtered) {
@@ -116,24 +126,40 @@ export function RecipesList({ recipes, onDelete, filtered = false, onClearFilter
                 </h3>
               </div>
               <div className="flex items-center gap-1 pointer-events-auto relative">
-                <Link
-                  to={`/recipes/${recipe.id}/edit`}
-                  state={{ from: 'list' } satisfies RecipeEditLinkState}
-                  aria-label={`Edit ${recipe.title}`}
-                  data-testid={`recipe-edit-${recipe.title}`}
-                  className="p-1.5 rounded-md text-text-muted hover:bg-bg-pearl hover:text-brand-navy"
-                >
-                  <Pencil className="w-4 h-4" />
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => onDelete(recipe.id)}
-                  aria-label={`Delete ${recipe.title}`}
-                  data-testid={`recipe-delete-${recipe.title}`}
-                  className="p-1.5 rounded-md text-text-muted hover:bg-red-50 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {onRemove ? (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(recipe)}
+                    aria-label={`Remove ${recipe.title} from collection`}
+                    data-testid={`recipe-remove-${recipe.title}`}
+                    className="p-1.5 rounded-md text-text-muted hover:bg-red-50 hover:text-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <>
+                    <Link
+                      to={`/recipes/${recipe.id}/edit`}
+                      state={{ from: 'list' } satisfies RecipeEditLinkState}
+                      aria-label={`Edit ${recipe.title}`}
+                      data-testid={`recipe-edit-${recipe.title}`}
+                      className="p-1.5 rounded-md text-text-muted hover:bg-bg-pearl hover:text-brand-navy"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Link>
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={() => onDelete(recipe.id)}
+                        aria-label={`Delete ${recipe.title}`}
+                        data-testid={`recipe-delete-${recipe.title}`}
+                        className="p-1.5 rounded-md text-text-muted hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 

@@ -1,8 +1,8 @@
 /**
- * "Add to cookbook" on a recipe page: a popover with one checkbox per
- * cookbook (ticks save as you go, no confirm step) and a one-line form to
- * start a new cookbook with this recipe in it. The automatic "From social"
- * cookbook is shown but can't be ticked or unticked by hand.
+ * "Add to collection" on a recipe page: a popover with one checkbox per
+ * collection (ticks save as you go, no confirm step) and a one-line form to
+ * start a new collection with this recipe in it. The automatic "From social"
+ * collection is shown but can't be ticked or unticked by hand.
  */
 
 import { useRef, useState, type FormEvent } from 'react';
@@ -66,21 +66,21 @@ export function AddToCookbookMenu({ recipe }: AddToCookbookMenuProps) {
         }`}
       >
         <BookPlus className="w-4 h-4" />
-        Add to cookbook
+        Add to collection
       </button>
 
       {open && (
         <div
           role="dialog"
-          aria-label="Add to cookbook"
+          aria-label="Add to collection"
           data-testid="add-to-cookbook-menu"
           className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-surface-white p-2 shadow-lg"
         >
           {isError && (
-            <p className="px-2 py-1 text-sm text-red-700">Failed to load cookbooks.</p>
+            <p className="px-2 py-1 text-sm text-red-700">Failed to load collections.</p>
           )}
           {cookbooks && cookbooks.length === 0 && (
-            <p className="px-2 py-2 text-sm text-text-muted">No cookbooks yet. Start one below.</p>
+            <p className="px-2 py-2 text-sm text-text-muted">No collections yet. Start one below.</p>
           )}
           <ul className="max-h-64 overflow-y-auto">
             {(cookbooks ?? []).map((cookbook) => {
@@ -119,14 +119,14 @@ export function AddToCookbookMenu({ recipe }: AddToCookbookMenuProps) {
 
           <form onSubmit={createWithRecipe} className="mt-1 flex gap-1.5 border-t border-gray-100 px-1 pt-2">
             <label htmlFor="add-to-cookbook-new-name" className="sr-only">
-              New cookbook name
+              New collection name
             </label>
             <input
               id="add-to-cookbook-new-name"
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="New cookbook…"
+              placeholder="New collection…"
               data-testid="add-to-cookbook-new-name"
               className="min-w-0 flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
             />
