@@ -53,10 +53,6 @@ export function SidebarDefaultsHome() {
         busy={isSaving}
         whose="the default"
       />
-
-      <p className="text-xs text-text-muted">
-        Each member only ever sees the apps they&apos;re granted, whatever the defaults say.
-      </p>
     </div>
   );
 }

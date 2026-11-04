@@ -88,11 +88,6 @@ export function AppDrawerHome() {
           whose="your"
         />
       )}
-
-      <p className="text-xs text-text-muted">
-        Apps you don&apos;t see here haven&apos;t been shared with you. Anything in More apps
-        still opens from here, a link, a widget, or the assistant.
-      </p>
     </div>
   );
 }
