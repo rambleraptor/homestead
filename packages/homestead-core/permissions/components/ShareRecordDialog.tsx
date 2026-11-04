@@ -14,9 +14,11 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, UserPlus } from 'lucide-react';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import type { Capability, Effect } from '../resolve';
 import { useCan } from '../useCan';
 import {
@@ -105,7 +107,8 @@ export function ShareRecordDialog({
     owner: ownerId ? bareId(ownerId) : undefined,
   });
 
-  const { data: grants, isLoading } = useAccessGrants({ resourceType, recordId });
+  const grantsQuery = useAccessGrants({ resourceType, recordId });
+  const { data: grants, isLoading } = grantsQuery;
   const { data: users } = useShareableUsers();
   const { data: groups } = useGroups();
   const share = useShareRecord();
@@ -188,7 +191,7 @@ export function ShareRecordDialog({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Share “${recordName}”`}>
       <div className="space-y-5" data-testid="share-record-dialog">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-text-muted">
           People and groups you share this with can see it. Choose{' '}
           <span className="font-medium">Blocked</span> to keep someone out even if
           another share would otherwise let them in.
@@ -205,7 +208,7 @@ export function ShareRecordDialog({
                 id="share-subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta"
                 data-testid="share-record-subject"
               >
                 <option value="">Select someone…</option>
@@ -237,7 +240,7 @@ export function ShareRecordDialog({
                 id="share-access"
                 value={access}
                 onChange={(e) => setAccess(e.target.value as AccessChoice)}
-                className="mt-1 block rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta"
                 data-testid="share-record-access"
               >
                 <option value="read">View</option>
@@ -265,15 +268,29 @@ export function ShareRecordDialog({
 
         {/* Current shares */}
         <div>
-          <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500">Shared with</h4>
+          <h4 className="text-xs font-medium uppercase tracking-wide text-text-muted">Shared with</h4>
           {isLoading ? (
             <div className="py-4 text-center">
               <Loader2 className="inline h-4 w-4 animate-spin text-gray-400" />
             </div>
+          ) : grantsQuery.isError ? (
+            <QueryError
+              compact
+              error={grantsQuery.error}
+              onRetry={() => void grantsQuery.refetch()}
+              title="Couldn’t load who this is shared with"
+              className="mt-2"
+              data-testid="share-record-load-error"
+            />
           ) : shares.length === 0 ? (
-            <p className="py-3 text-sm text-gray-500" data-testid="share-record-empty">
-              Not shared with anyone yet.
-            </p>
+            <EmptyState
+              compact
+              icon={UserPlus}
+              title="Not shared with anyone yet"
+              description={canManage ? 'Pick a person or group above to share it.' : undefined}
+              className="mt-2"
+              data-testid="share-record-empty"
+            />
           ) : (
             <ul className="mt-2 divide-y divide-gray-100" data-testid="share-record-list">
               {shares.map((s) => {

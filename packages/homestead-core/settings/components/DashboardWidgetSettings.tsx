@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { getAllDashboardWidgets } from '@rambleraptor/homestead-core/apps/registry';
@@ -114,7 +115,7 @@ export function DashboardWidgetSettings() {
         hidden: entries.filter((e) => !e.visible).map((e) => e.id),
       });
       toast.success('Dashboard widgets updated');
-    } catch (error) {
+    } catch {
       // Toast surfaced by the global mutation error handler (queryClient.ts).
     }
   };
@@ -125,45 +126,46 @@ export function DashboardWidgetSettings() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <h2 className="text-xl font-semibold text-brand-navy mb-4">
         Dashboard Widgets
       </h2>
 
       <Card>
         <div className="flex items-start gap-4">
-          <LayoutDashboard className="w-6 h-6 text-blue-500 mt-1" />
+          <LayoutDashboard className="w-6 h-6 text-accent-terracotta mt-1" />
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 mb-2">
+            <h3 className="font-semibold text-brand-navy mb-2">
               Customize your dashboard
             </h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-text-muted mb-4">
               Choose which widgets appear on your dashboard and the order
               they show up in. Changes only affect what you see — other
               members of your household keep their own layouts.
             </p>
 
             {entries.length === 0 ? (
-              <p
-                className="text-sm text-gray-500 italic"
+              <EmptyState
+                compact
+                icon={LayoutDashboard}
+                title="No dashboard widgets"
+                description="No dashboard widgets are available right now. Apps you can open add theirs here."
                 data-testid="dashboard-widgets-empty"
-              >
-                No dashboard widgets are available right now.
-              </p>
+              />
             ) : (
               <ul
-                className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden mb-4"
+                className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden mb-4"
                 data-testid="dashboard-widget-list"
               >
                 {entries.map((entry, index) => (
                   <li
                     key={entry.id}
-                    className="flex items-center justify-between gap-3 px-3 py-2 bg-white"
+                    className="flex items-center justify-between gap-3 px-3 py-2 bg-surface-white"
                     data-testid={`dashboard-widget-row-${entry.id}`}
                   >
                     <span
                       className={
                         entry.visible
-                          ? 'text-gray-900 truncate'
+                          ? 'text-text-main truncate'
                           : 'text-gray-400 line-through truncate'
                       }
                     >
@@ -175,7 +177,7 @@ export function DashboardWidgetSettings() {
                         onClick={() => move(index, -1)}
                         disabled={index === 0}
                         aria-label={`Move ${entry.label} up`}
-                        className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="p-1.5 rounded-md text-text-muted hover:text-brand-navy hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
                         data-testid={`dashboard-widget-up-${entry.id}`}
                       >
                         <ArrowUp className="w-4 h-4" />
@@ -185,7 +187,7 @@ export function DashboardWidgetSettings() {
                         onClick={() => move(index, 1)}
                         disabled={index === entries.length - 1}
                         aria-label={`Move ${entry.label} down`}
-                        className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="p-1.5 rounded-md text-text-muted hover:text-brand-navy hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
                         data-testid={`dashboard-widget-down-${entry.id}`}
                       >
                         <ArrowDown className="w-4 h-4" />
@@ -199,7 +201,7 @@ export function DashboardWidgetSettings() {
                             : `Show ${entry.label}`
                         }
                         aria-pressed={!entry.visible}
-                        className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                        className="p-1.5 rounded-md text-text-muted hover:text-brand-navy hover:bg-gray-100"
                         data-testid={`dashboard-widget-toggle-${entry.id}`}
                       >
                         {entry.visible ? (

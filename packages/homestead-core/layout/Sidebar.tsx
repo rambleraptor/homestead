@@ -111,7 +111,7 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 animate-overlay-in lg:hidden"
           onClick={onClose}
         />
       )}
@@ -153,7 +153,7 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
             {pinnedEntries.length === 0 ? (
-              <div className="text-sm text-gray-500 text-center py-4">
+              <div className="text-sm text-text-muted text-center py-4">
                 No apps available
               </div>
             ) : (

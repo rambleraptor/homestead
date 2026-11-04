@@ -32,6 +32,7 @@ import {
   Suggestion,
   Suggestions,
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/suggestion';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import {
@@ -108,11 +109,15 @@ export function ChatThread({
       )}
     >
     {missing ? (
-      <ConversationEmptyState
-        role="alert"
-        title="Couldn't open this conversation"
-        description={chat.history.error.message}
-      />
+      <div className="flex h-full items-center justify-center p-4">
+        <QueryError
+          error={chat.history.error}
+          onRetry={() => void chat.history.refetch()}
+          title="Couldn’t open this conversation"
+          className="w-full max-w-md"
+          data-testid="chat-history-error"
+        />
+      </div>
     ) : (
       <Conversation className="min-h-0" data-testid="chat-messages">
         <ConversationContent>

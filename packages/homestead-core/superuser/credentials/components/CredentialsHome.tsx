@@ -173,7 +173,7 @@ export function CredentialsHome() {
       />
 
       {(slots.data?.length ?? 0) > 0 && (
-        <h2 className="text-lg font-semibold text-gray-900">Other credentials</h2>
+        <h2 className="text-lg font-semibold text-brand-navy">Other credentials</h2>
       )}
 
       {isError ? (
@@ -197,18 +197,18 @@ export function CredentialsHome() {
               <Card>
                 <div className="flex items-start justify-between gap-4" data-testid={`credential-${credential.id}`}>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-gray-900">{credential.name}</h3>
+                    <h3 className="font-semibold text-brand-navy">{credential.name}</h3>
                     {credential.description && (
-                      <p className="mt-1 text-sm text-gray-600">{credential.description}</p>
+                      <p className="mt-1 text-sm text-text-muted">{credential.description}</p>
                     )}
                     <p
-                      className="mt-2 font-mono text-xs text-gray-500"
+                      className="mt-2 font-mono text-xs text-text-muted"
                       data-testid={`credential-value-${credential.id}`}
                     >
                       {valueSummary(credential)}
                     </p>
                     {usedBy(credential).length > 0 && (
-                      <p className="mt-1 text-xs text-gray-500" data-testid={`credential-used-by-${credential.id}`}>
+                      <p className="mt-1 text-xs text-text-muted" data-testid={`credential-used-by-${credential.id}`}>
                         Used by {usedBy(credential).map((name) => `${name} (MCP server)`).join(', ')}
                       </p>
                     )}

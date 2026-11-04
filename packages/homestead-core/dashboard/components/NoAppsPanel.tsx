@@ -61,7 +61,7 @@ export function NoAppsPanel() {
     title = 'Add your first app';
     body = (
       <>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-text-muted">
           Apps are what fill this dashboard and the sidebar, and this instance
           doesn't have any yet. Scaffold one from your project directory:
         </p>
@@ -71,7 +71,7 @@ export function NoAppsPanel() {
         >
           homestead init-app my-app
         </pre>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-text-muted">
           Anything under <Code>apps/</Code> is picked up on the next start. To
           install one of the ready-made apps instead, add it to the{' '}
           <Code>apps</Code> array in <Code>homestead.config.ts</Code>.
@@ -85,7 +85,7 @@ export function NoAppsPanel() {
   } else if (nothingInstalled) {
     title = 'No apps yet';
     body = (
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-text-muted">
         Your household's admin hasn't added any apps to this Homestead yet.
         Once they do, the apps will show up in the sidebar and their highlights
         will gather here.
@@ -94,7 +94,7 @@ export function NoAppsPanel() {
   } else {
     title = 'Nothing shared with you yet';
     body = (
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-text-muted">
         This Homestead has apps installed, but none have been shared with you.
         Ask your household's admin to give you access to one.
       </p>
@@ -107,11 +107,11 @@ export function NoAppsPanel() {
       data-testid="no-apps-panel"
     >
       <div className="flex items-start gap-4">
-        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
+        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-text-muted">
           <PackagePlus className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="flex-1 space-y-3">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-lg font-semibold text-brand-navy">{title}</h2>
           {body}
         </div>
       </div>

@@ -140,7 +140,7 @@ export function UserForm({ initialData, onSubmit, onCancel, isSubmitting }: User
           id="user-type"
           value={type}
           onChange={(e) => setType(e.target.value as UserType)}
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+          className="w-full rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
           data-testid="user-type-select"
         >
           <option value="regular">Regular</option>
@@ -163,7 +163,7 @@ export function UserForm({ initialData, onSubmit, onCancel, isSubmitting }: User
               setGroupTouched(true);
               setGroupId(e.target.value);
             }}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+            className="w-full rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
             data-testid="user-access-level-select"
           >
             {accessOptions.map((o) => (
@@ -173,7 +173,7 @@ export function UserForm({ initialData, onSubmit, onCancel, isSubmitting }: User
             ))}
           </select>
           {selectedOption && (
-            <p className="mt-1 text-xs text-gray-500" data-testid="user-access-level-summary">
+            <p className="mt-1 text-xs text-text-muted" data-testid="user-access-level-summary">
               {selectedOption.summary}. You can fine-tune this later on the Permissions page.
             </p>
           )}

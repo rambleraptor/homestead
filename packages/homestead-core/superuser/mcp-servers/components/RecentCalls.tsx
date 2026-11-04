@@ -15,7 +15,7 @@ const OUTCOME_STYLE: Record<McpCallOutcome, string> = {
   ok: 'bg-green-50 text-green-700',
   error: 'bg-red-50 text-red-700',
   denied: 'bg-amber-50 text-amber-700',
-  refused: 'bg-gray-100 text-gray-600',
+  refused: 'bg-gray-100 text-text-muted',
 };
 const OUTCOME_LABEL: Record<McpCallOutcome, string> = {
   ok: 'OK',
@@ -34,7 +34,7 @@ export function RecentCalls({ serverId }: { serverId: string }) {
   };
 
   if (isLoading) {
-    return <p className="text-sm text-gray-500">Loading recent calls…</p>;
+    return <p className="text-sm text-text-muted">Loading recent calls…</p>;
   }
   if (isError) {
     return (
@@ -68,14 +68,14 @@ export function RecentCalls({ serverId }: { serverId: string }) {
             >
               {OUTCOME_LABEL[call.outcome] ?? call.outcome}
             </span>
-            <span className="font-mono text-xs text-gray-900">{call.tool}</span>
-            <span className="text-gray-600">{nameOf(call.caller)}</span>
+            <span className="font-mono text-xs text-text-main">{call.tool}</span>
+            <span className="text-text-muted">{nameOf(call.caller)}</span>
             <span className="text-xs text-gray-400">{new Date(call.create_time).toLocaleString()}</span>
             {call.duration_ms !== undefined && (
               <span className="text-xs text-gray-400">{call.duration_ms} ms</span>
             )}
           </div>
-          {call.error && <p className="mt-1 text-xs text-gray-600">{call.error}</p>}
+          {call.error && <p className="mt-1 text-xs text-text-muted">{call.error}</p>}
         </li>
       ))}
     </ul>

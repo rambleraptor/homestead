@@ -79,7 +79,7 @@ function NotificationsPanel() {
     return scheduled ? (
       <Calendar className="w-5 h-5 text-blue-500" />
     ) : (
-      <Bell className="w-5 h-5 text-gray-500" />
+      <Bell className="w-5 h-5 text-text-muted" />
     );
   };
 
@@ -97,7 +97,7 @@ function NotificationsPanel() {
     <div className="space-y-6">
       {unreadNotifications.length > 0 && (
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          <h2 className="text-xl font-semibold text-brand-navy mb-4">
             Unread Notifications
           </h2>
           <div className="space-y-3">
@@ -115,7 +115,7 @@ function NotificationsPanel() {
                           From {senderName(notification)}
                         </p>
                       )}
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-brand-navy">
                         {internalPath(notification.url) ? (
                           <Link
                             to={internalPath(notification.url) as string}
@@ -128,14 +128,14 @@ function NotificationsPanel() {
                           notification.title
                         )}
                       </h3>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-text-muted mt-1">
                         {notification.message}
                       </p>
                       <NotificationRecord
                         collection={notification.source_collection}
                         id={notification.source_id}
                       />
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-text-muted mt-2">
                         {formatDate(notification.created)}
                       </p>
                     </div>
@@ -244,8 +244,8 @@ export function NotificationsHome() {
               data-testid={`notifications-tab-${id}`}
               className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                 tab === id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  ? 'border-accent-terracotta text-accent-terracotta'
+                  : 'border-transparent text-text-muted hover:border-gray-300 hover:text-gray-700'
               }`}
             >
               {label}

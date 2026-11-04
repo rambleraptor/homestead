@@ -82,12 +82,12 @@ export function ChangePasswordForm() {
   return (
     <Card>
       <div className="flex items-start gap-4">
-        <Lock className="w-6 h-6 text-gray-600 mt-1" />
+        <Lock className="w-6 h-6 text-text-muted mt-1" />
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 mb-2">
+          <h3 className="font-semibold text-brand-navy mb-2">
             Change Password
           </h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-text-muted mb-4">
             Update your password to keep your account secure.
           </p>
 
@@ -112,7 +112,7 @@ export function ChangePasswordForm() {
               <button
                 type="button"
                 onClick={() => setShowOldPassword(!showOldPassword)}
-                className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-9 text-text-muted hover:text-gray-700"
               >
                 {showOldPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -136,7 +136,7 @@ export function ChangePasswordForm() {
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-9 text-text-muted hover:text-gray-700"
               >
                 {showNewPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -160,7 +160,7 @@ export function ChangePasswordForm() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-9 text-text-muted hover:text-gray-700"
               >
                 {showConfirmPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -170,7 +170,7 @@ export function ChangePasswordForm() {
               </button>
             </div>
 
-            <div className="text-xs text-gray-500 space-y-1">
+            <div className="text-xs text-text-muted space-y-1">
               <p>Password requirements:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>At least 8 characters long</li>

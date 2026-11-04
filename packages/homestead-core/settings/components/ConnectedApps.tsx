@@ -57,10 +57,10 @@ export function ConnectedApps() {
     <Card>
       <div className="space-y-6" data-testid="connected-apps">
         <div className="flex items-start gap-4">
-          <Plug className="w-6 h-6 text-gray-600 mt-1" />
+          <Plug className="w-6 h-6 text-text-muted mt-1" />
           <div>
-            <h3 className="font-semibold text-gray-900">Connected apps</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="font-semibold text-brand-navy">Connected apps</h3>
+            <p className="text-sm text-text-muted">
               Apps you&apos;ve authorized to access your data over OAuth, including
               MCP clients. Disconnecting an app immediately revokes every token it
               holds — it will have to be authorized again to reconnect.
@@ -97,10 +97,10 @@ export function ConnectedApps() {
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900 truncate">
+                      <span className="font-medium text-text-main truncate">
                         {app.client_name || 'Unnamed app'}
                       </span>
-                      <span className="text-xs text-gray-500">{describeAccess(app.scope)}</span>
+                      <span className="text-xs text-text-muted">{describeAccess(app.scope)}</span>
                     </div>
                     <p className="text-xs text-gray-400">
                       {connected ? `Connected ${connected}` : 'Recently connected'}

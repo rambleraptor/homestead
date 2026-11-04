@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { MessageSquarePlus, Trash2 } from 'lucide-react';
+import { MessageSquarePlus, MessagesSquare, Trash2 } from 'lucide-react';
 import { Loader } from '@rambleraptor/homestead-core/shared/components/ai-elements/loader';
 import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { useConversations, useDeleteConversation } from '../hooks/useConversations';
 import { forgetConversation } from '../hooks/useConversation';
@@ -67,9 +69,21 @@ export function ConversationList({
       </Button>
 
       {conversations.isError ? (
-        <p className="px-2 text-sm text-destructive" role="alert">
-          Couldn't load conversations: {conversations.error.message}
-        </p>
+        <QueryError
+          compact
+          error={conversations.error}
+          onRetry={() => void conversations.refetch()}
+          title="Couldn’t load conversations"
+          data-testid="chat-conversations-error"
+        />
+      ) : conversations.isSuccess && conversations.data.length === 0 ? (
+        <EmptyState
+          compact
+          icon={MessagesSquare}
+          title="No conversations yet"
+          description="Past conversations with the assistant gather here."
+          data-testid="chat-conversations-empty"
+        />
       ) : (
         <ul className="flex min-h-0 flex-col gap-0.5 overflow-y-auto" data-testid="chat-conversations">
           {(conversations.data ?? []).map((c) => (

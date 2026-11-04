@@ -75,17 +75,17 @@ export function AdminChecklistPanel() {
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-brand-navy">
               {allDone ? "You're all set" : 'Get your household set up'}
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-muted">
               {allDone
                 ? 'Nice work — everything below is done. Dismiss this whenever you like.'
                 : 'A couple of quick steps to finish setting up this instance.'}
             </p>
           </div>
           <span
-            className="shrink-0 text-xs font-medium text-gray-500"
+            className="shrink-0 text-xs font-medium text-text-muted"
             data-testid="admin-checklist-progress"
           >
             {doneCount} of {items.length} done
@@ -114,14 +114,14 @@ export function AdminChecklistPanel() {
                 <span
                   className={
                     item.done
-                      ? 'text-sm font-medium text-gray-500 line-through'
-                      : 'text-sm font-medium text-gray-900'
+                      ? 'text-sm font-medium text-text-muted line-through'
+                      : 'text-sm font-medium text-text-main'
                   }
                 >
                   {item.label}
                 </span>
                 {item.hint && !item.done && (
-                  <p className="text-xs text-gray-500">{item.hint}</p>
+                  <p className="text-xs text-text-muted">{item.hint}</p>
                 )}
                 {item.to && (
                   <Link

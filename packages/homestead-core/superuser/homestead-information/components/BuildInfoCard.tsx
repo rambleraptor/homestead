@@ -20,14 +20,14 @@ export function BuildInfoCard() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Build</h2>
+      <h2 className="text-xl font-semibold text-brand-navy mb-4">Build</h2>
 
       <Card>
         <div className="flex items-start gap-4">
-          <GitCommit className="w-6 h-6 text-gray-500 mt-1" />
+          <GitCommit className="w-6 h-6 text-text-muted mt-1" />
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900 mb-2">Build Info</h3>
-            <dl className="text-sm text-gray-600 space-y-2">
+            <h3 className="font-semibold text-brand-navy mb-2">Build Info</h3>
+            <dl className="text-sm text-text-muted space-y-2">
               <div className="flex gap-2">
                 <dt className="font-medium text-gray-700 w-24 shrink-0">Commit:</dt>
                 <dd

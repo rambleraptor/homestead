@@ -58,7 +58,7 @@ export function OAuthCallback() {
             </Link>
           </>
         ) : (
-          <p className="text-sm text-gray-600">Finishing the sign-in…</p>
+          <p className="text-sm text-text-muted">Finishing the sign-in…</p>
         )}
       </div>
     </Card>

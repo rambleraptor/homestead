@@ -83,7 +83,7 @@ export function NewUserAccessPreview({ type }: { type: UserType }) {
     >
       <div className="flex items-center gap-2">
         <KeyRound className="w-4 h-4 text-blue-500" />
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-text-main">
           What this {isSuperuser ? 'superuser' : 'user'} will be able to access
         </span>
       </div>
@@ -94,7 +94,7 @@ export function NewUserAccessPreview({ type }: { type: UserType }) {
           : `Can open ${openableApps.length} app${openableApps.length === 1 ? '' : 's'}: ${openableApps.join(', ')}.`}
       </p>
       {!isSuperuser && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-text-muted">
           Access comes from the role their group confers — add them to a group on
           the Permissions page to grant it.
         </p>

@@ -40,7 +40,7 @@ type Editing = { kind: 'new' } | { kind: 'edit'; server: McpServer } | null;
 const STATUS_STYLE: Record<string, string> = {
   ok: 'bg-green-50 text-green-700',
   failing: 'bg-red-50 text-red-700',
-  untested: 'bg-gray-100 text-gray-600',
+  untested: 'bg-gray-100 text-text-muted',
 };
 const STATUS_LABEL: Record<string, string> = { ok: 'Connected', failing: 'Failing', untested: 'Not checked' };
 
@@ -78,7 +78,7 @@ function ServerCard({ server, credential }: { server: McpServer; credential: Cre
         >
           {STATUS_LABEL[status] ?? status}
         </span>
-        <span className="text-sm text-gray-600" data-testid={`mcp-server-tool-count-${server.id}`}>
+        <span className="text-sm text-text-muted" data-testid={`mcp-server-tool-count-${server.id}`}>
           {enabled} of {tools.length} tools on
         </span>
         {server.last_checked_at && (
@@ -229,8 +229,8 @@ export function McpServersHome() {
               <Card>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-gray-900">{server.name}</h3>
-                    <p className="mt-1 truncate font-mono text-xs text-gray-500">{server.url}</p>
+                    <h3 className="font-semibold text-brand-navy">{server.name}</h3>
+                    <p className="mt-1 truncate font-mono text-xs text-text-muted">{server.url}</p>
                   </div>
                   <div className="flex flex-shrink-0 gap-2">
                     <Button

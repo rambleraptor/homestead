@@ -115,7 +115,7 @@ function SendMessageForm({ to, url, onDone }: { to?: string; url?: string; onDon
       </div>
       <div>
         <label htmlFor="message-body" className="mb-1 block text-sm font-medium text-gray-700">
-          More detail <span className="font-normal text-gray-500">(optional)</span>
+          More detail <span className="font-normal text-text-muted">(optional)</span>
         </label>
         <textarea
           id="message-body"

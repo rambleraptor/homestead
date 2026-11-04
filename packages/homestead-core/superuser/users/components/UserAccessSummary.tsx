@@ -3,6 +3,7 @@ import { KeyRound } from 'lucide-react';
 import { getNavigationApps } from '@rambleraptor/homestead-core/apps/registry';
 import { isAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
 import { canWith } from '@rambleraptor/homestead-core/permissions/client';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useUserPermissionContext } from '@rambleraptor/homestead-core/permissions/hooks';
 import type { ManagedUser } from '../types';
 
@@ -23,7 +24,7 @@ const ANY_RESOURCE = '__all__';
 
 export function UserAccessSummary({ user }: { user: ManagedUser }) {
   const isSuperuser = user.type === 'superuser';
-  const { data: ctx, isLoading } = useUserPermissionContext(user.id);
+  const { data: ctx, isLoading, isError, error, refetch } = useUserPermissionContext(user.id);
 
   // Break-glass access doesn't depend on the fetched context, so a superuser is
   // "loaded" immediately; a regular user needs their resolved grants.
@@ -73,15 +74,25 @@ export function UserAccessSummary({ user }: { user: ManagedUser }) {
     >
       <div className="flex items-center gap-2">
         <KeyRound className="w-4 h-4 text-blue-500" />
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-text-main">
           What this {isSuperuser ? 'superuser' : 'user'} can access
         </span>
       </div>
 
       {isLoading && !isSuperuser ? (
-        <p className="text-sm text-gray-500">Loading access…</p>
+        <p className="text-sm text-text-muted">Loading access…</p>
       ) : !loaded ? (
-        <p className="text-sm text-gray-500">Couldn&apos;t load access details.</p>
+        isError ? (
+          <QueryError
+            compact
+            error={error}
+            onRetry={() => void refetch()}
+            title="Couldn’t load access details"
+            data-testid="user-access-summary-error"
+          />
+        ) : (
+          <p className="text-sm text-text-muted">Couldn&apos;t load access details.</p>
+        )
       ) : (
         <>
           <p className="text-sm text-gray-700">{dataSummary}</p>
@@ -98,7 +109,7 @@ export function UserAccessSummary({ user }: { user: ManagedUser }) {
               : `Can open ${openableApps.length} app${openableApps.length === 1 ? '' : 's'}: ${openableApps.join(', ')}.`}
           </p>
           {!isSuperuser && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-text-muted">
               Change this on the Permissions page — add them to a group, or share
               specific apps or records.
             </p>

@@ -156,7 +156,7 @@ export function ScheduleForm({
             onChange={(e) => form.setValue('sendTime', e.target.value)}
           />
         </div>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-text-muted mt-1">
           {`Without a time it arrives at ${DEFAULT_HOUR}:00.`}
         </p>
       </div>
@@ -184,7 +184,7 @@ export function ScheduleForm({
             {form.errors.message}
           </p>
         ) : (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-text-muted mt-1">
             Shown under the title in the notification. Leave blank to repeat the title.
           </p>
         )}

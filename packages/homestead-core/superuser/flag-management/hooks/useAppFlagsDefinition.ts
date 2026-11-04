@@ -34,6 +34,7 @@ export interface UseAppFlagsDefinitionResult {
   isLoading: boolean;
   isMissing: boolean;
   error: Error | null;
+  refetch: () => void;
 }
 
 export function useAppFlagsDefinition(): UseAppFlagsDefinitionResult {
@@ -60,6 +61,7 @@ export function useAppFlagsDefinition(): UseAppFlagsDefinitionResult {
     isLoading: query.isLoading,
     isMissing: query.data === null,
     error: (query.error as Error | null) ?? null,
+    refetch: () => void query.refetch(),
   };
 }
 
