@@ -29,4 +29,9 @@ export class NotificationsPage {
   sender(notificationId: string) {
     return this.driver.getByTestId(`notification-from-${notificationId}`);
   }
+
+  /** The records inbox rows are about, shown under their messages. */
+  get records() {
+    return this.driver.getByTestId('notification-record');
+  }
 }

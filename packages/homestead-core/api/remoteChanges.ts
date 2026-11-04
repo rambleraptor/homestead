@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { authStore } from './aepbase';
 import { useToast } from '../shared/components/ToastProvider';
+import { parentFromPath } from '../records/owners';
 import type { ResourceEventData, ResourceEventType } from './resourceEvents';
 
 export type RemoteChangeKind = 'created' | 'updated' | 'deleted';
@@ -222,6 +223,13 @@ export interface ChangeToastsOptions<T> {
   includeMine?: boolean;
   /** Stop toasting without unmounting. Defaults to true. */
   enabled?: boolean;
+  /**
+   * Show the record with a lone create or update, as its app's record card
+   * (`useToast().record`), so the person can act on it from the toast. For a
+   * screen that may not be showing the record (another list, another
+   * project); a burst, or a delete, stays a sentence. Defaults to false.
+   */
+  showRecord?: boolean;
 }
 
 function defaultSummary(changes: RemoteChange[]): string {
@@ -244,7 +252,7 @@ export function useChangeToasts<T = AnyRecord>(
   describe: (change: RemoteChange<T>) => string | null,
   options: ChangeToastsOptions<T> = {},
 ): void {
-  const { includeMine = false, enabled = true, summarize } = options;
+  const { includeMine = false, enabled = true, summarize, showRecord = false } = options;
   const toast = useToast();
   const batch = useRef<RemoteChange<T>[]>([]);
   const messages = useRef<string[]>([]);
@@ -282,7 +290,18 @@ export function useChangeToasts<T = AnyRecord>(
             : summarize
               ? summarize(changes)
               : defaultSummary(changes as RemoteChange[]);
-        if (text) toast.info(text);
+        if (!text) return;
+        const [only] = changes;
+        if (showRecord && changes.length === 1 && only && only.kind !== 'deleted') {
+          toast.record(text, {
+            singular: only.resource,
+            id: only.id,
+            snapshot: only.record,
+            parent: parentFromPath(only.path),
+          });
+        } else {
+          toast.info(text);
+        }
       }, CHANGE_TOAST_WINDOW_MS);
     },
     { enabled },

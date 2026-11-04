@@ -56,15 +56,85 @@ export const recordCardFor = recordCardOf;
 export function toolOutcome(part: Pick<ToolUIPart, 'state' | 'output' | 'errorText'>): {
   result?: unknown;
   error?: string;
+  previous?: Record<string, unknown>;
 } {
   if (part.state === 'output-error') return { error: part.errorText || 'The call failed.' };
   if (part.state !== 'output-available') return {};
-  const output = part.output as { result?: unknown; error?: unknown } | null | undefined;
+  const output = part.output as { result?: unknown; error?: unknown; previous?: unknown } | null | undefined;
   if (output && typeof output === 'object') {
     if (typeof output.error === 'string') return { error: output.error };
-    if ('result' in output) return { result: output.result };
+    if ('result' in output) {
+      const previous = isPlainObject(output.previous) ? output.previous : undefined;
+      return previous ? { result: output.result, previous } : { result: output.result };
+    }
   }
   return { result: output };
+}
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * How a finished call can be put back, or null when it can't:
+ *
+ * - `update`: write each changed field's earlier value back. Only when the
+ *   call changed nothing the executor couldn't record (a file, a secret), and
+ *   only while the record still holds what the call set — so an undo never
+ *   writes over a later change. `set` is what to compare against.
+ * - `restore`: create a deleted record again under its old id. Only for a
+ *   top-level resource that takes a chosen id, has no child resources (they
+ *   went with it), no secret fields, and held no files (neither can be
+ *   written back from the reply).
+ */
+export type UndoPlan =
+  | { kind: 'update'; id: string; previous: Record<string, unknown>; set: Record<string, unknown> }
+  | { kind: 'restore'; id: string; body: Record<string, unknown> };
+
+export function undoPlan(
+  props: Pick<ChatCardProps, 'resource' | 'action' | 'mode' | 'input' | 'result' | 'previous'>,
+  hasChildren: boolean,
+): UndoPlan | null {
+  const { resource: def, action, mode, input, result, previous } = props;
+  if (mode !== 'done' || !previous) return null;
+
+  if (action === 'update') {
+    const id = cardRecordId(input, result);
+    const fields = isPlainObject(input.fields) ? input.fields : {};
+    const changed = Object.keys(previous);
+    if (!id || changed.length === 0 || !isPlainObject(result) || result.id !== id) return null;
+    // A schema field the call wrote that `previous` doesn't cover is one the
+    // executor couldn't record, so it can't be put back.
+    const uncovered = Object.keys(fields).some((name) => name in def.fields && !(name in previous));
+    if (uncovered) return null;
+    const set = Object.fromEntries(changed.map((name) => [name, result[name] ?? null]));
+    return { kind: 'update', id, previous, set };
+  }
+
+  if (action === 'delete') {
+    const id = typeof previous.id === 'string' ? previous.id : undefined;
+    if (!id || def.parents?.length || !def.user_settable_create || hasChildren) return null;
+    // A secret never reaches the reply, so a record restored without it would
+    // quietly lose it.
+    if (Object.values(def.fields).some((field) => field.secret)) return null;
+    const body: Record<string, unknown> = {};
+    for (const [name, field] of Object.entries(def.fields)) {
+      const value = previous[name];
+      if (value === undefined || value === null) continue;
+      if (field.type === 'file') return null;
+      body[name] = value;
+    }
+    return { kind: 'restore', id, body };
+  }
+  return null;
+}
+
+/** A field's value for comparing: empty (absent, null, '') all read the same. */
+const comparable = (value: unknown): string =>
+  value === undefined || value === null || value === '' ? 'null' : JSON.stringify(value);
+
+/** Whether `record` holds each of `values`. */
+export function holds(record: Record<string, unknown>, values: Record<string, unknown>): boolean {
+  return Object.entries(values).every(([name, value]) => comparable(record[name]) === comparable(value));
 }
 
 /** The card's mode for a tool part's state (a failed call is `output-available` with `{ error }`). */
@@ -146,3 +216,54 @@ export function cardRows(def: ResourceDefinition, body: unknown, omit: readonly 
   }
   return rows;
 }
+
+/**
+ * A finished read or list that can fold into a reply's "Looked at …" line:
+ * one on a Homestead resource whose app doesn't draw that action itself (a
+ * list card is worth seeing). Writes, failures and approvals always show.
+ */
+export function rollsUp(part: Pick<ToolUIPart, 'type' | 'state' | 'output' | 'errorText' | 'input'>): boolean {
+  if (part.state !== 'output-available' || cardMode(part) !== 'done') return false;
+  const owner = ownerForTool(part.type);
+  const action = cardActionOf(part.input);
+  if (!owner || (action !== 'read' && action !== 'list')) return false;
+  return chatCardFor(owner, action) === undefined;
+}
+
+/** A message's parts as they render: one at a time, or a run of reads folded together. */
+export type PartGroup<P> = { kind: 'one'; part: P; index: number } | { kind: 'reads'; parts: P[]; index: number };
+
+/**
+ * Fold each run of two or more parts that `rollsUp` into one group. Parts that
+ * show nothing between them (a step boundary, an empty text) don't break a run;
+ * anything else does. A lone read stays a card of its own.
+ */
+export function groupParts<P extends { type: string; text?: string }>(
+  parts: readonly P[],
+  canRollUp: (part: P) => boolean,
+): PartGroup<P>[] {
+  const out: PartGroup<P>[] = [];
+  let run: { parts: P[]; index: number; skipped: { part: P; index: number }[] } | null = null;
+  const flush = () => {
+    if (!run) return;
+    if (run.parts.length >= 2) out.push({ kind: 'reads', parts: run.parts, index: run.index });
+    else out.push({ kind: 'one', part: run.parts[0]!, index: run.index });
+    for (const skipped of run.skipped) out.push({ kind: 'one', ...skipped });
+    run = null;
+  };
+  parts.forEach((part, index) => {
+    const silent = part.type === 'step-start' || part.type === 'reasoning' || (part.type === 'text' && !part.text?.trim());
+    if (canRollUp(part)) {
+      run ??= { parts: [], index, skipped: [] };
+      run.parts.push(part);
+    } else if (silent && run) {
+      run.skipped.push({ part, index });
+    } else {
+      flush();
+      out.push({ kind: 'one', part, index });
+    }
+  });
+  flush();
+  return out;
+}
+

@@ -148,7 +148,8 @@ export function buildChatToolSet(
   token: string,
   { attachments, write = true }: { attachments?: AttachmentSource; write?: WriteAccess } = {},
 ): { toolSet: ToolSet; hasDocSearch: boolean } {
-  const surface = buildResourceTools(defs, { attachments, write });
+  // The chat reports what an update or delete replaced, for the reply's undo.
+  const surface = buildResourceTools(defs, { attachments, write, recordPrevious: true });
   const confirm = confirmActions(defs);
   const toolSet: ToolSet = {};
   for (const [name, spec] of Object.entries(surface.tools)) {
@@ -162,7 +163,12 @@ export function buildChatToolSet(
       execute: async (rawArgs: unknown) => {
         const args = (rawArgs ?? {}) as Record<string, unknown>;
         const out = await surface.execute(name, args, token);
-        return out.ok ? { result: out.result ?? null } : { error: out.error };
+        // `previous` rides along on an update or delete: the model hears what
+        // the call replaced, and the reply's card can offer to put it back.
+        if (!out.ok) return { error: out.error };
+        return 'previous' in out && out.previous
+          ? { result: out.result ?? null, previous: out.previous }
+          : { result: out.result ?? null };
       },
     });
   }

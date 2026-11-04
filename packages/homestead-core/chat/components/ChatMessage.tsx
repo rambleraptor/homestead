@@ -22,11 +22,11 @@ import {
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
-import { ownerForTool } from '../cards';
+import { groupParts, ownerForTool, rollsUp } from '../cards';
 import { MessageAttachments } from './MessageAttachments';
 import { ApprovalCard } from './ApprovalCard';
 import type { BulkImportPreview } from '@rambleraptor/homestead-client';
-import { ResourceToolCall } from './ChatCard';
+import { ReadRollup, ResourceToolCall } from './ChatCard';
 import { ReplyLink, replyRehypePlugins, replyUrlTransform } from './ChatValue';
 import { plainReplyText } from '../values';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
@@ -150,7 +150,11 @@ export function ChatMessage({
             <ReasoningContent>{reasoning}</ReasoningContent>
           </Reasoning>
         )}
-        {message.parts.map((part, i) => {
+        {groupParts(message.parts, (part) => isStaticToolUIPart(part) && rollsUp(part)).map((group) => {
+          if (group.kind === 'reads') {
+            return <ReadRollup key={`reads-${group.index}`} parts={group.parts as ToolUIPart[]} />;
+          }
+          const { part, index: i } = group;
           if (part.type === 'text') {
             return isUser ? (
               <p key={i} className="whitespace-pre-wrap break-words">

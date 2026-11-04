@@ -11,6 +11,7 @@ import { ScheduledSection } from './ScheduledSection';
 import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
 import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehold';
 import { SendMessageDialog } from './SendMessageDialog';
+import { NotificationRecord } from './NotificationRecord';
 import type { Notification } from '../types';
 
 /** `users/u1` (or a bare id) → `u1`. */
@@ -128,6 +129,10 @@ function NotificationsPanel() {
                       <p className="text-sm text-gray-600 mt-1">
                         {notification.message}
                       </p>
+                      <NotificationRecord
+                        collection={notification.source_collection}
+                        id={notification.source_id}
+                      />
                       <p className="text-xs text-gray-500 mt-2">
                         {formatDate(notification.created)}
                       </p>

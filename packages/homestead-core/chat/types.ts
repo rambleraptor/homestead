@@ -23,6 +23,13 @@ export interface ChatToolCall {
   ok: boolean;
   /** aepbase response on success. */
   result?: unknown;
+  /**
+   * What a successful update or delete replaced: the changed fields' earlier
+   * values (`null` where the record had none), or the deleted record. Secret
+   * and file fields are never in it. Shown to the model with the result, and
+   * what a reply's undo writes back.
+   */
+  previous?: Record<string, unknown>;
   /** Error message on failure. */
   error?: string;
 }

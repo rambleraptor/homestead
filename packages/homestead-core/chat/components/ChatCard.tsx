@@ -7,7 +7,7 @@
  */
 
 import { Suspense } from 'react';
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, SearchIcon } from 'lucide-react';
 import type { ToolUIPart } from 'ai';
 import type { ChatCardProps } from '@rambleraptor/homestead-core/apps/types';
 import { getLazyComponent } from '@rambleraptor/homestead-core/apps/lazy';
@@ -23,7 +23,14 @@ import { CollapsibleTrigger } from '@rambleraptor/homestead-core/shared/componen
 import { resourceLabel } from '@rambleraptor/homestead-core/resources/display';
 import { Shimmer } from '@rambleraptor/homestead-core/shared/components/ai-elements/shimmer';
 import { ownerOf } from '@rambleraptor/homestead-core/records/owners';
-import { cardActionOf, cardMode, chatCardFor, toolOutcome, type CardOwner } from '../cards';
+import {
+  cardActionOf,
+  cardMode,
+  chatCardFor,
+  ownerForTool,
+  toolOutcome,
+  type CardOwner,
+} from '../cards';
 import { GenericActionCard } from './GenericActionCard';
 
 export interface CardFaceProps {
@@ -44,7 +51,7 @@ export function CardFace({ part, owner, mode }: CardFaceProps) {
       </Shimmer>
     );
   }
-  const { result, error } = toolOutcome(part);
+  const { result, error, previous } = toolOutcome(part);
   const props: ChatCardProps = {
     resource: owner.def,
     action,
@@ -52,6 +59,7 @@ export function CardFace({ part, owner, mode }: CardFaceProps) {
     input: (part.input ?? {}) as Record<string, unknown>,
     result,
     error,
+    ...(previous ? { previous } : {}),
   };
   const custom = chatCardFor(owner, action);
   if (!custom) return <GenericActionCard app={owner.app} {...props} />;
@@ -110,3 +118,40 @@ export function ResourceToolCall({ part, owner }: { part: ToolUIPart; owner: Car
     </Tool>
   );
 }
+
+/**
+ * A run of reads in one reply, folded into a single quiet line — "Looked at
+ * people and gift cards" — with each read's card behind it. Looking things up
+ * is how the assistant works, not what it did, so it shouldn't crowd out the
+ * answer or the changes it made.
+ */
+export function ReadRollup({ parts }: { parts: ToolUIPart[] }) {
+  const labels = [
+    ...new Set(
+      parts
+        .map((part) => ownerForTool(part.type))
+        .filter((owner): owner is CardOwner => owner !== undefined)
+        .map((owner) => resourceLabel(owner.def, 'plural').toLowerCase()),
+    ),
+  ];
+  const named =
+    labels.length <= 1 ? (labels[0] ?? '') : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`;
+  return (
+    <Tool data-testid="chat-tool-rollup">
+      <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 p-3" data-testid="chat-tool-rollup-toggle">
+        <span className="flex items-center gap-2 text-muted-foreground text-sm">
+          <SearchIcon className="size-4" aria-hidden />
+          Looked at {named}
+        </span>
+        <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+      </CollapsibleTrigger>
+      <ToolContent className="space-y-2">
+        {parts.map((part) => {
+          const owner = ownerForTool(part.type);
+          return owner ? <ResourceToolCall key={part.toolCallId} part={part} owner={owner} /> : null;
+        })}
+      </ToolContent>
+    </Tool>
+  );
+}
+

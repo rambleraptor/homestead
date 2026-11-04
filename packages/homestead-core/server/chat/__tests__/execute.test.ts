@@ -103,6 +103,25 @@ describe('secret fields', () => {
     expect(updated.result).toEqual({ id: 'c1', name: 'Renamed' });
   });
 
+  it('are dropped from what an update or delete reports it replaced', async () => {
+    getFn.mockResolvedValue({ id: 'c1', name: 'AI', api_key: DESCRIPTOR });
+    updateFn.mockResolvedValue({ id: 'c1', name: 'Renamed', api_key: DESCRIPTOR });
+    const updated = await executeToolCall(
+      { name: 'update_credential', args: { id: 'c1', name: 'Renamed' } },
+      credentialBindings,
+      TOKEN,
+      { recordPrevious: true },
+    );
+    expect(updated.previous).toEqual({ name: 'AI' });
+    const deleted = await executeToolCall(
+      { name: 'delete_credential', args: { id: 'c1' } },
+      credentialBindings,
+      TOKEN,
+      { recordPrevious: true },
+    );
+    expect(deleted.previous).toEqual({ id: 'c1', name: 'AI' });
+  });
+
   it('are dropped from every record of a list', async () => {
     listAllFn.mockResolvedValue([
       { id: 'c1', name: 'A', api_key: DESCRIPTOR },
@@ -250,14 +269,55 @@ describe('executeToolCall', () => {
     expect(updateFn).toHaveBeenCalledWith('/todos/rec-1', { done: true });
   });
 
-  it('delete removes and reports the id', async () => {
+  it('update reports what it replaced, field by field, with null for a field the record lacked', async () => {
+    getFn.mockResolvedValueOnce({ id: 'rec-1', title: 'Old', other: 'kept' });
+    const out = await executeToolCall(
+      { name: 'update_todo', args: { id: 'rec-1', title: 'New', done: true } },
+      bindings,
+      TOKEN,
+      { recordPrevious: true },
+    );
+    expect(out).toMatchObject({ ok: true, previous: { title: 'Old', done: null } });
+    expect(out.previous).not.toHaveProperty('other');
+  });
+
+  it('reads nothing first, and reports nothing replaced, unless asked (MCP never is)', async () => {
+    const out = await executeToolCall(
+      { name: 'update_todo', args: { id: 'rec-1', done: true } },
+      bindings,
+      TOKEN,
+    );
+    expect(getFn).not.toHaveBeenCalled();
+    expect(out).not.toHaveProperty('previous');
+  });
+
+  it('update still goes ahead, with nothing to put back, when the record cannot be read first', async () => {
+    getFn.mockRejectedValueOnce(new Error('get todos → 403'));
+    const out = await executeToolCall(
+      { name: 'update_todo', args: { id: 'rec-1', done: true } },
+      bindings,
+      TOKEN,
+      { recordPrevious: true },
+    );
+    expect(out.ok).toBe(true);
+    expect(out).not.toHaveProperty('previous');
+    expect(updateFn).toHaveBeenCalled();
+  });
+
+  it('delete removes and reports the id, with the record it removed', async () => {
+    getFn.mockResolvedValueOnce({ id: 'rec-9', title: 'Gone' });
     const out = await executeToolCall(
       { name: 'delete_todo', args: { id: 'rec-9' } },
       bindings,
       TOKEN,
+      { recordPrevious: true },
     );
     expect(deleteFn).toHaveBeenCalledWith('/todos/rec-9', undefined);
-    expect(out).toMatchObject({ ok: true, result: { deleted: true, id: 'rec-9' } });
+    expect(out).toMatchObject({
+      ok: true,
+      result: { deleted: true, id: 'rec-9' },
+      previous: { id: 'rec-9', title: 'Gone' },
+    });
   });
 
   it('converts aepbase errors into ok:false outcomes', async () => {

@@ -11,6 +11,8 @@ import { ChatPage } from '../../../../tests/e2e/pages/ChatPage';
 import { e2eClient } from '../../../../tests/e2e/utils/aepbase-helpers';
 import { CHAT_MARKERS, TODO_ID } from '../../../../tests/e2e/config/ai-scripts';
 import { TodoCards } from '../e2e/TodoCards';
+import { TodosPage } from '../e2e/TodosPage';
+import { NotificationsPage } from '../../../../tests/e2e/pages/NotificationsPage';
 import { createTodo, listTodos, type TodoRecord } from '../e2e/helpers';
 
 describe('Todo cards in chat', () => {
@@ -100,5 +102,43 @@ describe('Todo cards in chat', () => {
     await cards.toggleDone('Take out the bins');
     await d.expect(cards.card('Take out the bins')).toHaveAttribute('data-status', 'completed');
     expect((await todo(open.id).get()).status).toBe('completed');
+  });
+
+  test("a todo someone else adds shows up in a toast, with its checkbox", async () => {
+    const d = h.driver;
+    const cards = new TodoCards(d);
+    const todosPage = new TodosPage(d);
+    await todosPage.goto();
+
+    const added = await createTodo(h.householdMember.token, { title: 'Fix the gate' });
+    await d.expect(cards.toast).toContainText('Sam added Fix the gate');
+    await cards.toggleDone('Fix the gate');
+    await d.expect(cards.card('Fix the gate')).toHaveAttribute('data-status', 'completed');
+    expect((await todo(added.id).get()).status).toBe('completed');
+  });
+
+  test('a reminder about a todo carries the todo in the inbox', async () => {
+    const d = h.driver;
+    const plumber = await createTodo(token, { title: 'Call the plumber' });
+    await e2eClient(token)
+      .collection('users')
+      .record(h.member.id)
+      .collection('notifications')
+      .create({
+        title: 'Reminder',
+        message: 'The plumber',
+        notification_type: 'reminder',
+        source_collection: 'todos',
+        source_id: plumber.id,
+        read: false,
+      });
+    const inbox = new NotificationsPage(d);
+    const cards = new TodoCards(d);
+    await inbox.goto();
+
+    await d.expect(inbox.records).toHaveCount(1);
+    await cards.toggleDone('Call the plumber');
+    await d.expect(cards.card('Call the plumber')).toHaveAttribute('data-status', 'completed');
+    expect((await todo(plumber.id).get()).status).toBe('completed');
   });
 });
