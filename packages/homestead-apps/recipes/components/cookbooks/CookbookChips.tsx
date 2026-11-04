@@ -37,7 +37,7 @@ export function CookbookChips({ recipeId, max, label, className }: CookbookChips
           key={cookbook.id}
           to={cookbookPath(cookbook.id)}
           data-testid={`recipe-cookbook-chip-${cookbook.name}`}
-          className="rounded-full border border-gray-200 bg-white px-2.5 py-0.5 font-medium text-brand-navy hover:border-accent-terracotta"
+          className="rounded-full border border-gray-200 bg-surface-white px-2.5 py-0.5 font-medium text-brand-navy hover:border-accent-terracotta"
         >
           {cookbook.name}
         </Link>

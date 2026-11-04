@@ -9,7 +9,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  AlertCircle,
   ArrowDown,
   ArrowLeft,
   ArrowUp,
@@ -23,6 +22,8 @@ import {
   X,
 } from 'lucide-react';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { useDismissOnOutside } from '@rambleraptor/homestead-core/shared/hooks/useDismissOnOutside';
@@ -47,7 +48,7 @@ const ICON_BUTTON =
 export function CookbookPage({ cookbookId }: CookbookPageProps) {
   const navigate = useNavigate();
   const toast = useToast();
-  const { data: cookbook, isLoading, isError, error } = useCookbook(cookbookId);
+  const { data: cookbook, isLoading, isError, error, refetch } = useCookbook(cookbookId);
   const { data: cookbooks } = useCookbooks();
   const { data: recipes } = useRecipes();
   const update = useUpdateCookbook();
@@ -120,17 +121,12 @@ export function CookbookPage({ cookbookId }: CookbookPageProps) {
           <ArrowLeft className="w-4 h-4" />
           Back to recipes
         </Link>
-        <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">Failed to load cookbook</h3>
-              <p className="text-sm text-red-700">
-                {error instanceof Error ? error.message : 'Cookbook not found'}
-              </p>
-            </div>
-          </div>
-        </div>
+        <QueryError
+          error={isError ? error : new Error('This cookbook could not be found.')}
+          onRetry={isError ? () => void refetch() : undefined}
+          title={isError ? 'Failed to load cookbook' : 'Cookbook not found'}
+          data-testid="cookbook-error"
+        />
       </div>
     );
   }
@@ -152,7 +148,7 @@ export function CookbookPage({ cookbookId }: CookbookPageProps) {
 
       <CookbookStrip cookbooks={cookbooks ?? [cookbook]} currentId={cookbook.id} />
 
-      <header className="flex flex-wrap items-center gap-5 rounded-xl border border-gray-200 bg-white p-5">
+      <header className="flex flex-wrap items-center gap-5 rounded-2xl border border-gray-100 bg-surface-white p-5">
         <CookbookCover cookbook={cookbook} recipes={recipes} className="h-28 w-28 shrink-0" />
         <div className="min-w-0 flex-1 basis-64 space-y-1">
           <h1 className="font-display text-2xl font-bold text-brand-navy" data-testid="cookbook-title">
@@ -188,7 +184,7 @@ export function CookbookPage({ cookbookId }: CookbookPageProps) {
             onClick={handleAddAllToGroceries}
             disabled={members.length === 0}
             data-testid="cookbook-add-all-to-groceries"
-            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ShoppingCart className="w-4 h-4" />
             Add all to groceries
@@ -201,14 +197,14 @@ export function CookbookPage({ cookbookId }: CookbookPageProps) {
               aria-expanded={menuOpen}
               aria-haspopup="menu"
               data-testid="cookbook-menu"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-brand-navy shadow-sm hover:bg-bg-pearl"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-surface-white text-brand-navy shadow-sm hover:bg-bg-pearl"
             >
               <MoreHorizontal className="w-5 h-5" />
             </button>
             {menuOpen && (
               <div
                 role="menu"
-                className="absolute right-0 z-20 mt-2 w-44 rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
+                className="absolute right-0 z-20 mt-2 w-44 rounded-lg border border-gray-200 bg-surface-white p-1 shadow-lg"
               >
                 <button
                   type="button"
@@ -245,17 +241,17 @@ export function CookbookPage({ cookbookId }: CookbookPageProps) {
       </header>
 
       {members.length === 0 ? (
-        <div
-          data-testid="cookbook-empty-state"
-          className="text-center py-12 bg-white rounded-lg border border-gray-200"
-        >
-          <BookOpen className="w-12 h-12 text-text-muted mx-auto mb-3" />
-          <p className="text-text-muted">
-            {auto
+        <EmptyState
+          icon={auto ? Sparkles : BookOpen}
+          title={auto ? 'No imported recipes yet' : 'This cookbook is empty'}
+          description={
+            auto
               ? 'Recipes imported from social posts will appear here.'
-              : 'No recipes yet. Add some to fill this cookbook.'}
-          </p>
-        </div>
+              : 'No recipes yet. Add some to fill this cookbook.'
+          }
+          action={auto ? undefined : { label: 'Add recipes', onClick: () => setAdding(true), testId: 'cookbook-empty-add' }}
+          data-testid="cookbook-empty-state"
+        />
       ) : (
         <>
           <p className="text-sm text-text-muted">
@@ -266,7 +262,7 @@ export function CookbookPage({ cookbookId }: CookbookPageProps) {
               <li
                 key={recipe.id}
                 data-testid={`cookbook-recipe-row-${recipe.title}`}
-                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-surface-white px-3 py-2.5"
               >
                 <span className="w-6 shrink-0 text-right text-sm text-text-muted">{i + 1}</span>
                 <div className="h-14 w-[4.5rem] shrink-0 overflow-hidden rounded-lg bg-bg-pearl">

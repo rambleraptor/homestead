@@ -9,6 +9,7 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useCookbooks } from '../../hooks/useCookbooks';
 import { isAutoCookbook } from '../../utils/cookbooks';
 import type { Recipe } from '../../types';
@@ -20,7 +21,7 @@ interface CookbooksRailProps {
 }
 
 export function CookbooksRail({ recipes }: CookbooksRailProps) {
-  const { data: cookbooks, isError, error } = useCookbooks();
+  const { data: cookbooks, isError, error, refetch } = useCookbooks();
   const [creating, setCreating] = useState(false);
   const railRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +45,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
             type="button"
             onClick={() => scrollBy(-440)}
             aria-label="Scroll cookbooks left"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-navy hover:bg-bg-pearl"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-surface-white text-brand-navy hover:bg-bg-pearl"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -52,7 +53,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
             type="button"
             onClick={() => scrollBy(440)}
             aria-label="Scroll cookbooks right"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-navy hover:bg-bg-pearl"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-surface-white text-brand-navy hover:bg-bg-pearl"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -60,9 +61,13 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
       </div>
 
       {isError && (
-        <p className="text-sm text-red-700" data-testid="cookbooks-error">
-          Failed to load cookbooks: {error instanceof Error ? error.message : 'An error occurred'}
-        </p>
+        <QueryError
+          compact
+          error={error}
+          onRetry={() => void refetch()}
+          title="Failed to load cookbooks"
+          data-testid="cookbooks-error"
+        />
       )}
 
       <div
@@ -76,7 +81,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
               key={cookbook.id}
               to={`/recipes/cookbooks/${cookbook.id}`}
               data-testid={`cookbook-card-${cookbook.name}`}
-              className="flex w-44 shrink-0 snap-start flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-2.5 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
+              className="flex w-44 shrink-0 snap-start flex-col gap-2.5 rounded-xl border border-gray-200 bg-surface-white p-2.5 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
             >
               <div className="relative">
                 <CookbookCover cookbook={cookbook} recipes={recipes} className="h-28 w-full" />
