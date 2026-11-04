@@ -222,7 +222,7 @@ function FileFieldControl({ options, ...p }: FieldWidgetProps & { options: FileF
           }`}
         >
           <Upload className="w-6 h-6 text-gray-400" />
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-text-muted">
             {options.dragDrop === false ? 'Click to upload' : 'Drop a file here, or click to browse'}
           </span>
           {options.hint && <span className="text-xs text-gray-400">{options.hint}</span>}

@@ -4,8 +4,20 @@ import { useStores } from './useStores';
 import type { StoreGroupedGroceries, GroceryStats } from '../types';
 
 export function useGroupedGroceries() {
-  const { data: items = [], isLoading: itemsLoading, isError: itemsError, error: itemsErrorMsg } = useGroceries();
-  const { data: stores = [], isLoading: storesLoading, isError: storesError, error: storesErrorMsg } = useStores();
+  const {
+    data: items = [],
+    isLoading: itemsLoading,
+    isError: itemsError,
+    error: itemsErrorMsg,
+    refetch: refetchItems,
+  } = useGroceries();
+  const {
+    data: stores = [],
+    isLoading: storesLoading,
+    isError: storesError,
+    error: storesErrorMsg,
+    refetch: refetchStores,
+  } = useStores();
 
   const stats = useMemo<GroceryStats>(() => {
     const storeMap = new Map<string | null, StoreGroupedGroceries>();
@@ -47,5 +59,10 @@ export function useGroupedGroceries() {
     isLoading: itemsLoading || storesLoading,
     isError: itemsError || storesError,
     error: itemsErrorMsg || storesErrorMsg,
+    /** Retries whichever read failed (both are cheap). */
+    refetch: () => {
+      void refetchItems();
+      void refetchStores();
+    },
   };
 }

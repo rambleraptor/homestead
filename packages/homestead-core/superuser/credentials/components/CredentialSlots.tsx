@@ -9,7 +9,7 @@
 import { CheckCircle2, ExternalLink, Lock, TriangleAlert } from 'lucide-react';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import type { CredentialSlotStatus } from '../types';
 
 function formatDate(iso: string): string {
@@ -65,7 +65,7 @@ function HelpLine({ help }: { help: string }) {
       </a>
     );
   }
-  return <p className="text-sm text-gray-600">{help}</p>;
+  return <p className="text-sm text-text-muted">{help}</p>;
 }
 
 interface CredentialSlotsProps {
@@ -82,15 +82,17 @@ export function CredentialSlots({ slots, isLoading, error, disabled, onSet, onCl
   if (isLoading) return null;
   if (error) {
     return (
-      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        Couldn’t load what Homestead needs: {getAepErrorMessage(error)}
-      </div>
+      <QueryError
+        error={error}
+        title="Couldn’t load what Homestead needs"
+        data-testid="credential-slots-error"
+      />
     );
   }
   if (!slots?.length) return null;
   return (
     <section className="space-y-3" aria-labelledby="credential-slots-heading">
-      <h2 id="credential-slots-heading" className="text-lg font-semibold text-gray-900">
+      <h2 id="credential-slots-heading" className="text-lg font-semibold text-brand-navy">
         Homestead needs
       </h2>
       <ul className="space-y-3" data-testid="credential-slots">
@@ -102,8 +104,8 @@ export function CredentialSlots({ slots, isLoading, error, disabled, onSet, onCl
               <Card>
                 <div className="flex items-start justify-between gap-4" data-testid={`slot-${slot.id}`}>
                   <div className="min-w-0 space-y-1">
-                    <h3 className="font-semibold text-gray-900">{slot.label}</h3>
-                    <p className="text-xs text-gray-500">
+                    <h3 className="font-semibold text-brand-navy">{slot.label}</h3>
+                    <p className="text-xs text-text-muted">
                       Used by {slot.used_by}
                       {slot.env && (
                         <>
@@ -112,12 +114,12 @@ export function CredentialSlots({ slots, isLoading, error, disabled, onSet, onCl
                         </>
                       )}
                     </p>
-                    {slot.description && <p className="text-sm text-gray-600">{slot.description}</p>}
+                    {slot.description && <p className="text-sm text-text-muted">{slot.description}</p>}
                     <div className="text-sm" data-testid={`slot-status-${slot.id}`}>
                       <SourceLine slot={slot} />
                     </div>
                     {slot.overridden && (
-                      <p className="text-xs text-gray-500" data-testid={`slot-overridden-${slot.id}`}>
+                      <p className="text-xs text-text-muted" data-testid={`slot-overridden-${slot.id}`}>
                         A value is also stored here, but the{' '}
                         {slot.source === 'env' ? <code>{slot.env}</code> : 'config'} one wins.
                       </p>

@@ -32,10 +32,10 @@ export function DeviceRow({ device, onThresholdChange, onDelete, busy }: DeviceR
   return (
     <li className="flex flex-wrap items-center gap-4 px-4 py-3" data-testid="device-row">
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-gray-900" data-testid="device-name">
+        <p className="font-medium text-text-main" data-testid="device-name">
           {device.name}
         </p>
-        <p className="text-xs text-gray-500" data-testid="device-reported">
+        <p className="text-xs text-text-muted" data-testid="device-reported">
           {reportedAgo(device.reported_at)}
           {device.firmware ? ` · ${device.firmware}` : ''}
         </p>
@@ -67,7 +67,7 @@ export function DeviceRow({ device, onThresholdChange, onDelete, busy }: DeviceR
       </div>
 
       <div className="flex items-center gap-2">
-        <label htmlFor={selectId} className="text-xs text-gray-500">
+        <label htmlFor={selectId} className="text-xs text-text-muted">
           Remind at
         </label>
         <select
@@ -75,7 +75,7 @@ export function DeviceRow({ device, onThresholdChange, onDelete, busy }: DeviceR
           value={threshold}
           disabled={busy}
           onChange={(e) => onThresholdChange(device, Number(e.target.value))}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+          className="rounded-md border border-gray-300 bg-surface-white px-2 py-1 text-sm"
           data-testid="device-threshold"
         >
           {options.map((value) => (

@@ -18,11 +18,14 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  FileX,
   Upload,
   XCircle,
 } from 'lucide-react';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import type {
   BulkImportColumnInfo,
@@ -203,12 +206,22 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
         <Card className="p-6 text-muted-foreground">Loading import formats…</Card>
       )}
 
-      {!formatsQuery.isLoading && formats.length === 0 && (
-        <Card className="p-6">
-          <p className="text-muted-foreground">
-            {appName} doesn't support bulk import.
-          </p>
-        </Card>
+      {formatsQuery.isError && (
+        <QueryError
+          error={formatsQuery.error}
+          onRetry={() => void formatsQuery.refetch()}
+          title="Couldn’t load import formats"
+          data-testid="bulk-import-formats-error"
+        />
+      )}
+
+      {formatsQuery.isSuccess && formats.length === 0 && (
+        <EmptyState
+          icon={FileX}
+          title={`${appName} doesn't support bulk import`}
+          description="This app hasn’t declared any import formats."
+          data-testid="bulk-import-unsupported"
+        />
       )}
 
       {!items && format && (
@@ -272,7 +285,7 @@ export function BulkImportContainer<T>({ config }: BulkImportContainerProps<T>) 
               />
               <label
                 htmlFor="bulk-import-upload"
-                className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-base font-medium text-white transition-colors hover:bg-blue-700"
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-accent-terracotta px-4 py-2 text-base font-medium text-white transition-colors hover:bg-accent-terracotta-hover"
               >
                 Choose File
               </label>

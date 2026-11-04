@@ -41,7 +41,7 @@ export function UseOAuthForm({ onSubmit, onCancel, isSubmitting }: UseOAuthFormP
         });
       }}
     >
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-text-muted">
         Homestead signs in to the server as the household and keeps the sign-in fresh. Most servers register
         Homestead themselves — leave the client blank. If the provider needs one registered by hand, give it this
         redirect address:
@@ -69,7 +69,7 @@ export function UseOAuthForm({ onSubmit, onCancel, isSubmitting }: UseOAuthFormP
           autoComplete="new-password"
           data-testid="oauth-client-secret"
         />
-        <p className="text-xs text-gray-500">Stored encrypted; nobody can read it back.</p>
+        <p className="text-xs text-text-muted">Stored encrypted; nobody can read it back.</p>
       </div>
       <div className="space-y-1">
         <Label htmlFor="oauth-scope">Scopes (optional)</Label>

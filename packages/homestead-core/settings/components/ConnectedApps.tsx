@@ -5,7 +5,8 @@ import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useConnectedApps, type ConnectedApp } from '../hooks/useConnectedApps';
 import { useRevokeConnectedApp } from '../hooks/useRevokeConnectedApp';
 
@@ -29,7 +30,7 @@ function formatDate(value?: string): string | null {
 
 export function ConnectedApps() {
   const toast = useToast();
-  const { data: apps = [], isLoading, isError, error: loadError } = useConnectedApps();
+  const { data: apps = [], isLoading, isError, error: loadError, refetch } = useConnectedApps();
   const revoke = useRevokeConnectedApp();
   const [confirmTarget, setConfirmTarget] = useState<ConnectedApp | null>(null);
 
@@ -56,10 +57,10 @@ export function ConnectedApps() {
     <Card>
       <div className="space-y-6" data-testid="connected-apps">
         <div className="flex items-start gap-4">
-          <Plug className="w-6 h-6 text-gray-600 mt-1" />
+          <Plug className="w-6 h-6 text-text-muted mt-1" />
           <div>
-            <h3 className="font-semibold text-gray-900">Connected apps</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="font-semibold text-brand-navy">Connected apps</h3>
+            <p className="text-sm text-text-muted">
               Apps you&apos;ve authorized to access your data over OAuth, including
               MCP clients. Disconnecting an app immediately revokes every token it
               holds — it will have to be authorized again to reconnect.
@@ -68,13 +69,21 @@ export function ConnectedApps() {
         </div>
 
         {isError ? (
-          <p className="text-sm text-red-600" role="alert" data-testid="connected-apps-error">
-            Couldn&apos;t load connected apps: {getAepErrorMessage(loadError)}
-          </p>
+          <QueryError
+            compact
+            error={loadError}
+            onRetry={() => void refetch()}
+            title="Couldn’t load connected apps"
+            data-testid="connected-apps-error"
+          />
         ) : apps.length === 0 ? (
-          <p className="text-sm text-gray-500" data-testid="no-connected-apps">
-            You haven&apos;t connected any apps yet.
-          </p>
+          <EmptyState
+            compact
+            icon={Plug}
+            title="No connected apps"
+            description="You haven’t connected any apps yet. One appears here the first time you authorize it over OAuth."
+            data-testid="no-connected-apps"
+          />
         ) : (
           <ul className="divide-y divide-gray-100">
             {apps.map((app) => {
@@ -88,10 +97,10 @@ export function ConnectedApps() {
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900 truncate">
+                      <span className="font-medium text-text-main truncate">
                         {app.client_name || 'Unnamed app'}
                       </span>
-                      <span className="text-xs text-gray-500">{describeAccess(app.scope)}</span>
+                      <span className="text-xs text-text-muted">{describeAccess(app.scope)}</span>
                     </div>
                     <p className="text-xs text-gray-400">
                       {connected ? `Connected ${connected}` : 'Recently connected'}

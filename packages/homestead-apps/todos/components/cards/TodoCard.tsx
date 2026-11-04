@@ -8,6 +8,7 @@
 import type { RecordCardProps } from '@rambleraptor/homestead-core/apps/types';
 import { useCardRecord } from '@rambleraptor/homestead-core/records/useCardRecord';
 import { RecordTitleLine } from '@rambleraptor/homestead-core/records/components/RecordCard';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { PERSONAL_TODOS, TODOS } from '../../resources';
 import type { Todo, TodoKind } from '../../types';
 import { TodoCardRow } from './TodoCardRow';
@@ -28,9 +29,12 @@ function TodoRecordCard({ kind, id, snapshot, size, parent }: RecordCardProps & 
   if (!record) {
     if (error) {
       return (
-        <p className="text-destructive text-sm" role="alert">
-          Couldn't load this todo: {error.message}
-        </p>
+        <QueryError
+          compact
+          error={error}
+          title="Couldn’t load this todo"
+          data-testid="todo-card-error"
+        />
       );
     }
     return <RecordTitleLine snapshot={snapshot} struck={deleted} />;

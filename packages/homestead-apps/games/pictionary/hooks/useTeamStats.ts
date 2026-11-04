@@ -31,6 +31,10 @@ interface UseTeamStatsResult {
   data: TeamStats[];
   isLoading: boolean;
   isError: boolean;
+  /** The first failed read (the games list, or a game's teams). */
+  error: Error | null;
+  /** Retries every failed read. */
+  refetch: () => void;
 }
 
 function canonicalKey(players: string[]): {
@@ -46,6 +50,8 @@ export function useTeamStats(): UseTeamStatsResult {
     data: games,
     isLoading: gamesLoading,
     isError: gamesError,
+    error: gamesErrorObj,
+    refetch: refetchGames,
   } = useGames();
 
   const gameIds = useMemo(() => (games ?? []).map((g) => g.id), [games]);
@@ -116,5 +122,12 @@ export function useTeamStats(): UseTeamStatsResult {
     data,
     isLoading: gamesLoading || childrenLoading,
     isError: gamesError || childrenError,
+    error: gamesErrorObj ?? teamQueries.find((q) => q.error)?.error ?? null,
+    refetch: () => {
+      if (gamesError) void refetchGames();
+      teamQueries.forEach((q) => {
+        if (q.isError) void q.refetch();
+      });
+    },
   };
 }

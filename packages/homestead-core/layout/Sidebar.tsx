@@ -111,7 +111,7 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 animate-overlay-in lg:hidden"
           onClick={onClose}
         />
       )}
@@ -122,7 +122,7 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
         data-testid="app-sidebar"
         className={`
           fixed top-0 left-0 z-50 h-full w-64 bg-surface-white
-          border-r border-gray-100 shadow-sm transform transition-transform duration-300 ease-in-out
+          border-r border-gray-100 shadow-sm transform transition-transform duration-(--duration-settle) ease-out-soft
           ${desktopHidden ? 'lg:hidden' : 'lg:translate-x-0 lg:static'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
@@ -153,7 +153,7 @@ export function Sidebar({ isOpen, onClose, desktopHidden = false }: SidebarProps
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
             {pinnedEntries.length === 0 ? (
-              <div className="text-sm text-gray-500 text-center py-4">
+              <div className="text-sm text-text-muted text-center py-4">
                 No apps available
               </div>
             ) : (

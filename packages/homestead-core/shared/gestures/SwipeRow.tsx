@@ -30,6 +30,7 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
+import { haptic } from '@rambleraptor/homestead-core/shared/haptics';
 
 export interface SwipeAction {
   /** Shown on the revealed panel, and used as the action's accessible name. */
@@ -165,8 +166,10 @@ export function SwipeRow({
         suppressClick.current = true;
         const action = dx > 0 ? swipeRight : swipeLeft;
         if (Math.abs(dx) >= COMMIT_PX && action) {
-          // Fire before the row springs back. In practice the row is about to
-          // change or disappear, so the return journey is rarely seen.
+          // A pulse the thumb feels as it lets go: the swipe took. Fire before
+          // the row springs back. In practice the row is about to change or
+          // disappear, so the return journey is rarely seen.
+          haptic('tap');
           action.onAction();
         }
       }

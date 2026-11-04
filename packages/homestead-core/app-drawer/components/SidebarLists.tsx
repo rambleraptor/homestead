@@ -73,11 +73,11 @@ export function SidebarLists({
     <div className="flex flex-wrap items-start gap-6">
       <section
         aria-label={leftTitle}
-        className="flex w-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:w-80"
+        className="flex w-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-surface-white shadow-sm lg:w-80"
         data-testid="sidebar-lists-left"
       >
         <div className="flex items-baseline justify-between gap-2 px-5 pt-4 pb-2">
-          <h2 className="text-base font-semibold text-gray-900">{leftTitle}</h2>
+          <h2 className="text-base font-semibold text-brand-navy">{leftTitle}</h2>
           <span className="text-xs text-text-muted">{count(left.length)}</span>
         </div>
         {left.length === 0 ? (
@@ -124,7 +124,7 @@ export function SidebarLists({
                         disabled={busy}
                         onClick={() => onRemove(entry)}
                         data-testid={`app-drawer-remove-${app.id}`}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-text-muted transition-colors hover:border-brand-navy hover:bg-brand-navy hover:text-white disabled:opacity-60"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-surface-white text-text-muted transition-colors hover:border-brand-navy hover:bg-brand-navy hover:text-white disabled:opacity-60"
                       >
                         <Minus className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -144,12 +144,12 @@ export function SidebarLists({
         data-testid="sidebar-lists-right"
       >
         <div className="flex items-baseline justify-between gap-2 px-1">
-          <h2 className="text-base font-semibold text-gray-900">More apps</h2>
+          <h2 className="text-base font-semibold text-brand-navy">More apps</h2>
           <span className="text-xs text-text-muted">{count(right.length)}</span>
         </div>
         {right.length === 0 ? (
           <p
-            className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center text-sm text-text-muted"
+            className="rounded-xl border border-dashed border-gray-200 bg-surface-white px-4 py-8 text-center text-sm text-text-muted"
             data-testid="sidebar-lists-right-empty"
           >
             {query ? 'No apps match that search.' : 'Everything you can use is already there.'}
@@ -165,7 +165,7 @@ export function SidebarLists({
               return (
                 <div
                   key={app.id}
-                  className="relative flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 pt-4 pb-3 transition-colors hover:border-gray-300"
+                  className="relative flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-surface-white px-3 pt-4 pb-3 transition-colors hover:border-gray-300"
                   data-testid={folder ? `app-drawer-folder-${app.id}` : `app-drawer-tile-${app.id}`}
                 >
                   <Link
@@ -191,7 +191,7 @@ export function SidebarLists({
                         <AppIcon icon={web.icon} className="h-6 w-6 text-accent-terracotta" />
                       </span>
                     )}
-                    <span className="text-center text-sm font-semibold leading-tight text-gray-900">
+                    <span className="text-center text-sm font-semibold leading-tight text-brand-navy">
                       {app.name}
                     </span>
                     <span className="text-center text-[11px] text-text-muted">
@@ -204,7 +204,7 @@ export function SidebarLists({
                     disabled={busy}
                     onClick={() => onAdd(entry)}
                     data-testid={`app-drawer-add-${app.id}`}
-                    className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-text-muted transition-colors hover:border-brand-navy hover:bg-brand-navy hover:text-white disabled:opacity-60"
+                    className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-surface-white text-text-muted transition-colors hover:border-brand-navy hover:bg-brand-navy hover:text-white disabled:opacity-60"
                   >
                     <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>

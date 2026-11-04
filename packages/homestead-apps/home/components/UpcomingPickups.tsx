@@ -7,8 +7,10 @@
  * here — the empty state explains where records come from instead.
  */
 
-import { AlertCircle, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { useUpcomingPickupDays } from '../hooks/useGarbagePickups';
 import { parseIsoDate, relativeDayLabel } from '../utils/pickups';
@@ -19,12 +21,13 @@ import { StreamChip } from './StreamChip';
 const LOOKAHEAD_DAYS = 14;
 
 export function UpcomingPickups() {
-  const { data: days, isLoading, isError, error } = useUpcomingPickupDays(LOOKAHEAD_DAYS);
+  const { data: days, isLoading, isError, error, refetch } =
+    useUpcomingPickupDays(LOOKAHEAD_DAYS);
 
   return (
     <section data-testid="home-pickups">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Trash &amp; recycling
         </h2>
         <ReminderOptInToggle
@@ -47,20 +50,23 @@ export function UpcomingPickups() {
       )}
 
       {isError && (
-        <div className="flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error instanceof Error ? error.message : 'Failed to load pickups'}
-        </div>
+        <QueryError
+          compact
+          error={error}
+          onRetry={refetch}
+          title="Couldn’t load pickups"
+          data-testid="home-pickups-error"
+        />
       )}
 
       {days && days.length === 0 && (
-        <p
-          className="rounded-2xl border border-gray-100 bg-surface-white px-4 py-8 text-center text-sm text-gray-500"
+        <EmptyState
+          compact
+          icon={Trash2}
+          title={`No pickups scheduled in the next ${LOOKAHEAD_DAYS} days`}
+          description="Schedules are filled in by the pickup sync — if this stays empty, check that it ran."
           data-testid="home-pickups-empty"
-        >
-          No pickups scheduled in the next {LOOKAHEAD_DAYS} days. Schedules are
-          filled in by the pickup sync — if this stays empty, check that it ran.
-        </p>
+        />
       )}
 
       {days && days.length > 0 && (

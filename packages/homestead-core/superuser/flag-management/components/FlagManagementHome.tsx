@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
@@ -28,7 +30,13 @@ import {
 import type { AppFlagDef, AppFlagValue } from '@rambleraptor/homestead-core/apps/types';
 
 export function FlagManagementHome() {
-  const { defs, isLoading: defsLoading, isMissing } = useAppFlagsDefinition();
+  const {
+    defs,
+    isLoading: defsLoading,
+    isMissing,
+    error: defsError,
+    refetch: refetchDefs,
+  } = useAppFlagsDefinition();
   const { record, isLoading: valuesLoading } = useAppFlags();
   const values = unflatten(record, defs);
   const audiences = unflattenAudiences(record, defs);
@@ -99,15 +107,23 @@ export function FlagManagementHome() {
         <Card>
           <div className="flex items-center gap-3 py-4">
             <Spinner size="sm" />
-            <span className="text-sm text-gray-600">Loading flags…</span>
+            <span className="text-sm text-text-muted">Loading flags…</span>
           </div>
         </Card>
+      ) : defsError ? (
+        <QueryError
+          error={defsError}
+          onRetry={refetchDefs}
+          title="Couldn’t load app flags"
+          data-testid="flag-management-error"
+        />
       ) : appIds.length === 0 ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8">
-            No app flags are registered in aepbase yet.
-          </p>
-        </Card>
+        <EmptyState
+          icon={SlidersHorizontal}
+          title="No app flags yet"
+          description="No app flags are registered in aepbase yet. An app declares them in its config, and they appear here after the next boot."
+          data-testid="flag-management-empty"
+        />
       ) : (
         <div className="space-y-4" data-testid="flag-management-list">
           {appIds.map((appId) => {
@@ -117,10 +133,10 @@ export function FlagManagementHome() {
             return (
               <Card key={appId}>
                 <div className="flex items-start gap-4">
-                  <SlidersHorizontal className="w-6 h-6 text-blue-500 mt-1" />
+                  <SlidersHorizontal className="w-6 h-6 text-accent-terracotta mt-1" />
                   <div className="flex-1 space-y-4">
                     <h3
-                      className="font-semibold text-gray-900"
+                      className="font-semibold text-brand-navy"
                       data-testid={`flag-app-${appId}`}
                     >
                       {appName}
@@ -191,7 +207,7 @@ function FlagField({
             disabled={isSaving}
             data-testid={testid}
           />
-          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
+          <p className="mt-1 text-xs text-text-muted">{def.description}</p>
         </div>
       );
 
@@ -210,7 +226,7 @@ function FlagField({
             disabled={isSaving}
             data-testid={testid}
           />
-          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
+          <p className="mt-1 text-xs text-text-muted">{def.description}</p>
         </div>
       );
 
@@ -227,11 +243,11 @@ function FlagField({
           <div>
             <label
               htmlFor={fieldId}
-              className="text-sm font-medium text-gray-900 cursor-pointer"
+              className="text-sm font-medium text-text-main cursor-pointer"
             >
               {def.label}
             </label>
-            <p className="text-xs text-gray-500">{def.description}</p>
+            <p className="text-xs text-text-muted">{def.description}</p>
           </div>
         </div>
       );
@@ -241,7 +257,7 @@ function FlagField({
         <div>
           <label
             htmlFor={fieldId}
-            className="block text-sm font-medium text-gray-900 mb-2"
+            className="block text-sm font-medium text-text-main mb-2"
           >
             {def.label}
           </label>
@@ -251,7 +267,7 @@ function FlagField({
             onChange={(e) => onChange(e.target.value)}
             disabled={isSaving}
             data-testid={testid}
-            className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            className="block w-full rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm text-text-main focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta disabled:opacity-50"
           >
             {def.options.map((opt) => (
               <option key={opt} value={opt}>
@@ -259,7 +275,7 @@ function FlagField({
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
+          <p className="mt-1 text-xs text-text-muted">{def.description}</p>
         </div>
       );
   }
@@ -290,7 +306,7 @@ function AudienceField({ appId, flagKey, audience, onChange, isSaving }: Audienc
     onChange(on ? [...chosen, id] : chosen.filter((g) => g !== id));
 
   return (
-    <div className="ml-7 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-gray-600">
+    <div className="ml-7 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-text-muted">
       <label htmlFor={testid}>Applies to</label>
       <select
         id={testid}
@@ -304,7 +320,7 @@ function AudienceField({ appId, flagKey, audience, onChange, isSaving }: Audienc
           // "These groups" starts with the first group, so it never silently means nobody.
           else onChange(chosen.length > 0 ? chosen : known.slice(0, 1).map((g) => g.id));
         }}
-        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+        className="rounded-md border border-gray-300 bg-surface-white px-2 py-1 text-xs text-text-main focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta disabled:opacity-50"
       >
         <option value="everyone">everyone</option>
         <option value="groups" disabled={known.length === 0}>
@@ -312,8 +328,20 @@ function AudienceField({ appId, flagKey, audience, onChange, isSaving }: Audienc
         </option>
         <option value="nobody">nobody</option>
       </select>
-      {known.length === 0 && !groups.isPending && (
-        <span className="text-gray-400">No groups yet — make one under Permissions.</span>
+      {groups.isError ? (
+        <QueryError
+          compact
+          error={groups.error}
+          onRetry={() => void groups.refetch()}
+          title="Couldn’t load groups"
+          className="basis-full"
+          data-testid={`${testid}-groups-error`}
+        />
+      ) : (
+        known.length === 0 &&
+        !groups.isPending && (
+          <span className="text-gray-400">No groups yet — make one under Permissions.</span>
+        )
       )}
       {mode === 'groups' &&
         known.map((group) => {

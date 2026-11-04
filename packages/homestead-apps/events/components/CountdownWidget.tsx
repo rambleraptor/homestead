@@ -8,13 +8,16 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Hourglass } from 'lucide-react';
+import { CalendarX, Hourglass } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   Skeleton,
   SkeletonRegion,
 } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useCountdownConfig } from '../hooks/useCountdownConfig';
 import { useCountdownEvent } from '../hooks/useCountdownEvent';
 import {
@@ -35,10 +38,15 @@ const UNIT_LABEL: Record<CountdownUnit, string> = {
 const CONFIG_PATH = '/settings';
 
 export function CountdownWidget() {
+  const navigate = useNavigate();
   const config = useCountdownConfig();
-  const { event, nextDate, isLoading: isLoadingEvent } = useCountdownEvent(
-    config.eventId,
-  );
+  const {
+    event,
+    nextDate,
+    isLoading: isLoadingEvent,
+    error: eventError,
+    refetch: refetchEvent,
+  } = useCountdownEvent(config.eventId);
 
   const enabledUnits = config.enabledUnits;
   const interval = useMemo(() => tickIntervalMs(enabledUnits), [enabledUnits]);
@@ -46,9 +54,14 @@ export function CountdownWidget() {
   const [now, setNow] = useState<number>(() => Date.now());
   useEffect(() => {
     if (!nextDate || enabledUnits.length === 0) return;
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), interval);
-    return () => clearInterval(id);
+    const tick = () => setNow(Date.now());
+    // Catch up at once (the target or units just changed), then on the beat.
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, interval);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, [interval, nextDate, enabledUnits.length]);
 
   const cells = useMemo(() => {
@@ -80,15 +93,38 @@ export function CountdownWidget() {
     );
   } else if (!config.eventId) {
     body = (
-      <p className="font-body text-text-muted py-2">
-        No countdown configured.
-      </p>
+      <EmptyState
+        icon={Hourglass}
+        title="No countdown configured"
+        description="Pick an event in Settings to count down to it here."
+        action={{ label: 'Choose an event', onClick: () => navigate(CONFIG_PATH) }}
+        compact
+        className="my-2"
+        data-testid="countdown-widget-empty"
+      />
+    );
+  } else if (eventError) {
+    body = (
+      <QueryError
+        error={eventError}
+        onRetry={refetchEvent}
+        title="Couldn’t load the countdown"
+        compact
+        className="my-2"
+        data-testid="countdown-widget-error"
+      />
     );
   } else if (!event || !nextDate) {
     body = (
-      <p className="font-body text-text-muted py-2">
-        The configured event no longer exists.
-      </p>
+      <EmptyState
+        icon={CalendarX}
+        title="The configured event no longer exists"
+        description="Pick another event in Settings."
+        action={{ label: 'Choose an event', onClick: () => navigate(CONFIG_PATH) }}
+        compact
+        className="my-2"
+        data-testid="countdown-widget-missing"
+      />
     );
   } else if (enabledUnits.length === 0) {
     body = (

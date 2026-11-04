@@ -140,7 +140,7 @@ export function PersonForm({
           placeholder="Add an alternate name…"
           testId="person-aliases"
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-text-muted mt-1">
           Alternate names (maiden name, nickname, middle name) used to match
           this person on receipts and imports.
         </p>
@@ -173,7 +173,7 @@ export function PersonForm({
             The household couldn't be loaded, so the account can't be changed right now.
           </p>
         ) : (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-text-muted mt-1">
             When this person uses Homestead, link their account so the assistant knows who is who.
           </p>
         )}
@@ -198,7 +198,7 @@ export function PersonForm({
             </option>
           ))}
         </select>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-text-muted mt-1">
           Track birthdays and anniversaries in the Events app.
         </p>
       </div>
@@ -226,7 +226,7 @@ export function PersonForm({
             error={form.errors[field]}
           />
         ))}
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-text-muted">
           People who share a parent show as siblings automatically.
         </p>
       </div>
@@ -256,7 +256,7 @@ export function PersonForm({
               <button
                 type="button"
                 onClick={() => form.setValue('new_household_open', false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-text-muted hover:text-gray-700"
                 aria-label="Cancel new household"
               >
                 <X className="w-4 h-4" />
@@ -302,7 +302,7 @@ export function PersonForm({
                   (form.values.new_household_name as string) || (form.values.name as string) || '',
               })
             }
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-accent-terracotta bg-accent-terracotta/10 hover:bg-accent-terracotta/20 rounded-md transition-colors"
             data-testid="new-household-button"
           >
             <Plus className="w-4 h-4" />

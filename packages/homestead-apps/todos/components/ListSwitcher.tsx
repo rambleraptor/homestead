@@ -235,7 +235,7 @@ export function ListSwitcher({ scope, onChange }: ListSwitcherProps) {
                   disabled={createProject.isPending}
                   data-testid="todos-project-name-input"
                   className={cn(
-                    'h-8 min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 font-body text-sm',
+                    'h-8 min-w-0 flex-1 rounded-lg border border-gray-300 bg-surface-white px-3 font-body text-sm',
                     'outline-none focus:border-accent-terracotta disabled:opacity-40',
                   )}
                 />

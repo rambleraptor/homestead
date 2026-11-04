@@ -1,10 +1,11 @@
 /**
  * All saved hands rendered one-per-card so every direction's bid is
  * visible at a glance on a single page. Empty state points to the
- * `New Hand` button.
+ * entry form above it.
  */
 
 import { Club } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import type { Hand } from '../types';
 import { HandCard } from './HandCard';
 
@@ -17,12 +18,12 @@ interface HandListProps {
 export function HandList({ hands, onDelete, deletingId }: HandListProps) {
   if (hands.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 border border-gray-200 text-center">
-        <Club className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-        <p className="text-gray-600">
-          No hands yet. Tap <strong>New Hand</strong> to record one.
-        </p>
-      </div>
+      <EmptyState
+        icon={Club}
+        title="No hands yet"
+        description="Pick a level, a suit and each direction above to record the first one."
+        data-testid="hand-list-empty"
+      />
     );
   }
 

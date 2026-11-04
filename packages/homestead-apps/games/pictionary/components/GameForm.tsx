@@ -203,13 +203,13 @@ export function GameForm({
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-brand-navy">
           {initialGame ? 'Edit Game' : 'New Pictionary Game'}
         </h2>
       </div>
 
       {/* Game record fields */}
-      <section className="bg-white rounded-lg shadow-md p-5 border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <section className="bg-surface-white rounded-2xl shadow-md p-5 border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="space-y-1">
           <span className="text-sm font-medium text-gray-700">
             Date played
@@ -279,7 +279,7 @@ export function GameForm({
           ) : (
             <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-accent-terracotta transition-colors">
               <Upload className="w-6 h-6 text-gray-400 mb-1" />
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-text-muted">
                 Upload a picture of the winning word
               </span>
               <span className="text-xs text-gray-400 mt-1">
@@ -316,7 +316,7 @@ export function GameForm({
         data-testid="pictionary-teams-section"
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Teams</h3>
+          <h3 className="text-lg font-semibold text-brand-navy">Teams</h3>
           <button
             type="button"
             onClick={addTeam}
@@ -329,7 +329,7 @@ export function GameForm({
         </div>
 
         {people.length === 0 && (
-          <p className="text-sm text-gray-600 bg-amber-50 border border-amber-200 rounded-md p-3">
+          <p className="text-sm text-text-muted bg-amber-50 border border-amber-200 rounded-md p-3">
             Add people in the People app first, then come back to record a
             game.
           </p>
@@ -339,16 +339,16 @@ export function GameForm({
           <div
             key={index}
             data-testid={`team-row-${index}`}
-            className={`bg-white rounded-lg shadow-sm border p-4 space-y-3 ${
+            className={`bg-surface-white rounded-2xl shadow-sm border p-4 space-y-3 ${
               team.won
                 ? 'border-amber-300 ring-1 ring-amber-200'
-                : 'border-gray-200'
+                : 'border-gray-100'
             }`}
           >
             <div className="flex items-center gap-3">
               <span
                 data-testid={`team-${index}-label`}
-                className="flex-1 text-base font-semibold text-gray-900"
+                className="flex-1 text-base font-semibold text-brand-navy"
               >
                 Team {index + 1}
               </span>
@@ -377,7 +377,7 @@ export function GameForm({
             </div>
 
             <div>
-              <div className="text-xs uppercase font-medium text-gray-500 mb-2">
+              <div className="text-xs uppercase font-medium text-text-muted mb-2">
                 Players ({team.players.length})
               </div>
               <PersonSelector

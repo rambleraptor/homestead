@@ -8,9 +8,10 @@
  */
 
 import { useState } from 'react';
+import { LayoutGrid } from 'lucide-react';
 import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
-import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { useSidebarPinActions } from '../hooks/useSidebarPinActions';
 import { SidebarLists } from './SidebarLists';
 
@@ -57,11 +58,12 @@ export function AppDrawerHome() {
       />
 
       {entries.length === 0 ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8" data-testid="app-drawer-empty">
-            No apps have been shared with you yet.
-          </p>
-        </Card>
+        <EmptyState
+          icon={LayoutGrid}
+          title="No apps yet"
+          description="No apps have been shared with you yet. Ask a superuser to grant you access to one."
+          data-testid="app-drawer-empty"
+        />
       ) : (
         <SidebarLists
           entries={entries}

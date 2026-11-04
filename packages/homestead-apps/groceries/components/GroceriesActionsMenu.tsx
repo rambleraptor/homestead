@@ -63,7 +63,7 @@ export function GroceriesActionsMenu({
         aria-label="More actions"
         data-testid="groceries-menu-button"
         className={cn(
-          'flex items-center justify-center w-10 h-10 bg-white hover:bg-bg-pearl text-brand-navy',
+          'flex items-center justify-center w-10 h-10 bg-surface-white hover:bg-bg-pearl text-brand-navy',
           'rounded-lg transition-colors shadow-sm border border-gray-200',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-terracotta',
         )}
@@ -80,7 +80,7 @@ export function GroceriesActionsMenu({
           sideOffset={4}
           role="menu"
           data-testid="groceries-menu"
-          className="animate-menu-in z-50 w-52 rounded-xl border border-gray-200 bg-white p-1 shadow-md"
+          className="animate-menu-in z-50 w-52 rounded-xl border border-gray-200 bg-surface-white p-1 shadow-md"
         >
           <MenuItem
             icon={StoreIcon}

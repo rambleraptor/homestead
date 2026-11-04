@@ -15,6 +15,7 @@
 
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
 
 export interface VaultColumn<T> {
@@ -81,18 +82,21 @@ export function ReceiptVault<T>({
       </div>
 
       {rows.length === 0 ? (
-        <div className="p-10 text-center">
-          <Icon className="mx-auto w-10 h-10 text-gray-300" aria-hidden="true" />
-          <p className="mt-3 text-sm font-medium text-brand-navy">{emptyMessage}</p>
-          {filtersActive && onClearFilters && (
-            <button
-              onClick={onClearFilters}
-              className="mt-2 text-sm font-medium text-accent-terracotta hover:text-accent-terracotta-hover"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
+        <EmptyState
+          compact
+          icon={Icon}
+          title={emptyMessage}
+          description={
+            filtersActive ? 'Try a different filter, or clear them to see everything.' : undefined
+          }
+          action={
+            filtersActive && onClearFilters
+              ? { label: 'Clear filters', onClick: onClearFilters }
+              : undefined
+          }
+          className="m-4"
+          data-testid={testId ? `${testId}-empty` : undefined}
+        />
       ) : (
         <>
           {/* Desktop / tablet: table */}

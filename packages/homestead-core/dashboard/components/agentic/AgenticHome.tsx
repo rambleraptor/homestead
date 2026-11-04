@@ -55,6 +55,7 @@ import { availableStarters } from '@rambleraptor/homestead-core/chat/starters';
 import { useFillPage } from '@rambleraptor/homestead-core/layout/pageFill';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { useGreeting } from '../../greeting';
+import { useAskPrefill } from '../../hooks/useAskPrefill';
 import {
   HOME_PATH,
   homeConversationPath,
@@ -223,11 +224,13 @@ function HomeThread({ conversationId, greeting }: { conversationId: string | nul
     [navigate],
   );
   const chat = useConversation(conversationId, { onCreated });
+  const draft = useAskPrefill();
   return (
     <ChatThread
       bare
       chat={chat}
       conversationId={conversationId}
+      draft={draft}
       starters={availableStarters()}
       empty={{ title: greeting, description: EMPTY_DESCRIPTION }}
       placeholder="Ask Homestead…"

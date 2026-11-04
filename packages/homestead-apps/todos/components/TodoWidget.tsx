@@ -4,7 +4,9 @@
  */
 
 import { Link } from 'react-router-dom';
-import { ListTodo } from 'lucide-react';
+import { CheckCheck, ListTodo } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
@@ -17,7 +19,7 @@ import {
 } from '../hooks/useSyntheticTodos';
 
 export function TodoWidget() {
-  const { buckets, isLoading } = useTodoBuckets();
+  const { buckets, isLoading, isError, error, refetch } = useTodoBuckets();
   const synthetic = useSyntheticTodos();
   const active = [...synthetic, ...buckets.active];
   const hasItems = !isLoading && active.length > 0;
@@ -36,10 +38,23 @@ export function TodoWidget() {
           label="Loading todos"
           data-testid="todos-widget-loading"
         />
+      ) : isError && buckets.active.length === 0 ? (
+        <QueryError
+          compact
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load todos"
+          data-testid="todos-widget-error"
+        />
       ) : !hasItems ? (
-        <p className="font-body text-text-muted py-2">
-          Nothing active — you're all caught up.
-        </p>
+        <EmptyState
+          compact
+          icon={CheckCheck}
+          title="You’re all caught up"
+          description="Nothing active right now."
+          assistantPrompt="Add a todo to call the plumber tomorrow"
+          data-testid="todos-widget-empty"
+        />
       ) : (
         <ul className="divide-y divide-gray-50" data-testid="todos-widget-list">
           {active.map((todo) => {

@@ -6,6 +6,8 @@ import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import {
   bareId,
   useAddGroupMember,
@@ -41,7 +43,8 @@ export function GroupCard({ group, users, roles, onEdit }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pickUser, setPickUser] = useState('');
 
-  const { data: members, isLoading } = useGroupMemberships(expanded ? group.id : '');
+  const membersQuery = useGroupMemberships(expanded ? group.id : '');
+  const { data: members, isLoading } = membersQuery;
   const addMember = useAddGroupMember();
   const removeMember = useRemoveGroupMember();
   const deleteGroup = useDeleteGroup();
@@ -97,16 +100,16 @@ export function GroupCard({ group, users, roles, onEdit }: Props) {
           ) : (
             <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
           )}
-          <Users className="w-5 h-5 text-gray-500 flex-shrink-0" />
+          <Users className="w-5 h-5 text-text-muted flex-shrink-0" />
           <div className="min-w-0">
             <span className="flex items-center gap-2">
-              <span className="font-medium text-gray-900 truncate">{group.name}</span>
+              <span className="font-medium text-text-main truncate">{group.name}</span>
               <Badge variant={roleName ? 'info' : 'neutral'}>
                 {roleName ? `role: ${roleName}` : 'no role'}
               </Badge>
             </span>
             {group.description && (
-              <p className="text-sm text-gray-600 truncate">{group.description}</p>
+              <p className="text-sm text-text-muted truncate">{group.description}</p>
             )}
           </div>
         </button>
@@ -144,7 +147,7 @@ export function GroupCard({ group, users, roles, onEdit }: Props) {
                 <ul className="space-y-2" data-testid={`group-members-${group.id}`}>
                   {members.map((m) => (
                     <li key={m.id} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="truncate text-gray-900">{userLabel(users, m.user)}</span>
+                      <span className="truncate text-text-main">{userLabel(users, m.user)}</span>
                       <button
                         type="button"
                         className="text-gray-400 hover:text-red-600"
@@ -157,15 +160,29 @@ export function GroupCard({ group, users, roles, onEdit }: Props) {
                     </li>
                   ))}
                 </ul>
+              ) : membersQuery.isError ? (
+                <QueryError
+                  compact
+                  error={membersQuery.error}
+                  onRetry={() => void membersQuery.refetch()}
+                  title="Couldn’t load members"
+                  data-testid={`group-members-error-${group.id}`}
+                />
               ) : (
-                <p className="text-sm text-gray-500">No members yet.</p>
+                <EmptyState
+                  compact
+                  icon={Users}
+                  title="No members yet"
+                  description="Add someone below to give them this group’s role."
+                  data-testid={`group-members-empty-${group.id}`}
+                />
               )}
 
               <div className="flex flex-wrap items-end gap-2">
-                <label className="flex flex-col text-xs text-gray-600">
+                <label className="flex flex-col text-xs text-text-muted">
                   Add member
                   <select
-                    className="mt-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                    className="mt-1 rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm"
                     value={pickUser}
                     onChange={(e) => setPickUser(e.target.value)}
                     data-testid={`add-member-user-${group.id}`}

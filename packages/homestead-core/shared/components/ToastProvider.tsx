@@ -6,6 +6,7 @@ import { CelebrationToast } from '@rambleraptor/homestead-core/shared/components
 import { RecordToast, type RecordToastProps } from '@rambleraptor/homestead-core/shared/components/RecordToast';
 import type { ToastType } from '@rambleraptor/homestead-core/shared/types/toast';
 import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { haptic } from '@rambleraptor/homestead-core/shared/haptics';
 
 export interface CelebrateOptions {
   /** A second, quieter line under the title. */
@@ -140,8 +141,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   const celebrate = useCallback(
-    (title: string, options?: CelebrateOptions) =>
-      sonnerToast.custom(
+    (title: string, options?: CelebrateOptions) => {
+      // The win, felt as well as seen: a double pulse on phones that can.
+      haptic('success');
+      return sonnerToast.custom(
         () => <CelebrationToast title={title} description={options?.description} />,
         {
           duration: options?.duration ?? CELEBRATION_DURATION_MS,
@@ -149,7 +152,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           // shrink-wrap the card; fill the toaster like every other toast.
           className: 'w-full',
         }
-      ),
+      );
+    },
     []
   );
 

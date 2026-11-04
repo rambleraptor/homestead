@@ -3,10 +3,12 @@
  * any are still in flight. Superuser-only (gated by the app's route).
  */
 
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, ListChecks, XCircle } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import type { OperationLogEntry } from '@rambleraptor/homestead-core/resources/operations';
 import { useOperations } from '../hooks/useOperations';
 import type { Operation } from '../types';
@@ -75,10 +77,10 @@ function OperationRow({ operation }: { operation: Operation }) {
           <OperationStatusIcon operation={operation} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900">
+          <h3 className="font-semibold text-brand-navy">
             {operation.title || operation.method || 'Operation'}
           </h3>
-          <p className="text-sm text-gray-600 mt-1" data-testid="operation-status">
+          <p className="text-sm text-text-muted mt-1" data-testid="operation-status">
             {statusLabel(operation)}
             {operation.method ? ` · ${operation.method}` : ''}
           </p>
@@ -91,7 +93,7 @@ function OperationRow({ operation }: { operation: Operation }) {
               data-testid="operation-logs"
             >
               {logs.map((entry, i) => (
-                <li key={i} className="text-xs text-gray-500 flex gap-2">
+                <li key={i} className="text-xs text-text-muted flex gap-2">
                   <span className="tabular-nums shrink-0 text-gray-400">
                     {formatTime(entry.time)}
                   </span>
@@ -100,7 +102,7 @@ function OperationRow({ operation }: { operation: Operation }) {
               ))}
             </ul>
           )}
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-text-muted mt-2">
             {formatDate(operation.updated || operation.created)}
           </p>
         </div>
@@ -110,7 +112,7 @@ function OperationRow({ operation }: { operation: Operation }) {
 }
 
 function OperationsList() {
-  const { data: operations, isLoading } = useOperations();
+  const { data: operations, isLoading, isError, error, refetch } = useOperations();
 
   if (isLoading) {
     return (
@@ -120,17 +122,25 @@ function OperationsList() {
     );
   }
 
+  if (isError) {
+    return (
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Couldn’t load operations"
+        data-testid="operations-error"
+      />
+    );
+  }
+
   if (!operations || operations.length === 0) {
     return (
-      <Card>
-        <div className="text-center py-12">
-          <CheckCircle2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">No operations yet</p>
-          <p className="text-sm text-gray-500 mt-2">
-            Long-running tasks will appear here while they run.
-          </p>
-        </div>
-      </Card>
+      <EmptyState
+        icon={ListChecks}
+        title="No operations yet"
+        description="Long-running tasks will appear here while they run."
+        data-testid="operations-empty"
+      />
     );
   }
 

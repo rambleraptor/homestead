@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, ListPlus, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ClipboardList, ListPlus, Plus, Trash2, X } from 'lucide-react';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
@@ -93,24 +95,23 @@ export function TemplatesHome() {
       )}
 
       {templatesQuery.isError && (
-        <div className="bg-red-50/50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <p className="text-sm text-red-700">
-            {templatesQuery.error instanceof Error
-              ? templatesQuery.error.message
-              : 'Failed to load templates'}
-          </p>
-        </div>
+        <QueryError
+          error={templatesQuery.error}
+          onRetry={() => void templatesQuery.refetch()}
+          title="Failed to load templates"
+          data-testid="templates-error"
+        />
       )}
 
       {!templatesQuery.isLoading && !templatesQuery.isError && (
         <div className="space-y-4" data-testid="templates-list">
           {templates.length === 0 ? (
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-6 text-center">
-              <p className="text-sm text-text-muted font-body italic">
-                No templates yet — name one above to get started.
-              </p>
-            </div>
+            <EmptyState
+              icon={ClipboardList}
+              title="No templates yet"
+              description="A template is a list you make again and again — a packing list, a weekly reset. Name one above to get started."
+              data-testid="templates-empty"
+            />
           ) : (
             templates.map((template) => (
               <TemplateCard key={template.id} template={template} />
@@ -205,7 +206,7 @@ function TemplateCard({ template }: { template: ListTemplate }) {
   return (
     <div
       data-testid={`template-card-${template.id}`}
-      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+      className="bg-surface-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
     >
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
         <h2 className="flex-1 font-display text-lg text-brand-navy truncate">
@@ -252,7 +253,7 @@ function TemplateCard({ template }: { template: ListTemplate }) {
               <span
                 key={category.id}
                 data-testid={`template-category-${category.id}`}
-                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 font-body text-xs text-text-main"
+                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-surface-white px-2 py-0.5 font-body text-xs text-text-main"
               >
                 {category.name}
                 <button
@@ -302,7 +303,19 @@ function TemplateCard({ template }: { template: ListTemplate }) {
       </div>
 
       <div data-testid={`template-card-${template.id}-items`}>
-        {items.length === 0 && !hasCategories ? (
+        {itemsQuery.isError || categoriesQuery.isError ? (
+          <QueryError
+            compact
+            error={itemsQuery.error ?? categoriesQuery.error}
+            onRetry={() => {
+              void itemsQuery.refetch();
+              void categoriesQuery.refetch();
+            }}
+            title="Couldn’t load this template’s items"
+            className="m-4"
+            data-testid={`template-card-${template.id}-error`}
+          />
+        ) : items.length === 0 && !hasCategories ? (
           <ul>
             <li className="px-4 py-3 text-sm text-text-muted font-body italic">
               No items yet — add one below.
@@ -343,7 +356,7 @@ function TemplateCard({ template }: { template: ListTemplate }) {
             onChange={(e) => setDraftItemCategory(e.target.value)}
             aria-label="Category for new item"
             data-testid={`template-card-${template.id}-item-category`}
-            className="rounded-lg border border-gray-200 bg-white px-2 py-1 font-body text-xs text-text-muted focus:border-accent-terracotta focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-surface-white px-2 py-1 font-body text-xs text-text-muted focus:border-accent-terracotta focus:outline-none"
           >
             <option value="">Uncategorized</option>
             {categories.map((c) => (

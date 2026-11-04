@@ -22,14 +22,15 @@
 
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileDown, SearchX } from 'lucide-react';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import { useQuery } from '@tanstack/react-query';
-import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useRowSelection } from '@rambleraptor/homestead-core/shared/hooks/useRowSelection';
 import { BulkExportButton } from './BulkExportButton';
 import { selectionFilter, useBulkExportOptions } from './useBulkExport';
@@ -125,12 +126,20 @@ export function BulkExportContainer({ config }: BulkExportContainerProps) {
         <div className="flex items-center justify-center h-64">
           <Spinner size="lg" />
         </div>
+      ) : recordsQuery.isError ? (
+        <QueryError
+          error={recordsQuery.error}
+          onRetry={() => void recordsQuery.refetch()}
+          title={`Couldn’t load ${appNamePlural}`}
+          data-testid="export-error"
+        />
       ) : records.length === 0 ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8">
-            No {appNamePlural} to export yet.
-          </p>
-        </Card>
+        <EmptyState
+          icon={FileDown}
+          title={`No ${appNamePlural} to export yet`}
+          description={`Once you add ${appNamePlural}, you can export them from here.`}
+          data-testid="export-empty"
+        />
       ) : (
         <>
           <Input
@@ -166,11 +175,13 @@ export function BulkExportContainer({ config }: BulkExportContainerProps) {
           </div>
 
           {visible.length === 0 ? (
-            <Card>
-              <p className="text-center text-gray-600 py-8">
-                No {appNamePlural} match “{search}”.
-              </p>
-            </Card>
+            <EmptyState
+              compact
+              icon={SearchX}
+              title={`No ${appNamePlural} match “${search}”`}
+              description="Try a different search."
+              data-testid="export-no-matches"
+            />
           ) : (
             <ul className="divide-y divide-border rounded-md border border-border">
               {visible.map((record) => (

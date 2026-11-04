@@ -4,6 +4,7 @@
  */
 
 import { Flag, Trophy, Play } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import type { Game } from '../types';
 
 interface Person {
@@ -15,6 +16,8 @@ interface GameListProps {
   games: Game[];
   people: Person[];
   onOpen: (game: Game) => void;
+  /** Starts a new game; offered by the empty state. */
+  onNew?: () => void;
 }
 
 function displayNameFor(playerPath: string, people: Person[]): string {
@@ -33,15 +36,16 @@ function formatDate(iso?: string): string {
   });
 }
 
-export function GameList({ games, people, onOpen }: GameListProps) {
+export function GameList({ games, people, onOpen, onNew }: GameListProps) {
   if (games.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 border border-gray-200 text-center">
-        <Flag className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-        <p className="text-gray-600">
-          No games yet. Tap <strong>New Game</strong> to start playing.
-        </p>
-      </div>
+      <EmptyState
+        icon={Flag}
+        title="No games yet"
+        description="Start a game to score it hole by hole and see who wins."
+        action={onNew ? { label: 'New game', onClick: onNew, testId: 'minigolf-empty-new' } : undefined}
+        data-testid="minigolf-empty"
+      />
     );
   }
 
@@ -58,7 +62,7 @@ export function GameList({ games, people, onOpen }: GameListProps) {
               type="button"
               onClick={() => onOpen(game)}
               data-testid={`game-item-${game.id}`}
-              className="w-full text-left bg-white rounded-lg shadow-md p-4 border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-4"
+              className="w-full text-left bg-surface-white rounded-2xl shadow-md p-4 border border-gray-100 hover:bg-gray-50 transition-colors flex items-center gap-4"
             >
               <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent-terracotta/10 flex items-center justify-center">
                 {game.completed ? (
@@ -69,15 +73,15 @@ export function GameList({ games, people, onOpen }: GameListProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold text-gray-900 truncate">
+                  <span className="font-semibold text-brand-navy truncate">
                     {game.location || 'Mini Golf'}
                   </span>
-                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                  <span className="text-xs text-text-muted whitespace-nowrap">
                     {date}
                   </span>
                 </div>
-                <div className="text-sm text-gray-600 truncate">{playerNames}</div>
-                <div className="text-xs text-gray-500 mt-0.5">
+                <div className="text-sm text-text-muted truncate">{playerNames}</div>
+                <div className="text-xs text-text-muted mt-0.5">
                   {game.hole_count} holes ·{' '}
                   {game.completed ? 'Completed' : 'In progress'}
                 </div>

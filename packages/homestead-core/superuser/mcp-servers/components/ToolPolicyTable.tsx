@@ -4,6 +4,8 @@
  * the assistant's prompt once the tool is on, so read it before turning it on.
  */
 
+import { Wrench } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { TOOL_POLICIES, type McpTool, type ToolPolicy } from '../tools';
 
 const POLICY_LABEL: Record<ToolPolicy, string> = {
@@ -22,7 +24,15 @@ interface ToolPolicyTableProps {
 
 export function ToolPolicyTable({ serverId, tools, onChange, disabled }: ToolPolicyTableProps) {
   if (tools.length === 0) {
-    return <p className="text-sm text-gray-500">No tools yet. Check the server to fetch them.</p>;
+    return (
+      <EmptyState
+        compact
+        icon={Wrench}
+        title="No tools yet"
+        description="Check the server to fetch them."
+        data-testid={`mcp-tools-empty-${serverId}`}
+      />
+    );
   }
   const setPolicy = (name: string, policy: ToolPolicy) =>
     onChange(tools.map((tool) => (tool.name === name ? { ...tool, policy } : tool)));
@@ -32,15 +42,15 @@ export function ToolPolicyTable({ serverId, tools, onChange, disabled }: ToolPol
       {tools.map((tool) => (
         <li key={tool.name} className="flex items-start justify-between gap-4 py-3">
           <div className="min-w-0">
-            <p className="font-mono text-sm text-gray-900">
+            <p className="font-mono text-sm text-text-main">
               {tool.name}
               {tool.read_only && (
-                <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 font-sans text-xs text-gray-600">
+                <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 font-sans text-xs text-text-muted">
                   read-only
                 </span>
               )}
             </p>
-            {tool.description && <p className="mt-1 text-sm text-gray-600">{tool.description}</p>}
+            {tool.description && <p className="mt-1 text-sm text-text-muted">{tool.description}</p>}
           </div>
           <select
             aria-label={`Policy for ${tool.name}`}

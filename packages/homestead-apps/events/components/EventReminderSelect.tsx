@@ -28,7 +28,7 @@ export function EventReminderSelect({ eventId }: EventReminderSelectProps) {
     <div className="flex items-center gap-2">
       <label
         htmlFor={`event-reminder-${eventId}`}
-        className="flex items-center gap-1.5 text-sm text-gray-600"
+        className="flex items-center gap-1.5 text-sm text-text-muted"
       >
         <Bell className="w-4 h-4" aria-hidden="true" />
         Remind me
@@ -39,7 +39,7 @@ export function EventReminderSelect({ eventId }: EventReminderSelectProps) {
         value={choice}
         disabled={isLoading || isSaving}
         onChange={(e) => void setChoice(e.target.value as ReminderChoice)}
-        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+        className="rounded-md border border-gray-300 bg-surface-white px-2 py-1 text-sm text-text-main focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta disabled:opacity-50"
       >
         {OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>

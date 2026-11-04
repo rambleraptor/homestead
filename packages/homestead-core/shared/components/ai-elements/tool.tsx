@@ -106,7 +106,9 @@ export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 export const ToolContent = ({ className, ...props }: ToolContentProps) => (
   <CollapsibleContent
     className={cn(
-      "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 space-y-4 p-4 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+      // The open/close motion comes from the Collapsible primitive itself
+      // (`ui/collapsible.tsx`); upstream's `animate-in` classes do nothing here.
+      "space-y-4 p-4 text-popover-foreground outline-none",
       className
     )}
     {...props}

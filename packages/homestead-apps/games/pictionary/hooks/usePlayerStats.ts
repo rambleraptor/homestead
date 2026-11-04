@@ -30,6 +30,10 @@ interface UsePlayerStatsResult {
   data: PlayerStats[];
   isLoading: boolean;
   isError: boolean;
+  /** The first failed read (the games list, or a game's teams). */
+  error: Error | null;
+  /** Retries every failed read. */
+  refetch: () => void;
 }
 
 export function usePlayerStats(): UsePlayerStatsResult {
@@ -37,6 +41,8 @@ export function usePlayerStats(): UsePlayerStatsResult {
     data: games,
     isLoading: gamesLoading,
     isError: gamesError,
+    error: gamesErrorObj,
+    refetch: refetchGames,
   } = useGames();
 
   const gameIds = useMemo(() => (games ?? []).map((g) => g.id), [games]);
@@ -113,5 +119,12 @@ export function usePlayerStats(): UsePlayerStatsResult {
     data,
     isLoading: gamesLoading || childrenLoading,
     isError: gamesError || childrenError,
+    error: gamesErrorObj ?? teamQueries.find((q) => q.error)?.error ?? null,
+    refetch: () => {
+      if (gamesError) void refetchGames();
+      teamQueries.forEach((q) => {
+        if (q.isError) void q.refetch();
+      });
+    },
   };
 }

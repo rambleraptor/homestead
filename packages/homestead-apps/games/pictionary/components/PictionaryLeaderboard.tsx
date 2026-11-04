@@ -6,7 +6,9 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, AlertCircle, Trophy, Pencil } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Pencil } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { usePeople } from '../../../people/hooks/usePeople';
 import { usePlayerStats } from '../hooks/usePlayerStats';
@@ -77,8 +79,8 @@ export function PictionaryLeaderboard() {
 
   const isLoading =
     mode === 'players' ? playerStats.isLoading : teamStats.isLoading;
-  const isError =
-    mode === 'players' ? playerStats.isError : teamStats.isError;
+  const stats = mode === 'players' ? playerStats : teamStats;
+  const isError = stats.isError;
 
   const rows = useMemo<Row[]>(() => {
     if (mode === 'players') {
@@ -143,8 +145,8 @@ export function PictionaryLeaderboard() {
           data-testid="pictionary-leaderboard-mode-players"
           className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
             mode === 'players'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
+              ? 'bg-surface-white text-text-main shadow-sm'
+              : 'text-text-muted hover:text-text-main'
           }`}
         >
           Players
@@ -157,8 +159,8 @@ export function PictionaryLeaderboard() {
           data-testid="pictionary-leaderboard-mode-teams"
           className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
             mode === 'teams'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
+              ? 'bg-surface-white text-text-main shadow-sm'
+              : 'text-text-muted hover:text-text-main'
           }`}
         >
           Teams
@@ -172,26 +174,25 @@ export function PictionaryLeaderboard() {
       )}
 
       {isError && (
-        <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <h3 className="font-semibold text-red-900">
-              Failed to load Pictionary leaderboard
-            </h3>
-          </div>
-        </div>
+        <QueryError
+          error={stats.error}
+          onRetry={stats.refetch}
+          title="Failed to load Pictionary leaderboard"
+          data-testid="pictionary-leaderboard-error"
+        />
       )}
 
       {!isLoading && !isError && rows.length === 0 && (
-        <div
-          className="bg-white rounded-lg shadow-md p-8 border border-gray-200 text-center"
+        <EmptyState
+          icon={Pencil}
+          title="No Pictionary games yet"
+          description="Record a game to start the leaderboard."
+          action={{
+            label: 'Go to Pictionary',
+            onClick: () => navigate('/games/pictionary'),
+          }}
           data-testid="pictionary-leaderboard-empty"
-        >
-          <Pencil className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600">
-            No Pictionary games yet. Record a game to start the leaderboard.
-          </p>
-        </div>
+        />
       )}
 
       {!isLoading && !isError && rows.length > 0 && (
@@ -204,10 +205,10 @@ export function PictionaryLeaderboard() {
               <li key={row.id}>
                 <div
                   data-testid={`pictionary-leaderboard-row-${testIdSuffix}`}
-                  className={`flex items-center gap-4 rounded-lg shadow-sm p-4 border ${
+                  className={`flex items-center gap-4 rounded-2xl shadow-sm p-4 border ${
                     isTop
                       ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-300 ring-1 ring-amber-200'
-                      : 'bg-white border-gray-200'
+                      : 'bg-surface-white border-gray-100'
                   }`}
                 >
                   <div
@@ -225,14 +226,14 @@ export function PictionaryLeaderboard() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-900 truncate">
+                    <div className="font-semibold text-brand-navy truncate">
                       {row.name}
                     </div>
-                    <div className="text-sm text-gray-600 mt-0.5">
+                    <div className="text-sm text-text-muted mt-0.5">
                       <span
                         data-testid={`pictionary-leaderboard-wins-${testIdSuffix}`}
                       >
-                        <span className="font-semibold text-gray-900">
+                        <span className="font-semibold text-brand-navy">
                           {row.wins}
                         </span>{' '}
                         {row.wins === 1 ? 'win' : 'wins'}

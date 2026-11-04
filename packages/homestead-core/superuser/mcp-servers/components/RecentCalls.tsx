@@ -3,7 +3,9 @@
  * how it went. Superusers only, like the log itself.
  */
 
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { History } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehold';
 import { referenceId } from '@rambleraptor/homestead-core/resources/references';
 import { useRecentMcpCalls } from '../hooks/useMcpServers';
@@ -13,7 +15,7 @@ const OUTCOME_STYLE: Record<McpCallOutcome, string> = {
   ok: 'bg-green-50 text-green-700',
   error: 'bg-red-50 text-red-700',
   denied: 'bg-amber-50 text-amber-700',
-  refused: 'bg-gray-100 text-gray-600',
+  refused: 'bg-gray-100 text-text-muted',
 };
 const OUTCOME_LABEL: Record<McpCallOutcome, string> = {
   ok: 'OK',
@@ -23,7 +25,7 @@ const OUTCOME_LABEL: Record<McpCallOutcome, string> = {
 };
 
 export function RecentCalls({ serverId }: { serverId: string }) {
-  const { data: calls, isLoading, isError, error } = useRecentMcpCalls(serverId);
+  const { data: calls, isLoading, isError, error, refetch } = useRecentMcpCalls(serverId);
   const { data: household } = useHousehold();
   const nameOf = (caller?: string) => {
     if (!caller) return 'Someone';
@@ -32,20 +34,28 @@ export function RecentCalls({ serverId }: { serverId: string }) {
   };
 
   if (isLoading) {
-    return <p className="text-sm text-gray-500">Loading recent calls…</p>;
+    return <p className="text-sm text-text-muted">Loading recent calls…</p>;
   }
   if (isError) {
     return (
-      <p role="alert" className="text-sm text-red-700">
-        Couldn’t load recent calls: {getAepErrorMessage(error)}
-      </p>
+      <QueryError
+        compact
+        error={error}
+        onRetry={() => void refetch()}
+        title="Couldn’t load recent calls"
+        data-testid={`mcp-calls-error-${serverId}`}
+      />
     );
   }
   if (!calls?.length) {
     return (
-      <p className="text-sm text-gray-500" data-testid={`mcp-calls-empty-${serverId}`}>
-        No calls yet.
-      </p>
+      <EmptyState
+        compact
+        icon={History}
+        title="No calls yet"
+        description="Every tool call the assistant makes through this server is logged here."
+        data-testid={`mcp-calls-empty-${serverId}`}
+      />
     );
   }
   return (
@@ -58,14 +68,14 @@ export function RecentCalls({ serverId }: { serverId: string }) {
             >
               {OUTCOME_LABEL[call.outcome] ?? call.outcome}
             </span>
-            <span className="font-mono text-xs text-gray-900">{call.tool}</span>
-            <span className="text-gray-600">{nameOf(call.caller)}</span>
+            <span className="font-mono text-xs text-text-main">{call.tool}</span>
+            <span className="text-text-muted">{nameOf(call.caller)}</span>
             <span className="text-xs text-gray-400">{new Date(call.create_time).toLocaleString()}</span>
             {call.duration_ms !== undefined && (
               <span className="text-xs text-gray-400">{call.duration_ms} ms</span>
             )}
           </div>
-          {call.error && <p className="mt-1 text-xs text-gray-600">{call.error}</p>}
+          {call.error && <p className="mt-1 text-xs text-text-muted">{call.error}</p>}
         </li>
       ))}
     </ul>

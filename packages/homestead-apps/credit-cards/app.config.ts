@@ -43,6 +43,24 @@ export const creditCardsApp: AppConfig = {
         component: () =>
           import('./components/CreditCardsHome').then((m) => m.CreditCardsHome),
       },
+      // Before `:id`, which would otherwise take "new" for a card id.
+      {
+        path: 'new',
+        component: () =>
+          import('./components/CreditCardFormRoute').then((m) => m.CreditCardFormRoute),
+      },
+      {
+        path: ':id',
+        component: () =>
+          import('./components/CardDetailRoute').then((m) => m.CardDetailRoute),
+        dynamic: true,
+      },
+      {
+        path: ':id/edit',
+        component: () =>
+          import('./components/CreditCardFormRoute').then((m) => m.CreditCardFormRoute),
+        dynamic: true,
+      },
     ],
     showInNav: true,
     navOrder: 5,

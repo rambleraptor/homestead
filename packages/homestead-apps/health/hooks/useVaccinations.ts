@@ -42,6 +42,8 @@ export function useVaccinations(vaccineId: string | null) {
  */
 export function useAllVaccinations(vaccines: readonly Vaccine[] | undefined): {
   dosesByVaccine: Map<string, Vaccination[]>;
+  /** A series whose doses failed to load, with a way to try again. */
+  doseErrorsByVaccine: Map<string, { error: Error; retry: () => void }>;
   isLoading: boolean;
 } {
   const results = useQueries({
@@ -52,13 +54,21 @@ export function useAllVaccinations(vaccines: readonly Vaccine[] | undefined): {
   });
 
   const dosesByVaccine = new Map<string, Vaccination[]>();
+  const doseErrorsByVaccine = new Map<string, { error: Error; retry: () => void }>();
   (vaccines ?? []).forEach((vaccine, i) => {
-    const data = results[i]?.data;
-    if (data) dosesByVaccine.set(vaccine.id, data);
+    const result = results[i];
+    if (result?.data) dosesByVaccine.set(vaccine.id, result.data);
+    else if (result?.error) {
+      doseErrorsByVaccine.set(vaccine.id, {
+        error: result.error,
+        retry: () => void result.refetch(),
+      });
+    }
   });
 
   return {
     dosesByVaccine,
+    doseErrorsByVaccine,
     isLoading: results.some((r) => r.isLoading),
   };
 }

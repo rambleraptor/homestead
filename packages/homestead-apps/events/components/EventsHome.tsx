@@ -52,7 +52,7 @@ export function EventsHome() {
         }
       />
 
-      <EventsList />
+      <EventsList onAddEvent={() => setIsCreateOpen(true)} />
 
       <Modal
         isOpen={isCreateOpen}

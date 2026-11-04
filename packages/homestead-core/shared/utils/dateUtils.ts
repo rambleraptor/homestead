@@ -112,8 +112,17 @@ export function getUpcomingEvents(
 }
 
 export interface Holiday {
+  /** A stable kebab-case id (`halloween`): what the seasonal theme keys on. */
+  id: string;
   name: string;
   message: string;
+  /** The day's emoji: the greeting's prefix and the favicon for the day. */
+  emoji: string;
+  /**
+   * A hex color the day shifts the app's accent to, for the handful of
+   * holidays with a color of their own. Left off for the rest.
+   */
+  accent?: string;
 }
 
 // Anonymous Gregorian algorithm.
@@ -210,33 +219,66 @@ function getMemorialDay(year: number): Date {
   return new Date(year, 4, 31 - ((may31.getDay() + 6) % 7));
 }
 
-export function getTodaysHoliday(): Holiday | null {
-  const today = new Date();
+/**
+ * Every holiday the app marks, keyed by a fixed month/day (`'9-31'`, month
+ * 0-indexed) or by a rule for the ones that move. Ids are unique and kebab-case.
+ */
+export const HOLIDAYS: readonly Holiday[] = [
+  { id: 'new-years-day', name: "New Year's Day", message: 'Happy New Year!', emoji: '🎉' },
+  { id: 'valentines-day', name: "Valentine's Day", message: "Happy Valentine's Day!", emoji: '💝', accent: '#D9536F' },
+  { id: 'st-patricks-day', name: "St. Patrick's Day", message: "Happy St. Patrick's Day!", emoji: '☘️', accent: '#2E9E5B' },
+  { id: 'easter', name: 'Easter', message: 'Happy Easter!', emoji: '🐣' },
+  { id: 'mothers-day', name: "Mother's Day", message: "Happy Mother's Day!", emoji: '💐' },
+  { id: 'memorial-day', name: 'Memorial Day', message: 'Happy Memorial Day!', emoji: '🇺🇸' },
+  { id: 'fathers-day', name: "Father's Day", message: "Happy Father's Day!", emoji: '👔' },
+  { id: 'independence-day', name: 'Independence Day', message: 'Happy 4th of July!', emoji: '🎆', accent: '#3B6FD1' },
+  { id: 'labor-day', name: 'Labor Day', message: 'Happy Labor Day!', emoji: '🛠️' },
+  { id: 'halloween', name: 'Halloween', message: 'Happy Halloween!', emoji: '🎃', accent: '#E0702B' },
+  { id: 'thanksgiving', name: 'Thanksgiving', message: 'Happy Thanksgiving!', emoji: '🦃', accent: '#D28A1F' },
+  { id: 'christmas-eve', name: 'Christmas Eve', message: 'Merry Christmas Eve!', emoji: '🎄', accent: '#C8403A' },
+  { id: 'christmas', name: 'Christmas', message: 'Merry Christmas!', emoji: '🎄', accent: '#C8403A' },
+  { id: 'new-years-eve', name: "New Year's Eve", message: "Happy New Year's Eve!", emoji: '🥂' },
+];
+
+const holidayById = (id: string): Holiday => {
+  const holiday = HOLIDAYS.find((h) => h.id === id);
+  if (!holiday) throw new Error(`unknown holiday ${id}`);
+  return holiday;
+};
+
+/** `'<month>-<day>'` (month 0-indexed) → holiday, for the ones on a fixed date. */
+const FIXED_HOLIDAYS: Record<string, string> = {
+  '0-1': 'new-years-day',
+  '1-14': 'valentines-day',
+  '2-17': 'st-patricks-day',
+  '6-4': 'independence-day',
+  '9-31': 'halloween',
+  '11-24': 'christmas-eve',
+  '11-25': 'christmas',
+  '11-31': 'new-years-eve',
+};
+
+/** The holiday on `today`, if any. */
+export function holidayOn(today: Date): Holiday | null {
   const year = today.getFullYear();
   const key = `${today.getMonth()}-${today.getDate()}`;
+  const fixed = FIXED_HOLIDAYS[key];
+  if (fixed) return holidayById(fixed);
 
-  const fixedHolidays: Record<string, Holiday> = {
-    '0-1': { name: "New Year's Day", message: 'Happy New Year!' },
-    '1-14': { name: "Valentine's Day", message: "Happy Valentine's Day!" },
-    '2-17': { name: "St. Patrick's Day", message: "Happy St. Patrick's Day!" },
-    '6-4': { name: 'Independence Day', message: 'Happy 4th of July!' },
-    '9-31': { name: 'Halloween', message: 'Happy Halloween!' },
-    '11-24': { name: 'Christmas Eve', message: 'Merry Christmas Eve!' },
-    '11-25': { name: 'Christmas', message: 'Merry Christmas!' },
-    '11-31': { name: "New Year's Eve", message: "Happy New Year's Eve!" },
-  };
-  if (fixedHolidays[key]) return fixedHolidays[key];
-
-  const variable: Array<[Date, Holiday]> = [
-    [getEasterDate(year), { name: 'Easter', message: 'Happy Easter!' }],
-    [nthWeekdayOfMonth(year, 4, 0, 2), { name: "Mother's Day", message: "Happy Mother's Day!" }],
-    [nthWeekdayOfMonth(year, 5, 0, 3), { name: "Father's Day", message: "Happy Father's Day!" }],
-    [getMemorialDay(year), { name: 'Memorial Day', message: 'Happy Memorial Day!' }],
-    [nthWeekdayOfMonth(year, 8, 1, 1), { name: 'Labor Day', message: 'Happy Labor Day!' }],
-    [nthWeekdayOfMonth(year, 10, 4, 4), { name: 'Thanksgiving', message: 'Happy Thanksgiving!' }],
+  const variable: Array<[Date, string]> = [
+    [getEasterDate(year), 'easter'],
+    [nthWeekdayOfMonth(year, 4, 0, 2), 'mothers-day'],
+    [nthWeekdayOfMonth(year, 5, 0, 3), 'fathers-day'],
+    [getMemorialDay(year), 'memorial-day'],
+    [nthWeekdayOfMonth(year, 8, 1, 1), 'labor-day'],
+    [nthWeekdayOfMonth(year, 10, 4, 4), 'thanksgiving'],
   ];
-  for (const [date, holiday] of variable) {
-    if (isSameDay(date, today)) return holiday;
+  for (const [date, id] of variable) {
+    if (isSameDay(date, today)) return holidayById(id);
   }
   return null;
+}
+
+export function getTodaysHoliday(): Holiday | null {
+  return holidayOn(new Date());
 }

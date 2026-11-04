@@ -25,6 +25,8 @@ import { getAppById } from '@rambleraptor/homestead-core/apps/registry';
 import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { SectionCard } from '@rambleraptor/homestead-core/shared/components/SectionCard';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
@@ -87,7 +89,7 @@ function undeliveredReason(row: ScheduledNotification): string {
 const MAX_UNDELIVERED_SHOWN = 3;
 
 export function ScheduledSection() {
-  const { data: rows, isLoading } = useScheduledNotifications();
+  const { data: rows, isLoading, isError, error, refetch } = useScheduledNotifications();
   const schedule = useScheduleNotification();
   const update = useUpdateScheduledNotification();
   const cancel = useCancelScheduledNotification();
@@ -164,7 +166,7 @@ export function ScheduledSection() {
               type="button"
               onClick={() => setShowSettled((v) => !v)}
               data-testid="scheduled-toggle-settled"
-              className="text-sm text-gray-500 hover:text-brand-navy"
+              className="text-sm text-text-muted hover:text-brand-navy"
             >
               {showSettled ? 'Hide past' : `Show past (${settled.length})`}
             </button>
@@ -213,15 +215,25 @@ export function ScheduledSection() {
         <div className="flex items-center justify-center py-8">
           <Spinner size="lg" />
         </div>
+      ) : isError ? (
+        <QueryError
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load scheduled notifications"
+          data-testid="scheduled-error"
+        />
       ) : queued.length === 0 ? (
-        <p className="text-center text-gray-600 py-8" data-testid="scheduled-empty">
-          Nothing scheduled. Add something you want to be told about later.
-        </p>
+        <EmptyState
+          icon={CalendarClock}
+          title="Nothing scheduled"
+          description="Add something you want to be told about later."
+          data-testid="scheduled-empty"
+        />
       ) : (
         <div className="space-y-5" data-testid="scheduled-list">
           {days.map(([key, dayRows]) => (
             <div key={key}>
-              <h3 className="text-sm font-semibold text-gray-500 mb-2">
+              <h3 className="text-sm font-semibold text-text-muted mb-2">
                 {dayLabel(dayRows[0].send_at)}
               </h3>
               <ul className="space-y-2">
@@ -232,19 +244,19 @@ export function ScheduledSection() {
                     <li
                       key={row.id}
                       data-testid={`scheduled-row-${row.id}`}
-                      className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 p-3"
+                      className="flex items-start justify-between gap-3 rounded-2xl border border-gray-100 p-3"
                     >
                       <div className="flex items-start gap-3 min-w-0">
                         <span
                           data-testid={`scheduled-time-${row.id}`}
                           className={`shrink-0 tabular-nums text-sm mt-0.5 ${
-                            late ? 'text-amber-600' : 'text-gray-500'
+                            late ? 'text-amber-600' : 'text-text-muted'
                           }`}
                         >
                           {formatTime(row.send_at)}
                         </span>
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-900">
+                          <p className="font-medium text-text-main">
                             {row.title}
                             {app && (
                               <span
@@ -262,7 +274,7 @@ export function ScheduledSection() {
                             )}
                           </p>
                           {row.message && row.message !== row.title && (
-                            <p className="text-sm text-gray-500 mt-1 whitespace-pre-line">
+                            <p className="text-sm text-text-muted mt-1 whitespace-pre-line">
                               {row.message}
                             </p>
                           )}
@@ -282,7 +294,7 @@ export function ScheduledSection() {
                             aria-label={`Edit ${row.title}`}
                             onClick={() => setEditing(row)}
                             data-testid={`scheduled-edit-${row.id}`}
-                            className="p-2 rounded-md text-gray-500 hover:text-brand-navy hover:bg-gray-100"
+                            className="p-2 rounded-md text-text-muted hover:text-brand-navy hover:bg-gray-100"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
@@ -292,7 +304,7 @@ export function ScheduledSection() {
                           aria-label={`Cancel ${row.title}`}
                           onClick={() => setConfirm(row)}
                           data-testid={`scheduled-cancel-${row.id}`}
-                          className="p-2 rounded-md text-gray-500 hover:text-red-600 hover:bg-gray-100"
+                          className="p-2 rounded-md text-text-muted hover:text-red-600 hover:bg-gray-100"
                         >
                           <Ban className="w-4 h-4" />
                         </button>
@@ -308,13 +320,13 @@ export function ScheduledSection() {
 
       {showSettled && settled.length > 0 && (
         <div className="mt-6 border-t border-gray-100 pt-4">
-          <h3 className="text-sm font-semibold text-gray-500 mb-2">Past</h3>
+          <h3 className="text-sm font-semibold text-text-muted mb-2">Past</h3>
           <ul className="space-y-1" data-testid="scheduled-settled-list">
             {settled.map((row) => (
               <li
                 key={row.id}
                 data-testid={`scheduled-settled-${row.id}`}
-                className="flex items-center justify-between gap-3 text-sm text-gray-500"
+                className="flex items-center justify-between gap-3 text-sm text-text-muted"
               >
                 <span className="truncate">{row.title}</span>
                 <span className="shrink-0 flex items-center gap-2">

@@ -29,7 +29,7 @@ export function UserSettingsAutoForm({
   const handleChange = async (key: string, value: UserSettingValue) => {
     try {
       await update.mutateAsync({ appId, key, value });
-    } catch (error) {
+    } catch {
       // Toast surfaced by the global mutation error handler (queryClient.ts).
     }
   };
@@ -83,7 +83,7 @@ function UserSettingField({
             disabled={isSaving}
             data-testid={testid}
           />
-          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
+          <p className="mt-1 text-xs text-text-muted">{def.description}</p>
         </div>
       );
 
@@ -102,7 +102,7 @@ function UserSettingField({
             disabled={isSaving}
             data-testid={testid}
           />
-          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
+          <p className="mt-1 text-xs text-text-muted">{def.description}</p>
         </div>
       );
 
@@ -119,11 +119,11 @@ function UserSettingField({
           <div>
             <label
               htmlFor={fieldId}
-              className="text-sm font-medium text-gray-900 cursor-pointer"
+              className="text-sm font-medium text-text-main cursor-pointer"
             >
               {def.label}
             </label>
-            <p className="text-xs text-gray-500">{def.description}</p>
+            <p className="text-xs text-text-muted">{def.description}</p>
           </div>
         </div>
       );
@@ -133,7 +133,7 @@ function UserSettingField({
         <div>
           <label
             htmlFor={fieldId}
-            className="block text-sm font-medium text-gray-900 mb-2"
+            className="block text-sm font-medium text-text-main mb-2"
           >
             {def.label}
           </label>
@@ -143,7 +143,7 @@ function UserSettingField({
             onChange={(e) => onChange(e.target.value)}
             disabled={isSaving}
             data-testid={testid}
-            className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            className="block w-full rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm text-text-main focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta disabled:opacity-50"
           >
             {def.options.map((opt) => (
               <option key={opt} value={opt}>
@@ -151,7 +151,7 @@ function UserSettingField({
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-gray-500">{def.description}</p>
+          <p className="mt-1 text-xs text-text-muted">{def.description}</p>
         </div>
       );
   }

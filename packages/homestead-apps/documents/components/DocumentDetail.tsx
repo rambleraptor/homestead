@@ -7,7 +7,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  AlertCircle,
   ArrowLeft,
   Download,
   Loader2,
@@ -16,6 +15,7 @@ import {
   Scissors,
   Trash2,
 } from 'lucide-react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { AppIcon } from '@rambleraptor/homestead-core/apps/lazy';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import {
@@ -55,7 +55,7 @@ export function DocumentDetail({ documentId }: DocumentDetailProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const { data: doc, isLoading, isError, error } = useDocument(documentId);
+  const { data: doc, isLoading, isError, error, refetch } = useDocument(documentId);
   // Before the early returns below: hooks can't be called conditionally, and a
   // document opened while it's still reading will resolve on this page.
   const revealing = useJustParsed(doc?.parse_status ?? 'pending');
@@ -144,10 +144,12 @@ export function DocumentDetail({ documentId }: DocumentDetailProps) {
     return (
       <div className="space-y-4">
         {backLink}
-        <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error instanceof Error ? error.message : 'Document not found'}
-        </div>
+        <QueryError
+          error={isError ? error : 'It may have been deleted, or the link is wrong.'}
+          onRetry={isError ? () => void refetch() : undefined}
+          title={isError ? 'Failed to load this document' : 'Document not found'}
+          data-testid="document-detail-error"
+        />
       </div>
     );
   }

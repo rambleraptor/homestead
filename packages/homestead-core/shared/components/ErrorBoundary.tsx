@@ -89,16 +89,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                   </svg>
                 </div>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-2xl font-bold text-brand-navy mb-2">
                 Something went wrong
               </h2>
-              <p className="text-gray-600 mb-6">
+              <p className="text-text-muted mb-6">
                 An unexpected error occurred. Please try refreshing the page or contact support
                 if the problem persists.
               </p>
               {this.state.error && (
                 <details className="text-left mb-6">
-                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
+                  <summary className="cursor-pointer text-sm text-text-muted hover:text-gray-700">
                     Error details
                   </summary>
                   <pre className="mt-2 text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40">
@@ -145,10 +145,10 @@ export function AppErrorFallback() {
           />
         </svg>
       </div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+      <h3 className="text-lg font-semibold text-brand-navy mb-2">
         Failed to load this section
       </h3>
-      <p className="text-gray-600 mb-4">
+      <p className="text-text-muted mb-4">
         An error occurred while loading this content. Try refreshing the page.
       </p>
       <Button variant="secondary" onClick={() => window.location.reload()}>

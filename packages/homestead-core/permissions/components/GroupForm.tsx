@@ -12,7 +12,7 @@ interface Props {
 }
 
 const selectClass =
-  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta';
+  'w-full rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta';
 
 /**
  * Create/edit a group: name, description, and the **conferred role** — a single
@@ -67,7 +67,7 @@ export function GroupForm({ initialGroup, roles, onSubmit, onCancel, isSubmittin
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-text-muted">
           Every member of this group receives this role's access.
         </p>
       </div>

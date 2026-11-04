@@ -5,8 +5,9 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useHands } from '../hooks/useHands';
 import { useCreateHand } from '../hooks/useCreateHand';
 import { useDeleteHand } from '../hooks/useDeleteHand';
@@ -24,7 +25,7 @@ export function BridgeHome() {
     undefined,
   );
 
-  const { data: hands, isLoading, isError, error } = useHands();
+  const { data: hands, isLoading, isError, error, refetch } = useHands();
   const createHand = useCreateHand();
   const deleteHand = useDeleteHand();
 
@@ -49,7 +50,7 @@ export function BridgeHome() {
       await createHand.mutateAsync(data);
       // Jump the view to the board the new hand landed on so it's visible.
       setSelectedBoard(data.board);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -58,7 +59,7 @@ export function BridgeHome() {
     setDeletingId(id);
     try {
       await deleteHand.mutateAsync(id);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     } finally {
       setDeletingId(null);
@@ -75,17 +76,12 @@ export function BridgeHome() {
 
   if (isError) {
     return (
-      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">Failed to load hands</h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load hands"
+        data-testid="bridge-error"
+      />
     );
   }
 

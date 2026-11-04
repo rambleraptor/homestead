@@ -33,13 +33,13 @@ const CATEGORY_COLORS: Record<string, string> = {
   credits: 'bg-green-100 text-green-700',
   insurance: 'bg-gray-100 text-gray-700',
   lounge: 'bg-indigo-100 text-indigo-700',
-  other: 'bg-gray-100 text-gray-600',
+  other: 'bg-gray-100 text-text-muted',
 };
 
 const ROW_BORDER_BY_STATUS: Record<PerkRedemptionStatus, string> = {
   full: 'border-green-200 bg-green-50/50',
   partial: 'border-amber-200 bg-amber-50/50',
-  none: 'border-gray-200 bg-white hover:border-gray-300',
+  none: 'border-gray-200 bg-surface-white hover:border-gray-300',
 };
 
 const INDICATOR_BY_STATUS: Record<PerkRedemptionStatus, string> = {
@@ -51,7 +51,7 @@ const INDICATOR_BY_STATUS: Record<PerkRedemptionStatus, string> = {
 const NAME_COLOR_BY_STATUS: Record<PerkRedemptionStatus, string> = {
   full: 'text-green-700',
   partial: 'text-amber-700',
-  none: 'text-gray-900',
+  none: 'text-text-main',
 };
 
 export function PerkRow({
@@ -94,7 +94,7 @@ export function PerkRow({
               </span>
             )}
           </div>
-          <div className="text-xs text-gray-500 mt-0.5">
+          <div className="text-xs text-text-muted mt-0.5">
             ${perk.value}/{FREQUENCY_LABELS[perk.frequency]} · ${annualValue}/yr · {periodLabel}
           </div>
         </div>

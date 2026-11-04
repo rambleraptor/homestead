@@ -3,13 +3,13 @@
  *
  * Read-only presentation of a single recipe optimized for reading while
  * cooking — the whole recipe (ingredients + method) is visible at once on
- * large screens and stacks cleanly on small ones.
+ * large screens and stacks cleanly on small ones. Editing has its own
+ * address (`/recipes/:id/edit`, see `RecipeFormRoute`); this page links to it.
  */
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle,
   ArrowLeft,
   ChefHat,
   Clock,
@@ -19,11 +19,11 @@ import {
   ShoppingCart,
   Users,
 } from 'lucide-react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { useRecipe } from '../hooks/useRecipe';
-import { useUpdateRecipe } from '../hooks/useUpdateRecipe';
 import { useAddIngredientsToGroceryList } from '../hooks/useAddIngredientsToGroceryList';
-import { RecipeForm } from './RecipeForm';
 import { RecipeImage } from './RecipeImage';
 import { RecipeIngredients } from './RecipeIngredients';
 import { RecipeSteps } from './RecipeSteps';
@@ -33,30 +33,22 @@ import { CookbookChips } from './cookbooks/CookbookChips';
 import { isWakeLockSupported, useWakeLock } from '../hooks/useWakeLock';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { useRemoteEdits } from '@rambleraptor/homestead-core/api/remoteChanges';
-import { RemoteEditNotice } from '@rambleraptor/homestead-core/shared/components/RemoteChange';
-import type { RecipeFormData } from '../types';
 
 interface RecipeViewProps {
   recipeId: string;
 }
 
 export function RecipeView({ recipeId }: RecipeViewProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  // Bumped to remount the form on the latest saved recipe.
-  const [formVersion, setFormVersion] = useState(0);
   const [cookMode, setCookMode] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
   const [currentStep, setCurrentStep] = useState<number | null>(null);
-  const { data: recipe, isLoading, isError, error } = useRecipe(recipeId);
-  const updateMutation = useUpdateRecipe();
+  const { data: recipe, isLoading, isError, error, refetch } = useRecipe(recipeId);
   const { addIngredients, isPending: isAddingToGroceries } =
     useAddIngredientsToGroceryList();
   const toast = useToast();
   const wakeLock = useWakeLock(cookMode, (err) => toast.error(err));
-  const remoteEdit = useRemoteEdits('recipe', recipeId, { enabled: isEditing });
 
   const toggleCookMode = () => {
     // Leaving cook mode clears your place, so the next cook starts fresh.
@@ -74,15 +66,6 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
       else next.add(index);
       return next;
     });
-  };
-
-  const handleSubmit = async (data: RecipeFormData) => {
-    try {
-      await updateMutation.mutateAsync({ id: recipeId, data });
-      setIsEditing(false);
-    } catch (err) {
-      // Error surfaced by the global mutation error toast (queryClient.ts).
-    }
   };
 
   if (isLoading) {
@@ -106,56 +89,12 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           <ArrowLeft className="w-4 h-4" />
           Back to recipes
         </Link>
-        <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">Failed to load recipe</h3>
-              <p className="text-sm text-red-700">
-                {error instanceof Error ? error.message : 'Recipe not found'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isEditing) {
-    return (
-      <div className="space-y-6">
-        <button
-          type="button"
-          onClick={() => setIsEditing(false)}
-          className="inline-flex items-center gap-1 text-sm text-brand-slate hover:text-brand-navy"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to recipe
-        </button>
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Recipe</h2>
-          {remoteEdit.change && (
-            <RemoteEditNotice
-              change={remoteEdit.change}
-              noun="recipe"
-              onReload={() => {
-                setFormVersion((v) => v + 1);
-                remoteEdit.dismiss();
-              }}
-              onDismiss={remoteEdit.dismiss}
-              className="mb-4"
-            />
-          )}
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <RecipeForm
-              key={formVersion}
-              onSubmit={handleSubmit}
-              onCancel={() => setIsEditing(false)}
-              initialData={recipe}
-              isSubmitting={updateMutation.isPending}
-            />
-          </div>
-        </div>
+        <QueryError
+          error={isError ? error : 'It may have been deleted, or the link is wrong.'}
+          onRetry={isError ? () => void refetch() : undefined}
+          title={isError ? 'Failed to load recipe' : 'Recipe not found'}
+          data-testid="recipe-error"
+        />
       </div>
     );
   }
@@ -216,7 +155,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium font-body transition-colors shadow-sm border ${
                 cookMode
                   ? 'bg-accent-terracotta hover:bg-accent-terracotta-hover text-white border-accent-terracotta'
-                  : 'bg-white hover:bg-bg-pearl text-brand-navy border-gray-200'
+                  : 'bg-surface-white hover:bg-bg-pearl text-brand-navy border-gray-200'
               }`}
             >
               <CookingPot className="w-4 h-4" />
@@ -226,20 +165,20 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
               onClick={handleAddToGroceries}
               disabled={ingredients.length === 0 || isAddingToGroceries}
               data-testid="recipe-view-add-to-groceries"
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ShoppingCart className="w-4 h-4" />
               Add to grocery list
             </button>
             <AddToCookbookMenu recipe={recipe} />
-            <button
-              onClick={() => setIsEditing(true)}
+            <Link
+              to={`/recipes/${recipeId}/edit`}
               data-testid="recipe-view-edit"
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
             >
               <Pencil className="w-4 h-4" />
               Edit
-            </button>
+            </Link>
           </div>
         }
       />
@@ -264,6 +203,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
         <RecipeImage
           recipe={recipe}
           alt={recipe.title}
+          style={viewTransitionName('recipe', recipe.id)}
           className="w-full max-h-96 object-cover rounded-lg border border-gray-200"
         />
       )}
@@ -306,7 +246,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
       >
         <section
           aria-labelledby="ingredients-heading"
-          className="bg-white rounded-lg border border-gray-200 p-5 lg:sticky lg:top-4 lg:self-start"
+          className="bg-surface-white rounded-2xl border border-gray-100 p-5 lg:sticky lg:top-4 lg:self-start"
         >
           <h2
             id="ingredients-heading"
@@ -324,7 +264,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 
         <section
           aria-labelledby="method-heading"
-          className="bg-white rounded-lg border border-gray-200 p-5 space-y-6"
+          className="bg-surface-white rounded-2xl border border-gray-100 p-5 space-y-6"
         >
           <div>
             <h2

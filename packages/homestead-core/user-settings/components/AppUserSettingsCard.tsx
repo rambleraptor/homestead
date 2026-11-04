@@ -27,18 +27,18 @@ export function AppUserSettingsCard({ app }: AppUserSettingsCardProps) {
     <Card>
       <div className="flex items-start gap-4">
         {app.web?.icon ? (
-          <AppIcon icon={app.web.icon} className="w-6 h-6 text-blue-500 mt-1" />
+          <AppIcon icon={app.web.icon} className="w-6 h-6 text-accent-terracotta mt-1" />
         ) : null}
         <div className="flex-1 space-y-4">
           <div>
             <h3
-              className="font-semibold text-gray-900"
+              className="font-semibold text-brand-navy"
               data-testid={`user-settings-app-${app.id}`}
             >
               {app.name}
             </h3>
             {app.description ? (
-              <p className="mt-1 text-xs text-gray-500">{app.description}</p>
+              <p className="mt-1 text-xs text-text-muted">{app.description}</p>
             ) : null}
           </div>
           {Widget ? (

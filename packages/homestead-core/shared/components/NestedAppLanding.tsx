@@ -44,8 +44,8 @@ export function NestedAppLanding({ app }: Props) {
                     className="w-6 h-6 text-accent-terracotta mt-1 flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900">{child.name}</h3>
-                    <p className="mt-1 text-sm text-gray-600">
+                    <h3 className="font-semibold text-brand-navy">{child.name}</h3>
+                    <p className="mt-1 text-sm text-text-muted">
                       {child.description}
                     </p>
                   </div>

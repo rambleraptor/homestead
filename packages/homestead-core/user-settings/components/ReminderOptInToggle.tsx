@@ -64,7 +64,7 @@ export function ReminderOptInToggle({
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
         enabled
           ? 'border-brand-navy/20 bg-gray-50 text-brand-navy'
-          : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+          : 'border-gray-200 text-text-muted hover:bg-gray-50'
       }`}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />

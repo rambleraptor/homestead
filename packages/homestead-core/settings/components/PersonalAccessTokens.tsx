@@ -7,7 +7,8 @@ import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import {
   GrantRowsEditor,
   cleanGrantDrafts,
@@ -42,7 +43,7 @@ function formatDate(value?: string): string | null {
 
 export function PersonalAccessTokens() {
   const toast = useToast();
-  const { data: tokens = [], isLoading, isError, error: loadError } = usePersonalAccessTokens();
+  const { data: tokens = [], isLoading, isError, error: loadError, refetch } = usePersonalAccessTokens();
   const mint = useMintPersonalAccessToken();
   const revoke = useRevokePersonalAccessToken();
 
@@ -122,10 +123,10 @@ export function PersonalAccessTokens() {
     <Card>
       <div className="space-y-6" data-testid="personal-access-tokens">
         <div className="flex items-start gap-4">
-          <KeyRound className="w-6 h-6 text-gray-600 mt-1" />
+          <KeyRound className="w-6 h-6 text-text-muted mt-1" />
           <div>
-            <h3 className="font-semibold text-gray-900">Personal Access Tokens</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="font-semibold text-brand-navy">Personal Access Tokens</h3>
+            <p className="text-sm text-text-muted">
               Issue a token to call the API. Scope it with grants using the same
               controls as roles — a token is always limited to what you can do, so a
               scope beyond your own access simply has no effect.
@@ -135,13 +136,21 @@ export function PersonalAccessTokens() {
 
         {/* Existing tokens */}
         {isError ? (
-          <p className="text-sm text-red-600" role="alert" data-testid="tokens-error">
-            Couldn&apos;t load your tokens: {getAepErrorMessage(loadError)}
-          </p>
+          <QueryError
+            compact
+            error={loadError}
+            onRetry={() => void refetch()}
+            title="Couldn’t load your tokens"
+            data-testid="tokens-error"
+          />
         ) : tokens.length === 0 ? (
-          <p className="text-sm text-gray-500" data-testid="no-tokens">
-            You haven&apos;t issued any tokens yet.
-          </p>
+          <EmptyState
+            compact
+            icon={KeyRound}
+            title="No tokens yet"
+            description="You haven’t issued any tokens yet. Create one to let a script or an MCP client act as you."
+            data-testid="no-tokens"
+          />
         ) : (
           <ul className="divide-y divide-gray-100">
             {tokens.map((token) => {
@@ -155,12 +164,12 @@ export function PersonalAccessTokens() {
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900 truncate">{token.name}</span>
+                      <span className="font-medium text-text-main truncate">{token.name}</span>
                       {token.token_prefix && (
-                        <code className="text-xs text-gray-500">{token.token_prefix}…</code>
+                        <code className="text-xs text-text-muted">{token.token_prefix}…</code>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-text-muted">
                       {token.scopes && token.scopes.length > 0
                         ? token.scopes.map(describeScope).join(', ')
                         : 'No access (inert)'}
@@ -187,7 +196,7 @@ export function PersonalAccessTokens() {
 
         {/* Create form */}
         <form onSubmit={handleCreate} className="space-y-4 border-t border-gray-100 pt-4">
-          <h4 className="font-medium text-gray-900">New token</h4>
+          <h4 className="font-medium text-brand-navy">New token</h4>
           <Input
             label="Name"
             value={name}
@@ -229,7 +238,7 @@ export function PersonalAccessTokens() {
         title="Copy your new token"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-text-muted">
             This is the only time the token will be shown. Copy it now and store it
             somewhere safe — you won&apos;t be able to see it again.
           </p>

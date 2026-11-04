@@ -41,7 +41,7 @@ export function CookbookStrip({ cookbooks, currentId }: CookbookStripProps) {
   }, [navigate, prev, next]);
 
   const arrowClass =
-    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-navy hover:bg-bg-pearl aria-disabled:pointer-events-none aria-disabled:opacity-40';
+    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-surface-white text-brand-navy hover:bg-bg-pearl aria-disabled:pointer-events-none aria-disabled:opacity-40';
 
   return (
     <nav aria-label="Cookbooks" className="flex items-center gap-2" data-testid="cookbook-strip">
@@ -69,7 +69,7 @@ export function CookbookStrip({ cookbooks, currentId }: CookbookStripProps) {
                 'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors',
                 active
                   ? 'border-accent-terracotta bg-accent-terracotta text-white'
-                  : 'border-gray-200 bg-white text-brand-slate hover:bg-bg-pearl',
+                  : 'border-gray-200 bg-surface-white text-brand-slate hover:bg-bg-pearl',
               )}
             >
               {isAutoCookbook(cookbook) && <Sparkles className="h-3 w-3" aria-hidden="true" />}

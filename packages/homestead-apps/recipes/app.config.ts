@@ -44,7 +44,8 @@ export const recipesApp: AppConfig = {
         index: true,
         component: () => import('./components/RecipesHome').then((m) => m.RecipesHome),
       },
-      // Before `:id`, which would otherwise match "import" as a recipe id.
+      // Before `:id`, which would otherwise match "import" / "new" as a recipe
+      // id (the matcher prefers routes with more static segments).
       {
         path: 'import',
         component: () => import('./bulk-import').then((m) => m.RecipesBulkImport),
@@ -56,9 +57,20 @@ export const recipesApp: AppConfig = {
         dynamic: true,
       },
       {
+        path: 'new',
+        component: () =>
+          import('./components/RecipeFormRoute').then((m) => m.RecipeFormRoute),
+      },
+      {
         path: ':id',
         component: () =>
           import('./components/RecipeViewRoute').then((m) => m.RecipeViewRoute),
+        dynamic: true,
+      },
+      {
+        path: ':id/edit',
+        component: () =>
+          import('./components/RecipeFormRoute').then((m) => m.RecipeFormRoute),
         dynamic: true,
       },
     ],

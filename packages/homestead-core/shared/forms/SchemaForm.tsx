@@ -174,7 +174,7 @@ export function SchemaForm<T = Record<string, unknown>>({
       {sections.map((section) =>
         section.title ? (
           <fieldset key={section.id} className="min-w-0">
-            <legend className="text-sm font-semibold text-gray-900 mb-2">
+            <legend className="text-sm font-semibold text-brand-navy mb-2">
               {section.title}
             </legend>
             <div className={gridClass}>{section.entries.map(renderField)}</div>

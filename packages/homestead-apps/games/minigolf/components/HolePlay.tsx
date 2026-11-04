@@ -134,7 +134,7 @@ export function HolePlay({
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="text-center">
-          <div className="text-xl font-bold text-gray-900" data-testid="hole-title">
+          <div className="text-xl font-bold text-brand-navy" data-testid="hole-title">
             Hole {currentHole} of {game.hole_count}
           </div>
           <HoleProgress current={currentHole} total={game.hole_count} />
@@ -143,7 +143,7 @@ export function HolePlay({
       </div>
 
       {/* Par */}
-      <section className="bg-white rounded-lg shadow-md p-4 border border-gray-200 mt-2">
+      <section className="bg-surface-white rounded-2xl shadow-md p-4 border border-gray-100 mt-2">
         <ScoreStepper
           label="Par"
           value={par}
@@ -163,7 +163,7 @@ export function HolePlay({
           return (
             <div
               key={player}
-              className="bg-white rounded-lg shadow-md p-4 border border-gray-200"
+              className="bg-surface-white rounded-2xl shadow-md p-4 border border-gray-100"
               data-testid={`player-score-${id}`}
             >
               <ScoreStepper
@@ -186,7 +186,7 @@ export function HolePlay({
           the per-player steppers stay in the thumb-friendly zone. */}
       {hasCumulative && (
         <section
-          className="bg-white rounded-lg shadow-md border border-gray-200 mb-3"
+          className="bg-surface-white rounded-2xl shadow-md border border-gray-100 mb-3"
           data-testid="cumulative-scores"
         >
           <button
@@ -197,19 +197,19 @@ export function HolePlay({
             data-testid="cumulative-scores-toggle"
             className="w-full flex items-center justify-between p-3 text-left"
           >
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
               Total through hole {currentHole - 1}
             </span>
             <span className="flex items-center gap-2">
               {cumulativePar > 0 && (
-                <span className="tabular-nums text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <span className="tabular-nums text-xs font-medium text-text-muted uppercase tracking-wide">
                   Par {cumulativePar}
                 </span>
               )}
               {totalsOpen ? (
-                <ChevronUp className="w-4 h-4 text-gray-500" />
+                <ChevronUp className="w-4 h-4 text-text-muted" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
+                <ChevronDown className="w-4 h-4 text-text-muted" />
               )}
             </span>
           </button>
@@ -229,18 +229,18 @@ export function HolePlay({
                     className="flex items-center justify-between text-sm"
                     data-testid={`cumulative-${id}`}
                   >
-                    <span className="font-medium text-gray-900 truncate">
+                    <span className="font-medium text-text-main truncate">
                       {displayNameFor(player, people)}
                     </span>
                     <span className="tabular-nums">
                       <span
-                        className="font-semibold text-gray-900"
+                        className="font-semibold text-brand-navy"
                         data-testid={`cumulative-${id}-total`}
                       >
                         {total}
                       </span>
                       {cumulativePar > 0 && (
-                        <span className="ml-2 text-xs text-gray-500">
+                        <span className="ml-2 text-xs text-text-muted">
                           ({diff === 0 ? 'E' : diff > 0 ? `+${diff}` : diff})
                         </span>
                       )}
@@ -254,14 +254,14 @@ export function HolePlay({
       )}
 
       {/* Bottom nav */}
-      <div className="sticky bottom-0 bg-white/80 backdrop-blur pt-3 pb-4 -mx-4 px-4 border-t border-gray-200 flex flex-col gap-3">
+      <div className="sticky bottom-0 bg-surface-white/80 backdrop-blur pt-3 pb-4 -mx-4 px-4 border-t border-gray-200 flex flex-col gap-3">
         {isLast && (
           <button
             type="button"
             onClick={handleAddHole}
             disabled={isSaving}
             data-testid="hole-add"
-            className="h-12 rounded-lg border border-accent-terracotta bg-white hover:bg-accent-terracotta/5 disabled:opacity-40 disabled:cursor-not-allowed text-accent-terracotta font-semibold flex items-center justify-center gap-2"
+            className="h-12 rounded-lg border border-accent-terracotta bg-surface-white hover:bg-accent-terracotta/5 disabled:opacity-40 disabled:cursor-not-allowed text-accent-terracotta font-semibold flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />
             Add Another Hole
@@ -273,7 +273,7 @@ export function HolePlay({
             onClick={onPrevious}
             disabled={isFirst || isSaving}
             data-testid="hole-prev"
-            className="flex-1 h-14 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed text-gray-900 font-semibold flex items-center justify-center gap-2"
+            className="flex-1 h-14 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed text-text-main font-semibold flex items-center justify-center gap-2"
           >
             <ArrowLeft className="w-5 h-5" />
             Previous

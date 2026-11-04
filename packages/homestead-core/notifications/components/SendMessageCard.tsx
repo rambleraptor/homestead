@@ -48,7 +48,7 @@ export function SendMessageCard({ input, mode, error }: ChatCardProps) {
       </CardHeadline>
       <div
         className={cn(
-          'mt-2 rounded-lg border border-gray-100 bg-surface-white p-3',
+          'mt-2 rounded-2xl border border-gray-100 bg-surface-white p-3',
           (mode === 'denied' || mode === 'failed') && 'opacity-60',
         )}
         data-testid="chat-card-message"
@@ -56,8 +56,8 @@ export function SendMessageCard({ input, mode, error }: ChatCardProps) {
         <p className="font-medium text-brand-navy text-xs" data-testid="chat-card-recipient">
           To {to}
         </p>
-        {title && <p className="mt-0.5 break-words font-semibold text-gray-900">{title}</p>}
-        {message && <p className="mt-1 whitespace-pre-wrap break-words text-gray-600">{message}</p>}
+        {title && <p className="mt-0.5 break-words font-semibold text-brand-navy">{title}</p>}
+        {message && <p className="mt-1 whitespace-pre-wrap break-words text-text-muted">{message}</p>}
       </div>
       {mode === 'failed' && (
         <p className="mt-1 text-destructive" role="alert" data-testid="chat-card-error">

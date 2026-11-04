@@ -13,8 +13,9 @@
 
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, HandHeart, Landmark } from 'lucide-react';
+import { HandHeart, Landmark } from 'lucide-react';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
@@ -63,7 +64,7 @@ export function CharitableTab({ addOpen, onOpenAdd, onCloseAdd }: CharitableTabP
   const [statusFilter, setStatusFilter] = useState<CharitableStatus | 'All'>('All');
 
   const selectedYear = parseYear(searchParams.get(YEAR_PARAM));
-  const { data: receipts, isLoading, isError, error } = useCharitableReceipts();
+  const { data: receipts, isLoading, isError, error, refetch } = useCharitableReceipts();
   // Undefined means "you pick" — the hook reports what it landed on as stats.year.
   const { stats } = useCharitableStats(selectedYear);
 
@@ -88,7 +89,7 @@ export function CharitableTab({ addOpen, onOpenAdd, onCloseAdd }: CharitableTabP
     try {
       await createMutation.mutateAsync(data);
       onCloseAdd();
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -102,7 +103,7 @@ export function CharitableTab({ addOpen, onOpenAdd, onCloseAdd }: CharitableTabP
   const handleMarkClaimed = async (id: string) => {
     try {
       await updateMutation.mutateAsync({ id, data: { status: 'Claimed' } });
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -132,19 +133,12 @@ export function CharitableTab({ addOpen, onOpenAdd, onCloseAdd }: CharitableTabP
 
   if (isError) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50/40 p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">
-              Failed to load charitable receipts
-            </h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load charitable receipts"
+        data-testid="charitable-error"
+      />
     );
   }
 

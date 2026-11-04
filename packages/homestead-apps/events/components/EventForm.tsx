@@ -293,7 +293,7 @@ export function EventForm({
           onChange={(e) => form.setValue('year', e.target.value)}
           className="mt-3"
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-text-muted mt-1">
           {recurrence === 'yearly-nth-weekday'
             ? 'Only the month is used — the day is ignored when the rule below is set.'
             : 'Events repeat yearly. The year is optional — add the birth or wedding year to show an age or anniversary count.'}

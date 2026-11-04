@@ -157,6 +157,28 @@ export class EventsPage {
     await this.driver.waitForNetworkIdle();
   }
 
+  // --- the day itself ------------------------------------------------------
+
+  /** The "Today" badge on an event's list card (absent on any other day). */
+  todayBadge(eventId: string) {
+    return this.driver.getByTestId(`event-card-today-${eventId}`);
+  }
+
+  async expectTodayBadge(eventId: string, text: string | RegExp) {
+    await this.expect(this.todayBadge(eventId)).toBeVisible();
+    await this.expect(this.todayBadge(eventId)).toContainText(text);
+  }
+
+  async expectNoTodayBadge(eventId: string) {
+    await this.expect(this.driver.getByTestId(`event-card-${eventId}`)).toBeVisible();
+    await this.expect(this.todayBadge(eventId)).toHaveCount(0);
+  }
+
+  /** The same badge on the dashboard's upcoming-events widget. */
+  widgetTodayBadge(eventId: string) {
+    return this.driver.getByTestId(`upcoming-event-today-${eventId}`);
+  }
+
   async filterByName(query: string) {
     await this.driver.getByTestId('filter-text-name').fill(query);
   }

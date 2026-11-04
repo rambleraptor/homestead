@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Shield, User as UserIcon, Pencil, Trash2, Eye } from 'lucide-react';
+import { Plus, Shield, Pencil, Trash2, Eye, Users } from 'lucide-react';
+import { Avatar } from '@rambleraptor/homestead-core/shared/components/Avatar';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
@@ -22,7 +25,7 @@ export function UsersHome() {
   const { user: currentUser, startViewAs } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { data: users, isLoading } = useUsers();
+  const { data: users, isLoading, isError, error, refetch } = useUsers();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -125,10 +128,21 @@ export function UsersHome() {
         }
       />
 
-      {!users || users.length === 0 ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8">No users yet.</p>
-        </Card>
+      {isError ? (
+        <QueryError
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load users"
+          data-testid="users-error"
+        />
+      ) : !users || users.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No users yet"
+          description="Add the people who share this Homestead; each gets their own sign-in."
+          action={{ label: 'Add user', onClick: () => setIsCreateOpen(true), testId: 'users-empty-add' }}
+          data-testid="users-empty"
+        />
       ) : (
         <div className="space-y-3">
           {users.map((u) => {
@@ -138,28 +152,25 @@ export function UsersHome() {
               <Card key={u.id}>
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    {isSuper ? (
-                      <Shield className="w-5 h-5 text-accent-terracotta flex-shrink-0" />
-                    ) : (
-                      <UserIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                    )}
+                    <Avatar name={u.display_name || u.email} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-gray-900 truncate">
+                        <span className="font-medium text-text-main truncate">
                           {u.display_name || u.email}
                         </span>
                         {isSuper && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-accent-terracotta/10 text-accent-terracotta-hover">
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-accent-terracotta/10 text-accent-terracotta-hover">
+                            <Shield className="w-3 h-3" aria-hidden />
                             superuser
                           </span>
                         )}
                         {isSelf && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-text-muted">
                             you
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 truncate">{u.email}</p>
+                      <p className="text-sm text-text-muted truncate">{u.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

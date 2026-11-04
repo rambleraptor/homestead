@@ -12,11 +12,12 @@ import { Pencil, Plug, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { ShareButton } from '@rambleraptor/homestead-core/permissions/components/ShareButton';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
 import {
   useCreateMcpServer,
@@ -39,7 +40,7 @@ type Editing = { kind: 'new' } | { kind: 'edit'; server: McpServer } | null;
 const STATUS_STYLE: Record<string, string> = {
   ok: 'bg-green-50 text-green-700',
   failing: 'bg-red-50 text-red-700',
-  untested: 'bg-gray-100 text-gray-600',
+  untested: 'bg-gray-100 text-text-muted',
 };
 const STATUS_LABEL: Record<string, string> = { ok: 'Connected', failing: 'Failing', untested: 'Not checked' };
 
@@ -55,7 +56,7 @@ function ServerCard({ server, credential }: { server: McpServer; credential: Cre
   const saveTools = async (next: McpTool[]) => {
     try {
       await updateServer.mutateAsync({ id: server.id, data: { tools: next } });
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -63,7 +64,7 @@ function ServerCard({ server, credential }: { server: McpServer; credential: Cre
     try {
       await refreshTools.mutateAsync(server.id);
       setExpanded(true);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -77,7 +78,7 @@ function ServerCard({ server, credential }: { server: McpServer; credential: Cre
         >
           {STATUS_LABEL[status] ?? status}
         </span>
-        <span className="text-sm text-gray-600" data-testid={`mcp-server-tool-count-${server.id}`}>
+        <span className="text-sm text-text-muted" data-testid={`mcp-server-tool-count-${server.id}`}>
           {enabled} of {tools.length} tools on
         </span>
         {server.last_checked_at && (
@@ -147,7 +148,7 @@ function ServerCard({ server, credential }: { server: McpServer; credential: Cre
 export function McpServersHome() {
   const [editing, setEditing] = useState<Editing>(null);
   const [deleting, setDeleting] = useState<McpServer | null>(null);
-  const { data: servers, isLoading, isError, error } = useMcpServers();
+  const { data: servers, isLoading, isError, error, refetch } = useMcpServers();
   const { data: credentials } = useCredentials();
   const createServer = useCreateMcpServer();
   const updateServer = useUpdateMcpServer();
@@ -170,7 +171,7 @@ export function McpServersHome() {
         });
       }
       setEditing(null);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -180,7 +181,7 @@ export function McpServersHome() {
     try {
       await deleteServer.mutateAsync(deleting.id);
       setDeleting(null);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -203,19 +204,24 @@ export function McpServersHome() {
       />
 
       {isError ? (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          Couldn’t load MCP servers: {getAepErrorMessage(error)}
-        </div>
+        <QueryError
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load MCP servers"
+          data-testid="mcp-servers-error"
+        />
       ) : !servers?.length ? (
-        <Card>
-          <div className="py-10 text-center" data-testid="mcp-servers-empty">
-            <Plug className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-            <p className="text-gray-600">No MCP servers yet</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Add one — Home Assistant, a calendar — to let the assistant use it.
-            </p>
-          </div>
-        </Card>
+        <EmptyState
+          icon={Plug}
+          title="No MCP servers yet"
+          description="Add one — Home Assistant, a calendar — to let the assistant use it."
+          action={{
+            label: 'Add server',
+            onClick: () => setEditing({ kind: 'new' }),
+            testId: 'mcp-servers-empty-add',
+          }}
+          data-testid="mcp-servers-empty"
+        />
       ) : (
         <ul className="space-y-3" data-testid="mcp-servers-list">
           {servers.map((server) => (
@@ -223,8 +229,8 @@ export function McpServersHome() {
               <Card>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-gray-900">{server.name}</h3>
-                    <p className="mt-1 truncate font-mono text-xs text-gray-500">{server.url}</p>
+                    <h3 className="font-semibold text-brand-navy">{server.name}</h3>
+                    <p className="mt-1 truncate font-mono text-xs text-text-muted">{server.url}</p>
                   </div>
                   <div className="flex flex-shrink-0 gap-2">
                     <Button

@@ -80,4 +80,17 @@ describe('Classic dashboard', () => {
     await d.expect(dashboard.classicHome).toBeVisible();
     expect(await conversations.listAll()).toHaveLength(1);
   });
+
+  test('a ?ask= link fills the Ask box without sending', async () => {
+    await classicFor('everyone');
+    await h.loginAs(h.member);
+    const d = h.driver;
+    const dashboard = new DashboardPage(d);
+    await d.goto('/dashboard?ask=hello');
+    await d.expect(dashboard.classicHome).toBeVisible();
+    await d.expect(d.getByTestId('ask-input')).toHaveValue('hello');
+    await d.expectURL(/\/dashboard$/);
+    await d.expect(d.locator('[data-testid="ask-input"]:focus')).toHaveCount(1);
+    expect(await e2eClient(h.member.token).collection('conversations').listAll()).toHaveLength(0);
+  });
 });

@@ -9,11 +9,11 @@ export function partOfDay(at: Date = new Date()): string {
   return 'Good evening';
 }
 
-/** The home's greeting, in the person's local time. A holiday wins. */
+/** The home's greeting, in the person's local time. A holiday wins, with its emoji. */
 export function useGreeting(): string {
   const { user } = useAuth();
   const holiday = getTodaysHoliday();
-  if (holiday) return holiday.message;
+  if (holiday) return `${holiday.emoji} ${holiday.message}`;
   const part = partOfDay();
   return user?.name ? `${part}, ${user.name}` : part;
 }

@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Star, X } from 'lucide-react';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
+import { QueryError } from './QueryError';
 
 interface ReferenceRecord {
   id: string;
@@ -89,7 +90,13 @@ export function ReferenceField({
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: records, isLoading } = useQuery({
+  const {
+    data: records,
+    isLoading,
+    isError,
+    error: loadError,
+    refetch,
+  } = useQuery({
     queryKey: ['reference-select', collection],
     queryFn: () => aepbase.list<ReferenceRecord>(collection),
   });
@@ -182,14 +189,14 @@ export function ReferenceField({
         </label>
       )}
       {description && (
-        <p id={describedBy} className="text-sm text-gray-500 mb-1">
+        <p id={describedBy} className="text-sm text-text-muted mb-1">
           {description}
         </p>
       )}
 
       <div ref={containerRef} className="relative w-full">
         <div
-          className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 focus-within:ring-2 focus-within:ring-accent-terracotta focus-within:border-accent-terracotta"
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-300 bg-surface-white px-2 py-1.5 focus-within:ring-2 focus-within:ring-accent-terracotta focus-within:border-accent-terracotta"
           onClick={() => !disabled && setOpen(true)}
         >
           {value.map((path) => (
@@ -242,12 +249,22 @@ export function ReferenceField({
           <ul
             id={id ? `${id}-listbox` : undefined}
             role="listbox"
-            className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-surface-white py-1 shadow-lg"
           >
             {isLoading ? (
-              <li className="px-3 py-2 text-sm text-gray-500">Loading…</li>
+              <li className="px-3 py-2 text-sm text-text-muted">Loading…</li>
+            ) : isError ? (
+              <li className="px-2 py-1">
+                <QueryError
+                  compact
+                  error={loadError}
+                  onRetry={() => void refetch()}
+                  title="Couldn’t load the options"
+                  data-testid={testId ? `${testId}-error` : undefined}
+                />
+              </li>
             ) : options.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-gray-500">{emptyMessage}</li>
+              <li className="px-3 py-2 text-sm text-text-muted">{emptyMessage}</li>
             ) : (
               options.map((record, index) => {
                 const path = `${collection}/${record.id}`;

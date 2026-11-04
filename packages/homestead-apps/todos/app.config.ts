@@ -81,6 +81,16 @@ export const todosApp: AppConfig = {
         component: () => import('./components/TodoWidget').then((m) => m.TodoWidget),
         order: 5,
       },
+      {
+        // Done this week and the day streak — see `momentum.ts` for what
+        // counts (todos only: cleared groceries leave no record).
+        id: 'todos-momentum',
+        summary: () => import('./hooks/useMomentumSummary'),
+        label: 'Momentum',
+        component: () =>
+          import('./components/MomentumWidget').then((m) => m.MomentumWidget),
+        order: 6,
+      },
     ],
   },
 };

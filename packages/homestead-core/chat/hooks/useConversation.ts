@@ -30,6 +30,7 @@ import {
   listMessages,
   toUiMessage,
 } from '../api';
+import { assistantChangeToasts, showAssistantChanges } from '../recordToast';
 import { CONVERSATIONS } from '../resources';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
 import { CHAT_APP_ID } from './useConversations';
@@ -50,6 +51,11 @@ interface Session {
   onConversation?: (id: string) => void;
   /** Set by the mounted page: what to refresh when a turn ends. */
   queryClient?: QueryClient;
+  /**
+   * Whether a page is showing the conversation. A turn that finishes with
+   * nobody watching says what it changed in toasts instead.
+   */
+  mounted?: boolean;
 }
 
 /** Sessions by user and conversation (`''` for one not yet created). */
@@ -106,6 +112,11 @@ function createSession(userId: string, conversationId: string | null): Session {
     }),
     onFinish: ({ message, isError }) => {
       if (!isError && message.role === 'assistant') session.settling = message.id;
+      // Out of sight (the person went elsewhere mid-reply): the cards that
+      // would have shown in the thread become toasts.
+      if (!isError && message.role === 'assistant' && !session.mounted) {
+        showAssistantChanges(assistantChangeToasts(message, session.conversationId));
+      }
       const qc = session.queryClient;
       if (!qc) return;
       // The tools ran with the user's own token, so what they changed must
@@ -160,8 +171,10 @@ export function useConversation(conversationId: string | null, options: UseConve
     if (!sessions.has(key)) sessions.set(key, session);
     session.queryClient = queryClient;
     session.onConversation = onCreated;
+    session.mounted = true;
     return () => {
       session.onConversation = undefined;
+      session.mounted = false;
       // An idle chat is rebuilt from storage next time; a streaming one is
       // kept so its turn survives the route change.
       const key = keyOf(session.userId, session.conversationId);

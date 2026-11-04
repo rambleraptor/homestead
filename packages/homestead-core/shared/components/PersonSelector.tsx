@@ -79,7 +79,7 @@ export function PersonSelector({
   }
 
   if (people.length === 0) {
-    return <p className="text-sm text-gray-600">{emptyMessage}</p>;
+    return <p className="text-sm text-text-muted">{emptyMessage}</p>;
   }
 
   const searchTestId = containerTestId
@@ -111,7 +111,7 @@ export function PersonSelector({
 
       {filtered.length === 0 ? (
         <p
-          className="text-sm text-gray-500 italic"
+          className="text-sm text-text-muted italic"
           data-testid={
             containerTestId
               ? `${containerTestId}-empty`
@@ -135,7 +135,7 @@ export function PersonSelector({
                 className={`${buttonBase} inline-flex items-center gap-1.5 ${
                   active
                     ? 'bg-accent-terracotta border-accent-terracotta text-white'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    : 'bg-surface-white border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 {starred && (

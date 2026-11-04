@@ -14,7 +14,7 @@ interface HouseholdAddressFieldsProps {
 }
 
 const inputClass =
-  'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+  'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta focus:border-transparent';
 
 export function HouseholdAddressFields({ idPrefix, value, onChange }: HouseholdAddressFieldsProps) {
   return (

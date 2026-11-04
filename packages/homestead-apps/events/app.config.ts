@@ -117,6 +117,7 @@ export const eventsApp: AppConfig = {
       },
       {
         id: 'events-upcoming',
+        summary: () => import('./hooks/useUpcomingEventsSummary'),
         label: 'Upcoming events',
         component: () =>
           import('./components/UpcomingEventsWidget').then(

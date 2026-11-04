@@ -5,7 +5,8 @@ import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import {
   describeCurrentDevice,
   getCurrentPushSubscription,
@@ -29,6 +30,7 @@ export function NotificationDevices() {
     isLoading,
     isError,
     error: loadError,
+    refetch,
   } = useNotificationSubscriptions();
   const updateSubscription = useUpdateNotificationSubscription();
   const deleteSubscription = useDeleteNotificationSubscription();
@@ -129,10 +131,10 @@ export function NotificationDevices() {
         <div className="flex items-start gap-4">
           <BellOff className="w-6 h-6 text-gray-400 mt-1" />
           <div>
-            <h3 className="font-semibold text-gray-900 mb-2">
+            <h3 className="font-semibold text-brand-navy mb-2">
               Notifications Not Supported
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-muted">
               Your browser does not support web push notifications. Please use a
               modern browser like Chrome, Firefox, or Edge to enable this
               feature.
@@ -148,12 +150,12 @@ export function NotificationDevices() {
       <div className="space-y-4" data-testid="notification-devices">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
-            <Bell className="w-6 h-6 text-blue-500 mt-1" />
+            <Bell className="w-6 h-6 text-accent-terracotta mt-1" />
             <div>
-              <h3 className="font-semibold text-gray-900">
+              <h3 className="font-semibold text-brand-navy">
                 Web Push Notifications
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-text-muted">
                 Manage the devices that receive your push notifications.
               </p>
             </div>
@@ -172,13 +174,21 @@ export function NotificationDevices() {
         </div>
 
         {isError ? (
-          <p className="text-sm text-red-600" role="alert" data-testid="devices-error">
-            Couldn&apos;t load your devices: {getAepErrorMessage(loadError)}
-          </p>
+          <QueryError
+            compact
+            error={loadError}
+            onRetry={() => void refetch()}
+            title="Couldn’t load your devices"
+            data-testid="devices-error"
+          />
         ) : subscriptions.length === 0 ? (
-          <p className="text-sm text-gray-500" data-testid="no-devices">
-            No devices are registered for notifications yet.
-          </p>
+          <EmptyState
+            compact
+            icon={BellOff}
+            title="No devices yet"
+            description="No devices are registered for notifications yet. Enable them on this device to be the first."
+            data-testid="no-devices"
+          />
         ) : (
           <ul className="divide-y divide-gray-100">
             {subscriptions.map((sub) => {
@@ -193,7 +203,7 @@ export function NotificationDevices() {
                     <Laptop className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900 truncate">
+                        <span className="font-medium text-text-main truncate">
                           {sub.device_label || 'Unknown device'}
                         </span>
                         {mine && (
@@ -205,7 +215,7 @@ export function NotificationDevices() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-text-muted">
                         {sub.enabled ? 'Active' : 'Paused'}
                         {sub.create_time
                           ? ` · Registered ${new Date(

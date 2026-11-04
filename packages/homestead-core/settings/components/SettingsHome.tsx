@@ -40,8 +40,8 @@ export function SettingsHome() {
               data-testid={`settings-tab-${id}`}
               className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                 tab === id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  ? 'border-accent-terracotta text-accent-terracotta'
+                  : 'border-transparent text-text-muted hover:border-gray-300 hover:text-gray-700'
               }`}
             >
               {label}
@@ -53,7 +53,7 @@ export function SettingsHome() {
       {tab === 'general' && (
         <div className="space-y-6" data-testid="settings-general">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-xl font-semibold text-brand-navy mb-4">
               Notifications
             </h2>
             <NotificationDevices />
@@ -64,7 +64,7 @@ export function SettingsHome() {
 
           {appSettings.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <h2 className="text-xl font-semibold text-brand-navy mb-4">
                 App Settings
               </h2>
               <div
@@ -79,7 +79,7 @@ export function SettingsHome() {
           )}
 
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-xl font-semibold text-brand-navy mb-4">
               Security
             </h2>
             <div className="space-y-4">

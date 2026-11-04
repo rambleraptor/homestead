@@ -5,9 +5,12 @@
 
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Home, Plus, Trash2 } from 'lucide-react';
+import { Avatar } from '@rambleraptor/homestead-core/shared/components/Avatar';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
@@ -26,7 +29,7 @@ import { HouseholdForm } from './HouseholdForm';
 import { HouseholdSummary } from './HouseholdSummary';
 
 export function HouseholdsHome() {
-  const { data: households = [], isLoading, isError } = useHouseholds();
+  const { data: households = [], isLoading, isError, error, refetch } = useHouseholds();
   const { data: people = [] } = usePeople();
   const createHousehold = useCreateHousehold();
   const updateHousehold = useUpdateHousehold();
@@ -75,7 +78,7 @@ export function HouseholdsHome() {
     <div className="space-y-6">
       <Link
         to="/people"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+        className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-gray-700"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to People
@@ -97,17 +100,24 @@ export function HouseholdsHome() {
           <Spinner size="lg" />
         </div>
       ) : isError ? (
-        <Card>
-          <p className="text-center text-red-600 py-8" data-testid="households-error">
-            Households could not be loaded.
-          </p>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => void refetch()}
+          title="Households could not be loaded"
+          data-testid="households-error"
+        />
       ) : households.length === 0 ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8" data-testid="households-empty">
-            No households yet. Add one to share an address and WiFi between people.
-          </p>
-        </Card>
+        <EmptyState
+          icon={Home}
+          title="No households yet"
+          description="Add one to share an address and WiFi between people."
+          action={{
+            label: 'Add a household',
+            onClick: () => setIsCreating(true),
+            testId: 'households-empty-add',
+          }}
+          data-testid="households-empty"
+        />
       ) : (
         <div className="space-y-3">
           {households.map((household) => {
@@ -118,23 +128,22 @@ export function HouseholdsHome() {
               <Card key={household.id}>
                 <div className="flex items-start justify-between" data-testid={`household-${household.id}`}>
                   <div className="space-y-1">
-                    <h3 className="font-semibold text-gray-900">{household.name}</h3>
+                    <h3 className="font-semibold text-brand-navy">{household.name}</h3>
                     <HouseholdSummary household={household} />
                     <div
-                      className="flex flex-wrap gap-x-3 text-sm"
+                      className="flex flex-wrap gap-x-3 gap-y-1 text-sm"
                       data-testid={`household-members-${household.id}`}
                     >
                       {members.length === 0 ? (
-                        <span className="text-gray-500 italic">No members</span>
+                        <span className="text-text-muted italic">No members</span>
                       ) : (
                         members.map((m) => (
-                          <Link
-                            key={m.id}
-                            to={`/people/${m.id}`}
-                            className="text-brand-navy hover:underline"
-                          >
-                            {m.name}
-                          </Link>
+                          <span key={m.id} className="inline-flex items-center gap-1.5">
+                            <Avatar name={m.name} size="sm" />
+                            <Link to={`/people/${m.id}`} className="text-brand-navy hover:underline">
+                              {m.name}
+                            </Link>
+                          </span>
                         ))
                       )}
                     </div>

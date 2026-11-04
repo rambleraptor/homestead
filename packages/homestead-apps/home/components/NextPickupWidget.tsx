@@ -13,6 +13,8 @@ import {
   SkeletonRegion,
 } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useUpcomingPickupDays } from '../hooks/useGarbagePickups';
 import { parseIsoDate, relativeDayLabel, streamLabel } from '../utils/pickups';
 import { StreamChip } from './StreamChip';
@@ -23,7 +25,8 @@ const LOOKAHEAD_DAYS = 14;
 const FOLLOWING_SHOWN = 3;
 
 export function NextPickupWidget() {
-  const { data: days, isLoading } = useUpcomingPickupDays(LOOKAHEAD_DAYS);
+  const { data: days, isLoading, isError, error, refetch } =
+    useUpcomingPickupDays(LOOKAHEAD_DAYS);
   const [next, ...rest] = days ?? [];
 
   return (
@@ -55,6 +58,14 @@ export function NextPickupWidget() {
             <Skeleton className="h-4 w-5/6" />
           </div>
         </SkeletonRegion>
+      ) : isError && !days ? (
+        <QueryError
+          compact
+          error={error}
+          onRetry={refetch}
+          title="Couldn’t load pickups"
+          data-testid="next-pickup-widget-error"
+        />
       ) : next ? (
         <div className="space-y-4">
           <div>
@@ -102,12 +113,13 @@ export function NextPickupWidget() {
           )}
         </div>
       ) : (
-        <div className="py-8 text-center">
-          <Trash2 className="mx-auto mb-3 h-12 w-12 text-gray-300" aria-hidden="true" />
-          <p className="font-body text-text-muted">
-            No pickups in the next {LOOKAHEAD_DAYS} days
-          </p>
-        </div>
+        <EmptyState
+          compact
+          icon={Trash2}
+          title={`No pickups in the next ${LOOKAHEAD_DAYS} days`}
+          description="Nothing needs to go to the curb for now."
+          data-testid="next-pickup-widget-empty"
+        />
       )}
     </WidgetCard>
   );

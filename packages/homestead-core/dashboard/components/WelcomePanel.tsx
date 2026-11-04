@@ -89,10 +89,10 @@ export function WelcomePanel() {
         </div>
         <div className="flex-1 space-y-4">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-brand-navy">
               Welcome to Homestead
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-muted">
               This is your household's home base. Your apps live in the sidebar,
               and this dashboard gathers highlights from each of them. Here are a
               few places to start.

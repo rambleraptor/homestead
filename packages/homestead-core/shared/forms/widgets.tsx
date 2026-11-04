@@ -52,7 +52,7 @@ export function FieldFrame({
         </label>
       )}
       {help && (
-        <p id={helpId} className="text-sm text-gray-500 mb-1">
+        <p id={helpId} className="text-sm text-text-muted mb-1">
           {help}
         </p>
       )}
@@ -128,7 +128,7 @@ function CurrencyWidget(p: FieldWidgetProps) {
   const raw = p.value === '' || p.value === undefined ? '' : (p.value as number);
   return (
     <div className="relative">
-      <span className="absolute left-3 top-2 text-gray-500">$</span>
+      <span className="absolute left-3 top-2 text-text-muted">$</span>
       <input
         {...commonProps(p)}
         type="number"

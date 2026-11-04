@@ -132,7 +132,7 @@ export function useAppsAndResources() {
 }
 
 const selectClass =
-  'rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta';
+  'rounded-md border border-gray-300 bg-surface-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-terracotta';
 
 interface Props {
   grants: GrantDraft[];
@@ -171,7 +171,7 @@ export function GrantRowsEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-900">{heading}</span>
+        <span className="text-sm font-medium text-text-main">{heading}</span>
         <Button type="button" variant="secondary" size="sm" onClick={onAdd} data-testid={addTestId}>
           <Plus className="w-4 h-4 mr-1" />
           {addLabel}
@@ -179,7 +179,7 @@ export function GrantRowsEditor({
       </div>
 
       {grants.length === 0 ? (
-        <p className="text-sm text-gray-500">{emptyHint}</p>
+        <p className="text-sm text-text-muted">{emptyHint}</p>
       ) : (
         <ul className="space-y-2" data-testid={rowsTestId}>
           {grants.map((g) => (
@@ -206,7 +206,7 @@ export function GrantRowsEditor({
                 <option value="write">write</option>
                 <option value="manage">manage</option>
               </select>
-              <span className="text-sm text-gray-500">on</span>
+              <span className="text-sm text-text-muted">on</span>
               <select
                 className={selectClass}
                 value={g.target_scope}

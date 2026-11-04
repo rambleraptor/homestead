@@ -62,7 +62,7 @@ export function AddToCookbookMenu({ recipe }: AddToCookbookMenuProps) {
         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium font-body transition-colors shadow-sm border ${
           open
             ? 'bg-accent-terracotta/10 border-accent-terracotta text-accent-terracotta-hover'
-            : 'bg-white hover:bg-bg-pearl text-brand-navy border-gray-200'
+            : 'bg-surface-white hover:bg-bg-pearl text-brand-navy border-gray-200'
         }`}
       >
         <BookPlus className="w-4 h-4" />
@@ -74,7 +74,7 @@ export function AddToCookbookMenu({ recipe }: AddToCookbookMenuProps) {
           role="dialog"
           aria-label="Add to cookbook"
           data-testid="add-to-cookbook-menu"
-          className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-2 shadow-lg"
+          className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-surface-white p-2 shadow-lg"
         >
           {isError && (
             <p className="px-2 py-1 text-sm text-red-700">Failed to load cookbooks.</p>

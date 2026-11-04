@@ -184,7 +184,7 @@ function EnumMultiFilter({ decl }: { decl: AppFilterDecl }) {
             align="start"
             sideOffset={4}
             data-testid={`filter-enum-multi-panel-${decl.key}`}
-            className="z-50 w-64 rounded-md border border-gray-200 bg-white p-1 shadow-md"
+            className="z-50 w-64 rounded-md border border-gray-200 bg-surface-white p-1 shadow-md"
           >
             {options.length > SEARCH_THRESHOLD && (
               <div className="relative p-1">

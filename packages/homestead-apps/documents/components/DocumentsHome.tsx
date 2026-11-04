@@ -5,7 +5,8 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
@@ -130,7 +131,7 @@ export function DocumentsHome() {
 
   const toast = useToast();
   const reducedMotion = useReducedMotion();
-  const { data: documents, isLoading, isError, error } = useDocuments();
+  const { data: documents, isLoading, isError, error, refetch } = useDocuments();
   const { data: collections } = useCollections();
   const upload = useUploadDocument();
   const setCollections = useSetDocumentCollections();
@@ -509,10 +510,12 @@ export function DocumentsHome() {
       {isLoading && <DocumentsSkeleton />}
 
       {isError && (
-        <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error instanceof Error ? error.message : 'Failed to load documents'}
-        </div>
+        <QueryError
+          error={error}
+          onRetry={() => void refetch()}
+          title="Failed to load documents"
+          data-testid="documents-error"
+        />
       )}
 
       {/* Above both the empty state and the list: the very first upload into an

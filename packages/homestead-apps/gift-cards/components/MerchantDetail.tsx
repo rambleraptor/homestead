@@ -5,17 +5,22 @@
  */
 
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Minus, Edit } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { useCreateTransaction } from '../hooks/useCreateTransaction';
 import { GiftCardImage } from './GiftCardImage';
 import type { GiftCard } from '../types';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
+import { NEW_CARD_HREF } from '../routes';
 
 interface MerchantDetailProps {
   merchant: string;
   cards: GiftCard[];
   totalAmount: number;
-  onBack: () => void;
+  /** Where "Back to Merchants" goes. */
+  backHref: string;
   onEdit: (card: GiftCard) => void;
   onDelete: (id: string) => void;
 }
@@ -24,7 +29,7 @@ export function MerchantDetail({
   merchant,
   cards,
   totalAmount,
-  onBack,
+  backHref,
   onEdit,
   onDelete,
 }: MerchantDetailProps) {
@@ -34,6 +39,7 @@ export function MerchantDetail({
   const [transactionAmount, setTransactionAmount] = useState<Record<string, string>>({});
 
   const createTransaction = useCreateTransaction();
+  const navigate = useNavigate();
 
   // Separate active and archived cards
   const activeCards = cards.filter((card) => !card.archived);
@@ -74,7 +80,7 @@ export function MerchantDetail({
     card.card_number ? (
       maskString(card.card_number, visibleNumbers.has(card.id))
     ) : (
-      <span className="font-sans text-gray-500" data-testid="card-number-unavailable">
+      <span className="font-sans text-text-muted" data-testid="card-number-unavailable">
         Available when online
       </span>
     );
@@ -85,6 +91,7 @@ export function MerchantDetail({
 
     createTransaction.mutate({
       giftCardId: cardId,
+      merchant,
       currentAmount: card.amount,
       data: {
         transaction_type: 'decrement',
@@ -102,6 +109,7 @@ export function MerchantDetail({
 
     createTransaction.mutate({
       giftCardId: cardId,
+      merchant,
       currentAmount: card.amount,
       data: {
         transaction_type: 'set',
@@ -114,23 +122,29 @@ export function MerchantDetail({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="merchant-detail">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+        <Link
+          to={backHref}
+          className="flex items-center gap-2 text-text-muted hover:text-text-main transition-colors"
+          data-testid="merchant-detail-back"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Back to Merchants</span>
-        </button>
+        </Link>
       </div>
 
       {/* Merchant Summary */}
       <div className="bg-gradient-to-r from-accent-terracotta to-accent-terracotta-hover rounded-2xl shadow-sm p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-display text-2xl font-bold mb-2">{merchant}</h2>
+            <h2
+              className="font-display text-2xl font-bold mb-2"
+              style={viewTransitionName('merchant', merchant)}
+            >
+              {merchant}
+            </h2>
             <p className="text-white/90">
               {activeCards.length} active {activeCards.length === 1 ? 'card' : 'cards'}
               {archivedCards.length > 0 && ` • ${archivedCards.length} archived`}
@@ -138,21 +152,30 @@ export function MerchantDetail({
           </div>
           <div className="text-right">
             <p className="text-sm text-white/90 mb-1">Total Balance</p>
-            <p className="font-display text-4xl font-bold">{formatCurrency(totalAmount)}</p>
+            <p className="font-display text-4xl font-bold" data-testid="merchant-total-balance">
+              {formatCurrency(totalAmount)}
+            </p>
           </div>
         </div>
       </div>
 
       {/* Active Gift Cards */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">Active Cards</h3>
+        <h3 className="text-lg font-semibold text-brand-navy">Active Cards</h3>
         {activeCards.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No active cards</p>
+          <EmptyState
+            icon={CreditCard}
+            title="No active cards"
+            description={`Every ${merchant} card here is used up. Add a new one when you get it.`}
+            action={{ label: 'Add gift card', onClick: () => navigate(NEW_CARD_HREF) }}
+            compact
+            data-testid="merchant-no-active-cards"
+          />
         ) : (
           activeCards.map((card) => (
             <div
               key={card.id}
-              className="bg-white rounded-lg border border-gray-200 p-5"
+              className="bg-surface-white rounded-2xl border border-gray-100 p-5"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -160,10 +183,10 @@ export function MerchantDetail({
                     <CreditCard className="w-6 h-6 text-accent-terracotta" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-2xl font-bold text-brand-navy">
                       {formatCurrency(card.amount)}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-text-muted">
                       Added {card.create_time ? new Date(card.create_time).toLocaleDateString() : 'Recently'}
                     </p>
                   </div>
@@ -171,7 +194,7 @@ export function MerchantDetail({
                 <div className="flex gap-2">
                   <button
                     onClick={() => onEdit(card)}
-                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 text-text-muted hover:bg-gray-100 rounded-lg transition-colors"
                     title="Edit card"
                     aria-label={`Edit ${merchant} card (${formatCurrency(card.amount)})`}
                   >
@@ -190,25 +213,32 @@ export function MerchantDetail({
 
               {/* Transaction Controls */}
               <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor={`quick-transaction-${card.id}`}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Quick Transaction
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
+                    id={`quick-transaction-${card.id}`}
                     type="number"
                     step="0.01"
                     min="0"
                     value={transactionAmount[card.id] || ''}
+                    data-testid={`quick-transaction-amount-${card.id}`}
                     onChange={(e) =>
                       setTransactionAmount((prev) => ({ ...prev, [card.id]: e.target.value }))
                     }
                     placeholder="Amount"
-                    className="w-full sm:flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-accent-terracotta focus:border-transparent"
+                    className="w-full sm:flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-surface-white text-text-main focus:ring-2 focus:ring-accent-terracotta focus:border-transparent"
                   />
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => handleDecrementAmount(card, card.id)}
                       disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) <= 0}
+                      data-testid={`quick-transaction-use-${card.id}`}
                       className="flex-1 sm:flex-none px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
                       title="Subtract amount from balance"
                     >
@@ -216,9 +246,11 @@ export function MerchantDetail({
                       Use
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleSetAmount(card, card.id)}
                       disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) < 0}
-                      className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                      data-testid={`quick-transaction-set-${card.id}`}
+                      className="flex-1 sm:flex-none px-4 py-2 bg-accent-terracotta text-white rounded-lg hover:bg-accent-terracotta-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
                       title="Set balance to this amount"
                     >
                       <Edit className="w-4 h-4" />
@@ -253,7 +285,7 @@ export function MerchantDetail({
                       </button>
                     )}
                   </div>
-                  <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                  <p className="font-mono text-sm text-text-main bg-gray-50 px-3 py-2 rounded border border-gray-200">
                     {cardNumber(card)}
                   </p>
                 </div>
@@ -280,7 +312,7 @@ export function MerchantDetail({
                         )}
                       </button>
                     </div>
-                    <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                    <p className="font-mono text-sm text-text-main bg-gray-50 px-3 py-2 rounded border border-gray-200">
                       {maskString(card.pin, visiblePins.has(card.id))}
                     </p>
                   </div>
@@ -292,7 +324,7 @@ export function MerchantDetail({
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Notes
                     </label>
-                    <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                    <p className="text-sm text-text-muted bg-gray-50 px-3 py-2 rounded border border-gray-200">
                       {card.notes}
                     </p>
                   </div>
@@ -307,7 +339,7 @@ export function MerchantDetail({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {card.front_image && (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Front</p>
+                          <p className="text-xs text-text-muted mb-1">Front</p>
                           <GiftCardImage
                             card={card}
                             field="front_image"
@@ -318,7 +350,7 @@ export function MerchantDetail({
                       )}
                       {card.back_image && (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Back</p>
+                          <p className="text-xs text-text-muted mb-1">Back</p>
                           <GiftCardImage
                             card={card}
                             field="back_image"
@@ -341,7 +373,7 @@ export function MerchantDetail({
         <div className="space-y-4">
           <button
             onClick={() => setShowArchived(!showArchived)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 text-text-muted hover:text-text-main transition-colors"
           >
             {showArchived ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             <span className="font-medium">
@@ -354,7 +386,7 @@ export function MerchantDetail({
               {archivedCards.map((card) => (
                 <div
                   key={card.id}
-                  className="bg-white rounded-lg border border-gray-200 p-5 opacity-60"
+                  className="bg-surface-white rounded-2xl border border-gray-100 p-5 opacity-60"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -362,10 +394,10 @@ export function MerchantDetail({
                         <CreditCard className="w-6 h-6 text-gray-400" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-2xl font-bold text-brand-navy">
                           {formatCurrency(card.amount)}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-text-muted">
                           Archived • Added {card.create_time ? new Date(card.create_time).toLocaleDateString() : 'Recently'}
                         </p>
                       </div>
@@ -373,7 +405,7 @@ export function MerchantDetail({
                     <div className="flex gap-2">
                       <button
                         onClick={() => onEdit(card)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 text-text-muted hover:bg-gray-100 rounded-lg transition-colors"
                         title="Edit card"
                         aria-label={`Edit ${merchant} card (${formatCurrency(card.amount)})`}
                       >
@@ -415,7 +447,7 @@ export function MerchantDetail({
                           </button>
                         )}
                       </div>
-                      <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                      <p className="font-mono text-sm text-text-main bg-gray-50 px-3 py-2 rounded border border-gray-200">
                         {cardNumber(card)}
                       </p>
                     </div>
@@ -442,7 +474,7 @@ export function MerchantDetail({
                             )}
                           </button>
                         </div>
-                        <p className="font-mono text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                        <p className="font-mono text-sm text-text-main bg-gray-50 px-3 py-2 rounded border border-gray-200">
                           {maskString(card.pin, visiblePins.has(card.id))}
                         </p>
                       </div>
@@ -454,7 +486,7 @@ export function MerchantDetail({
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Notes
                         </label>
-                        <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                        <p className="text-sm text-text-muted bg-gray-50 px-3 py-2 rounded border border-gray-200">
                           {card.notes}
                         </p>
                       </div>
@@ -469,7 +501,7 @@ export function MerchantDetail({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {card.front_image && (
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Front</p>
+                              <p className="text-xs text-text-muted mb-1">Front</p>
                               <GiftCardImage
                                 card={card}
                                 field="front_image"
@@ -480,7 +512,7 @@ export function MerchantDetail({
                           )}
                           {card.back_image && (
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Back</p>
+                              <p className="text-xs text-text-muted mb-1">Back</p>
                               <GiftCardImage
                                 card={card}
                                 field="back_image"

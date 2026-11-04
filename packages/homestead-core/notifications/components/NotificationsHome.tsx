@@ -5,6 +5,8 @@ import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useNotifications } from '../hooks/useNotifications';
 import { useScheduledNotifications } from '../hooks/useScheduledNotifications';
 import { ScheduledSection } from './ScheduledSection';
@@ -33,7 +35,7 @@ function internalPath(url: string | undefined): string | null {
 }
 
 function NotificationsPanel() {
-  const { data: notifications, isLoading } = useNotifications();
+  const { data: notifications, isLoading, isError, error: loadError, refetch } = useNotifications();
   const markAsRead = useMarkNotificationAsRead();
   const household = useHousehold();
   const senderName = (n: Notification): string | undefined =>
@@ -44,7 +46,7 @@ function NotificationsPanel() {
   const handleMarkAsRead = async (id: string) => {
     try {
       await markAsRead.mutateAsync(id);
-    } catch (error) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -77,7 +79,7 @@ function NotificationsPanel() {
     return scheduled ? (
       <Calendar className="w-5 h-5 text-blue-500" />
     ) : (
-      <Bell className="w-5 h-5 text-gray-500" />
+      <Bell className="w-5 h-5 text-text-muted" />
     );
   };
 
@@ -95,7 +97,7 @@ function NotificationsPanel() {
     <div className="space-y-6">
       {unreadNotifications.length > 0 && (
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          <h2 className="text-xl font-semibold text-brand-navy mb-4">
             Unread Notifications
           </h2>
           <div className="space-y-3">
@@ -113,7 +115,7 @@ function NotificationsPanel() {
                           From {senderName(notification)}
                         </p>
                       )}
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-brand-navy">
                         {internalPath(notification.url) ? (
                           <Link
                             to={internalPath(notification.url) as string}
@@ -126,14 +128,14 @@ function NotificationsPanel() {
                           notification.title
                         )}
                       </h3>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-text-muted mt-1">
                         {notification.message}
                       </p>
                       <NotificationRecord
                         collection={notification.source_collection}
                         id={notification.source_id}
                       />
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-text-muted mt-2">
                         {formatDate(notification.created)}
                       </p>
                     </div>
@@ -154,16 +156,20 @@ function NotificationsPanel() {
         </div>
       )}
 
-      {!notifications || unreadNotifications.length === 0 ? (
-        <Card>
-          <div className="text-center py-12">
-            <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">No notifications yet</p>
-            <p className="text-sm text-gray-500 mt-2">
-              You'll receive notifications for upcoming events here
-            </p>
-          </div>
-        </Card>
+      {isError ? (
+        <QueryError
+          error={loadError}
+          onRetry={() => void refetch()}
+          title="Couldn’t load your notifications"
+          data-testid="notifications-error"
+        />
+      ) : !notifications || unreadNotifications.length === 0 ? (
+        <EmptyState
+          icon={Bell}
+          title="No notifications yet"
+          description="You'll receive notifications for upcoming events here"
+          data-testid="notifications-empty"
+        />
       ) : null}
     </div>
   );
@@ -238,8 +244,8 @@ export function NotificationsHome() {
               data-testid={`notifications-tab-${id}`}
               className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                 tab === id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  ? 'border-accent-terracotta text-accent-terracotta'
+                  : 'border-transparent text-text-muted hover:border-gray-300 hover:text-gray-700'
               }`}
             >
               {label}

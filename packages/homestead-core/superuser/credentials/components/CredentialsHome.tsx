@@ -12,10 +12,11 @@ import { AlertTriangle, KeyRound, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
 import { useSecurityStatus } from '../../homestead-information/hooks/useSecurityStatus';
 import { useMcpServers } from '../../mcp-servers/hooks/useMcpServers';
 import {
@@ -57,7 +58,7 @@ export function CredentialsHome() {
   const [deleting, setDeleting] = useState<Deleting>(null);
   const [settingSlot, setSettingSlot] = useState<CredentialSlotStatus | null>(null);
 
-  const { data: credentials, isLoading, isError, error } = useCredentials();
+  const { data: credentials, isLoading, isError, error, refetch } = useCredentials();
   const slots = useCredentialSlots();
   const { data: mcpServers } = useMcpServers();
   const setSlot = useSetSlotCredential();
@@ -89,7 +90,7 @@ export function CredentialsHome() {
         });
       }
       setEditing(null);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -103,7 +104,7 @@ export function CredentialsHome() {
         exists: (credentials ?? []).some((c) => c.id === settingSlot.id),
       });
       setSettingSlot(null);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -122,7 +123,7 @@ export function CredentialsHome() {
     try {
       await deleteCredential.mutateAsync(deleting.id);
       setDeleting(null);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -172,23 +173,23 @@ export function CredentialsHome() {
       />
 
       {(slots.data?.length ?? 0) > 0 && (
-        <h2 className="text-lg font-semibold text-gray-900">Other credentials</h2>
+        <h2 className="text-lg font-semibold text-brand-navy">Other credentials</h2>
       )}
 
       {isError ? (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          Couldn’t load credentials: {getAepErrorMessage(error)}
-        </div>
+        <QueryError
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load credentials"
+          data-testid="credentials-error"
+        />
       ) : !freeForm.length ? (
-        <Card>
-          <div className="py-10 text-center" data-testid="credentials-empty">
-            <KeyRound className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-            <p className="text-gray-600">No credentials yet</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Add the tokens other services need, such as an MCP server’s.
-            </p>
-          </div>
-        </Card>
+        <EmptyState
+          icon={KeyRound}
+          title="No credentials yet"
+          description="Add the tokens other services need, such as an MCP server’s."
+          data-testid="credentials-empty"
+        />
       ) : (
         <ul className="space-y-3" data-testid="credentials-list">
           {freeForm.map((credential) => (
@@ -196,18 +197,18 @@ export function CredentialsHome() {
               <Card>
                 <div className="flex items-start justify-between gap-4" data-testid={`credential-${credential.id}`}>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-gray-900">{credential.name}</h3>
+                    <h3 className="font-semibold text-brand-navy">{credential.name}</h3>
                     {credential.description && (
-                      <p className="mt-1 text-sm text-gray-600">{credential.description}</p>
+                      <p className="mt-1 text-sm text-text-muted">{credential.description}</p>
                     )}
                     <p
-                      className="mt-2 font-mono text-xs text-gray-500"
+                      className="mt-2 font-mono text-xs text-text-muted"
                       data-testid={`credential-value-${credential.id}`}
                     >
                       {valueSummary(credential)}
                     </p>
                     {usedBy(credential).length > 0 && (
-                      <p className="mt-1 text-xs text-gray-500" data-testid={`credential-used-by-${credential.id}`}>
+                      <p className="mt-1 text-xs text-text-muted" data-testid={`credential-used-by-${credential.id}`}>
                         Used by {usedBy(credential).map((name) => `${name} (MCP server)`).join(', ')}
                       </p>
                     )}
