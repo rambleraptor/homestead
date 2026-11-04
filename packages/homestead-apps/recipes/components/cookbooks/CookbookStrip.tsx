@@ -1,6 +1,6 @@
 /**
- * The way through the cookbooks: a strip of every cookbook as a chip, with the
- * open one highlighted, and previous/next arrows at the ends. Left and right
+ * The way through the collections: a strip of every collection as a chip, with
+ * the open one highlighted, and previous/next arrows at the ends. Left and right
  * arrow keys do the same from anywhere on the page that isn't a text field.
  */
 
@@ -17,7 +17,7 @@ interface CookbookStripProps {
 }
 
 export function cookbookPath(id: string): string {
-  return `/recipes/cookbooks/${id}`;
+  return `/recipes/collections/${id}`;
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -44,11 +44,11 @@ export function CookbookStrip({ cookbooks, currentId }: CookbookStripProps) {
     'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-navy hover:bg-bg-pearl aria-disabled:pointer-events-none aria-disabled:opacity-40';
 
   return (
-    <nav aria-label="Cookbooks" className="flex items-center gap-2" data-testid="cookbook-strip">
+    <nav aria-label="Collections" className="flex items-center gap-2" data-testid="cookbook-strip">
       <Link
         to={prev ? cookbookPath(prev.id) : '#'}
         aria-disabled={!prev}
-        aria-label={prev ? `Previous cookbook: ${prev.name}` : 'No previous cookbook'}
+        aria-label={prev ? `Previous collection: ${prev.name}` : 'No previous collection'}
         title={prev ? `${prev.name} (←)` : undefined}
         data-testid="cookbook-prev"
         className={arrowClass}
@@ -85,7 +85,7 @@ export function CookbookStrip({ cookbooks, currentId }: CookbookStripProps) {
       <Link
         to={next ? cookbookPath(next.id) : '#'}
         aria-disabled={!next}
-        aria-label={next ? `Next cookbook: ${next.name}` : 'No next cookbook'}
+        aria-label={next ? `Next collection: ${next.name}` : 'No next collection'}
         title={next ? `${next.name} (→)` : undefined}
         data-testid="cookbook-next"
         className={arrowClass}

@@ -154,10 +154,10 @@ export const recipesResources: ResourceDefinition[] = [
     singular: 'cookbook',
     plural: COOKBOOKS,
     description:
-      'A named, ordered collection of recipes someone assembles on purpose ' +
-      '(a weeknight rotation, a holiday menu). Tags classify a recipe; a ' +
-      'cookbook curates. A recipe can be in many cookbooks. People may call ' +
-      'a cookbook a "collection".',
+      'A named collection of recipes someone groups on purpose (a weeknight ' +
+      'rotation, a holiday menu). Shown to people as a "collection". Tags ' +
+      'describe a recipe; a collection gathers recipes. A recipe can be in ' +
+      'many collections.',
     user_settable_create: true,
     fields: {
       name: {
@@ -170,9 +170,10 @@ export const recipesResources: ResourceDefinition[] = [
         description: 'What the cookbook is for, in a sentence.',
       },
       /**
-       * Membership lives here, not on the recipe, so a cookbook has an order
-       * and adding a recipe doesn't rewrite the recipe. `set-null` drops a
-       * deleted recipe's id out of every cookbook.
+       * Membership lives here, not on the recipe, so adding a recipe doesn't
+       * rewrite the recipe. Unordered: the SPA shows members the way the
+       * library does. `set-null` drops a deleted recipe's id out of every
+       * cookbook.
        */
       recipes: {
         type: 'array',
@@ -181,8 +182,8 @@ export const recipesResources: ResourceDefinition[] = [
           reference: { resource: 'recipe', onDelete: 'set-null' },
         },
         description:
-          'Ids of the recipes in this cookbook, in display order. Replace the ' +
-          'whole list to add, remove or reorder.',
+          'Ids of the recipes in this collection. Order is not meaningful. ' +
+          'Replace the whole list to add or remove recipes.',
       },
       /**
        * Set only on the server-kept cookbook that collects social-post imports;

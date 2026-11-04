@@ -1,11 +1,11 @@
 /**
- * Recipe cookbooks, on the VM tier.
+ * Recipe collections (the `cookbook` resource), on the VM tier.
  *
- * Covers the rail on the recipes home, a cookbook's page (order, reorder,
- * remove, the picker, delete), the strip that moves between cookbooks, the
- * "Add to cookbook" menu on a recipe page, the automatic "From social"
- * cookbook's protections, and the engine dropping a deleted recipe out of
- * every cookbook. Each test boots from a fresh database.
+ * Covers the rail on the recipes home, a collection's page (the library's
+ * grid and filters, remove, the picker, delete), the strip that moves between
+ * collections, the "Add to collection" menu on a recipe page, the automatic
+ * "From social" collection's protections, and the engine dropping a deleted
+ * recipe out of every collection. Each test boots from a fresh database.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -38,7 +38,7 @@ const curry = {
   cook_time: '40 mins',
 };
 
-describe('Recipe cookbooks', () => {
+describe('Recipe collections', () => {
   let h: Harness;
   let token: string;
   let cookbooks: CookbooksPage;
@@ -55,7 +55,7 @@ describe('Recipe cookbooks', () => {
     await h.close();
   });
 
-  test('the rail lists cookbooks with counts and marks the automatic one', async () => {
+  test('the rail lists collections with counts and marks the automatic one', async () => {
     const r1 = await createRecipe(token, pasta);
     const r2 = await createRecipe(token, salmon);
     await createCookbook(token, { name: 'Weeknight', recipes: [r1.id, r2.id] });
@@ -70,7 +70,7 @@ describe('Recipe cookbooks', () => {
     await cookbooks.expectRecipeChip('Weeknight');
   });
 
-  test('creates a cookbook from the rail and opens it empty', async () => {
+  test('creates a collection from the rail and opens it empty', async () => {
     await cookbooks.gotoRecipes();
     await cookbooks.createCookbook('Thanksgiving', 'The big day');
     await cookbooks.expectCookbookInRail('Thanksgiving');
@@ -85,33 +85,42 @@ describe('Recipe cookbooks', () => {
     expect(stored[0].description).toBe('The big day');
   });
 
-  test('adds recipes through the picker, reorders and removes them', async () => {
+  test('shows members like the library: searchable, removable, no ordering', async () => {
     const r1 = await createRecipe(token, pasta);
     const r2 = await createRecipe(token, salmon);
     const r3 = await createRecipe(token, curry);
     const book = await createCookbook(token, { name: 'Weeknight', recipes: [r1.id] });
 
     await cookbooks.gotoCookbook(book.id);
-    await cookbooks.expectRecipeOrder([pasta.title]);
+    await cookbooks.expectRecipes([pasta.title]);
+    await cookbooks.expectNoReorderControls();
+    await cookbooks.expectNoAddAllToGroceries();
 
     await cookbooks.addRecipes([curry.title, salmon.title]);
-    await cookbooks.expectRecipeOrder([pasta.title, curry.title, salmon.title]);
+    await cookbooks.expectCount('3 recipes');
+    for (const title of [pasta.title, salmon.title, curry.title]) {
+      await cookbooks.expectRecipeInCookbook(title);
+    }
 
-    await cookbooks.moveRecipeUp(salmon.title);
-    await cookbooks.expectRecipeOrder([pasta.title, salmon.title, curry.title]);
-
-    await cookbooks.moveRecipeDown(pasta.title);
-    await cookbooks.expectRecipeOrder([salmon.title, pasta.title, curry.title]);
+    // The library's filters work inside a collection.
+    await cookbooks.searchWithin('salmon');
+    await cookbooks.expectRecipes([salmon.title]);
+    await cookbooks.searchWithin('nothing like this');
+    await cookbooks.expectNoMatches();
+    await cookbooks.searchWithin('');
 
     await cookbooks.removeRecipe(pasta.title);
-    await cookbooks.expectRecipeOrder([salmon.title, curry.title]);
+    await cookbooks.expectRecipeNotInCookbook(pasta.title);
     await cookbooks.expectCount('2 recipes');
 
     const [stored] = await listOrEmpty<CookbookRecord>(token, 'cookbooks');
-    expect(stored.recipes).toEqual([r2.id, r3.id]);
+    expect([...(stored.recipes ?? [])].sort()).toEqual([r2.id, r3.id].sort());
+    // Removing from a collection leaves the recipe itself alone.
+    const recipeTitles = (await listOrEmpty<{ title: string }>(token, 'recipes')).map((r) => r.title);
+    expect(recipeTitles).toContain(pasta.title);
   });
 
-  test('moves between cookbooks with the strip, the arrows and the keyboard', async () => {
+  test('moves between collections with the strip, the arrows and the keyboard', async () => {
     const a = await createCookbook(token, { name: 'Autumn' });
     const b = await createCookbook(token, { name: 'Brunch' });
     const c = await createCookbook(token, { name: 'Camping' });
@@ -137,7 +146,7 @@ describe('Recipe cookbooks', () => {
     await cookbooks.expectOnCookbookPage(c.id);
   });
 
-  test('adds and removes a recipe from its own page, and starts a cookbook from there', async () => {
+  test('adds and removes a recipe from its own page, and starts a collection from there', async () => {
     const r1 = await createRecipe(token, pasta);
     await createCookbook(token, { name: 'Weeknight' });
     await createCookbook(token, { name: 'From social', auto: 'social' });
@@ -164,22 +173,7 @@ describe('Recipe cookbooks', () => {
     expect(byName).toEqual({ Weeknight: [], 'From social': [], 'Date night': [r1.id] });
   });
 
-  test('puts every recipe\'s ingredients on the grocery list once', async () => {
-    const r1 = await createRecipe(token, pasta);
-    const r3 = await createRecipe(token, curry);
-    const book = await createCookbook(token, { name: 'Weeknight', recipes: [r1.id, r3.id] });
-
-    await cookbooks.gotoCookbook(book.id);
-    await cookbooks.clickAddAllToGroceries();
-
-    await h.driver
-      .expect(h.driver.getByText(/Added 3 ingredients to grocery list/))
-      .toBeVisible();
-    const items = await listOrEmpty<{ name: string }>(token, 'groceries');
-    expect(items.map((g) => g.name).sort()).toEqual(['chickpeas', 'garlic', 'spaghetti']);
-  });
-
-  test('a person can delete their cookbook but not the automatic one', async () => {
+  test('a person can delete their collection but not the automatic one', async () => {
     const mine = await createCookbook(token, { name: 'Weeknight' });
     const social = await createCookbook(token, { name: 'From social', auto: 'social' });
 
@@ -197,7 +191,7 @@ describe('Recipe cookbooks', () => {
     await cookbooks.expectCookbookInRail('From social');
   });
 
-  test('edits a cookbook\'s name and description', async () => {
+  test('edits a collection\'s name and description', async () => {
     const book = await createCookbook(token, { name: 'Weeknight' });
     await cookbooks.gotoCookbook(book.id);
     await cookbooks.openMenu();
@@ -206,7 +200,7 @@ describe('Recipe cookbooks', () => {
     await h.driver.expect(h.driver.getByTestId('cookbook-description')).toHaveText('Under 40 minutes');
   });
 
-  test('deleting a recipe drops it out of every cookbook', async () => {
+  test('deleting a recipe drops it out of every collection', async () => {
     const r1 = await createRecipe(token, pasta);
     const r2 = await createRecipe(token, salmon);
     const book = await createCookbook(token, { name: 'Weeknight', recipes: [r1.id, r2.id] });
@@ -217,6 +211,6 @@ describe('Recipe cookbooks', () => {
     expect(stored.recipes).toEqual([r2.id]);
 
     await cookbooks.gotoCookbook(book.id);
-    await cookbooks.expectRecipeOrder([salmon.title]);
+    await cookbooks.expectRecipes([salmon.title]);
   });
 });

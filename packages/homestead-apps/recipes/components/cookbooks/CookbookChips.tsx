@@ -1,5 +1,5 @@
 /**
- * Which cookbooks a recipe is in, as small chips linking to each. Rendered on
+ * Which collections a recipe is in, as small chips linking to each. Rendered on
  * the list cards (capped, inline) and on the recipe page (all of them).
  */
 

@@ -1,7 +1,7 @@
 /**
- * Create or edit a cookbook's own fields (name, description). Membership is
- * edited elsewhere — on the cookbook page and from a recipe's "Add to
- * cookbook" menu — so this stays a two-field form.
+ * Create or edit a collection's own fields (name, description). Membership is
+ * edited elsewhere — on the collection page and from a recipe's "Add to
+ * collection" menu — so this stays a two-field form.
  */
 
 import { Loader2 } from 'lucide-react';
@@ -60,7 +60,7 @@ export function CookbookFormDialog({ isOpen, onClose, cookbook, onSaved }: Cookb
   const busy = create.isPending || update.isPending || form.isSubmitting;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit cookbook' : 'New cookbook'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit collection' : 'New collection'}>
       <form onSubmit={form.handleSubmit} className="space-y-4" data-testid="cookbook-form">
         <div>
           <label htmlFor="cookbook-name" className="block text-xs font-medium text-brand-slate">

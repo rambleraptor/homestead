@@ -1,8 +1,8 @@
 /**
- * The row of cookbook cards on the recipes home, between the header and the
+ * The row of collection cards on the recipes home, between the header and the
  * filter bar. Each card is a cover mosaic, the name and a count; the automatic
- * "From social" cookbook wears an Auto badge. The row scrolls sideways
- * (arrows on wide screens, a swipe on a phone) and ends in a "New cookbook"
+ * "From social" collection wears an Auto badge. The row scrolls sideways
+ * (arrows on wide screens, a swipe on a phone) and ends in a "New collection"
  * card.
  */
 
@@ -14,6 +14,7 @@ import { isAutoCookbook } from '../../utils/cookbooks';
 import type { Recipe } from '../../types';
 import { CookbookCover } from './CookbookCover';
 import { CookbookFormDialog } from './CookbookFormDialog';
+import { cookbookPath } from './CookbookStrip';
 
 interface CookbooksRailProps {
   recipes: Recipe[] | undefined;
@@ -31,7 +32,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <h2 id="cookbooks-heading" className="text-lg font-display font-semibold text-brand-navy">
-            Cookbooks
+            Collections
           </h2>
           {cookbooks && cookbooks.length > 0 && (
             <span className="text-sm text-text-muted" data-testid="cookbooks-count">
@@ -43,7 +44,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
           <button
             type="button"
             onClick={() => scrollBy(-440)}
-            aria-label="Scroll cookbooks left"
+            aria-label="Scroll collections left"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-navy hover:bg-bg-pearl"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -51,7 +52,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
           <button
             type="button"
             onClick={() => scrollBy(440)}
-            aria-label="Scroll cookbooks right"
+            aria-label="Scroll collections right"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-navy hover:bg-bg-pearl"
           >
             <ChevronRight className="h-4 w-4" />
@@ -61,7 +62,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
 
       {isError && (
         <p className="text-sm text-red-700" data-testid="cookbooks-error">
-          Failed to load cookbooks: {error instanceof Error ? error.message : 'An error occurred'}
+          Failed to load collections: {error instanceof Error ? error.message : 'An error occurred'}
         </p>
       )}
 
@@ -74,7 +75,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
           return (
             <Link
               key={cookbook.id}
-              to={`/recipes/cookbooks/${cookbook.id}`}
+              to={cookbookPath(cookbook.id)}
               data-testid={`cookbook-card-${cookbook.name}`}
               className="flex w-44 shrink-0 snap-start flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-2.5 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
             >
@@ -107,7 +108,7 @@ export function CookbooksRail({ recipes }: CookbooksRailProps) {
           className="flex min-h-[11.5rem] w-44 shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-gray-300 text-sm font-medium text-text-muted hover:border-accent-terracotta hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-accent-terracotta"
         >
           <Plus className="h-5 w-5" aria-hidden="true" />
-          New cookbook
+          New collection
         </button>
       </div>
 

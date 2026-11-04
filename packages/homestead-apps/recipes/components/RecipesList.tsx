@@ -1,12 +1,15 @@
 /**
  * Recipes List Component
  *
- * Renders a list of recipes with edit / delete affordances. Pure
- * presentation — data fetching is handled by the caller.
+ * Renders a grid of recipe cards. Pure presentation — data fetching is
+ * handled by the caller. The library passes edit / delete; a collection
+ * passes remove, which takes a recipe out of the collection and leaves the
+ * recipe itself alone.
  */
 
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ChefHat, Clock, Pencil, Trash2 } from 'lucide-react';
+import { ChefHat, Clock, Pencil, Trash2, X } from 'lucide-react';
 import type { Recipe } from '../types';
 import { RecipeImage } from './RecipeImage';
 import { RecipeTags } from './RecipeTags';
@@ -14,12 +17,17 @@ import { CookbookChips } from './cookbooks/CookbookChips';
 
 interface RecipesListProps {
   recipes: Recipe[];
-  onEdit: (recipe: Recipe) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (recipe: Recipe) => void;
+  onDelete?: (id: string) => void;
+  /** Take the recipe out of the collection being shown. */
+  onRemove?: (recipe: Recipe) => void;
+  /** Shown instead of the library's "no recipes yet" message. */
+  emptyState?: ReactNode;
 }
 
-export function RecipesList({ recipes, onEdit, onDelete }: RecipesListProps) {
+export function RecipesList({ recipes, onEdit, onDelete, onRemove, emptyState }: RecipesListProps) {
   if (recipes.length === 0) {
+    if (emptyState) return <>{emptyState}</>;
     return (
       <div
         data-testid="recipes-empty-state"
@@ -63,24 +71,39 @@ export function RecipesList({ recipes, onEdit, onDelete }: RecipesListProps) {
                 </h3>
               </div>
               <div className="flex items-center gap-1 pointer-events-auto relative">
-                <button
-                  type="button"
-                  onClick={() => onEdit(recipe)}
-                  aria-label={`Edit ${recipe.title}`}
-                  data-testid={`recipe-edit-${recipe.title}`}
-                  className="p-1.5 rounded-md text-text-muted hover:bg-bg-pearl hover:text-brand-navy"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(recipe.id)}
-                  aria-label={`Delete ${recipe.title}`}
-                  data-testid={`recipe-delete-${recipe.title}`}
-                  className="p-1.5 rounded-md text-text-muted hover:bg-red-50 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onEdit(recipe)}
+                    aria-label={`Edit ${recipe.title}`}
+                    data-testid={`recipe-edit-${recipe.title}`}
+                    className="p-1.5 rounded-md text-text-muted hover:bg-bg-pearl hover:text-brand-navy"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(recipe.id)}
+                    aria-label={`Delete ${recipe.title}`}
+                    data-testid={`recipe-delete-${recipe.title}`}
+                    className="p-1.5 rounded-md text-text-muted hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                {onRemove && (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(recipe)}
+                    aria-label={`Remove ${recipe.title} from collection`}
+                    data-testid={`recipe-remove-${recipe.title}`}
+                    className="p-1.5 rounded-md text-text-muted hover:bg-red-50 hover:text-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
 

@@ -16,11 +16,12 @@ export const recipesApp: AppConfig = {
   resources: recipesResources,
   chat: {
     instructions: [
-      'Tags classify a recipe (cuisine, diet, "quick"); a cookbook is a named, ordered ' +
-        'list someone curates ("Weeknight dinners", "Thanksgiving"). People may call a ' +
-        'cookbook a "collection" — that means a cookbook, not a documents collection.',
-      'To add, remove or reorder recipes in a cookbook, update its "recipes" list ' +
-        '(recipe ids, in order), replacing the whole list. The cookbook marked ' +
+      'Tags describe a recipe (cuisine, diet, "quick"); a recipe collection groups ' +
+        'recipes someone chose ("Weeknight dinners", "Thanksgiving"). Recipe ' +
+        'collections are stored as the "cookbook" resource; when someone mentions a ' +
+        'collection of recipes, use that, not a documents collection.',
+      'To add or remove recipes in a collection, update its "recipes" list (recipe ' +
+        'ids; order does not matter), replacing the whole list. The collection marked ' +
         'auto: "social" is kept by the server for social-post imports; never create ' +
         'another one, delete it, or set "auto" yourself.',
     ],
@@ -50,7 +51,7 @@ export const recipesApp: AppConfig = {
         component: () => import('./bulk-import').then((m) => m.RecipesBulkImport),
       },
       {
-        path: 'cookbooks/:id',
+        path: 'collections/:id',
         component: () =>
           import('./components/cookbooks/CookbookRoute').then((m) => m.CookbookRoute),
         dynamic: true,
