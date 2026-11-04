@@ -1,17 +1,18 @@
 /**
  * One administered dose within a vaccine's history: date, series/provider/lot
  * details, document link, and the record image thumbnail when one is stored.
+ * Edit links to the dose form's own address (`DoseFormRoute`).
  */
 
 import { Link } from 'react-router-dom';
 import { FileText, Pencil, Trash2 } from 'lucide-react';
 import { useVaccinationImageUrl } from '../hooks/useVaccinationImageUrl';
+import { HEALTH_HOME } from './HealthFormPage';
 import type { Vaccination } from '../types';
 
 interface VaccinationCardProps {
   vaccineId: string;
   vaccination: Vaccination;
-  onEdit: (vaccination: Vaccination) => void;
   onDelete: (vaccination: Vaccination) => void;
 }
 
@@ -28,7 +29,6 @@ export function formatDate(iso: string): string {
 export function VaccinationCard({
   vaccineId,
   vaccination,
-  onEdit,
   onDelete,
 }: VaccinationCardProps) {
   const imageUrl = useVaccinationImageUrl(
@@ -66,14 +66,13 @@ export function VaccinationCard({
             )}
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => onEdit(vaccination)}
+            <Link
+              to={`${HEALTH_HOME}/vaccines/${vaccineId}/doses/${vaccination.id}/edit`}
               aria-label={`Edit dose from ${vaccination.date_administered}`}
               className="p-1.5 text-text-muted hover:text-brand-navy rounded-md hover:bg-white transition-colors"
             >
               <Pencil className="w-4 h-4" />
-            </button>
+            </Link>
             <button
               type="button"
               onClick={() => onDelete(vaccination)}

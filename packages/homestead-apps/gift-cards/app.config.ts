@@ -28,6 +28,24 @@ export const giftCardsApp: AppConfig = {
         component: () =>
           import('./bulk-import').then((m) => m.GiftCardsBulkImport),
       },
+      {
+        path: 'new',
+        component: () =>
+          import('./components/GiftCardFormRoute').then((m) => m.GiftCardFormRoute),
+      },
+      {
+        path: 'cards/:id/edit',
+        component: () =>
+          import('./components/GiftCardFormRoute').then((m) => m.GiftCardFormRoute),
+        dynamic: true,
+      },
+      // The merchant name is percent-encoded in the address (`merchantHref`).
+      {
+        path: 'merchants/:merchant',
+        component: () =>
+          import('./components/MerchantDetailRoute').then((m) => m.MerchantDetailRoute),
+        dynamic: true,
+      },
     ],
     showInNav: true,
     navOrder: 4,

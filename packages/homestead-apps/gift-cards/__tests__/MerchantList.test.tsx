@@ -3,9 +3,9 @@
  */
 
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { MerchantList } from '../components/MerchantList';
 import type { MerchantSummary, GiftCard } from '../types';
 
@@ -53,68 +53,95 @@ const mockMerchants: MerchantSummary[] = [
       },
     ],
   },
+  {
+    merchant: 'Bed Bath & Beyond',
+    totalAmount: 10.0,
+    cardCount: 1,
+    cards: [
+      {
+        id: '4',
+        path: 'gift-cards/4',
+        merchant: 'Bed Bath & Beyond',
+        card_number: '3456',
+        amount: 10,
+        create_time: '2024-01-04',
+        update_time: '2024-01-04',
+      },
+    ],
+  },
 ];
+
+const renderList = (merchants: MerchantSummary[]) =>
+  render(
+    <MemoryRouter>
+      <MerchantList merchants={merchants} />
+    </MemoryRouter>,
+  );
 
 describe('MerchantList', () => {
   it('should render empty state when no merchants', () => {
-    const onMerchantClick = vi.fn();
-    render(<MerchantList merchants={[]} onMerchantClick={onMerchantClick} />);
+    renderList([]);
 
     expect(screen.getByText(/No gift cards yet/i)).toBeInTheDocument();
   });
 
   it('should render list of merchants', () => {
-    const onMerchantClick = vi.fn();
-    render(<MerchantList merchants={mockMerchants} onMerchantClick={onMerchantClick} />);
+    renderList(mockMerchants);
 
     expect(screen.getByText('Amazon')).toBeInTheDocument();
     expect(screen.getByText('Starbucks')).toBeInTheDocument();
   });
 
   it('should display correct totals for each merchant', () => {
-    const onMerchantClick = vi.fn();
-    render(<MerchantList merchants={mockMerchants} onMerchantClick={onMerchantClick} />);
+    renderList(mockMerchants);
 
     expect(screen.getByText('$75.00')).toBeInTheDocument();
     expect(screen.getByText('$15.00')).toBeInTheDocument();
   });
 
   it('should display card counts', () => {
-    const onMerchantClick = vi.fn();
-    render(<MerchantList merchants={mockMerchants} onMerchantClick={onMerchantClick} />);
+    renderList(mockMerchants);
 
     expect(screen.getByText('2 cards')).toBeInTheDocument();
-    expect(screen.getByText('1 card')).toBeInTheDocument();
+    expect(screen.getAllByText('1 card')).toHaveLength(2);
   });
 
-  it('should call onMerchantClick when merchant is clicked', async () => {
-    const user = userEvent.setup();
-    const onMerchantClick = vi.fn();
-    render(<MerchantList merchants={mockMerchants} onMerchantClick={onMerchantClick} />);
+  it("links each merchant to its own page", () => {
+    renderList(mockMerchants);
 
-    const amazonButton = screen.getByText('Amazon').closest('button');
-    expect(amazonButton).toBeInTheDocument();
-
-    await user.click(amazonButton!);
-
-    expect(onMerchantClick).toHaveBeenCalledWith('Amazon');
-    expect(onMerchantClick).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('link', { name: /Amazon/ })).toHaveAttribute(
+      'href',
+      '/gift-cards/merchants/Amazon',
+    );
+    expect(screen.getByRole('link', { name: /Starbucks/ })).toHaveAttribute(
+      'href',
+      '/gift-cards/merchants/Starbucks',
+    );
   });
 
-  it('should handle clicking different merchants', async () => {
-    const user = userEvent.setup();
-    const onMerchantClick = vi.fn();
-    render(<MerchantList merchants={mockMerchants} onMerchantClick={onMerchantClick} />);
+  it('percent-encodes a merchant name in its link', () => {
+    renderList(mockMerchants);
 
-    const amazonButton = screen.getByText('Amazon').closest('button');
-    const starbucksButton = screen.getByText('Starbucks').closest('button');
+    expect(screen.getByRole('link', { name: /Bed Bath & Beyond/ })).toHaveAttribute(
+      'href',
+      '/gift-cards/merchants/Bed%20Bath%20%26%20Beyond',
+    );
+  });
 
-    await user.click(amazonButton!);
-    expect(onMerchantClick).toHaveBeenCalledWith('Amazon');
+  it('staggers the rows in, capped so a long list does not keep the last one waiting', () => {
+    const many: MerchantSummary[] = Array.from({ length: 12 }, (_, i) => ({
+      merchant: `Merchant ${i}`,
+      totalAmount: 1,
+      cardCount: 1,
+      cards: [],
+    }));
+    renderList(many);
 
-    await user.click(starbucksButton!);
-    expect(onMerchantClick).toHaveBeenCalledWith('Starbucks');
-
-    expect(onMerchantClick).toHaveBeenCalledTimes(2);
+    const rows = screen.getAllByTestId('merchant-row');
+    expect(rows[0]).toHaveClass('animate-field-rise');
+    expect(rows[0].style.animationDelay).toBe('0ms');
+    expect(rows[1].style.animationDelay).toBe('30ms');
+    expect(rows[8].style.animationDelay).toBe('240ms');
+    expect(rows[11].style.animationDelay).toBe('240ms');
   });
 });

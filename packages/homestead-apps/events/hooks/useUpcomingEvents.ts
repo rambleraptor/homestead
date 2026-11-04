@@ -22,6 +22,8 @@ export interface UpcomingEvent {
   name: string;
   names: string[];
   tag?: string;
+  /** Origin year (birth / wedding), when the event knows it — for an age. */
+  year?: number;
   date: Date;
 }
 
@@ -61,6 +63,7 @@ export function useUpcomingEvents(days: number = DEFAULT_LOOKAHEAD_DAYS) {
           name: event.name,
           names,
           tag: event.tag,
+          year: event.year,
           date: next,
         });
       }

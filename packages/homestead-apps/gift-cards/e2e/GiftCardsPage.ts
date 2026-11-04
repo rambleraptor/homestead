@@ -18,8 +18,43 @@ export class GiftCardsPage {
     await this.driver.goto('/gift-cards');
   }
 
+  /** Open a merchant's page directly, as a shared link or a reload would. */
+  async gotoMerchant(merchant: string) {
+    await this.driver.goto(`/gift-cards/merchants/${encodeURIComponent(merchant)}`);
+  }
+
   async expectToBeOnGiftCardsPage() {
     await this.driver.expectURL(/\/gift-cards/);
+  }
+
+  /** The merchant's page: its name in the header, with the cards below. */
+  async expectMerchantDetail(merchant: string) {
+    await this.expect(this.driver.getByTestId('merchant-detail')).toBeVisible();
+    await this.expect(this.driver.getByRole('heading', { name: merchant })).toBeVisible();
+  }
+
+  /** The merchant page's total balance (the sum, not any one card's amount). */
+  async expectMerchantTotal(amount: number) {
+    await this.expect(this.driver.getByTestId('merchant-total-balance')).toHaveText(
+      `$${amount.toFixed(2)}`,
+    );
+  }
+
+  /** From a merchant's page, back to the list. */
+  async backToMerchants() {
+    await this.driver.getByTestId('merchant-detail-back').click();
+    await this.driver.expectURL(/\/gift-cards$/);
+  }
+
+  /** Spend `amount` from the card on the merchant's page (its Quick Transaction "Use"). */
+  async useAmount(cardId: string, amount: number) {
+    await this.driver.getByTestId(`quick-transaction-amount-${cardId}`).fill(String(amount));
+    await this.driver.getByTestId(`quick-transaction-use-${cardId}`).click();
+  }
+
+  /** The "Used up!" celebration, when a transaction spends the last of a card. */
+  get celebration(): Locator {
+    return this.driver.getByTestId('celebration-toast');
   }
 
   async clickAddGiftCard() {
@@ -90,11 +125,11 @@ export class GiftCardsPage {
   }
 
   async clickMerchant(merchant: string) {
-    // Click on a merchant card to view its gift cards
+    // Follow the merchant's row to its page
     const merchantCard = this.driver.getByText(merchant);
     await merchantCard.waitFor({ state: 'visible' });
     await merchantCard.click();
-    // Wait for detail view to load
+    await this.expectMerchantDetail(merchant);
     await this.driver.waitForNetworkIdle();
   }
 

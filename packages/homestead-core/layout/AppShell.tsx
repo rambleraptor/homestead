@@ -7,13 +7,15 @@
  * so the active app fills the screen — the mode home-screen installs launch in.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { ViewAsBanner } from './ViewAsBanner';
+import { PullToRefresh } from './PullToRefresh';
 import { AuthGuard } from '../auth/AuthGuard';
 import { OfflineBanner } from '../shared/components/OfflineBanner';
 import { useHomeScreenIcon } from '../shared/pwa';
+import { useSeasonalTheme } from '../seasonal';
 import { useBuildReload } from '../shared/useBuildReload';
 import { useChromeless } from './useChromeless';
 import { PageFillContext } from './pageFill';
@@ -43,6 +45,8 @@ export function AppShell({ children }: AppShellProps) {
 
   // Swap the home-screen (PWA) icon to the active app's, when it has one.
   useHomeScreenIcon();
+  // On a holiday: the accent, favicon and theme-color take the day's colour.
+  useSeasonalTheme();
 
   // `?chrome=none` hides the sidebar + header for the session.
   const chromeless = useChromeless();
@@ -50,6 +54,8 @@ export function AppShell({ children }: AppShellProps) {
   // A page that fills the main area (`useFillPage`) gets it unpadded and
   // owns its scrolling.
   const [fill, setFill] = useState(false);
+  // The scroll region pull-to-refresh reads from, for the pages that don't.
+  const mainRef = useRef<HTMLElement>(null);
 
   // Reload the tab when the launcher swaps in a new SPA build (config change).
   useBuildReload();
@@ -102,9 +108,18 @@ export function AppShell({ children }: AppShellProps) {
 
           {/* Page content */}
           <main
-            className={cn('flex-1', fill ? 'flex min-h-0 flex-col overflow-hidden' : 'overflow-y-auto')}
+            ref={mainRef}
+            // `overscroll-y-contain` on the scroller stops a pull at the top
+            // chaining to the viewport, where mobile Chrome would run its own
+            // page-reload gesture over ours.
+            className={cn(
+              'flex-1',
+              fill ? 'flex min-h-0 flex-col overflow-hidden' : 'relative overflow-y-auto overscroll-y-contain',
+            )}
             data-fill={fill ? 'true' : undefined}
           >
+            {/* Touch only, scrolling pages only; see layout/PullToRefresh.tsx. */}
+            {!fill && <PullToRefresh scrollRef={mainRef} />}
             <div
               className={
                 fill

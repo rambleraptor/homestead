@@ -9,11 +9,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { aepbase } from '@rambleraptor/homestead-core/api/aepbase';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { GIFT_CARDS, GIFT_CARD_TRANSACTIONS } from '../resources';
 import type { GiftCard, GiftCardTransaction, TransactionFormData } from '../types';
 
 interface CreateTransactionParams {
   giftCardId: string;
+  /** The card's merchant, named in the "used up" celebration. */
+  merchant: string;
   currentAmount: number;
   data: TransactionFormData;
 }
@@ -25,6 +28,7 @@ function createdByPath(): string | undefined {
 
 export function useCreateTransaction() {
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async ({ giftCardId, currentAmount, data }: CreateTransactionParams) => {
@@ -63,10 +67,16 @@ export function useCreateTransaction() {
       );
       return { transaction, updatedCard };
     },
-    onSuccess: () => {
+    onSuccess: ({ updatedCard }, { merchant }) => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.app('gift-cards').all(),
       });
+      // Spending the last of a card is a small win: say so, once, in the tab
+      // that did it. A card at zero was removed above, so `updatedCard` is
+      // null exactly when this transaction used it up.
+      if (updatedCard === null) {
+        toast.celebrate('Used up!', { description: `${merchant} card fully spent` });
+      }
     },
   });
 }

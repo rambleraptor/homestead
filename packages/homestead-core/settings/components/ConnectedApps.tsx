@@ -5,7 +5,8 @@ import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useConnectedApps, type ConnectedApp } from '../hooks/useConnectedApps';
 import { useRevokeConnectedApp } from '../hooks/useRevokeConnectedApp';
 
@@ -29,7 +30,7 @@ function formatDate(value?: string): string | null {
 
 export function ConnectedApps() {
   const toast = useToast();
-  const { data: apps = [], isLoading, isError, error: loadError } = useConnectedApps();
+  const { data: apps = [], isLoading, isError, error: loadError, refetch } = useConnectedApps();
   const revoke = useRevokeConnectedApp();
   const [confirmTarget, setConfirmTarget] = useState<ConnectedApp | null>(null);
 
@@ -68,13 +69,21 @@ export function ConnectedApps() {
         </div>
 
         {isError ? (
-          <p className="text-sm text-red-600" role="alert" data-testid="connected-apps-error">
-            Couldn&apos;t load connected apps: {getAepErrorMessage(loadError)}
-          </p>
+          <QueryError
+            compact
+            error={loadError}
+            onRetry={() => void refetch()}
+            title="Couldn’t load connected apps"
+            data-testid="connected-apps-error"
+          />
         ) : apps.length === 0 ? (
-          <p className="text-sm text-gray-500" data-testid="no-connected-apps">
-            You haven&apos;t connected any apps yet.
-          </p>
+          <EmptyState
+            compact
+            icon={Plug}
+            title="No connected apps"
+            description="You haven’t connected any apps yet. One appears here the first time you authorize it over OAuth."
+            data-testid="no-connected-apps"
+          />
         ) : (
           <ul className="divide-y divide-gray-100">
             {apps.map((app) => {

@@ -2,6 +2,8 @@
 /* shadcn semantic tokens (mapped to the brand palette) + chat utilities,
  * required by the shadcn chat primitives used by the Chat app. */
 @import "./shadcn-chat.css";
+/* Holiday accent overrides (`:root[data-holiday]`, set by core/seasonal). */
+@import "../../homestead-core/seasonal/seasonal.css";
 
 /* Tailwind v4 auto-source-detection roots at the Vite cwd
  * (packages/homestead-app/) and excludes node_modules, so the sibling
@@ -51,20 +53,6 @@
   /* Text */
   --color-text-main: #222222;
   --color-text-muted: #6C757D;
-
-  /* Legacy `primary-*` palette (sky blue) — kept so pages predating the
-   * new design system continue to render. New work should use
-   * `accent-terracotta` for primary interactive elements. */
-  --color-primary-50: #f0f9ff;
-  --color-primary-100: #e0f2fe;
-  --color-primary-200: #bae6fd;
-  --color-primary-300: #7dd3fc;
-  --color-primary-400: #38bdf8;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-  --color-primary-800: #075985;
-  --color-primary-900: #0c4a6e;
 
   /* Typography */
   --font-display: var(--font-outfit), "Outfit", "Merriweather", ui-serif, Georgia, serif;
@@ -204,6 +192,174 @@
     to {
       opacity: 1;
       transform: scale(1) translateY(0);
+    }
+  }
+
+  /* The same menu leaving. Shorter than its arrival: a dismissal has already
+   * happened in the user's head by the time the panel starts to go. */
+  --animate-menu-out: menu-out var(--duration-quick) var(--ease-out-soft) both;
+  @keyframes menu-out {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.96) translateY(-4px);
+    }
+  }
+
+  /* Overlays, dialogs and sheets
+   *
+   * The vendored Radix primitives (`ui/dialog.tsx`, `ui/sheet.tsx`) carry
+   * these on `data-[state=open]` / `data-[state=closed]`. Radix keeps a
+   * closing element mounted until its exit animation ends, so the `-out`
+   * halves are what make a close feel like a close rather than a cut. Arrivals
+   * take `settle`; departures `quick`, for the reason `menu-out` gives. */
+  --animate-overlay-in: overlay-in var(--duration-settle) var(--ease-out-soft) both;
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  --animate-overlay-out: overlay-out var(--duration-quick) var(--ease-out-soft) both;
+  @keyframes overlay-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* A dialog popping in from just under full size. The dialog is centred with
+   * Tailwind's `translate` property, which composes with `transform` rather
+   * than fighting it, so the scale stays centred on the dialog. */
+  --animate-dialog-in: dialog-in var(--duration-settle) var(--ease-out-soft) both;
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  --animate-dialog-out: dialog-out var(--duration-quick) var(--ease-out-soft) both;
+  @keyframes dialog-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
+  /* A sheet sliding in from the edge it's docked to, and back out of it. */
+  --animate-sheet-in-left: sheet-in-left var(--duration-settle) var(--ease-out-soft) both;
+  @keyframes sheet-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  --animate-sheet-out-left: sheet-out-left var(--duration-quick) var(--ease-out-soft) both;
+  @keyframes sheet-out-left {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-100%);
+    }
+  }
+  --animate-sheet-in-right: sheet-in-right var(--duration-settle) var(--ease-out-soft) both;
+  @keyframes sheet-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  --animate-sheet-out-right: sheet-out-right var(--duration-quick) var(--ease-out-soft) both;
+  @keyframes sheet-out-right {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  --animate-sheet-in-top: sheet-in-top var(--duration-settle) var(--ease-out-soft) both;
+  @keyframes sheet-in-top {
+    from {
+      transform: translateY(-100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  --animate-sheet-out-top: sheet-out-top var(--duration-quick) var(--ease-out-soft) both;
+  @keyframes sheet-out-top {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-100%);
+    }
+  }
+  --animate-sheet-in-bottom: sheet-in-bottom var(--duration-settle) var(--ease-out-soft) both;
+  @keyframes sheet-in-bottom {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  --animate-sheet-out-bottom: sheet-out-bottom var(--duration-quick) var(--ease-out-soft) both;
+  @keyframes sheet-out-bottom {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  /* A Radix Collapsible opening and closing (`ui/collapsible.tsx`). Height,
+   * not transform — the point is that the content below moves with it — read
+   * from the `--radix-collapsible-content-height` the primitive measures. No
+   * fill mode on purpose: once it has opened, the height goes back to `auto`
+   * so the content may grow (a chat's reasoning is still streaming in). */
+  --animate-collapse-open: collapse-open var(--duration-settle) var(--ease-out-soft);
+  @keyframes collapse-open {
+    from {
+      height: 0;
+      opacity: 0;
+    }
+    to {
+      height: var(--radix-collapsible-content-height);
+      opacity: 1;
+    }
+  }
+  --animate-collapse-close: collapse-close var(--duration-quick) var(--ease-out-soft);
+  @keyframes collapse-close {
+    from {
+      height: var(--radix-collapsible-content-height);
+      opacity: 1;
+    }
+    to {
+      height: 0;
+      opacity: 0;
     }
   }
 
@@ -444,7 +600,10 @@ button:not(:disabled):not([aria-disabled='true']):active,
 @media (prefers-reduced-motion: reduce) {
   *:not(.animate-spin),
   *::before,
-  *::after {
+  *::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
@@ -452,4 +611,31 @@ button:not(:disabled):not([aria-disabled='true']):active,
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/**
+ * Page transitions (View Transitions API)
+ *
+ * The SPA's route renderer wraps each navigation to a different page in
+ * `document.startViewTransition` (`layout/useDisplayedLocation.ts`), which
+ * crossfades the old page into the new one over `settle` instead of cutting.
+ * Browsers without the API, and readers who asked for reduced motion, never
+ * enter a transition at all — the renderer swaps the page directly — so these
+ * rules only ever run where they're wanted.
+ *
+ * An element that carries a `view-transition-name` (`shared/motion/
+ * viewTransition.ts`: a record's card on the list and its hero on the detail
+ * page share one) gets its own group, and the browser moves and resizes it
+ * from where it was to where it is. `::view-transition-group(*)` sets that
+ * glide's clock; the `root` pair below is the crossfade of everything else.
+ */
+::view-transition-group(*) {
+  animation-duration: var(--duration-settle);
+  animation-timing-function: var(--ease-out-soft);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-settle);
+  animation-timing-function: var(--ease-out-soft);
 }

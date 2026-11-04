@@ -192,4 +192,19 @@ describe('Agentic home', () => {
     await d.expect(new DashboardPage(d).agenticHome).toBeVisible();
     await d.expect(d.getByRole('main')).toHaveAttribute('data-fill', 'true');
   });
+
+  test('a ?ask= link puts the question in the composer, unsent, and leaves the address clean', async () => {
+    await h.loginAs(h.member);
+    const d = h.driver;
+    const dashboard = new DashboardPage(d);
+    const chat = new ChatPage(d);
+    await d.goto('/dashboard?ask=hello%20there');
+    await d.expect(dashboard.agenticHome).toBeVisible();
+    await d.expect(chat.input).toHaveValue('hello there');
+    await d.expectURL(/\/dashboard$/);
+    await d.expect(d.locator('[data-testid="chat-input"]:focus')).toHaveCount(1);
+    // Nothing was sent on the person's behalf.
+    await d.expect(chat.userMessages).toHaveCount(0);
+    expect(await e2eClient(h.member.token).collection('conversations').listAll()).toHaveLength(0);
+  });
 });

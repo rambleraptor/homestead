@@ -22,12 +22,12 @@ that:
 | `message.tsx` | `Message`, `MessageContent`, `MessageActions`, `MessageAction`, `MessageResponse` only (no branch UI). `MessageResponse` renders with Streamdown's core alone: no code (Shiki), math (KaTeX), Mermaid, or CJK plugins, to keep the bundle small. |
 | `prompt-input.tsx` | The subset chat uses: `PromptInput` (a form, with local file attachments — picker, paste, drop, `accept` / `maxFiles` / `maxFileSize`), `PromptInputBody`, `PromptInputTextarea`, `PromptInputHeader`, `PromptInputFooter`, `PromptInputTools`, `PromptInputButton`, `PromptInputSubmit` (status-aware, with stop), and `PromptInputActionAddAttachments` as a button rather than a menu item. No provider, menus, model select, referenced sources, screenshots, or command palette. If a send fails, its text and files go back into the composer. On send, files become data URLs read from the `File` itself (`arrayBuffer`), not by fetching the blob URL through a `FileReader`. |
 | `attachments.tsx` | As upstream, minus the hover-card preview (`AttachmentHoverCard*`). |
-| `tool.tsx` | As upstream, except the card sets `border-border` itself: shadcn's base layer colors every border, and this app's CSS doesn't. |
+| `tool.tsx` | As upstream, except the card sets `border-border` itself: shadcn's base layer colors every border, and this app's CSS doesn't. `ToolContent` drops upstream's `animate-in` / `slide-in-from-top-2` classes (no `tailwindcss-animate` here, so they compiled to nothing); the open/close motion is the `../ui/collapsible.tsx` primitive's own height animation. |
 | `code-block.tsx` | As upstream (Shiki highlighting, copy button, language selector), with the same `border-border` on its container and header. Shiki is pinned to upstream's version. |
 | `suggestion.tsx` | As upstream. |
 | `shimmer.tsx` | The sweep is a CSS animation (`animate-text-shimmer` in `globals.css`) instead of `motion`, so no animation library is needed. |
 | `confirmation.tsx` | As upstream, with `border-border` on the alert for the same reason as `tool.tsx`. |
-| `reasoning.tsx` | Streamdown core only, like `message.tsx`. Open/duration state is a local controllable-state hook: `radix-ui` (this app's Radix dependency) doesn't re-export `@radix-ui/react-use-controllable-state`. |
+| `reasoning.tsx` | Streamdown core only, like `message.tsx`. Open/duration state is a local controllable-state hook: `radix-ui` (this app's Radix dependency) doesn't re-export `@radix-ui/react-use-controllable-state`. `ReasoningContent` drops upstream's dead `animate-in` classes, as `tool.tsx` does. |
 | `loader.tsx` | As upstream (from the registry). |
 
 To take a newer upstream version, diff against these notes rather than

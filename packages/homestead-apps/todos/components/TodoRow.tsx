@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Moon, Pin, PinOff, Undo2, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -53,6 +54,22 @@ interface TodoRowProps {
   href?: string;
   /** Someone else just changed this todo; the row lights up briefly. */
   remoteChange?: RemoteChange;
+  /**
+   * Hold the row's entrance back by this many milliseconds, so a list arriving
+   * at once arrives as a cascade. The caller owns the stagger because only it
+   * knows the row's position among its siblings. Read once, on mount: the
+   * delay belongs to the entrance, and moving it afterwards would retime an
+   * animation that has already played.
+   */
+  enterDelayMs?: number;
+  /**
+   * The row is on its way out — play the collapse. The caller keeps the row
+   * mounted for the length of the animation and removes it afterwards; it is
+   * told when the collapse has finished through `onExited`.
+   */
+  exiting?: boolean;
+  /** The collapse played to its end. Never fires where animations don't run. */
+  onExited?: () => void;
 }
 
 interface ActionConfig {
@@ -160,7 +177,11 @@ export function TodoRow({
   href,
   kindMarker,
   remoteChange,
+  enterDelayMs = 0,
+  exiting = false,
+  onExited,
 }: TodoRowProps) {
+  const [enterDelay] = useState(enterDelayMs);
   const actions = readOnly ? [] : actionsForVariant(variant);
   const isCancelled = todo.status === 'cancelled';
   const isPinned = todo.in_main === true;
@@ -190,7 +211,7 @@ export function TodoRow({
   // status actions at all, so there is nothing for a swipe to do.
   const canSwipe = !readOnly && !disabled;
 
-  return (
+  const row = (
     <SwipeRow
       disabled={!canSwipe}
       swipeRight={
@@ -279,5 +300,39 @@ export function TodoRow({
         </div>
       </div>
     </SwipeRow>
+  );
+
+  // One shell around the row, so the entrance and the exit are declared in a
+  // single place. The row lists are flush and divider-separated (no shadow to
+  // clip), so the shell can keep `overflow-hidden` for the collapse without
+  // shaving anything off the row at rest.
+  //
+  // An exiting row is on its way to being gone; take it out of the
+  // accessibility tree, and out of reach of a click, rather than letting
+  // either land on something that is about to stop existing.
+  return (
+    <div
+      className={
+        exiting
+          ? 'animate-row-collapse pointer-events-none overflow-hidden'
+          : 'animate-field-rise'
+      }
+      style={exiting ? undefined : { animationDelay: `${enterDelay}ms` }}
+      data-exiting={exiting || undefined}
+      aria-hidden={exiting || undefined}
+      onAnimationEnd={(event) => {
+        // Children animate too (the remote-change flash); only the shell's own
+        // collapse means the row is done.
+        if (
+          exiting &&
+          event.target === event.currentTarget &&
+          event.animationName === 'row-collapse'
+        ) {
+          onExited?.();
+        }
+      }}
+    >
+      {row}
+    </div>
   );
 }

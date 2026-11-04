@@ -62,6 +62,35 @@ export function dueSoon<T extends DueDated>(
     .sort((a, b) => (a.next_due ?? '').localeCompare(b.next_due ?? ''));
 }
 
+/**
+ * True when a dose given on `lastDoseIso` lands on or after `nextDue`: the
+ * due date has been met, so the series is no longer overdue (or due) even
+ * though `next_due` still holds the old date until the person sets the next
+ * one. Both are ISO YYYY-MM-DD; anything unparseable is "not satisfied".
+ */
+export function isDueSatisfied(
+  nextDue: string | undefined,
+  lastDoseIso: string | undefined,
+): boolean {
+  if (!nextDue || !lastDoseIso) return false;
+  const days = daysUntil(nextDue, lastDoseIso);
+  return days !== null && days <= 0;
+}
+
+/**
+ * A series' due-state once its dose history is known: a dose given on or
+ * after `next_due` clears the date, so the badge reads as complete rather
+ * than overdue. `latestDoseIso` is the newest `date_administered`, if any.
+ */
+export function seriesDueStatus(
+  nextDue: string | undefined,
+  latestDoseIso: string | undefined,
+  todayIso: string,
+): DueStatus {
+  if (isDueSatisfied(nextDue, latestDoseIso)) return 'none';
+  return dueStatus(nextDue, todayIso);
+}
+
 /** Today as ISO YYYY-MM-DD in the local timezone. */
 export function todayIso(now: Date = new Date()): string {
   const y = now.getFullYear();

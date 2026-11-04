@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
@@ -103,11 +104,12 @@ export function FlagManagementHome() {
           </div>
         </Card>
       ) : appIds.length === 0 ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8">
-            No app flags are registered in aepbase yet.
-          </p>
-        </Card>
+        <EmptyState
+          icon={SlidersHorizontal}
+          title="No app flags yet"
+          description="No app flags are registered in aepbase yet. An app declares them in its config, and they appear here after the next boot."
+          data-testid="flag-management-empty"
+        />
       ) : (
         <div className="space-y-4" data-testid="flag-management-list">
           {appIds.map((appId) => {

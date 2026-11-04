@@ -5,7 +5,9 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Pencil, Trash2, Plus } from 'lucide-react';
+import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { CoverageProgressBar } from './CoverageProgressBar';
 import { PerkForm } from './PerkForm';
 import { PerkRow } from './PerkRow';
@@ -25,8 +27,10 @@ interface CardDetailProps {
   card: CreditCard;
   perks: CreditCardPerk[];
   redemptions: PerkRedemption[];
-  onBack: () => void;
-  onEditCard: () => void;
+  /** Where "Back to cards" goes. */
+  backHref: string;
+  /** The card's edit form. */
+  editHref: string;
   onDeleteCard: () => void;
   onCreatePerk: (data: PerkFormData) => Promise<void>;
   onUpdatePerk: (id: string, data: PerkFormData) => Promise<void>;
@@ -46,8 +50,8 @@ export function CardDetail({
   card,
   perks,
   redemptions,
-  onBack,
-  onEditCard,
+  backHref,
+  editHref,
   onDeleteCard,
   onCreatePerk,
   onUpdatePerk,
@@ -81,27 +85,31 @@ export function CardDetail({
     .reduce((sum, r) => sum + r.amount, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="credit-card-detail">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
         <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={onBack}
+          <Link
+            to={backHref}
             className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            data-testid="card-detail-back"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to cards
-          </button>
+          </Link>
           <div className="flex items-center gap-2">
-            <button
-              onClick={onEditCard}
+            <Link
+              to={editHref}
               className="p-2 text-gray-400 hover:text-accent-terracotta transition-colors"
+              aria-label={`Edit ${card.name}`}
               data-testid="edit-card-detail"
             >
               <Pencil className="w-4 h-4" />
-            </button>
+            </Link>
             <button
+              type="button"
               onClick={onDeleteCard}
+              aria-label={`Delete ${card.name}`}
               className="p-2 text-gray-400 hover:text-red-600 transition-colors"
               data-testid="delete-card-detail"
             >
@@ -113,7 +121,12 @@ export function CardDetail({
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-gray-900">{card.name}</h2>
+              <h2
+                className="text-2xl font-bold text-gray-900"
+                style={viewTransitionName('credit-card', card.id)}
+              >
+                {card.name}
+              </h2>
               {card.last_four && (
                 <span className="text-sm text-gray-400">····{card.last_four}</span>
               )}

@@ -1,6 +1,8 @@
 // shadcn/ui Sheet: a Radix Dialog that slides in from an edge. Same style as
-// ./dialog.tsx (forwardRef, the repo's `cn`), with only the `left` and
-// `right` sides this app uses.
+// ./dialog.tsx (forwardRef, the repo's `cn`). The slide is the
+// `animate-sheet-in-*` / `-out-*` keyframes in globals.css, one pair per
+// side: shadcn's `slide-in-from-*` classes compile to nothing here (no
+// tailwindcss-animate plugin).
 import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
@@ -22,7 +24,7 @@ const SheetOverlay = React.forwardRef<
   <SheetPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out",
       className
     )}
     {...props}
@@ -31,8 +33,10 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const SIDES = {
-  left: "inset-y-0 left-0 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
-  right: "inset-y-0 right-0 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+  left: "inset-y-0 left-0 h-dvh w-[85%] max-w-sm border-r data-[state=open]:animate-sheet-in-left data-[state=closed]:animate-sheet-out-left",
+  right: "inset-y-0 right-0 h-dvh w-[85%] max-w-sm border-l data-[state=open]:animate-sheet-in-right data-[state=closed]:animate-sheet-out-right",
+  top: "inset-x-0 top-0 max-h-[85dvh] border-b data-[state=open]:animate-sheet-in-top data-[state=closed]:animate-sheet-out-top",
+  bottom: "inset-x-0 bottom-0 max-h-[85dvh] rounded-t-2xl border-t data-[state=open]:animate-sheet-in-bottom data-[state=closed]:animate-sheet-out-bottom",
 } as const
 
 interface SheetContentProps
@@ -49,7 +53,7 @@ const SheetContent = React.forwardRef<
     <SheetPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 flex h-dvh w-[85%] max-w-sm flex-col gap-4 border-gray-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-300",
+        "fixed z-50 flex flex-col gap-4 border-gray-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg",
         SIDES[side],
         className
       )}

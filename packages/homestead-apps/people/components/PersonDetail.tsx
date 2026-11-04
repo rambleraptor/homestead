@@ -11,7 +11,9 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, FileText, Loader2, UserCheck, Users } from 'lucide-react';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { Avatar } from '@rambleraptor/homestead-core/shared/components/Avatar';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { DocumentListItem } from '../../documents/components/DocumentListItem';
 import { groupDocumentsByCategory } from '../../documents/categorize';
 import { usePersonById } from '../hooks/usePersonById';
@@ -49,10 +51,17 @@ export function PersonDetail({ personId }: { personId: string }) {
     <div className="space-y-6" data-testid="person-detail">
       <BackLink />
 
-      <PageHeader
-        title={person.name}
-        subtitle={person.aliases.length > 0 ? `aka ${person.aliases.join(', ')}` : undefined}
-      />
+      <div className="flex items-center gap-4">
+        <Avatar
+          name={person.name}
+          size="lg"
+          style={viewTransitionName('person', person.id)}
+        />
+        <PageHeader
+          title={person.name}
+          subtitle={person.aliases.length > 0 ? `aka ${person.aliases.join(', ')}` : undefined}
+        />
+      </div>
 
       {person.user && (
         <p
@@ -70,7 +79,10 @@ export function PersonDetail({ personId }: { personId: string }) {
             {person.partner && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Users className="h-4 w-4 text-brand-navy" aria-label="Partner icon" />
-                <span>{person.partner.name}</span>
+                <Avatar name={person.partner.name} size="sm" />
+                <Link to={`/people/${person.partner.id}`} className="hover:underline">
+                  {person.partner.name}
+                </Link>
               </div>
             )}
             {person.households.map((household) => (
@@ -143,14 +155,16 @@ function FamilyCard({
             </dt>
             <dd className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm">
               {people.map((p) => (
-                <Link
-                  key={p.id}
-                  to={`/people/${p.id}`}
-                  className="text-brand-navy hover:underline"
-                  title={p.inferred ? 'Shares a parent' : undefined}
-                >
-                  {p.name}
-                </Link>
+                <span key={p.id} className="inline-flex items-center gap-1.5">
+                  <Avatar name={p.name} size="sm" />
+                  <Link
+                    to={`/people/${p.id}`}
+                    className="text-brand-navy hover:underline"
+                    title={p.inferred ? 'Shares a parent' : undefined}
+                  >
+                    {p.name}
+                  </Link>
+                </span>
               ))}
             </dd>
           </div>

@@ -19,7 +19,9 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import { Avatar } from '@rambleraptor/homestead-core/shared/components/Avatar';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { useFavorites } from '@rambleraptor/homestead-core/shared/favorites';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import type { MapProvider } from '@rambleraptor/homestead-core/auth/types';
@@ -132,21 +134,24 @@ export function PersonCard({ person, onEdit, onDelete }: PersonCardProps) {
   return (
     <Card className="relative transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-semibold text-gray-900">
-            <Link
-              to={`/people/${person.id}`}
-              className="after:absolute after:inset-0 after:content-[''] hover:text-brand-navy"
-              data-testid="person-detail-link"
-            >
-              {person.name}
-            </Link>
-          </h3>
-          {person.aliases.length > 0 && (
-            <p className="text-xs text-gray-500" data-testid="person-aliases-list">
-              aka {person.aliases.join(', ')}
-            </p>
-          )}
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={person.name} style={viewTransitionName('person', person.id)} />
+          <div className="min-w-0">
+            <h3 className="font-semibold text-gray-900">
+              <Link
+                to={`/people/${person.id}`}
+                className="after:absolute after:inset-0 after:content-[''] hover:text-brand-navy"
+                data-testid="person-detail-link"
+              >
+                {person.name}
+              </Link>
+            </h3>
+            {person.aliases.length > 0 && (
+              <p className="text-xs text-gray-500" data-testid="person-aliases-list">
+                aka {person.aliases.join(', ')}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className={`${ABOVE_LINK} -mr-2 -mt-1 flex shrink-0 items-center`}>
@@ -204,8 +209,9 @@ export function PersonCard({ person, onEdit, onDelete }: PersonCardProps) {
           {partner && (
             <span className="inline-flex items-center gap-1.5">
               <Users className={ICON} aria-label="Partner icon" />
-              <span>
+              <span className="inline-flex items-center gap-1.5">
                 Partner:{' '}
+                <Avatar name={partner.name} size="sm" />
                 <Link
                   to={`/people/${partner.id}`}
                   className={`${ABOVE_LINK} hover:underline`}

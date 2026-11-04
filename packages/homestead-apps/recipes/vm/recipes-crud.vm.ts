@@ -85,6 +85,97 @@ describe('Recipes CRUD', () => {
     expect(updated.title).toBe(newTitle);
   });
 
+  test('"Add Recipe" opens /recipes/new; saving returns to the list', async () => {
+    const recipe = testRecipes[0];
+    await recipesPage.clickAddRecipe();
+    await recipesPage.expectOnNewRecipePage();
+
+    await recipesPage.fillRecipeForm({
+      title: recipe.title,
+      ingredients: recipe.parsed_ingredients,
+    });
+    await recipesPage.submitRecipeForm();
+
+    await h.driver.expectURL(/\/recipes$/);
+    await recipesPage.expectRecipeInList(recipe.title);
+  });
+
+  test('cancelling a new recipe returns to the list without saving', async () => {
+    await recipesPage.gotoNewRecipe();
+    await recipesPage.expectOnNewRecipePage();
+    await h.driver.locator('#title').fill('Never saved');
+
+    await recipesPage.cancelRecipeForm();
+
+    await h.driver.expectURL(/\/recipes$/);
+    await recipesPage.expectEmptyState();
+    expect(await listOrEmpty<RecipeRecord>(adminToken, 'recipes')).toHaveLength(0);
+  });
+
+  test('the card pencil opens /recipes/:id/edit; saving returns to the list', async () => {
+    const seed = testRecipes[0];
+    const created = await createRecipe(adminToken, {
+      title: seed.title,
+      parsed_ingredients: seed.parsed_ingredients,
+    });
+
+    await recipesPage.goto();
+    await recipesPage.clickEdit(seed.title);
+    await recipesPage.expectOnEditRecipePage(created.id);
+    await recipesPage.expectTitleInput(seed.title);
+
+    await h.driver.locator('#title').fill('Garlic Pasta, revised');
+    await recipesPage.submitRecipeForm();
+
+    await h.driver.expectURL(/\/recipes$/);
+    await recipesPage.expectRecipeInList('Garlic Pasta, revised');
+    const updated = await e2eClient(adminToken).collection<RecipeRecord>('recipes').get(created.id);
+    expect(updated.title).toBe('Garlic Pasta, revised');
+  });
+
+  test('"Edit" on the recipe page opens its edit address; saving and cancel go back to the recipe', async () => {
+    const seed = testRecipes[1];
+    const created = await createRecipe(adminToken, {
+      title: seed.title,
+      parsed_ingredients: seed.parsed_ingredients,
+    });
+
+    await recipesPage.gotoRecipe(created.id);
+    await recipesPage.expectOnRecipeViewPage(created.id);
+    await recipesPage.clickViewEdit();
+    await recipesPage.expectOnEditRecipePage(created.id);
+
+    await h.driver.locator('#title').fill('Oat Milk Latte, iced');
+    await recipesPage.submitRecipeForm();
+
+    await recipesPage.expectOnRecipeViewPage(created.id);
+    await recipesPage.expectRecipeViewTitle('Oat Milk Latte, iced');
+
+    await recipesPage.clickViewEdit();
+    await recipesPage.expectOnEditRecipePage(created.id);
+    await recipesPage.cancelRecipeForm();
+
+    await recipesPage.expectOnRecipeViewPage(created.id);
+    await recipesPage.expectRecipeFormHidden();
+  });
+
+  test('reloading /recipes/:id/edit keeps the form, filled with the recipe', async () => {
+    const seed = testRecipes[0];
+    const created = await createRecipe(adminToken, {
+      title: seed.title,
+      parsed_ingredients: seed.parsed_ingredients,
+    });
+
+    await recipesPage.gotoEditRecipe(created.id);
+    await recipesPage.expectOnEditRecipePage(created.id);
+    await recipesPage.expectTitleInput(seed.title);
+
+    await h.driver.reload();
+
+    await recipesPage.expectOnEditRecipePage(created.id);
+    await recipesPage.expectTitleInput(seed.title);
+  });
+
   test('deletes a recipe', async () => {
     const seed = testRecipes[1];
     await createRecipe(adminToken, {

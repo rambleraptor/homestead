@@ -1,6 +1,7 @@
 import { Lock, LockOpen } from 'lucide-react';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useSecurityStatus } from '../hooks/useSecurityStatus';
 
 /**
@@ -9,7 +10,7 @@ import { useSecurityStatus } from '../hooks/useSecurityStatus';
  * plus what that does and (when off) how to turn it on.
  */
 export function SecurityCard() {
-  const { data, isLoading, isError } = useSecurityStatus();
+  const { data, isLoading, isError, error, refetch } = useSecurityStatus();
   const enabled = data?.encryptionEnabled ?? false;
 
   return (
@@ -32,9 +33,13 @@ export function SecurityCard() {
                 <span>Checking status…</span>
               </div>
             ) : isError ? (
-              <p className="text-sm text-gray-500" data-testid="security-status-error">
-                Couldn&apos;t load the encryption status.
-              </p>
+              <QueryError
+                compact
+                error={error}
+                onRetry={() => void refetch()}
+                title="Couldn’t load the encryption status"
+                data-testid="security-status-error"
+              />
             ) : (
               <>
                 <span

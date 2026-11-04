@@ -25,6 +25,9 @@ import {
 } from '../types';
 import { AddTodoInput } from './AddTodoInput';
 import { TodoRow } from './TodoRow';
+import { TodoRows } from './TodoRows';
+import { cascadeDelayMs } from '@rambleraptor/homestead-core/shared/hooks/useLeavingRows';
+import { useStreakMilestone } from '../hooks/useStreakMilestone';
 import { useRecentRemoteChanges } from '@rambleraptor/homestead-core/api/remoteChanges';
 import { useTodoChangeToasts } from '../hooks/useTodoChangeToasts';
 import { CategoryManager } from './CategoryManager';
@@ -61,6 +64,7 @@ export function TodosHome() {
   const toast = useToast();
   const recentChanges = useRecentRemoteChanges('todo');
   useTodoChangeToasts();
+  const noteMilestone = useStreakMilestone();
 
   const isMain = scope === MAIN_PROJECT_ID;
   // Categories only exist inside a real project list.
@@ -99,11 +103,15 @@ export function TodosHome() {
   };
 
   const setStatus = (todo: TodoItem, status: TodoStatus) => {
+    // A completion that lands is the one moment the streak can reach a
+    // milestone from this tab; a failed write celebrates nothing.
+    const options =
+      status === 'completed' ? { onSuccess: () => noteMilestone(todo.id) } : undefined;
     if (todo.kind === 'personal') {
-      updatePersonal.mutate({ id: todo.id, data: { status } });
+      updatePersonal.mutate({ id: todo.id, data: { status } }, options);
       return;
     }
-    update.mutate({ id: todo.id, data: { status } });
+    update.mutate({ id: todo.id, data: { status } }, options);
   };
 
   const setStatusAsync = (todo: TodoItem, status: TodoStatus) =>
@@ -286,14 +294,11 @@ export function TodosHome() {
                       </p>
                     ) : (
                       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
-                        {group.items.map((todo) => (
-                          <TodoRow
-                            key={todo.id}
-                            todo={todo}
-                            variant="active"
-                            {...rowProps(todo)}
-                          />
-                        ))}
+                        <TodoRows
+                          todos={group.items}
+                          variant="active"
+                          rowProps={rowProps}
+                        />
                       </div>
                     )}
                   </div>
@@ -310,7 +315,7 @@ export function TodosHome() {
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
                 {showSynthetic &&
-                  synthetic.map((todo) => (
+                  synthetic.map((todo, index) => (
                     <TodoRow
                       key={todo.id}
                       todo={todo}
@@ -322,16 +327,15 @@ export function TodosHome() {
                           ? '/groceries'
                           : undefined
                       }
+                      enterDelayMs={cascadeDelayMs(index)}
                     />
                   ))}
-                {buckets.active.map((todo) => (
-                  <TodoRow
-                    key={todo.id}
-                    todo={todo}
-                    variant="active"
-                    {...rowProps(todo)}
-                  />
-                ))}
+                <TodoRows
+                  todos={buckets.active}
+                  variant="active"
+                  rowProps={rowProps}
+                  indexOffset={showSynthetic ? synthetic.length : 0}
+                />
               </div>
             )}
           </div>
@@ -342,14 +346,7 @@ export function TodosHome() {
               testId="todos-section-dolater"
               count={buckets.doLater.length}
             >
-              {buckets.doLater.map((todo) => (
-                <TodoRow
-                  key={todo.id}
-                  todo={todo}
-                  variant="doLater"
-                  {...rowProps(todo)}
-                />
-              ))}
+              <TodoRows todos={buckets.doLater} variant="doLater" rowProps={rowProps} />
             </CollapsibleSection>
           )}
         </>

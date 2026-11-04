@@ -8,7 +8,7 @@
  * an AI provider never shows a box that can't answer.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import {
@@ -35,7 +35,9 @@ import {
 import { useConversation } from '@rambleraptor/homestead-core/chat/hooks/useConversation';
 import { ComposerAttachments } from '@rambleraptor/homestead-core/chat/components/ComposerAttachments';
 import { availableStarters } from '@rambleraptor/homestead-core/chat/starters';
+import { usePrefillComposer } from '@rambleraptor/homestead-core/chat/hooks/usePrefillComposer';
 import { homeConversationPath, useAssistantAvailability } from '../home';
+import { useAskPrefill } from '../hooks/useAskPrefill';
 
 export function AskBox() {
   const assistant = useAssistantAvailability();
@@ -52,9 +54,11 @@ function AskComposer() {
   );
   const chat = useConversation(null, { onCreated });
   const starters = availableStarters().slice(0, 2);
+  const composer = useRef<HTMLElement>(null);
+  usePrefillComposer(composer, useAskPrefill());
 
   return (
-    <section className="space-y-3" data-testid="ask-widget" aria-label="Ask Homestead">
+    <section className="space-y-3" data-testid="ask-widget" aria-label="Ask Homestead" ref={composer}>
       <PromptInput
         onSubmit={({ text, files }) => chat.send(text, files)}
         accept={ATTACHMENT_TYPES.join(',')}

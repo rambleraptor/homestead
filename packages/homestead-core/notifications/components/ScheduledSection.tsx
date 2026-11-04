@@ -25,6 +25,7 @@ import { getAppById } from '@rambleraptor/homestead-core/apps/registry';
 import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { SectionCard } from '@rambleraptor/homestead-core/shared/components/SectionCard';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
@@ -214,9 +215,12 @@ export function ScheduledSection() {
           <Spinner size="lg" />
         </div>
       ) : queued.length === 0 ? (
-        <p className="text-center text-gray-600 py-8" data-testid="scheduled-empty">
-          Nothing scheduled. Add something you want to be told about later.
-        </p>
+        <EmptyState
+          icon={CalendarClock}
+          title="Nothing scheduled"
+          description="Add something you want to be told about later."
+          data-testid="scheduled-empty"
+        />
       ) : (
         <div className="space-y-5" data-testid="scheduled-list">
           {days.map(([key, dayRows]) => (

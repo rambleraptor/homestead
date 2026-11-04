@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Edit, Plus, Trash2 } from 'lucide-react';
+import { Avatar } from '@rambleraptor/homestead-core/shared/components/Avatar';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
@@ -121,20 +122,19 @@ export function HouseholdsHome() {
                     <h3 className="font-semibold text-gray-900">{household.name}</h3>
                     <HouseholdSummary household={household} />
                     <div
-                      className="flex flex-wrap gap-x-3 text-sm"
+                      className="flex flex-wrap gap-x-3 gap-y-1 text-sm"
                       data-testid={`household-members-${household.id}`}
                     >
                       {members.length === 0 ? (
                         <span className="text-gray-500 italic">No members</span>
                       ) : (
                         members.map((m) => (
-                          <Link
-                            key={m.id}
-                            to={`/people/${m.id}`}
-                            className="text-brand-navy hover:underline"
-                          >
-                            {m.name}
-                          </Link>
+                          <span key={m.id} className="inline-flex items-center gap-1.5">
+                            <Avatar name={m.name} size="sm" />
+                            <Link to={`/people/${m.id}`} className="text-brand-navy hover:underline">
+                              {m.name}
+                            </Link>
+                          </span>
                         ))
                       )}
                     </div>

@@ -13,10 +13,12 @@ import { useCreditCardPerks } from '../hooks/useCreditCardPerks';
 import { usePerkRedemptions } from '../hooks/usePerkRedemptions';
 import { useUpcomingPerks } from '../hooks/useUpcomingPerks';
 import { useRedeemPerk } from '../hooks/useRedeemPerk';
+import { usePerkCelebration } from '../hooks/usePerkCelebration';
 import {
   URGENT_WINDOW_DAYS,
   formatPeriod,
   getPeriodDeadline,
+  toLocalISODate,
 } from '../utils/periodUtils';
 import type { UpcomingPerk } from '../types';
 
@@ -29,6 +31,7 @@ export function UpcomingPerksWidget() {
 
   const upcomingPerks = useUpcomingPerks(cards ?? [], perks ?? [], redemptions ?? []);
   const redeemPerkMutation = useRedeemPerk();
+  const celebrateIfComplete = usePerkCelebration();
 
   const isLoading = cardsLoading || perksLoading || redemptionsLoading;
   const unredeemed = upcomingPerks.filter((p) => !p.isRedeemed);
@@ -41,7 +44,13 @@ export function UpcomingPerksWidget() {
         card: item.card,
         amount: item.perk.value,
       });
-    } catch (err) {
+      celebrateIfComplete(item.card, perks ?? [], redemptions ?? [], {
+        perk: item.perk.id,
+        period_start: toLocalISODate(item.currentPeriod.start),
+        period_end: toLocalISODate(item.currentPeriod.end),
+        amount: item.perk.value,
+      });
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };

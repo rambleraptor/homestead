@@ -16,6 +16,7 @@ import { AlertCircle, Plus, Wrench } from 'lucide-react';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { ReminderOptInToggle } from '@rambleraptor/homestead-core/user-settings';
 import {
   useCompleteHomeTask,
@@ -26,6 +27,7 @@ import {
 } from '../hooks/useHomeTasks';
 import { TASK_REMINDER_SETTING } from '../taskReminderSetting';
 import type { HomeTask, HomeTaskFormData } from '../types';
+import { nextDueAfterCompletion, todayIso, urgencyOf } from '../utils/homeTasks';
 import { HomeTaskForm } from './HomeTaskForm';
 import { HomeTaskRow } from './HomeTaskRow';
 
@@ -39,6 +41,7 @@ export function HomeTasks() {
   const updateTask = useUpdateHomeTask();
   const deleteTask = useDeleteHomeTask();
   const { complete, isPending: completing } = useCompleteHomeTask();
+  const toast = useToast();
 
   const closeForm = () => {
     setFormOpen(false);
@@ -70,23 +73,38 @@ export function HomeTasks() {
         });
       }
       closeForm();
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
 
   const handleComplete = async (task: HomeTask) => {
+    // Whether this is the completion that clears the last overdue item, worked
+    // out before the write from the list as it stands: the task's rolled
+    // forward date is what the hook is about to store, and the rest are as
+    // they are. Decided up front so a refetch landing mid-await can't move
+    // the goalposts.
+    const today = todayIso();
+    const overdue = (t: HomeTask) => urgencyOf(t, today) === 'overdue';
+    const overdueBefore = (tasks ?? []).filter(overdue).length;
+    const overdueAfter = (tasks ?? [])
+      .map((t) => (t.id === task.id ? { ...t, next_due: nextDueAfterCompletion(t, today) } : t))
+      .filter(overdue).length;
     try {
       await complete(task);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
+      return;
+    }
+    if (overdueBefore > 0 && overdueAfter === 0) {
+      toast.celebrate('All caught up!', { description: 'Nothing overdue around the house' });
     }
   };
 
   const handleTogglePause = async (task: HomeTask) => {
     try {
       await updateTask.mutateAsync({ id: task.id, data: { paused: !task.paused } });
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -95,7 +113,7 @@ export function HomeTasks() {
     if (!deleteTarget) return;
     try {
       await deleteTask.mutateAsync(deleteTarget.id);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
     setDeleteTarget(null);

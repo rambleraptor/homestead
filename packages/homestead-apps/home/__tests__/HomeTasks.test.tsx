@@ -29,6 +29,11 @@ vi.mock('@rambleraptor/homestead-core/user-settings', () => ({
   ),
 }));
 
+const celebrate = vi.fn();
+vi.mock('@rambleraptor/homestead-core/shared/components/ToastProvider', () => ({
+  useToast: () => ({ celebrate }),
+}));
+
 import { HomeTasks } from '../components/HomeTasks';
 
 const task = (over: Partial<HomeTask> = {}): HomeTask => ({
@@ -54,6 +59,7 @@ function setup(data: HomeTask[] | undefined, extra: Record<string, unknown> = {}
 
 beforeEach(() => {
   useHomeTasks.mockReset();
+  celebrate.mockReset();
   complete.mockReset().mockResolvedValue(undefined);
   updateAsync.mockReset().mockResolvedValue(undefined);
   deleteAsync.mockReset().mockResolvedValue(undefined);
@@ -104,6 +110,54 @@ describe('HomeTasks', () => {
     await user.click(screen.getByTestId('home-task-done'));
 
     expect(complete).toHaveBeenCalledWith(row);
+  });
+
+  describe('clearing the last overdue task', () => {
+    const overdue = (over: Partial<HomeTask> = {}) =>
+      task({ id: 'late', name: 'Clean gutters', next_due: '2020-01-01', ...over });
+
+    it('celebrates once the write has landed', async () => {
+      const user = userEvent.setup();
+      setup([overdue(), task()]);
+
+      const rows = screen.getAllByTestId('home-task-row');
+      await user.click(within(rows[0]).getByTestId('home-task-done'));
+
+      expect(celebrate).toHaveBeenCalledTimes(1);
+      expect(celebrate).toHaveBeenCalledWith('All caught up!', {
+        description: 'Nothing overdue around the house',
+      });
+    });
+
+    it('says nothing while another task is still overdue', async () => {
+      const user = userEvent.setup();
+      setup([overdue(), overdue({ id: 'later', name: 'Flush water heater' })]);
+
+      const rows = screen.getAllByTestId('home-task-row');
+      await user.click(within(rows[0]).getByTestId('home-task-done'));
+
+      expect(complete).toHaveBeenCalled();
+      expect(celebrate).not.toHaveBeenCalled();
+    });
+
+    it('says nothing when nothing was overdue to begin with', async () => {
+      const user = userEvent.setup();
+      setup([task()]);
+
+      await user.click(screen.getByTestId('home-task-done'));
+
+      expect(celebrate).not.toHaveBeenCalled();
+    });
+
+    it('says nothing when the write fails', async () => {
+      const user = userEvent.setup();
+      complete.mockRejectedValueOnce(new Error('offline'));
+      setup([overdue()]);
+
+      await user.click(screen.getByTestId('home-task-done'));
+
+      expect(celebrate).not.toHaveBeenCalled();
+    });
   });
 
   it('toggles pause without touching anything else on the row', async () => {

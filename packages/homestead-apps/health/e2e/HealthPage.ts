@@ -37,16 +37,120 @@ export class HealthPage {
     await this.driver.expectURL(/\/health-records/);
   }
 
+  async expectOnHealthHome() {
+    await this.driver.expectURL(/\/health-records$/);
+  }
+
+  // --- the forms' own addresses ------------------------------------------
+
+  async gotoNewVaccine() {
+    await this.driver.goto('/health-records/vaccines/new');
+  }
+
+  async gotoEditVaccine(id: string) {
+    await this.driver.goto(`/health-records/vaccines/${id}/edit`);
+  }
+
+  async gotoNewDose(vaccineId: string) {
+    await this.driver.goto(`/health-records/vaccines/${vaccineId}/doses/new`);
+  }
+
+  async gotoEditDose(vaccineId: string, doseId: string) {
+    await this.driver.goto(`/health-records/vaccines/${vaccineId}/doses/${doseId}/edit`);
+  }
+
+  async expectOnNewVaccinePage() {
+    await this.driver.expectURL(/\/health-records\/vaccines\/new$/);
+    await this.expect(this.driver.getByTestId('vaccine-form-page')).toBeVisible();
+    await this.expect(this.driver.locator('#name')).toBeVisible();
+  }
+
+  async expectOnEditVaccinePage(id: string) {
+    await this.driver.expectURL(new RegExp(`/health-records/vaccines/${id}/edit$`));
+    await this.expect(this.driver.getByTestId('vaccine-form-page')).toBeVisible();
+    await this.expect(this.driver.locator('#name')).toBeVisible();
+  }
+
+  async expectOnNewDosePage(vaccineId: string) {
+    await this.driver.expectURL(new RegExp(`/health-records/vaccines/${vaccineId}/doses/new$`));
+    await this.expect(this.driver.getByTestId('dose-form-page')).toBeVisible();
+    await this.expect(this.driver.locator('#date_administered')).toBeVisible();
+  }
+
+  async expectOnEditDosePage(vaccineId: string, doseId: string) {
+    await this.driver.expectURL(
+      new RegExp(`/health-records/vaccines/${vaccineId}/doses/${doseId}/edit$`),
+    );
+    await this.expect(this.driver.getByTestId('dose-form-page')).toBeVisible();
+    await this.expect(this.driver.locator('#date_administered')).toBeVisible();
+  }
+
+  async expectVaccineNameInput(value: string) {
+    await this.expect(this.driver.locator('#name')).toHaveValue(value);
+  }
+
+  async expectDoseDateInput(value: string) {
+    await this.expect(this.driver.locator('#date_administered')).toHaveValue(value);
+  }
+
+  /** The form page for a record the viewer can't load (someone else's, say). */
+  async expectFormLoadError(noun: 'vaccine' | 'dose') {
+    await this.expect(this.driver.getByText(`Failed to load ${noun}`)).toBeVisible();
+    await this.expect(this.driver.getByTestId('vaccine-form')).toHaveCount(0);
+    await this.expect(this.driver.getByTestId('vaccination-form')).toHaveCount(0);
+  }
+
+  async cancelVaccineForm() {
+    await this.driver.getByTestId('vaccine-form-cancel').click();
+  }
+
+  async cancelDoseForm() {
+    await this.driver.getByTestId('vaccination-form-cancel').click();
+  }
+
+  /** The celebration toast a dose can earn (series complete, overdue cleared). */
+  get celebration() {
+    return this.driver.getByTestId('celebration-toast');
+  }
+
+  async expectCelebration(text: string | RegExp) {
+    await this.expect(this.celebration).toContainText(text);
+  }
+
+  async expectNoCelebration() {
+    await this.expect(this.celebration).toHaveCount(0);
+  }
+
+  async expectDueBadge(vaccineName: string, label: string) {
+    await this.expect(this.vaccineCard(vaccineName).getByTestId('vaccine-due-badge')).toHaveText(
+      label,
+    );
+  }
+
+  async expectNoDueBadge(vaccineName: string) {
+    await this.expect(this.vaccineCard(vaccineName).getByTestId('vaccine-due-badge')).toHaveCount(
+      0,
+    );
+  }
+
+  async expectVaccineExpanded(vaccineName: string, expanded: boolean) {
+    await this.expect(
+      this.vaccineCard(vaccineName).getByTestId('vaccine-dose-history'),
+    ).toHaveCount(expanded ? 1 : 0);
+  }
+
   private vaccineCard(name: string) {
     return this.driver.getByTestId('vaccine-card').filter({ hasText: name }).first();
   }
 
   // --- vaccine (series) ----------------------------------------------------
 
+  /** "Add Vaccine" on the home — a link to `vaccines/new`. */
   async clickAddVaccine() {
     const addButton = this.driver.getByTestId('add-vaccine-button');
     await addButton.waitFor({ state: 'visible' });
     await addButton.click();
+    await this.driver.locator('#name').waitFor({ state: 'visible' });
   }
 
   async fillVaccineForm(data: Partial<VaccineFormInput>) {
@@ -65,7 +169,7 @@ export class HealthPage {
     const submitButton = this.driver.getByTestId('vaccine-form-submit');
     await submitButton.waitFor({ state: 'visible' });
     await submitButton.click();
-    // The form view swaps back to the list once the mutation lands.
+    // The form page returns to the home once the mutation lands.
     await submitButton.waitFor({ state: 'hidden' });
   }
 
@@ -76,10 +180,15 @@ export class HealthPage {
     await this.driver.waitForNetworkIdle();
   }
 
+  /** The pencil on a series card — a link to `vaccines/:id/edit`. */
+  async clickEditVaccine(name: string) {
+    const editLink = this.driver.getByRole('link', { name: `Edit ${name}` }).first();
+    await editLink.waitFor({ state: 'visible' });
+    await editLink.click();
+  }
+
   async editVaccine(name: string, newData: Partial<VaccineFormInput>) {
-    const editButton = this.driver.getByRole('button', { name: `Edit ${name}` }).first();
-    await editButton.waitFor({ state: 'visible' });
-    await editButton.click();
+    await this.clickEditVaccine(name);
 
     await this.driver.locator('#name').waitFor({ state: 'visible' });
     await this.fillVaccineForm(newData);
@@ -127,12 +236,13 @@ export class HealthPage {
       .click();
   }
 
+  /** "+ Dose" on a series card — a link to `vaccines/:id/doses/new`. */
   async clickAddDose(name: string) {
-    const addButton = this.vaccineCard(name).getByRole('button', {
+    const addLink = this.vaccineCard(name).getByRole('link', {
       name: `Add ${name} dose`,
     });
-    await addButton.waitFor({ state: 'visible' });
-    await addButton.click();
+    await addLink.waitFor({ state: 'visible' });
+    await addLink.click();
   }
 
   async fillDoseForm(data: Partial<VaccinationFormInput>) {
@@ -169,12 +279,17 @@ export class HealthPage {
     await this.driver.waitForNetworkIdle();
   }
 
-  async editDose(dateAdministered: string, newData: Partial<VaccinationFormInput>) {
-    const editButton = this.driver
-      .getByRole('button', { name: `Edit dose from ${dateAdministered}` })
+  /** The pencil on a dose — a link to `vaccines/:id/doses/:doseId/edit`. */
+  async clickEditDose(dateAdministered: string) {
+    const editLink = this.driver
+      .getByRole('link', { name: `Edit dose from ${dateAdministered}` })
       .first();
-    await editButton.waitFor({ state: 'visible' });
-    await editButton.click();
+    await editLink.waitFor({ state: 'visible' });
+    await editLink.click();
+  }
+
+  async editDose(dateAdministered: string, newData: Partial<VaccinationFormInput>) {
+    await this.clickEditDose(dateAdministered);
 
     await this.driver.locator('#date_administered').waitFor({ state: 'visible' });
     await this.fillDoseForm(newData);

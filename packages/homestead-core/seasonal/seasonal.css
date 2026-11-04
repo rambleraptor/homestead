@@ -1,0 +1,41 @@
+/*
+ * Seasonal accents. `useSeasonalTheme` (seasonal/theme.ts) sets
+ * `data-holiday` on <html> for the day; each rule here shifts the accent
+ * tokens for that day. Tailwind v4's theme tokens are plain CSS variables, so
+ * overriding `--color-accent-terracotta` on the root recolours every
+ * `accent-terracotta` utility in the app at once — nothing else to touch.
+ *
+ * The hex values pair with `Holiday.accent` in shared/utils/dateUtils.ts
+ * (the theme-color the browser chrome shows); keep them in step.
+ */
+
+:root[data-holiday="halloween"] {
+  --color-accent-terracotta: #E0702B;
+  --color-accent-terracotta-hover: #C45F1F;
+}
+
+:root[data-holiday="valentines-day"] {
+  --color-accent-terracotta: #D9536F;
+  --color-accent-terracotta-hover: #C04260;
+}
+
+:root[data-holiday="st-patricks-day"] {
+  --color-accent-terracotta: #2E9E5B;
+  --color-accent-terracotta-hover: #25824B;
+}
+
+:root[data-holiday="christmas-eve"],
+:root[data-holiday="christmas"] {
+  --color-accent-terracotta: #C8403A;
+  --color-accent-terracotta-hover: #AD332E;
+}
+
+:root[data-holiday="independence-day"] {
+  --color-accent-terracotta: #3B6FD1;
+  --color-accent-terracotta-hover: #2F5CB3;
+}
+
+:root[data-holiday="thanksgiving"] {
+  --color-accent-terracotta: #D28A1F;
+  --color-accent-terracotta-hover: #B6761A;
+}

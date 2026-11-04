@@ -35,10 +35,46 @@ export class RecipesPage {
     await this.driver.expectURL(/\/recipes/);
   }
 
+  /** "Add Recipe" on the list — a link to `/recipes/new`. */
   async clickAddRecipe() {
     const addButton = this.driver.getByTestId('add-recipe-button');
     await addButton.waitFor({ state: 'visible' });
     await addButton.click();
+    await this.driver.locator('#title').waitFor({ state: 'visible' });
+  }
+
+  // --- the form's own addresses ------------------------------------------
+
+  async gotoNewRecipe() {
+    await this.driver.goto('/recipes/new');
+  }
+
+  async gotoEditRecipe(id: string) {
+    await this.driver.goto(`/recipes/${id}/edit`);
+  }
+
+  async expectOnNewRecipePage() {
+    await this.driver.expectURL(/\/recipes\/new$/);
+    await this.expectRecipeFormVisible();
+  }
+
+  async expectOnEditRecipePage(id: string) {
+    await this.driver.expectURL(new RegExp(`/recipes/${id}/edit$`));
+    await this.expectRecipeFormVisible();
+  }
+
+  async expectRecipeFormVisible() {
+    await this.expect(this.driver.getByTestId('recipe-form-page')).toBeVisible();
+    await this.expect(this.driver.locator('#title')).toBeVisible();
+  }
+
+  async expectRecipeFormHidden() {
+    await this.expect(this.driver.getByTestId('recipe-form-page')).toHaveCount(0);
+  }
+
+  /** The form's Cancel button; leaves for the list (new) or the recipe (edit). */
+  async cancelRecipeForm() {
+    await this.driver.getByRole('button', { name: /^cancel$/i }).click();
   }
 
   /** Fill the form for a brand-new recipe. Adds extra ingredient rows as needed. */
@@ -87,6 +123,7 @@ export class RecipesPage {
     await this.driver.waitForNetworkIdle();
   }
 
+  /** The pencil on a list card — a link to `/recipes/:id/edit`. */
   async clickEdit(title: string) {
     const btn = this.driver.getByTestId(`recipe-edit-${title}`);
     await btn.waitFor({ state: 'visible' });
@@ -128,7 +165,7 @@ export class RecipesPage {
     await this.driver.goto(`/recipes/${id}`);
   }
 
-  /** Open the edit form from a recipe's own page. */
+  /** Open the edit form from a recipe's own page — a link to `/recipes/:id/edit`. */
   async clickViewEdit() {
     await this.driver.getByTestId('recipe-view-edit').click();
     await this.driver.locator('#title').waitFor({ state: 'visible' });

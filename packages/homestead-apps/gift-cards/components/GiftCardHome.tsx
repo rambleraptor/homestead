@@ -1,91 +1,23 @@
 /**
  * Gift Card Home Component
  *
- * Main gift card management interface
+ * The list: household totals over every merchant, each a link to its own
+ * page. Adding a card, editing one and reading a merchant are routes of their
+ * own (`new`, `cards/:id/edit`, `merchants/:merchant`), so they can be opened
+ * directly and reloaded.
  */
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Plus, Gift, AlertCircle, Upload } from 'lucide-react';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
-import { useMerchantSummaries } from '../hooks/useMerchantSummaries';
-import { useCreateGiftCard } from '../hooks/useCreateGiftCard';
-import { useUpdateGiftCard } from '../hooks/useUpdateGiftCard';
-import { useDeleteGiftCard } from '../hooks/useDeleteGiftCard';
-import { MerchantList } from './MerchantList';
-import { MerchantDetail } from './MerchantDetail';
-import { GiftCardForm } from './GiftCardForm';
-import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
-import type { GiftCard, GiftCardFormData } from '../types';
-
-type View = 'list' | 'detail' | 'form';
+import { useMerchantSummaries } from '../hooks/useMerchantSummaries';
+import { GIFT_CARDS_HOME, NEW_CARD_HREF } from '../routes';
+import { MerchantList } from './MerchantList';
 
 export function GiftCardHome() {
-  const navigate = useNavigate();
-  const [view, setView] = useState<View>('list');
-  const [selectedMerchant, setSelectedMerchant] = useState<string | null>(null);
-  const [editingCard, setEditingCard] = useState<GiftCard | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [cardToDelete, setCardToDelete] = useState<string | null>(null);
-
   const { stats, isLoading, isError, error } = useMerchantSummaries();
-  const createMutation = useCreateGiftCard();
-  const updateMutation = useUpdateGiftCard();
-  const deleteMutation = useDeleteGiftCard();
-
-  const handleAddCard = () => {
-    setEditingCard(null);
-    setView('form');
-  };
-
-  const handleMerchantClick = (merchant: string) => {
-    setSelectedMerchant(merchant);
-    setView('detail');
-  };
-
-  const handleBack = () => {
-    setSelectedMerchant(null);
-    setView('list');
-  };
-
-  const handleEditCard = (card: GiftCard) => {
-    setEditingCard(card);
-    setView('form');
-  };
-
-  const handleDeleteCard = (id: string) => {
-    setCardToDelete(id);
-    setDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (cardToDelete) {
-      await deleteMutation.mutateAsync(cardToDelete);
-      setDeleteConfirmOpen(false);
-      setCardToDelete(null);
-    }
-  };
-
-  const handleFormSubmit = async (data: GiftCardFormData) => {
-    try {
-      if (editingCard) {
-        await updateMutation.mutateAsync({ id: editingCard.id, data });
-      } else {
-        await createMutation.mutateAsync(data);
-      }
-      setView('list');
-      setEditingCard(null);
-    } catch (err) {
-      // Error surfaced by the global mutation error toast (queryClient.ts).
-    }
-  };
-
-  const handleFormCancel = () => {
-    setView('list');
-    setEditingCard(null);
-  };
 
   if (isLoading) {
     return (
@@ -102,7 +34,7 @@ export function GiftCardHome() {
 
   if (isError) {
     return (
-      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
+      <div role="alert" className="bg-red-50/20 border border-red-200 rounded-lg p-6">
         <div className="flex items-center gap-3">
           <AlertCircle className="w-6 h-6 text-red-600" />
           <div>
@@ -118,127 +50,72 @@ export function GiftCardHome() {
     );
   }
 
-  const selectedMerchantData = stats?.merchants.find(
-    (m) => m.merchant === selectedMerchant
-  );
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      {view === 'list' && (
-        <>
-          <PageHeader
-            title="Gift Cards"
-            subtitle="Manage your household gift cards"
-            actions={
-              <>
-                <button
-                  onClick={() => navigate('/gift-cards/import')}
-                  data-testid="import-gift-cards-button"
-                  className="flex items-center gap-2 px-4 py-2 bg-bg-pearl hover:bg-gray-100 text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
-                >
-                  <Upload className="w-4 h-4" />
-                  Import
-                </button>
-                <button
-                  onClick={handleAddCard}
-                  data-testid="add-gift-card-button"
-                  className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Gift Card
-                </button>
-              </>
-            }
-          />
+      <PageHeader
+        title="Gift Cards"
+        subtitle="Manage your household gift cards"
+        actions={
+          <>
+            <Link
+              to={`${GIFT_CARDS_HOME}/import`}
+              data-testid="import-gift-cards-button"
+              className="flex items-center gap-2 px-4 py-2 bg-bg-pearl hover:bg-gray-100 text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
+            >
+              <Upload className="w-4 h-4" />
+              Import
+            </Link>
+            <Link
+              to={NEW_CARD_HREF}
+              data-testid="add-gift-card-button"
+              className="flex items-center gap-2 px-4 py-2 bg-accent-terracotta hover:bg-accent-terracotta-hover text-white rounded-lg font-medium font-body transition-colors shadow-sm"
+            >
+              <Plus className="w-5 h-5" />
+              Add Gift Card
+            </Link>
+          </>
+        }
+      />
 
-          {/* Stats Overview */}
-          {stats && stats.totalCards > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Total Balance
-                    </p>
-                    <p className="mt-2 text-3xl font-display font-bold text-brand-navy">
-                      {formatCurrency(stats.totalAmount)}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Gift className="w-6 h-6 text-green-600" />
-                  </div>
-                </div>
+      {/* Stats Overview */}
+      {stats && stats.totalCards > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Balance
+                </p>
+                <p className="mt-2 text-3xl font-display font-bold text-brand-navy">
+                  {formatCurrency(stats.totalAmount)}
+                </p>
               </div>
-
-              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Total Cards
-                    </p>
-                    <p className="mt-2 text-3xl font-display font-bold text-brand-navy">
-                      {stats.totalCards}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Gift className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <Gift className="w-6 h-6 text-green-600" />
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Merchant List */}
-          {stats && (
-            <MerchantList
-              merchants={stats.merchants}
-              onMerchantClick={handleMerchantClick}
-            />
-          )}
-        </>
-      )}
-
-      {/* Merchant Detail View */}
-      {view === 'detail' && selectedMerchantData && (
-        <MerchantDetail
-          merchant={selectedMerchantData.merchant}
-          cards={selectedMerchantData.cards}
-          totalAmount={selectedMerchantData.totalAmount}
-          onBack={handleBack}
-          onEdit={handleEditCard}
-          onDelete={handleDeleteCard}
-        />
-      )}
-
-      {/* Form View */}
-      {view === 'form' && (
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            {editingCard ? 'Edit Gift Card' : 'Add New Gift Card'}
-          </h2>
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <GiftCardForm
-              onSubmit={handleFormSubmit}
-              onCancel={handleFormCancel}
-              initialData={editingCard || undefined}
-              isSubmitting={createMutation.isPending || updateMutation.isPending}
-            />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Cards
+                </p>
+                <p className="mt-2 text-3xl font-display font-bold text-brand-navy">
+                  {stats.totalCards}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Gift className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      <ConfirmDialog
-        isOpen={deleteConfirmOpen}
-        onClose={() => setDeleteConfirmOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title="Delete Gift Card"
-        message="Are you sure you want to delete this gift card? This action cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        variant="danger"
-        isLoading={deleteMutation.isPending}
-      />
+      {/* Merchant List */}
+      {stats && <MerchantList merchants={stats.merchants} />}
     </div>
   );
 }

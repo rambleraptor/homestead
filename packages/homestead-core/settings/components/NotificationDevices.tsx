@@ -5,7 +5,8 @@ import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import {
   describeCurrentDevice,
   getCurrentPushSubscription,
@@ -29,6 +30,7 @@ export function NotificationDevices() {
     isLoading,
     isError,
     error: loadError,
+    refetch,
   } = useNotificationSubscriptions();
   const updateSubscription = useUpdateNotificationSubscription();
   const deleteSubscription = useDeleteNotificationSubscription();
@@ -172,13 +174,21 @@ export function NotificationDevices() {
         </div>
 
         {isError ? (
-          <p className="text-sm text-red-600" role="alert" data-testid="devices-error">
-            Couldn&apos;t load your devices: {getAepErrorMessage(loadError)}
-          </p>
+          <QueryError
+            compact
+            error={loadError}
+            onRetry={() => void refetch()}
+            title="Couldn’t load your devices"
+            data-testid="devices-error"
+          />
         ) : subscriptions.length === 0 ? (
-          <p className="text-sm text-gray-500" data-testid="no-devices">
-            No devices are registered for notifications yet.
-          </p>
+          <EmptyState
+            compact
+            icon={BellOff}
+            title="No devices yet"
+            description="No devices are registered for notifications yet. Enable them on this device to be the first."
+            data-testid="no-devices"
+          />
         ) : (
           <ul className="divide-y divide-gray-100">
             {subscriptions.map((sub) => {

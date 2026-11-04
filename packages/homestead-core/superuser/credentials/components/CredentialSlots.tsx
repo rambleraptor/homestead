@@ -9,7 +9,7 @@
 import { CheckCircle2, ExternalLink, Lock, TriangleAlert } from 'lucide-react';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import type { CredentialSlotStatus } from '../types';
 
 function formatDate(iso: string): string {
@@ -82,9 +82,11 @@ export function CredentialSlots({ slots, isLoading, error, disabled, onSet, onCl
   if (isLoading) return null;
   if (error) {
     return (
-      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        Couldn’t load what Homestead needs: {getAepErrorMessage(error)}
-      </div>
+      <QueryError
+        error={error}
+        title="Couldn’t load what Homestead needs"
+        data-testid="credential-slots-error"
+      />
     );
   }
   if (!slots?.length) return null;

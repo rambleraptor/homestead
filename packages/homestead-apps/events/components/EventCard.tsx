@@ -9,7 +9,9 @@ import {
   hasEventDate,
   nextOccurrence,
 } from '../utils/eventDate';
+import { formatPeopleList, isPeopleCenteredTag, isToday, todayAgeLabel } from '../utils/upcoming';
 import { EventReminderSelect } from './EventReminderSelect';
+import { TodayBadge } from './TodayBadge';
 import type { Event } from '../types';
 
 const ORDINAL_BY_N: Record<number, string> = {
@@ -60,16 +62,6 @@ function badgeVariantForTag(
   return 'neutral';
 }
 
-function formatPeopleList(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? '';
-  if (names.length === 2) return `${names[0]} & ${names[1]}`;
-  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
-}
-
-function isPeopleCenteredTag(tag?: string): boolean {
-  return tag === 'birthday' || tag === 'anniversary';
-}
-
 function formatNextOccurrence(event: Event): string {
   if (!hasEventDate(event)) return '';
   return nextOccurrence(event).toLocaleDateString('en-US', {
@@ -88,11 +80,12 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
     isPeopleCenteredTag(event.tag) && tagged.length > 0;
   const stackPeopleLines = showPeopleAsTitle && event.tag === 'anniversary';
   const headerText = showPeopleAsTitle ? formatPeopleList(tagged) : event.name;
-  const occurrenceYear = hasEventDate(event)
-    ? nextOccurrence(event).getFullYear()
-    : null;
+  const next = hasEventDate(event) ? nextOccurrence(event) : null;
+  const occurrenceYear = next ? next.getFullYear() : null;
   const ageLabel =
     occurrenceYear != null ? eventAgeLabel(event, occurrenceYear) : null;
+  // The day itself: the badge takes the place of the age line, carrying it.
+  const today = next !== null && isToday(next);
 
   return (
     <Card>
@@ -126,10 +119,17 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
                   {event.tag}
                 </Badge>
               )}
+              {today && next && (
+                <TodayBadge
+                  tag={event.tag}
+                  ageLabel={todayAgeLabel(event, next)}
+                  data-testid={`event-card-today-${event.id}`}
+                />
+              )}
             </div>
             <p className="text-sm text-gray-600 mt-1">
               {formatNextOccurrence(event)}
-              {ageLabel && (
+              {ageLabel && !today && (
                 <span
                   className="ml-2 text-gray-400"
                   data-testid={`event-card-age-${event.id}`}

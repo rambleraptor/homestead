@@ -8,6 +8,7 @@ import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { Button } from '@rambleraptor/homestead-core/shared/components/Button';
 import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehold';
 import { useSendMessage } from '../hooks/useSendMessage';
@@ -65,9 +66,13 @@ function SendMessageForm({ to, url, onDone }: { to?: string; url?: string; onDon
 
   if (household.isError) {
     return (
-      <p className="text-sm text-red-600" data-testid="send-message-error">
-        The household couldn't be loaded, so there's no one to message right now.
-      </p>
+      <QueryError
+        compact
+        error={household.error}
+        onRetry={() => void household.refetch()}
+        title="The household couldn’t be loaded, so there’s no one to message right now"
+        data-testid="send-message-error"
+      />
     );
   }
 

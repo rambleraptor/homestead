@@ -5,7 +5,9 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Minus, Edit } from 'lucide-react';
+import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { useCreateTransaction } from '../hooks/useCreateTransaction';
 import { GiftCardImage } from './GiftCardImage';
 import type { GiftCard } from '../types';
@@ -15,7 +17,8 @@ interface MerchantDetailProps {
   merchant: string;
   cards: GiftCard[];
   totalAmount: number;
-  onBack: () => void;
+  /** Where "Back to Merchants" goes. */
+  backHref: string;
   onEdit: (card: GiftCard) => void;
   onDelete: (id: string) => void;
 }
@@ -24,7 +27,7 @@ export function MerchantDetail({
   merchant,
   cards,
   totalAmount,
-  onBack,
+  backHref,
   onEdit,
   onDelete,
 }: MerchantDetailProps) {
@@ -85,6 +88,7 @@ export function MerchantDetail({
 
     createTransaction.mutate({
       giftCardId: cardId,
+      merchant,
       currentAmount: card.amount,
       data: {
         transaction_type: 'decrement',
@@ -102,6 +106,7 @@ export function MerchantDetail({
 
     createTransaction.mutate({
       giftCardId: cardId,
+      merchant,
       currentAmount: card.amount,
       data: {
         transaction_type: 'set',
@@ -114,23 +119,29 @@ export function MerchantDetail({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="merchant-detail">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={onBack}
+        <Link
+          to={backHref}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          data-testid="merchant-detail-back"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Back to Merchants</span>
-        </button>
+        </Link>
       </div>
 
       {/* Merchant Summary */}
       <div className="bg-gradient-to-r from-accent-terracotta to-accent-terracotta-hover rounded-2xl shadow-sm p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-display text-2xl font-bold mb-2">{merchant}</h2>
+            <h2
+              className="font-display text-2xl font-bold mb-2"
+              style={viewTransitionName('merchant', merchant)}
+            >
+              {merchant}
+            </h2>
             <p className="text-white/90">
               {activeCards.length} active {activeCards.length === 1 ? 'card' : 'cards'}
               {archivedCards.length > 0 && ` • ${archivedCards.length} archived`}
@@ -138,7 +149,9 @@ export function MerchantDetail({
           </div>
           <div className="text-right">
             <p className="text-sm text-white/90 mb-1">Total Balance</p>
-            <p className="font-display text-4xl font-bold">{formatCurrency(totalAmount)}</p>
+            <p className="font-display text-4xl font-bold" data-testid="merchant-total-balance">
+              {formatCurrency(totalAmount)}
+            </p>
           </div>
         </div>
       </div>
@@ -190,15 +203,20 @@ export function MerchantDetail({
 
               {/* Transaction Controls */}
               <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor={`quick-transaction-${card.id}`}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Quick Transaction
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
+                    id={`quick-transaction-${card.id}`}
                     type="number"
                     step="0.01"
                     min="0"
                     value={transactionAmount[card.id] || ''}
+                    data-testid={`quick-transaction-amount-${card.id}`}
                     onChange={(e) =>
                       setTransactionAmount((prev) => ({ ...prev, [card.id]: e.target.value }))
                     }
@@ -207,8 +225,10 @@ export function MerchantDetail({
                   />
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => handleDecrementAmount(card, card.id)}
                       disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) <= 0}
+                      data-testid={`quick-transaction-use-${card.id}`}
                       className="flex-1 sm:flex-none px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
                       title="Subtract amount from balance"
                     >
@@ -216,8 +236,10 @@ export function MerchantDetail({
                       Use
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleSetAmount(card, card.id)}
                       disabled={!transactionAmount[card.id] || parseFloat(transactionAmount[card.id]) < 0}
+                      data-testid={`quick-transaction-set-${card.id}`}
                       className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
                       title="Set balance to this amount"
                     >

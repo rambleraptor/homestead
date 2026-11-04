@@ -7,7 +7,8 @@ import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import {
   GrantRowsEditor,
   cleanGrantDrafts,
@@ -42,7 +43,7 @@ function formatDate(value?: string): string | null {
 
 export function PersonalAccessTokens() {
   const toast = useToast();
-  const { data: tokens = [], isLoading, isError, error: loadError } = usePersonalAccessTokens();
+  const { data: tokens = [], isLoading, isError, error: loadError, refetch } = usePersonalAccessTokens();
   const mint = useMintPersonalAccessToken();
   const revoke = useRevokePersonalAccessToken();
 
@@ -135,13 +136,21 @@ export function PersonalAccessTokens() {
 
         {/* Existing tokens */}
         {isError ? (
-          <p className="text-sm text-red-600" role="alert" data-testid="tokens-error">
-            Couldn&apos;t load your tokens: {getAepErrorMessage(loadError)}
-          </p>
+          <QueryError
+            compact
+            error={loadError}
+            onRetry={() => void refetch()}
+            title="Couldn’t load your tokens"
+            data-testid="tokens-error"
+          />
         ) : tokens.length === 0 ? (
-          <p className="text-sm text-gray-500" data-testid="no-tokens">
-            You haven&apos;t issued any tokens yet.
-          </p>
+          <EmptyState
+            compact
+            icon={KeyRound}
+            title="No tokens yet"
+            description="You haven’t issued any tokens yet. Create one to let a script or an MCP client act as you."
+            data-testid="no-tokens"
+          />
         ) : (
           <ul className="divide-y divide-gray-100">
             {tokens.map((token) => {

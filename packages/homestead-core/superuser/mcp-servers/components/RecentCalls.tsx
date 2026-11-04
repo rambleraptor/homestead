@@ -3,7 +3,9 @@
  * how it went. Superusers only, like the log itself.
  */
 
-import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
+import { History } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useHousehold } from '@rambleraptor/homestead-core/household/useHousehold';
 import { referenceId } from '@rambleraptor/homestead-core/resources/references';
 import { useRecentMcpCalls } from '../hooks/useMcpServers';
@@ -23,7 +25,7 @@ const OUTCOME_LABEL: Record<McpCallOutcome, string> = {
 };
 
 export function RecentCalls({ serverId }: { serverId: string }) {
-  const { data: calls, isLoading, isError, error } = useRecentMcpCalls(serverId);
+  const { data: calls, isLoading, isError, error, refetch } = useRecentMcpCalls(serverId);
   const { data: household } = useHousehold();
   const nameOf = (caller?: string) => {
     if (!caller) return 'Someone';
@@ -36,16 +38,24 @@ export function RecentCalls({ serverId }: { serverId: string }) {
   }
   if (isError) {
     return (
-      <p role="alert" className="text-sm text-red-700">
-        Couldn’t load recent calls: {getAepErrorMessage(error)}
-      </p>
+      <QueryError
+        compact
+        error={error}
+        onRetry={() => void refetch()}
+        title="Couldn’t load recent calls"
+        data-testid={`mcp-calls-error-${serverId}`}
+      />
     );
   }
   if (!calls?.length) {
     return (
-      <p className="text-sm text-gray-500" data-testid={`mcp-calls-empty-${serverId}`}>
-        No calls yet.
-      </p>
+      <EmptyState
+        compact
+        icon={History}
+        title="No calls yet"
+        description="Every tool call the assistant makes through this server is logged here."
+        data-testid={`mcp-calls-empty-${serverId}`}
+      />
     );
   }
   return (

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DUE_SOON_DAYS, daysUntil, dueSoon, dueStatus, todayIso } from '../utils/due';
+import {
+  DUE_SOON_DAYS,
+  daysUntil,
+  dueSoon,
+  dueStatus,
+  isDueSatisfied,
+  seriesDueStatus,
+  todayIso,
+} from '../utils/due';
 import type { Vaccine } from '../types';
 
 const TODAY = '2026-08-31';
@@ -77,5 +85,32 @@ describe('todayIso', () => {
   it('formats a local date as YYYY-MM-DD', () => {
     expect(todayIso(new Date(2026, 7, 31, 23, 59))).toBe('2026-08-31');
     expect(todayIso(new Date(2026, 0, 2, 0, 1))).toBe('2026-01-02');
+  });
+});
+
+describe('isDueSatisfied', () => {
+  it('is met by a dose on or after the due date', () => {
+    expect(isDueSatisfied('2026-01-15', '2026-01-15')).toBe(true);
+    expect(isDueSatisfied('2026-01-15', '2026-02-01')).toBe(true);
+  });
+
+  it('is not met by an earlier dose, no dose, or no due date', () => {
+    expect(isDueSatisfied('2026-01-15', '2026-01-14')).toBe(false);
+    expect(isDueSatisfied('2026-01-15', undefined)).toBe(false);
+    expect(isDueSatisfied(undefined, '2026-02-01')).toBe(false);
+    expect(isDueSatisfied('soon', '2026-02-01')).toBe(false);
+  });
+});
+
+describe('seriesDueStatus', () => {
+  it('clears an overdue date once a dose has met it', () => {
+    expect(seriesDueStatus('2026-01-15', undefined, TODAY)).toBe('overdue');
+    expect(seriesDueStatus('2026-01-15', '2026-01-10', TODAY)).toBe('overdue');
+    expect(seriesDueStatus('2026-01-15', '2026-02-01', TODAY)).toBe('none');
+  });
+
+  it('otherwise reads like dueStatus', () => {
+    expect(seriesDueStatus('2026-09-10', '2025-09-10', TODAY)).toBe('due-soon');
+    expect(seriesDueStatus(undefined, '2025-09-10', TODAY)).toBe('none');
   });
 });

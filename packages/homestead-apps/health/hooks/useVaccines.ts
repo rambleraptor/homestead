@@ -1,4 +1,4 @@
-import { useResourceList } from '@rambleraptor/homestead-core/api/resourceHooks';
+import { useResourceItem, useResourceList } from '@rambleraptor/homestead-core/api/resourceHooks';
 import { VACCINES } from '../resources';
 import type { Vaccine } from '../types';
 
@@ -11,4 +11,9 @@ export function useVaccines() {
   return useResourceList<Vaccine>('health', 'vaccine', VACCINES, {
     orderBy: 'name',
   });
+}
+
+/** One vaccine series by id, for the form pages that edit it or add to it. */
+export function useVaccine(id: string | null) {
+  return useResourceItem<Vaccine>('health', 'vaccine', VACCINES, id);
 }

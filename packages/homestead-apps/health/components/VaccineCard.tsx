@@ -1,12 +1,21 @@
 /**
  * One vaccine series: name, due badge, dose summary, and an expandable
- * dose history with per-dose edit/delete and an "Add dose" action.
+ * dose history with per-dose edit/delete and an "Add dose" action. Edit
+ * and "Add dose" are links to the forms' own addresses (see
+ * `VaccineFormRoute`, `DoseFormRoute`); only delete stays here, behind the
+ * home's confirmation.
+ *
+ * The due badge reads the dose history too: a dose given on or after
+ * `next_due` has met it, so the series stops showing as overdue (or due)
+ * even before the person sets the next date.
  */
 
+import { Link } from 'react-router-dom';
 import { CalendarClock, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
-import { dueStatus, todayIso } from '../utils/due';
+import { seriesDueStatus, todayIso } from '../utils/due';
 import type { DueStatus, Vaccination, Vaccine } from '../types';
 import { VaccinationCard, formatDate } from './VaccinationCard';
+import { HEALTH_HOME } from './HealthFormPage';
 
 interface VaccineCardProps {
   vaccine: Vaccine;
@@ -14,10 +23,7 @@ interface VaccineCardProps {
   doses: Vaccination[] | undefined;
   expanded: boolean;
   onToggle: (id: string) => void;
-  onEdit: (vaccine: Vaccine) => void;
   onDelete: (vaccine: Vaccine) => void;
-  onAddDose: (vaccine: Vaccine) => void;
-  onEditDose: (vaccine: Vaccine, dose: Vaccination) => void;
   onDeleteDose: (vaccine: Vaccine, dose: Vaccination) => void;
 }
 
@@ -32,15 +38,13 @@ export function VaccineCard({
   doses,
   expanded,
   onToggle,
-  onEdit,
   onDelete,
-  onAddDose,
-  onEditDose,
   onDeleteDose,
 }: VaccineCardProps) {
-  const status = dueStatus(vaccine.next_due, todayIso());
-  const badge = status === 'none' ? null : DUE_BADGE[status];
   const lastDose = doses?.[0];
+  const status = seriesDueStatus(vaccine.next_due, lastDose?.date_administered, todayIso());
+  const badge = status === 'none' ? null : DUE_BADGE[status];
+  const seriesPath = `${HEALTH_HOME}/vaccines/${vaccine.id}`;
 
   return (
     <div
@@ -63,7 +67,10 @@ export function VaccineCard({
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-brand-navy">{vaccine.name}</h3>
             {badge && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.className}`}>
+              <span
+                data-testid="vaccine-due-badge"
+                className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.className}`}
+              >
                 {badge.label}
               </span>
             )}
@@ -89,24 +96,22 @@ export function VaccineCard({
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => onAddDose(vaccine)}
+          <Link
+            to={`${seriesPath}/doses/new`}
             aria-label={`Add ${vaccine.name} dose`}
             data-testid="add-dose-button"
             className="flex items-center gap-1 px-2.5 py-1.5 text-sm text-accent-terracotta hover:text-accent-terracotta-hover rounded-md hover:bg-bg-pearl transition-colors font-medium"
           >
             <Plus className="w-4 h-4" />
             Dose
-          </button>
-          <button
-            type="button"
-            onClick={() => onEdit(vaccine)}
+          </Link>
+          <Link
+            to={`${seriesPath}/edit`}
             aria-label={`Edit ${vaccine.name}`}
             className="p-2 text-text-muted hover:text-brand-navy rounded-md hover:bg-bg-pearl transition-colors"
           >
             <Pencil className="w-4 h-4" />
-          </button>
+          </Link>
           <button
             type="button"
             onClick={() => onDelete(vaccine)}
@@ -136,7 +141,6 @@ export function VaccineCard({
                   key={dose.id}
                   vaccineId={vaccine.id}
                   vaccination={dose}
-                  onEdit={(d) => onEditDose(vaccine, d)}
                   onDelete={(d) => onDeleteDose(vaccine, d)}
                 />
               ))}
