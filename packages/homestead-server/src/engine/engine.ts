@@ -443,7 +443,15 @@ export class Engine {
     }
 
     if (segments[0] === 'oauth') {
-      if (!this.oauth) return notFoundText();
+      if (!this.oauth) {
+        // No providers configured is an answer, not a missing route: the login
+        // page asks for this list on every visit and has to tell "none" from
+        // "couldn't load".
+        if (req.method === 'GET' && segments.length === 2 && segments[1] === 'providers') {
+          return jsonResponse({ providers: [] });
+        }
+        return notFoundText();
+      }
       const res = await this.oauth.handle(req, segments, this.sessionIssuer);
       return res ?? notFoundText();
     }
