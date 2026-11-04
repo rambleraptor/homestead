@@ -34,20 +34,20 @@ export function HandCard({ hand, onDelete, isDeleting }: HandCardProps) {
 
   return (
     <article
-      className="bg-white rounded-lg shadow-md p-4 border border-gray-200 space-y-3"
+      className="bg-surface-white rounded-2xl shadow-md p-4 border border-gray-100 space-y-3"
       data-testid={`hand-card-${hand.id}`}
     >
       <header className="flex items-start justify-between gap-3">
         <div>
           {hand.board != null && (
             <div
-              className="font-semibold text-gray-900"
+              className="font-semibold text-brand-navy"
               data-testid={`hand-${hand.id}-board`}
             >
               Board {hand.board}
             </div>
           )}
-          <div className="text-sm text-gray-500">{date}</div>
+          <div className="text-sm text-text-muted">{date}</div>
         </div>
         {onDelete && (
           <button
@@ -73,13 +73,13 @@ export function HandCard({ hand, onDelete, isDeleting }: HandCardProps) {
             >
               <th
                 scope="row"
-                className="text-left font-medium text-gray-600 py-1.5 pr-3 w-16"
+                className="text-left font-medium text-text-muted py-1.5 pr-3 w-16"
               >
                 <span aria-hidden="true">{DIRECTION_SHORT[b.direction]}</span>
                 <span className="sr-only">{DIRECTION_LABEL[b.direction]}</span>
               </th>
               <td
-                className="py-1.5 font-semibold text-gray-900"
+                className="py-1.5 font-semibold text-brand-navy"
                 data-testid={`hand-${hand.id}-${b.direction}-bid`}
               >
                 {formatBid(b.level, b.suit)}

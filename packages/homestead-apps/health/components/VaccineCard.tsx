@@ -10,8 +10,10 @@
  * even before the person sets the next date.
  */
 
-import { Link } from 'react-router-dom';
-import { CalendarClock, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { CalendarClock, ChevronDown, ChevronRight, Pencil, Plus, Syringe, Trash2 } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { seriesDueStatus, todayIso } from '../utils/due';
 import type { DueStatus, Vaccination, Vaccine } from '../types';
 import { VaccinationCard, formatDate } from './VaccinationCard';
@@ -21,6 +23,8 @@ interface VaccineCardProps {
   vaccine: Vaccine;
   /** Doses newest-first; undefined while still loading. */
   doses: Vaccination[] | undefined;
+  /** Set when the doses failed to load (`doses` stays undefined). */
+  dosesError?: { error: Error; retry: () => void };
   expanded: boolean;
   onToggle: (id: string) => void;
   onDelete: (vaccine: Vaccine) => void;
@@ -36,6 +40,7 @@ const DUE_BADGE: Record<Exclude<DueStatus, 'none'>, { label: string; className: 
 export function VaccineCard({
   vaccine,
   doses,
+  dosesError,
   expanded,
   onToggle,
   onDelete,
@@ -45,11 +50,12 @@ export function VaccineCard({
   const status = seriesDueStatus(vaccine.next_due, lastDose?.date_administered, todayIso());
   const badge = status === 'none' ? null : DUE_BADGE[status];
   const seriesPath = `${HEALTH_HOME}/vaccines/${vaccine.id}`;
+  const navigate = useNavigate();
 
   return (
     <div
       data-testid="vaccine-card"
-      className="bg-white rounded-lg border border-gray-200 shadow-sm"
+      className="bg-surface-white rounded-2xl border border-gray-100 shadow-sm"
     >
       <div className="p-4 flex items-start gap-3">
         <button
@@ -77,7 +83,9 @@ export function VaccineCard({
           </div>
           <p className="text-sm text-text-muted">
             {doses === undefined
-              ? 'Loading doses…'
+              ? dosesError
+                ? 'Couldn’t load doses'
+                : 'Loading doses…'
               : doses.length === 0
                 ? 'No doses recorded yet'
                 : `${doses.length} dose${doses.length === 1 ? '' : 's'} · last ${formatDate(
@@ -128,12 +136,31 @@ export function VaccineCard({
           data-testid="vaccine-dose-history"
           className="px-4 pb-4 pt-0 space-y-2 border-t border-gray-100"
         >
-          {doses === undefined ? (
+          {dosesError ? (
+            <QueryError
+              error={dosesError.error}
+              onRetry={dosesError.retry}
+              title="Couldn’t load doses"
+              compact
+              className="mt-3"
+              data-testid="vaccine-doses-error"
+            />
+          ) : doses === undefined ? (
             <p className="pt-3 text-sm text-text-muted">Loading doses…</p>
           ) : doses.length === 0 ? (
-            <p className="pt-3 text-sm text-text-muted">
-              No doses recorded yet — add the first one.
-            </p>
+            <EmptyState
+              icon={Syringe}
+              title="No doses yet"
+              description={`Record each ${vaccine.name} dose with the date it was given.`}
+              action={{
+                label: 'Add the first dose',
+                onClick: () => navigate(`${seriesPath}/doses/new`),
+                testId: 'vaccine-doses-empty-add',
+              }}
+              compact
+              className="mt-3"
+              data-testid="vaccine-doses-empty"
+            />
           ) : (
             <div className="pt-3 space-y-2">
               {doses.map((dose) => (

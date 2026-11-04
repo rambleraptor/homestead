@@ -10,6 +10,7 @@
 
 import { Loader2 } from 'lucide-react';
 import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useEvents } from '../hooks/useEvents';
 import { useCountdownConfig } from '../hooks/useCountdownConfig';
 import { COUNTDOWN_UNITS, type CountdownUnit } from '../utils/countdown';
@@ -24,7 +25,12 @@ const UNIT_LABEL: Record<CountdownUnit, string> = {
 };
 
 export function EventsSettingsWidget() {
-  const { data: events = [], isLoading: eventsLoading } = useEvents();
+  const {
+    data: events = [],
+    isLoading: eventsLoading,
+    error: eventsError,
+    refetch: refetchEvents,
+  } = useEvents();
   const config = useCountdownConfig();
 
   const onEventChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -40,15 +46,23 @@ export function EventsSettingsWidget() {
       <div>
         <label
           htmlFor="countdown-config-event"
-          className="block text-sm font-medium text-gray-900 mb-2"
+          className="block text-sm font-medium text-text-main mb-2"
         >
           Countdown event
         </label>
         {eventsLoading ? (
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <div className="flex items-center gap-2 text-text-muted text-sm">
             <Loader2 className="w-4 h-4 animate-spin" />
             Loading events…
           </div>
+        ) : eventsError ? (
+          <QueryError
+            error={eventsError}
+            onRetry={() => void refetchEvents()}
+            title="Couldn’t load events"
+            compact
+            data-testid="countdown-config-events-error"
+          />
         ) : (
           <select
             id="countdown-config-event"
@@ -56,7 +70,7 @@ export function EventsSettingsWidget() {
             onChange={onEventChange}
             disabled={config.isLoading}
             data-testid="countdown-config-event-select"
-            className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            className="block w-full rounded-md border border-gray-300 bg-surface-white px-3 py-2 text-sm text-text-main focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta disabled:opacity-50"
           >
             <option value="">— None —</option>
             {events.map((event) => (
@@ -66,22 +80,22 @@ export function EventsSettingsWidget() {
             ))}
           </select>
         )}
-        {!eventsLoading && events.length === 0 && (
-          <p className="mt-1 text-xs text-gray-500">
+        {!eventsLoading && !eventsError && events.length === 0 && (
+          <p className="mt-1 text-xs text-text-muted">
             No events yet — add one on the events page first.
           </p>
         )}
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-text-muted">
           The dashboard countdown widget points at this event. Empty
           shows a configure prompt.
         </p>
       </div>
 
       <div>
-        <p className="text-sm font-medium text-gray-900 mb-2">
+        <p className="text-sm font-medium text-text-main mb-2">
           Display units
         </p>
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs text-text-muted mb-3">
           Each enabled unit becomes a cell on the widget.
         </p>
         <ul className="space-y-2">
@@ -97,7 +111,7 @@ export function EventsSettingsWidget() {
                 />
                 <label
                   htmlFor={id}
-                  className="text-sm text-gray-900 select-none cursor-pointer"
+                  className="text-sm text-text-main select-none cursor-pointer"
                 >
                   {UNIT_LABEL[unit]}
                 </label>

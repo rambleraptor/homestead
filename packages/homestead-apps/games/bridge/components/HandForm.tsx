@@ -85,12 +85,12 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
   return (
     <section
       data-testid="hand-form"
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-4"
+      className="bg-surface-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-4"
     >
       <div className="space-y-2">
         <label
           htmlFor="board-select"
-          className="text-xs font-medium text-gray-600"
+          className="text-xs font-medium text-text-muted"
         >
           Board
         </label>
@@ -100,7 +100,7 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
           onChange={(e) => setBoard(Number(e.target.value))}
           disabled={isSubmitting}
           data-testid="board-select"
-          className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base font-semibold text-gray-700 disabled:opacity-40"
+          className="h-12 w-full rounded-md border border-gray-300 bg-surface-white px-3 text-base font-semibold text-gray-700 disabled:opacity-40"
         >
           {BRIDGE_BOARDS.map((n) => (
             <option key={n} value={n}>
@@ -111,7 +111,7 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
       </div>
 
       <div className="space-y-2">
-        <div className="text-xs font-medium text-gray-600">Level</div>
+        <div className="text-xs font-medium text-text-muted">Level</div>
         <div
           role="radiogroup"
           aria-label="Level"
@@ -130,7 +130,7 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
                 className={`h-12 rounded-md text-base font-semibold border transition-colors ${
                   active
                     ? 'bg-accent-terracotta border-accent-terracotta text-white'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    : 'bg-surface-white border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 {lvl}
@@ -141,7 +141,7 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
       </div>
 
       <div className="space-y-2">
-        <div className="text-xs font-medium text-gray-600">Suit</div>
+        <div className="text-xs font-medium text-text-muted">Suit</div>
         <div
           role="radiogroup"
           aria-label="Suit"
@@ -163,7 +163,7 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
                 } font-semibold border transition-colors ${
                   active
                     ? 'bg-accent-terracotta border-accent-terracotta text-white'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    : 'bg-surface-white border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 {SUIT_SYMBOL[s]}
@@ -174,7 +174,7 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
       </div>
 
       <div className="space-y-2">
-        <div className="text-xs font-medium text-gray-600">Direction</div>
+        <div className="text-xs font-medium text-text-muted">Direction</div>
         <div className="grid grid-cols-4 gap-1">
           {DIRECTION_ORDER.map((dir) => {
             const bid = entered[dir];
@@ -189,7 +189,7 @@ export function HandForm({ onSubmit, isSubmitting }: HandFormProps) {
                 data-testid={`direction-${dir}`}
                 className={`h-14 rounded-md text-base font-semibold border transition-colors flex flex-col items-center justify-center gap-0.5 ${
                   done
-                    ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+                    ? 'bg-gray-100 border-gray-300 text-text-muted cursor-not-allowed'
                     : 'bg-accent-terracotta border-accent-terracotta text-white hover:bg-accent-terracotta-hover disabled:opacity-40'
                 }`}
               >

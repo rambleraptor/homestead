@@ -6,9 +6,10 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Loader2, AlertCircle, Trophy } from 'lucide-react';
+import { Plus, Upload, Loader2, Trophy } from 'lucide-react';
 import { usePeople } from '../../../people/hooks/usePeople';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useGames } from '../hooks/useGames';
 import { useGameTeams } from '../hooks/useGameTeams';
 import { useGameWinners } from '../hooks/useGameWinners';
@@ -30,7 +31,7 @@ export function PictionaryHome() {
   const [view, setView] = useState<View>('list');
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
 
-  const { data: games, isLoading: gamesLoading, isError, error } = useGames();
+  const { data: games, isLoading: gamesLoading, isError, error, refetch } = useGames();
   const { data: people } = usePeople();
   const { data: activeTeams } = useGameTeams(
     view === 'edit' || view === 'detail' ? activeGameId : null,
@@ -56,7 +57,7 @@ export function PictionaryHome() {
     try {
       await createGame.mutateAsync(data);
       setView('list');
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -70,7 +71,7 @@ export function PictionaryHome() {
         existingTeams: activeTeams ?? [],
       });
       setView('detail');
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -81,7 +82,7 @@ export function PictionaryHome() {
       await deleteGame.mutateAsync(activeGame.id);
       setActiveGameId(null);
       setView('list');
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -101,19 +102,12 @@ export function PictionaryHome() {
 
   if (isError) {
     return (
-      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">
-              Failed to load Pictionary games
-            </h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load Pictionary games"
+        data-testid="pictionary-error"
+      />
     );
   }
 
@@ -130,7 +124,7 @@ export function PictionaryHome() {
                   type="button"
                   onClick={() => navigate('/games/pictionary/leaderboard')}
                   data-testid="pictionary-leaderboard-button"
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium font-body transition-colors shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-surface-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium font-body transition-colors shadow-sm"
                 >
                   <Trophy className="w-5 h-5" />
                   Leaderboard
@@ -139,7 +133,7 @@ export function PictionaryHome() {
                   type="button"
                   onClick={() => navigate('/games/pictionary/import')}
                   data-testid="pictionary-import-button"
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium font-body transition-colors shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-surface-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium font-body transition-colors shadow-sm"
                 >
                   <Upload className="w-5 h-5" />
                   Import
@@ -161,6 +155,7 @@ export function PictionaryHome() {
             people={peopleLite}
             winnersByGame={winnersByGame}
             onOpen={openDetail}
+            onNew={() => setView('create')}
           />
         </>
       )}

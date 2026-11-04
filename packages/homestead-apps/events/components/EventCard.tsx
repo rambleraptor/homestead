@@ -102,7 +102,7 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
               className={`flex gap-2 flex-wrap ${stackPeopleLines ? 'items-start' : 'items-center'}`}
             >
               {stackPeopleLines ? (
-                <h3 className="font-semibold text-gray-900 min-w-0">
+                <h3 className="font-semibold text-brand-navy min-w-0">
                   {tagged.map((name) => (
                     <span key={name} className="block truncate">
                       {name}
@@ -110,7 +110,7 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
                   ))}
                 </h3>
               ) : (
-                <h3 className="font-semibold text-gray-900 truncate">
+                <h3 className="font-semibold text-brand-navy truncate">
                   {headerText}
                 </h3>
               )}
@@ -127,7 +127,7 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
                 />
               )}
             </div>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-text-muted mt-1">
               {formatNextOccurrence(event)}
               {ageLabel && !today && (
                 <span
@@ -139,12 +139,12 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
               )}
             </p>
             {formatRecurrenceRule(event) && (
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-text-muted mt-0.5">
                 {formatRecurrenceRule(event)}
               </p>
             )}
             {!showPeopleAsTitle && tagged.length > 0 && (
-              <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+              <p className="text-sm text-text-muted mt-1 flex items-center gap-1.5">
                 <Users className="w-4 h-4" aria-hidden="true" />
                 {tagged.join(', ')}
               </p>
@@ -157,7 +157,7 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
             aria-label={`Edit ${event.name}`}
             onClick={() => onEdit(event)}
             data-testid={`event-card-edit-${event.id}`}
-            className="p-2 rounded-md text-gray-500 hover:text-brand-navy hover:bg-gray-100"
+            className="p-2 rounded-md text-text-muted hover:text-brand-navy hover:bg-gray-100"
           >
             <Edit className="w-4 h-4" />
           </button>
@@ -166,7 +166,7 @@ export function EventCard({ event, onEdit, onDelete }: EventCardProps) {
             aria-label={`Delete ${event.name}`}
             onClick={() => onDelete(event)}
             data-testid={`event-card-delete-${event.id}`}
-            className="p-2 rounded-md text-gray-500 hover:text-red-600 hover:bg-gray-100"
+            className="p-2 rounded-md text-text-muted hover:text-red-600 hover:bg-gray-100"
           >
             <Trash2 className="w-4 h-4" />
           </button>

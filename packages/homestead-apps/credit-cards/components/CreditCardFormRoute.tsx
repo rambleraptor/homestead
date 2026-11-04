@@ -6,9 +6,10 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useCreditCard } from '../hooks/useCreditCard';
 import { useCreateCreditCard } from '../hooks/useCreateCreditCard';
 import { useUpdateCreditCard } from '../hooks/useUpdateCreditCard';
@@ -18,7 +19,7 @@ import type { CreditCardFormData } from '../types';
 export function CreditCardFormRoute({ params }: AppRouteProps) {
   const id = params?.id ?? null;
   const navigate = useNavigate();
-  const { data: card, isLoading, isError, error } = useCreditCard(id);
+  const { data: card, isLoading, isError, error, refetch } = useCreditCard(id);
   const createMutation = useCreateCreditCard();
   const updateMutation = useUpdateCreditCard();
 
@@ -41,30 +42,17 @@ export function CreditCardFormRoute({ params }: AppRouteProps) {
       <div className="space-y-4">
         <Link
           to="/credit-cards"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-gray-700 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to cards
         </Link>
-        <div
-          role="alert"
-          className="bg-red-50/20 border border-red-200 rounded-lg p-6"
+        <QueryError
+          error={isError ? error : 'It may have been deleted, or the link is wrong.'}
+          onRetry={isError ? () => void refetch() : undefined}
+          title={isError ? 'Failed to load this card' : 'This card could not be found'}
           data-testid="credit-card-form-error"
-        >
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">
-                {isError ? 'Failed to load this card' : 'This card could not be found'}
-              </h3>
-              {isError && (
-                <p className="text-sm text-red-700">
-                  {error instanceof Error ? error.message : 'An error occurred'}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        />
       </div>
     );
   }
@@ -87,14 +75,14 @@ export function CreditCardFormRoute({ params }: AppRouteProps) {
     <div className="space-y-6">
       <Link
         to={backHref}
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-gray-700 transition-colors"
         data-testid="credit-card-form-back"
       >
         <ArrowLeft className="w-4 h-4" />
         {backLabel}
       </Link>
-      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
+      <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">
+        <h2 className="text-xl font-bold text-brand-navy mb-4">
           {id ? 'Edit Credit Card' : 'Add Credit Card'}
         </h2>
         <CreditCardForm

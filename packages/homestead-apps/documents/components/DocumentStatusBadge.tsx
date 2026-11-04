@@ -17,7 +17,7 @@ const STATUS_META: Record<
   parsed: { label: 'Parsed', className: 'bg-green-50 text-green-700', icon: FileText },
   unmatched: {
     label: 'No matching type',
-    className: 'bg-gray-100 text-gray-600',
+    className: 'bg-gray-100 text-text-muted',
     icon: HelpCircle,
   },
   failed: { label: 'Failed', className: 'bg-red-50 text-red-700', icon: AlertCircle },

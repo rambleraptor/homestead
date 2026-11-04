@@ -8,16 +8,17 @@
  */
 
 import { Link } from 'react-router-dom';
-import { Plus, Gift, AlertCircle, Upload } from 'lucide-react';
+import { Plus, Gift, Upload } from 'lucide-react';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
 import { useMerchantSummaries } from '../hooks/useMerchantSummaries';
 import { GIFT_CARDS_HOME, NEW_CARD_HREF } from '../routes';
 import { MerchantList } from './MerchantList';
 
 export function GiftCardHome() {
-  const { stats, isLoading, isError, error } = useMerchantSummaries();
+  const { stats, isLoading, isError, error, refetch } = useMerchantSummaries();
 
   if (isLoading) {
     return (
@@ -34,19 +35,12 @@ export function GiftCardHome() {
 
   if (isError) {
     return (
-      <div role="alert" className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">
-              Failed to load gift cards
-            </h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load gift cards"
+        data-testid="gift-cards-error"
+      />
     );
   }
 
@@ -80,10 +74,10 @@ export function GiftCardHome() {
       {/* Stats Overview */}
       {stats && stats.totalCards > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+          <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-text-muted">
                   Total Balance
                 </p>
                 <p className="mt-2 text-3xl font-display font-bold text-brand-navy">
@@ -96,18 +90,18 @@ export function GiftCardHome() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+          <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-text-muted">
                   Total Cards
                 </p>
                 <p className="mt-2 text-3xl font-display font-bold text-brand-navy">
                   {stats.totalCards}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Gift className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-accent-terracotta/10 rounded-lg flex items-center justify-center">
+                <Gift className="w-6 h-6 text-accent-terracotta" />
               </div>
             </div>
           </div>

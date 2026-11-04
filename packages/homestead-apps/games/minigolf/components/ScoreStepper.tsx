@@ -64,7 +64,7 @@ export function ScoreStepper({
           <Minus className={iconSize} />
         </button>
         <div
-          className={`${valueTextSize} font-bold text-gray-900 tabular-nums min-w-[3ch] text-center`}
+          className={`${valueTextSize} font-bold text-brand-navy tabular-nums min-w-[3ch] text-center`}
           data-testid={testId ? `${testId}-value` : undefined}
         >
           {value}

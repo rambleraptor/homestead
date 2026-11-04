@@ -5,9 +5,12 @@
  */
 
 import { useState } from 'react';
-import { Check, Clock } from 'lucide-react';
+import { Check, Clock, CreditCard } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useCreditCards } from '../hooks/useCreditCards';
 import { useCreditCardPerks } from '../hooks/useCreditCardPerks';
 import { usePerkRedemptions } from '../hooks/usePerkRedemptions';
@@ -25,9 +28,15 @@ import type { UpcomingPerk } from '../types';
 export function UpcomingPerksWidget() {
   const [now] = useState(() => Date.now());
 
-  const { data: cards, isLoading: cardsLoading } = useCreditCards();
-  const { data: perks, isLoading: perksLoading } = useCreditCardPerks();
-  const { data: redemptions, isLoading: redemptionsLoading } = usePerkRedemptions();
+  const navigate = useNavigate();
+
+  const cardsQuery = useCreditCards();
+  const perksQuery = useCreditCardPerks();
+  const redemptionsQuery = usePerkRedemptions();
+  const { data: cards, isLoading: cardsLoading } = cardsQuery;
+  const { data: perks, isLoading: perksLoading } = perksQuery;
+  const { data: redemptions, isLoading: redemptionsLoading } = redemptionsQuery;
+  const loadError = cardsQuery.error ?? perksQuery.error ?? redemptionsQuery.error;
 
   const upcomingPerks = useUpcomingPerks(cards ?? [], perks ?? [], redemptions ?? []);
   const redeemPerkMutation = useRedeemPerk();
@@ -69,10 +78,29 @@ export function UpcomingPerksWidget() {
           label="Loading upcoming perks"
           data-testid="upcoming-perks-widget-loading"
         />
+      ) : loadError ? (
+        <QueryError
+          error={loadError}
+          onRetry={() => {
+            void cardsQuery.refetch();
+            void perksQuery.refetch();
+            void redemptionsQuery.refetch();
+          }}
+          title="Couldn’t load perks"
+          compact
+          className="my-3"
+          data-testid="upcoming-perks-widget-error"
+        />
       ) : upcomingPerks.length === 0 ? (
-        <p className="font-body text-text-muted py-6 text-center">
-          No perks tracked yet — add one from the Credit Cards page.
-        </p>
+        <EmptyState
+          icon={CreditCard}
+          title="No perks tracked yet"
+          description="Add a card and its perks to see which ones are due."
+          action={{ label: 'Go to Credit Cards', onClick: () => navigate('/credit-cards') }}
+          compact
+          className="my-3"
+          data-testid="upcoming-perks-widget-empty"
+        />
       ) : unredeemed.length === 0 ? (
         <div className="flex items-center gap-2 py-4">
           <Check className="w-5 h-5 text-green-600" />

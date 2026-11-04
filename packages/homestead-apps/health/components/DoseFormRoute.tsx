@@ -76,11 +76,23 @@ export function DoseFormRoute({ params }: AppRouteProps) {
   }
 
   if (vaccineQuery.isError || !vaccine) {
-    return <HealthLoadError noun="vaccine" error={vaccineQuery.error} />;
+    return (
+      <HealthLoadError
+        noun="vaccine"
+        error={vaccineQuery.error}
+        onRetry={() => void vaccineQuery.refetch()}
+      />
+    );
   }
 
   if (dosesQuery.isError || (doseId && !dose)) {
-    return <HealthLoadError noun="dose" error={dosesQuery.error} />;
+    return (
+      <HealthLoadError
+        noun="dose"
+        error={dosesQuery.error}
+        onRetry={() => void dosesQuery.refetch()}
+      />
+    );
   }
 
   return (

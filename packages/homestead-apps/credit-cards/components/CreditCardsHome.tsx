@@ -7,9 +7,11 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertCircle, CreditCard, Plus } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { CreditCard, Plus } from 'lucide-react';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useCreditCards } from '../hooks/useCreditCards';
@@ -29,10 +31,15 @@ export function CreditCardsHome() {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [now] = useState(() => Date.now());
+  const navigate = useNavigate();
 
-  const { data: cards, isLoading: cardsLoading, isError: cardsError, error: cardsErrorObj } = useCreditCards();
-  const { data: perks } = useCreditCardPerks();
-  const { data: redemptions } = usePerkRedemptions();
+  const cardsQuery = useCreditCards();
+  const { data: cards, isLoading: cardsLoading } = cardsQuery;
+  const perksQuery = useCreditCardPerks();
+  const redemptionsQuery = usePerkRedemptions();
+  const { data: perks } = perksQuery;
+  const { data: redemptions } = redemptionsQuery;
+  const perksError = perksQuery.error ?? redemptionsQuery.error;
 
   const stats = useCreditCardStats(cards ?? [], perks ?? [], redemptions ?? []);
   const upcomingPerks = useUpcomingPerks(cards ?? [], perks ?? [], redemptions ?? []);
@@ -81,19 +88,14 @@ export function CreditCardsHome() {
     );
   }
 
-  if (cardsError) {
+  if (cardsQuery.isError) {
     return (
-      <div role="alert" className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">Failed to load credit cards</h3>
-            <p className="text-sm text-red-700">
-              {cardsErrorObj instanceof Error ? cardsErrorObj.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={cardsQuery.error}
+        onRetry={() => void cardsQuery.refetch()}
+        title="Failed to load credit cards"
+        data-testid="credit-cards-error"
+      />
     );
   }
 
@@ -108,6 +110,19 @@ export function CreditCardsHome() {
         actions={<CreditCard className="w-8 h-8 text-accent-terracotta" />}
       />
 
+      {perksError && (
+        <QueryError
+          error={perksError}
+          onRetry={() => {
+            void perksQuery.refetch();
+            void redemptionsQuery.refetch();
+          }}
+          title="Couldn’t load perks and redemptions"
+          compact
+          data-testid="credit-card-perks-error"
+        />
+      )}
+
       {/* Dashboard KPIs */}
       {stats && <CreditCardDashboard stats={stats} />}
 
@@ -121,9 +136,9 @@ export function CreditCardsHome() {
         />
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+      <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Your Cards</h2>
+          <h2 className="text-xl font-bold text-brand-navy">Your Cards</h2>
           <Link
             to="/credit-cards/new"
             data-testid="add-credit-card-button"
@@ -145,7 +160,7 @@ export function CreditCardsHome() {
             <button
               type="button"
               onClick={() => setShowArchived(!showArchived)}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              className="text-sm text-text-muted hover:text-gray-700 transition-colors"
               data-testid="toggle-archived-cards"
             >
               {showArchived ? 'Hide' : 'Show'} archived cards ({archivedCards.length})
@@ -164,10 +179,19 @@ export function CreditCardsHome() {
         )}
 
         {activeCards.length === 0 && archivedCards.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <CreditCard className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p>No credit cards yet. Add your first card to start tracking perks.</p>
-          </div>
+          <EmptyState
+            icon={CreditCard}
+            title="No credit cards yet"
+            description="Add a card and its perks to see what you’ve redeemed against the annual fee."
+            action={{
+              label: 'Add card',
+              onClick: () => navigate('/credit-cards/new'),
+              testId: 'credit-cards-empty-add',
+            }}
+            assistantPrompt="Add my Chase Sapphire Reserve with a $550 annual fee"
+            compact
+            data-testid="credit-cards-empty"
+          />
         )}
       </div>
 

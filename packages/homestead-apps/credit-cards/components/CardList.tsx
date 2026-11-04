@@ -76,7 +76,7 @@ export function CardList({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3
-                      className="font-semibold text-gray-900 truncate"
+                      className="font-semibold text-brand-navy truncate"
                       style={viewTransitionName('credit-card', card.id)}
                     >
                       {card.name}
@@ -92,12 +92,12 @@ export function CardList({
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5">{card.issuer}</p>
+                  <p className="text-sm text-text-muted mt-0.5">{card.issuer}</p>
                 </div>
 
                 {/* Room on the right for the actions that sit over the tile. */}
                 <div className="text-right ml-4 pr-16">
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-text-muted">
                     ${card.annual_fee}/yr fee
                   </div>
                   <div className={`text-sm font-medium ${netValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>

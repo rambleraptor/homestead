@@ -7,7 +7,8 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Plus, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { usePeople } from '../../../people/hooks/usePeople';
 import { useGames } from '../hooks/useGames';
 import { useCreateGame } from '../hooks/useCreateGame';
@@ -38,7 +39,7 @@ export function MinigolfHome() {
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [currentHole, setCurrentHole] = useState<number>(1);
 
-  const { data: games, isLoading: gamesLoading, isError, error } = useGames();
+  const { data: games, isLoading: gamesLoading, isError, error, refetch } = useGames();
   const { data: people } = usePeople();
   const activeGame = useMemo(
     () => games?.find((g) => g.id === activeGameId) ?? null,
@@ -63,7 +64,7 @@ export function MinigolfHome() {
       setActiveGameId(game.id);
       setCurrentHole(1);
       setView('play');
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -113,7 +114,7 @@ export function MinigolfHome() {
     try {
       await persistHole(activeGame, currentHole, payload);
       setCurrentHole((h) => Math.min(activeGame.hole_count, h + 1));
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -130,7 +131,7 @@ export function MinigolfHome() {
         data: { completed: true },
       });
       setView('results');
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -147,7 +148,7 @@ export function MinigolfHome() {
         data: { hole_count: activeGame.hole_count + 1 },
       });
       setCurrentHole((h) => h + 1);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -173,7 +174,7 @@ export function MinigolfHome() {
       await deleteGame.mutateAsync(activeGame.id);
       setActiveGameId(null);
       setView('list');
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -188,17 +189,12 @@ export function MinigolfHome() {
 
   if (isError) {
     return (
-      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">Failed to load games</h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load games"
+        data-testid="minigolf-error"
+      />
     );
   }
 
@@ -229,6 +225,7 @@ export function MinigolfHome() {
             games={games ?? []}
             people={peopleLite}
             onOpen={handleOpenGame}
+            onNew={() => setView('setup')}
           />
         </>
       )}

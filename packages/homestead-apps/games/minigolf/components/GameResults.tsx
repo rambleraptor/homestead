@@ -66,7 +66,7 @@ export function GameResults({
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-bold text-gray-900">Results</h2>
+        <h2 className="text-2xl font-bold text-brand-navy">Results</h2>
         {onDelete && (
           <button
             type="button"
@@ -84,16 +84,16 @@ export function GameResults({
 
       {/* Winner */}
       <section
-        className="bg-gradient-to-br from-accent-terracotta/5 to-accent-terracotta/10 rounded-lg shadow-md p-6 border border-accent-terracotta/20"
+        className="bg-gradient-to-br from-accent-terracotta/5 to-accent-terracotta/10 rounded-2xl shadow-md p-6 border border-accent-terracotta/20"
         data-testid="game-winner"
       >
         <div className="flex items-center gap-4">
           <Trophy className="w-10 h-10 text-amber-500 flex-shrink-0" />
           <div className="flex-1">
-            <div className="text-sm uppercase font-medium text-gray-600">
+            <div className="text-sm uppercase font-medium text-text-muted">
               {winners.length > 1 ? 'Tied Winners' : 'Winner'}
             </div>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-brand-navy">
               {winners.map((w) => displayNameFor(w, people)).join(', ') || '—'}
             </div>
           </div>
@@ -103,10 +103,10 @@ export function GameResults({
       {/* Highlights */}
       {highlights.length > 0 && sortedHoles.length > 0 && (
         <section
-          className="bg-white rounded-lg shadow-md p-5 border border-gray-200"
+          className="bg-surface-white rounded-2xl shadow-md p-5 border border-gray-100"
           data-testid="game-highlights"
         >
-          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-brand-navy mb-3 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-accent-terracotta" />
             Highlights
           </h3>
@@ -124,10 +124,10 @@ export function GameResults({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm">
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-brand-navy">
                         {displayNameFor(h.player, people)}
                       </span>
-                      <span className="text-gray-500"> · </span>
+                      <span className="text-text-muted"> · </span>
                       <span className="font-medium text-accent-terracotta">
                         {h.title}
                       </span>
@@ -142,8 +142,8 @@ export function GameResults({
       )}
 
       {/* Totals */}
-      <section className="bg-white rounded-lg shadow-md p-5 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Totals</h3>
+      <section className="bg-surface-white rounded-2xl shadow-md p-5 border border-gray-100">
+        <h3 className="text-lg font-semibold text-brand-navy mb-3">Totals</h3>
         <div className="space-y-2">
           {game.players.map((player) => {
             const id = player.replace(/^people\//, '');
@@ -155,13 +155,13 @@ export function GameResults({
                 className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
                 data-testid={`total-${id}`}
               >
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-text-main">
                   {displayNameFor(player, people)}
                 </span>
                 <span className="tabular-nums">
-                  <span className="text-xl font-bold text-gray-900">{total}</span>
+                  <span className="text-xl font-bold text-brand-navy">{total}</span>
                   {totalPar > 0 && (
-                    <span className="ml-2 text-sm text-gray-500">
+                    <span className="ml-2 text-sm text-text-muted">
                       ({diff === 0 ? 'E' : diff > 0 ? `+${diff}` : diff})
                     </span>
                   )}
@@ -174,19 +174,19 @@ export function GameResults({
 
       {/* Per-hole breakdown */}
       {sortedHoles.length > 0 && (
-        <section className="bg-white rounded-lg shadow-md p-5 border border-gray-200 overflow-x-auto">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Hole by Hole</h3>
+        <section className="bg-surface-white rounded-2xl shadow-md p-5 border border-gray-100 overflow-x-auto">
+          <h3 className="text-lg font-semibold text-brand-navy mb-3">Hole by Hole</h3>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-2 font-medium text-gray-600">
+                <th className="text-left py-2 font-medium text-text-muted">
                   <Flag className="w-4 h-4 inline" /> Hole
                 </th>
-                <th className="text-center py-2 font-medium text-gray-600">Par</th>
+                <th className="text-center py-2 font-medium text-text-muted">Par</th>
                 {game.players.map((player) => (
                   <th
                     key={player}
-                    className="text-center py-2 font-medium text-gray-600 whitespace-nowrap"
+                    className="text-center py-2 font-medium text-text-muted whitespace-nowrap"
                   >
                     {displayNameFor(player, people)}
                   </th>
@@ -196,7 +196,7 @@ export function GameResults({
             <tbody>
               {sortedHoles.map((hole) => (
                 <tr key={hole.id} className="border-b border-gray-100 last:border-0">
-                  <td className="py-2 font-medium text-gray-900">
+                  <td className="py-2 font-medium text-text-main">
                     {hole.hole_number}
                   </td>
                   <td className="text-center tabular-nums text-gray-700">
@@ -207,7 +207,7 @@ export function GameResults({
                     return (
                       <td
                         key={player}
-                        className="text-center tabular-nums text-gray-900"
+                        className="text-center tabular-nums text-text-main"
                       >
                         {entry?.strokes ?? '—'}
                       </td>

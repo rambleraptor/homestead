@@ -97,7 +97,7 @@ export function CollectionFormDialog({
             {...form.register('name')}
             type="text"
             autoFocus
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta"
             data-testid="collection-name-input"
           />
         </div>
@@ -109,7 +109,7 @@ export function CollectionFormDialog({
           <input
             {...form.register('description')}
             type="text"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-accent-terracotta focus:outline-none focus:ring-1 focus:ring-accent-terracotta"
             data-testid="collection-description-input"
           />
         </div>

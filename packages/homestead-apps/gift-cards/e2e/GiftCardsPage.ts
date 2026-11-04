@@ -120,8 +120,7 @@ export class GiftCardsPage {
   }
 
   getGiftCardRow(merchant: string): Locator {
-    // Gift cards are displayed as card components
-    return this.driver.locator('.bg-white.rounded-lg.border').filter({ hasText: merchant }).first();
+    return this.driver.getByTestId('merchant-row').filter({ hasText: merchant }).first();
   }
 
   async clickMerchant(merchant: string) {

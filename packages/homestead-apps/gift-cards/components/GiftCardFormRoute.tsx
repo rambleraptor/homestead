@@ -5,9 +5,10 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useGiftCard } from '../hooks/useGiftCard';
 import { useCreateGiftCard } from '../hooks/useCreateGiftCard';
 import { useUpdateGiftCard } from '../hooks/useUpdateGiftCard';
@@ -18,7 +19,7 @@ import type { GiftCardFormData } from '../types';
 export function GiftCardFormRoute({ params }: AppRouteProps) {
   const id = params?.id ?? null;
   const navigate = useNavigate();
-  const { data: card, isLoading, isError, error } = useGiftCard(id);
+  const { data: card, isLoading, isError, error, refetch } = useGiftCard(id);
   const createMutation = useCreateGiftCard();
   const updateMutation = useUpdateGiftCard();
 
@@ -40,30 +41,17 @@ export function GiftCardFormRoute({ params }: AppRouteProps) {
       <div className="space-y-4">
         <Link
           to={GIFT_CARDS_HOME}
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="inline-flex items-center gap-2 text-text-muted hover:text-text-main transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Back to Merchants</span>
         </Link>
-        <div
-          role="alert"
-          className="bg-red-50/20 border border-red-200 rounded-lg p-6"
+        <QueryError
+          error={isError ? error : 'It may have been deleted, or the link is wrong.'}
+          onRetry={isError ? () => void refetch() : undefined}
+          title={isError ? 'Failed to load this gift card' : 'This gift card could not be found'}
           data-testid="gift-card-form-error"
-        >
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">
-                {isError ? 'Failed to load this gift card' : 'This gift card could not be found'}
-              </h3>
-              {isError && (
-                <p className="text-sm text-red-700">
-                  {error instanceof Error ? error.message : 'An error occurred'}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        />
       </div>
     );
   }
@@ -86,16 +74,16 @@ export function GiftCardFormRoute({ params }: AppRouteProps) {
     <div className="max-w-2xl mx-auto space-y-6">
       <Link
         to={backHref}
-        className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+        className="inline-flex items-center gap-2 text-text-muted hover:text-text-main transition-colors"
         data-testid="gift-card-form-back"
       >
         <ArrowLeft className="w-5 h-5" />
         <span className="font-medium">{card ? `Back to ${card.merchant}` : 'Back to Merchants'}</span>
       </Link>
-      <h2 className="text-2xl font-bold text-gray-900">
+      <h2 className="text-2xl font-bold text-brand-navy">
         {id ? 'Edit Gift Card' : 'Add New Gift Card'}
       </h2>
-      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+      <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">
         <GiftCardForm
           onSubmit={handleSubmit}
           onCancel={() => navigate(backHref)}

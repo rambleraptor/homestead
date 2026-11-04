@@ -65,7 +65,7 @@ export function GameDetail({
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-bold text-gray-900 flex-1">
+        <h2 className="text-2xl font-bold text-brand-navy flex-1">
           {game.location || 'Pictionary'}
         </h2>
         <button
@@ -91,14 +91,14 @@ export function GameDetail({
       </div>
 
       {/* Summary */}
-      <section className="bg-white rounded-lg shadow-md p-5 border border-gray-200 space-y-2">
-        <div className="text-sm text-gray-600">
+      <section className="bg-surface-white rounded-2xl shadow-md p-5 border border-gray-100 space-y-2">
+        <div className="text-sm text-text-muted">
           {formatDate(game.played_at || game.create_time)}
         </div>
         {game.winning_word && (
           <div className="text-base">
-            <span className="text-gray-500">Winning word: </span>
-            <span className="font-medium text-gray-900">
+            <span className="text-text-muted">Winning word: </span>
+            <span className="font-medium text-text-main">
               {game.winning_word}
             </span>
           </div>
@@ -125,7 +125,7 @@ export function GameDetail({
       {/* Winner banner */}
       {winningTeam && (
         <section
-          className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg shadow-md p-5 border border-amber-200 flex items-center gap-4"
+          className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl shadow-md p-5 border border-amber-200 flex items-center gap-4"
           data-testid="pictionary-winner-banner"
         >
           <Trophy className="w-9 h-9 text-amber-500 flex-shrink-0" />
@@ -147,24 +147,24 @@ export function GameDetail({
         className="space-y-3"
         data-testid="pictionary-teams-list"
       >
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold text-brand-navy">
           Teams ({teams.length})
         </h3>
         {teams.length === 0 && (
-          <p className="text-sm text-gray-600">No teams recorded.</p>
+          <p className="text-sm text-text-muted">No teams recorded.</p>
         )}
         {teams.map((team, index) => (
           <div
             key={team.id}
             data-testid={`pictionary-team-${team.id}`}
-            className={`bg-white rounded-lg shadow-sm p-4 border ${
+            className={`bg-surface-white rounded-2xl shadow-sm p-4 border ${
               team.won
                 ? 'border-amber-300 ring-1 ring-amber-200'
-                : 'border-gray-200'
+                : 'border-gray-100'
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-brand-navy">
                 Team {index + 1}
               </span>
               {team.won && (

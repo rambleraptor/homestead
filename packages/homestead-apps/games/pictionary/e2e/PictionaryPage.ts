@@ -31,7 +31,7 @@ export class PictionaryPage {
   async expectToBeOnPictionaryPage() {
     await this.driver.expectURL(/\/games\/pictionary/);
     await this.expect(
-      this.driver.getByRole('heading', { name: 'Pictionary' }),
+      this.driver.getByRole('heading', { name: 'Pictionary', exact: true }),
     ).toBeVisible();
   }
 

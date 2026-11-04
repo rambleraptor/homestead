@@ -48,7 +48,7 @@ export function CoverageProgressBar({
         />
       </div>
       <span className={`text-xs font-medium whitespace-nowrap ${
-        isOverflow ? 'text-amber-600' : coveragePercent >= 75 ? 'text-green-600' : 'text-gray-500'
+        isOverflow ? 'text-amber-600' : coveragePercent >= 75 ? 'text-green-600' : 'text-text-muted'
       }`}>
         {coveragePercent}%
       </span>

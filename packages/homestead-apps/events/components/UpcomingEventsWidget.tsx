@@ -11,6 +11,8 @@ import { format } from 'date-fns';
 import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useUpcomingEvents } from '../hooks/useUpcomingEvents';
 import {
   daysFromToday,
@@ -31,7 +33,7 @@ function badgeVariantForTag(
 
 export function UpcomingEventsWidget() {
   const navigate = useNavigate();
-  const { data: upcoming, isLoading } = useUpcomingEvents();
+  const { data: upcoming, isLoading, error, refetch } = useUpcomingEvents();
 
   return (
     <WidgetCard
@@ -46,6 +48,15 @@ export function UpcomingEventsWidget() {
           rows={3}
           label="Loading upcoming events"
           data-testid="upcoming-events-widget-loading"
+        />
+      ) : error ? (
+        <QueryError
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load upcoming events"
+          compact
+          className="my-3"
+          data-testid="upcoming-events-widget-error"
         />
       ) : upcoming && upcoming.length > 0 ? (
         <ul className="divide-y divide-gray-50">
@@ -95,15 +106,16 @@ export function UpcomingEventsWidget() {
           })}
         </ul>
       ) : (
-        <div className="text-center py-10">
-          <CalendarHeart
-            className="w-12 h-12 text-gray-300 mx-auto mb-3"
-            aria-hidden="true"
-          />
-          <p className="font-body text-text-muted">
-            No upcoming events in the next 7 days
-          </p>
-        </div>
+        <EmptyState
+          icon={CalendarHeart}
+          title="No upcoming events in the next 7 days"
+          description="Birthdays, anniversaries and other yearly dates show up here the week before."
+          action={{ label: 'See all events', onClick: () => navigate('/events') }}
+          assistantPrompt="Add Sam's birthday on March 3"
+          compact
+          className="my-3"
+          data-testid="upcoming-events-widget-empty"
+        />
       )}
     </WidgetCard>
   );

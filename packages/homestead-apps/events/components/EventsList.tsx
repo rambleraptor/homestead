@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { CalendarHeart, SearchX } from 'lucide-react';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import {
   FilterBar,
   AppFiltersProvider,
+  useAppFilterValues,
   useFilteredItems,
 } from '@rambleraptor/homestead-core/shared/filters';
 import { hasEventDate, nextOccurrence } from '../utils/eventDate';
@@ -23,8 +26,13 @@ function eventNextOccurrenceMs(e: Event): number {
   return nextOccurrence(e).getTime();
 }
 
-export function EventsList() {
-  const { data: events, isLoading } = useEvents();
+interface EventsListProps {
+  /** Opens the create form; offered by the empty state. */
+  onAddEvent?: () => void;
+}
+
+export function EventsList({ onAddEvent }: EventsListProps) {
+  const { data: events, isLoading, isError, error, refetch } = useEvents();
 
   if (isLoading) {
     return (
@@ -34,19 +42,37 @@ export function EventsList() {
     );
   }
 
+  if (isError) {
+    return (
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load events"
+        data-testid="events-error"
+      />
+    );
+  }
+
   return (
     <AppFiltersProvider
       appId={eventsApp.id}
       decls={eventsApp.web?.filters ?? []}
       items={events ?? []}
     >
-      <EventsListInner hasAny={(events?.length ?? 0) > 0} />
+      <EventsListInner hasAny={(events?.length ?? 0) > 0} onAddEvent={onAddEvent} />
     </AppFiltersProvider>
   );
 }
 
-function EventsListInner({ hasAny }: { hasAny: boolean }) {
+function EventsListInner({
+  hasAny,
+  onAddEvent,
+}: {
+  hasAny: boolean;
+  onAddEvent?: () => void;
+}) {
   const filteredEvents = useFilteredItems<Event>();
+  const { reset: clearFilters } = useAppFilterValues();
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [confirm, setConfirm] = useState<{ id: string; name: string } | null>(
     null,
@@ -83,20 +109,29 @@ function EventsListInner({ hasAny }: { hasAny: boolean }) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">All Events</h2>
+      <h2 className="text-xl font-semibold text-brand-navy mb-4">All Events</h2>
       <FilterBar />
       {!hasAny ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8">
-            No events yet. Add your first event to get started!
-          </p>
-        </Card>
+        <EmptyState
+          icon={CalendarHeart}
+          title="No events yet"
+          description="Add the birthdays, anniversaries and other dates that come round every year."
+          action={
+            onAddEvent
+              ? { label: 'Add event', onClick: onAddEvent, testId: 'events-empty-add' }
+              : undefined
+          }
+          assistantPrompt="Add Sam's birthday on March 3"
+          data-testid="events-empty"
+        />
       ) : sorted.length === 0 ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8">
-            No events match the current filters
-          </p>
-        </Card>
+        <EmptyState
+          icon={SearchX}
+          title="No events match the current filters"
+          description="Try a different filter, or clear them to see every event."
+          action={{ label: 'Clear filters', onClick: clearFilters, testId: 'events-clear-filters' }}
+          data-testid="events-no-matches"
+        />
       ) : (
         <div className="space-y-3">
           {sorted.map((event) => (

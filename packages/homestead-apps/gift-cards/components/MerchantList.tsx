@@ -9,11 +9,12 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Store, ChevronDown, ChevronUp } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/currencyUtils';
-import { merchantHref } from '../routes';
+import { NEW_CARD_HREF, merchantHref } from '../routes';
 import type { MerchantSummary } from '../types';
 
 const ROW_STAGGER_MS = 30;
@@ -25,6 +26,7 @@ interface MerchantListProps {
 
 export function MerchantList({ merchants }: MerchantListProps) {
   const [showArchived, setShowArchived] = useState(false);
+  const navigate = useNavigate();
 
   // Separate active and archived merchants
   const activeMerchants = merchants.filter((m) => !m.archived);
@@ -32,12 +34,18 @@ export function MerchantList({ merchants }: MerchantListProps) {
 
   if (merchants.length === 0) {
     return (
-      <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-        <Store className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600">
-          No gift cards yet. Add your first card to get started!
-        </p>
-      </div>
+      <EmptyState
+        icon={Store}
+        title="No gift cards yet"
+        description="Keep the household’s gift cards in one place, with balances that update as you spend them."
+        action={{
+          label: 'Add gift card',
+          onClick: () => navigate(NEW_CARD_HREF),
+          testId: 'gift-cards-empty-add',
+        }}
+        assistantPrompt="Add a $50 Target gift card"
+        data-testid="gift-cards-empty"
+      />
     );
   }
 
@@ -45,7 +53,7 @@ export function MerchantList({ merchants }: MerchantListProps) {
     <Link
       key={merchant.merchant}
       to={merchantHref(merchant.merchant)}
-      className={`animate-field-rise block w-full bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-terracotta ${
+      className={`animate-field-rise block w-full bg-surface-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-shadow text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-terracotta ${
         isArchived ? 'opacity-60' : ''
       }`}
       style={{ animationDelay: `${Math.min(index, MAX_STAGGERED_ROWS) * ROW_STAGGER_MS}ms` }}
@@ -70,12 +78,12 @@ export function MerchantList({ merchants }: MerchantListProps) {
           </div>
           <div>
             <h3
-              className="text-lg font-semibold text-gray-900"
+              className="text-lg font-semibold text-brand-navy"
               style={viewTransitionName('merchant', merchant.merchant)}
             >
               {merchant.merchant}
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-muted">
               {merchant.cardCount} {merchant.cardCount === 1 ? 'card' : 'cards'}
               {isArchived && ' • Archived'}
             </p>
@@ -91,7 +99,7 @@ export function MerchantList({ merchants }: MerchantListProps) {
               {formatCurrency(merchant.totalAmount)}
             </p>
           </div>
-          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-text-muted transition-colors" />
         </div>
       </div>
     </Link>
@@ -112,7 +120,7 @@ export function MerchantList({ merchants }: MerchantListProps) {
           <button
             type="button"
             onClick={() => setShowArchived(!showArchived)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 text-text-muted hover:text-text-main transition-colors"
           >
             {showArchived ? (
               <ChevronUp className="w-5 h-5" />

@@ -57,14 +57,14 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-bold text-gray-900">New Game</h2>
+        <h2 className="text-2xl font-bold text-brand-navy">New Game</h2>
       </div>
 
       {/* Players */}
-      <section className="bg-white rounded-lg shadow-md p-5 border border-gray-200 space-y-4">
+      <section className="bg-surface-white rounded-2xl shadow-md p-5 border border-gray-100 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Players</h3>
-          <span className="text-sm text-gray-500" data-testid="selected-player-count">
+          <h3 className="text-lg font-semibold text-brand-navy">Players</h3>
+          <span className="text-sm text-text-muted" data-testid="selected-player-count">
             {selectedPlayers.length} selected
           </span>
         </div>
@@ -83,8 +83,8 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
       </section>
 
       {/* Hole count */}
-      <section className="bg-white rounded-lg shadow-md p-5 border border-gray-200 space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900">Holes</h3>
+      <section className="bg-surface-white rounded-2xl shadow-md p-5 border border-gray-100 space-y-3">
+        <h3 className="text-lg font-semibold text-brand-navy">Holes</h3>
         <ScoreStepper
           label="Number of holes"
           value={holeCount}
@@ -97,9 +97,9 @@ export function GameSetup({ onStart, onCancel, isSubmitting }: GameSetupProps) {
       </section>
 
       {/* Optional location */}
-      <section className="bg-white rounded-lg shadow-md p-5 border border-gray-200 space-y-2">
-        <label htmlFor="location" className="text-lg font-semibold text-gray-900 block">
-          Location <span className="text-sm font-normal text-gray-500">(optional)</span>
+      <section className="bg-surface-white rounded-2xl shadow-md p-5 border border-gray-100 space-y-2">
+        <label htmlFor="location" className="text-lg font-semibold text-brand-navy block">
+          Location <span className="text-sm font-normal text-text-muted">(optional)</span>
         </label>
         <input
           id="location"

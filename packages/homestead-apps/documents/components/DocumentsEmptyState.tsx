@@ -17,6 +17,7 @@
 import type { ReactNode } from 'react';
 import { FolderCheck, FolderOpen, Inbox, SearchX } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 
 export type EmptyReason =
   /** The household has uploaded nothing at all. */
@@ -44,9 +45,6 @@ interface EmptyCopy {
   body: ReactNode;
   action?: { label: string; onClick?: () => void };
 }
-
-const ACTION_CLASS =
-  'inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface-white px-3 py-1.5 text-sm font-medium text-brand-slate transition-colors hover:bg-bg-pearl';
 
 function copyFor({
   reason,
@@ -99,34 +97,28 @@ function copyFor({
 
 export function DocumentsEmptyState(props: DocumentsEmptyStateProps) {
   const { reason } = props;
-  const { icon: Icon, title, body, action } = copyFor(props);
+  const { icon, title, body, action } = copyFor(props);
 
   return (
+    // `documents-empty` predates the other three states and is what the e2e
+    // suite waits on for a fresh account; the rest share `documents-no-matches`
+    // for the same reason, and separate by `data-empty-reason` — which the
+    // shared EmptyState has no slot for, hence this wrapper carrying both.
     <div
-      className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 bg-surface-white px-6 py-14 text-center"
-      // `documents-empty` predates the other three states and is what the e2e
-      // suite waits on for a fresh account; the rest share `documents-no-matches`
-      // for the same reason, and separate by `data-empty-reason`.
       data-testid={reason === 'library' ? 'documents-empty' : 'documents-no-matches'}
       data-empty-reason={reason}
     >
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-pearl text-text-muted">
-        <Icon className="h-6 w-6" aria-hidden="true" />
-      </span>
-      <div className="max-w-sm">
-        <p className="text-sm font-semibold text-brand-navy">{title}</p>
-        <p className="mt-1 text-sm text-text-muted">{body}</p>
-      </div>
-      {action?.onClick && (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className={ACTION_CLASS}
-          data-testid="documents-empty-action"
-        >
-          {action.label}
-        </button>
-      )}
+      <EmptyState
+        icon={icon}
+        title={title}
+        description={body}
+        action={
+          action?.onClick
+            ? { label: action.label, onClick: action.onClick, testId: 'documents-empty-action' }
+            : undefined
+        }
+        data-testid={`documents-empty-${reason}`}
+      />
     </div>
   );
 }

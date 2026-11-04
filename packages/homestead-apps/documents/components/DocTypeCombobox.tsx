@@ -148,6 +148,11 @@ export function DocTypeCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  // A fresh query renders a fresh list, so the highlight goes back to the top.
+  const changeQuery = (next: string) => {
+    setQuery(next);
+    setActiveIndex(0);
+  };
   // Whether the panel opens upward — decided from the trigger's position when
   // it opens. The picker sits at the bottom of a card on the detail page, where
   // a panel that always dropped down would open below the fold.
@@ -178,13 +183,13 @@ export function DocTypeCombobox({
       setDropUp(below < PANEL_HEIGHT && above > below);
       setSheet(prefersSheet());
     }
-    setQuery('');
+    changeQuery('');
     setOpen((v) => !v);
   };
 
   const close = (restoreFocus: boolean) => {
     setOpen(false);
-    setQuery('');
+    changeQuery('');
     if (restoreFocus) triggerRef.current?.focus();
   };
 
@@ -193,9 +198,6 @@ export function DocTypeCombobox({
   // The sheet covers the whole screen and is portalled out of rootRef, so a tap
   // inside it would read as "outside" — it closes through its own button.
   useDismissOnOutside(rootRef, open && !sheet, () => close(false));
-
-  // A fresh query renders a fresh list, so the highlight goes back to the top.
-  useEffect(() => setActiveIndex(0), [query]);
 
   // Keep the highlighted option in view while arrowing through a long catalogue.
   // At the top of the list that means the top of the *list* — scrolling the
@@ -263,7 +265,7 @@ export function DocTypeCombobox({
           // user has seen it. Tapping the field is one step away.
           autoFocus={!sheet}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => changeQuery(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Search document types…"
           aria-label="Search document types"
@@ -421,7 +423,7 @@ export function DocTypeCombobox({
                 type="button"
                 onClick={() => close(true)}
                 aria-label="Close"
-                className="rounded-lg p-2 text-gray-500 hover:bg-bg-pearl"
+                className="rounded-lg p-2 text-text-muted hover:bg-bg-pearl"
                 data-testid={testId ? `${testId}-close` : undefined}
               >
                 <X className="h-5 w-5" aria-hidden="true" />

@@ -11,10 +11,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useMerchantSummaries } from '../hooks/useMerchantSummaries';
 import { useDeleteGiftCard } from '../hooks/useDeleteGiftCard';
 import { GIFT_CARDS_HOME, decodeMerchantParam, editCardHref } from '../routes';
@@ -25,7 +26,7 @@ export function MerchantDetailRoute({ params }: AppRouteProps) {
   const navigate = useNavigate();
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
 
-  const { stats, isLoading, isError, error } = useMerchantSummaries();
+  const { stats, isLoading, isError, error, refetch } = useMerchantSummaries();
   const deleteMutation = useDeleteGiftCard();
 
   const summary = stats?.merchants.find((m) => m.merchant === merchant);
@@ -57,30 +58,17 @@ export function MerchantDetailRoute({ params }: AppRouteProps) {
       <div className="space-y-4">
         <Link
           to={GIFT_CARDS_HOME}
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="inline-flex items-center gap-2 text-text-muted hover:text-text-main transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Back to Merchants</span>
         </Link>
-        <div
-          role="alert"
-          className="bg-red-50/20 border border-red-200 rounded-lg p-6"
+        <QueryError
+          error={isError ? error : `Nothing is filed under “${merchant}”. It may have been renamed or used up.`}
+          onRetry={isError ? () => void refetch() : undefined}
+          title={isError ? 'Failed to load gift cards' : 'No gift cards for this merchant'}
           data-testid="merchant-detail-error"
-        >
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">
-                {isError ? 'Failed to load gift cards' : 'No gift cards for this merchant'}
-              </h3>
-              {isError && (
-                <p className="text-sm text-red-700">
-                  {error instanceof Error ? error.message : 'An error occurred'}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        />
       </div>
     );
   }

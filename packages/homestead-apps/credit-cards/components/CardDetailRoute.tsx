@@ -9,10 +9,11 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useCreditCard } from '../hooks/useCreditCard';
 import { useCreditCardPerks } from '../hooks/useCreditCardPerks';
 import { usePerkRedemptions } from '../hooks/usePerkRedemptions';
@@ -48,9 +49,12 @@ export function CardDetailRoute({ params }: AppRouteProps) {
   const navigate = useNavigate();
   const [itemToDelete, setItemToDelete] = useState<Deletable | null>(null);
 
-  const { data: card, isLoading: cardLoading, isError: cardError, error } = useCreditCard(id);
-  const { data: perks, isLoading: perksLoading } = useCreditCardPerks();
-  const { data: redemptions, isLoading: redemptionsLoading } = usePerkRedemptions();
+  const { data: card, isLoading: cardLoading, isError: cardError, error, refetch } = useCreditCard(id);
+  const perksQuery = useCreditCardPerks();
+  const redemptionsQuery = usePerkRedemptions();
+  const { data: perks, isLoading: perksLoading } = perksQuery;
+  const { data: redemptions, isLoading: redemptionsLoading } = redemptionsQuery;
+  const perksError = perksQuery.error ?? redemptionsQuery.error;
 
   const deleteCardMutation = useDeleteCreditCard();
   const createPerkMutation = useCreatePerk();
@@ -78,30 +82,17 @@ export function CardDetailRoute({ params }: AppRouteProps) {
       <div className="space-y-4">
         <Link
           to="/credit-cards"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-gray-700 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to cards
         </Link>
-        <div
-          role="alert"
-          className="bg-red-50/20 border border-red-200 rounded-lg p-6"
+        <QueryError
+          error={cardError ? error : 'It may have been deleted, or the link is wrong.'}
+          onRetry={cardError ? () => void refetch() : undefined}
+          title={cardError ? 'Failed to load this card' : 'This card could not be found'}
           data-testid="credit-card-detail-error"
-        >
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">
-                {cardError ? 'Failed to load this card' : 'This card could not be found'}
-              </h3>
-              {cardError && (
-                <p className="text-sm text-red-700">
-                  {error instanceof Error ? error.message : 'An error occurred'}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        />
       </div>
     );
   }
@@ -179,6 +170,19 @@ export function CardDetailRoute({ params }: AppRouteProps) {
 
   return (
     <>
+      {perksError && (
+        <QueryError
+          error={perksError}
+          onRetry={() => {
+            void perksQuery.refetch();
+            void redemptionsQuery.refetch();
+          }}
+          title="Couldn’t load this card’s perks"
+          compact
+          className="mb-4"
+          data-testid="credit-card-perks-error"
+        />
+      )}
       <CardDetail
         card={card}
         perks={cardPerks}

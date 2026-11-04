@@ -6,8 +6,9 @@
  */
 
 import { Link } from 'react-router-dom';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 
 /** Not `/health` — that path is server-owned; see `app.config.ts`. */
 export const HEALTH_HOME = '/health-records';
@@ -30,28 +31,32 @@ export function HealthFormPage({
     <div className="space-y-6" data-testid={testId}>
       <BackToHealth />
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">{title}</h2>
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">{children}</div>
+        <h2 className="text-2xl font-bold text-brand-navy mb-6">{title}</h2>
+        <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">{children}</div>
       </div>
     </div>
   );
 }
 
-export function HealthLoadError({ noun, error }: { noun: string; error: unknown }) {
+export function HealthLoadError({
+  noun,
+  error,
+  onRetry,
+}: {
+  noun: string;
+  error: unknown;
+  /** The failed query's `refetch`; omitted when the record simply isn't there. */
+  onRetry?: () => void;
+}) {
   return (
     <div className="space-y-4">
       <BackToHealth />
-      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">Failed to load {noun}</h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : `${capitalize(noun)} not found`}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error ?? `${capitalize(noun)} not found`}
+        onRetry={error ? onRetry : undefined}
+        title={`Failed to load ${noun}`}
+        data-testid="health-load-error"
+      />
     </div>
   );
 }

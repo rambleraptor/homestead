@@ -25,7 +25,7 @@ export function BoardFilter({ boards, selected, onSelect }: BoardFilterProps) {
 
   return (
     <div className="space-y-2" data-testid="board-filter">
-      <div className="text-xs font-medium text-gray-600">Showing board</div>
+      <div className="text-xs font-medium text-text-muted">Showing board</div>
       <div role="radiogroup" aria-label="Board" className="flex flex-wrap gap-1">
         {boards.map((board) => {
           const active = board === selected;
@@ -40,7 +40,7 @@ export function BoardFilter({ boards, selected, onSelect }: BoardFilterProps) {
               className={`h-10 min-w-[3rem] rounded-md px-3 text-sm font-semibold border transition-colors ${
                 active
                   ? 'bg-accent-terracotta border-accent-terracotta text-white'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  : 'bg-surface-white border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
               {boardLabel(board)}

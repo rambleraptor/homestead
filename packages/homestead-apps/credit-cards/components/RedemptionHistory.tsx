@@ -4,7 +4,8 @@
  * Table showing past redemptions for a card's perks
  */
 
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Receipt, Trash2 } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { formatPeriod } from '../utils/periodUtils';
 import type { PerkRedemption, CreditCardPerk } from '../types';
 
@@ -30,9 +31,9 @@ export function RedemptionHistory({
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+    <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-gray-900">Redemption History</h3>
+        <h3 className="text-lg font-bold text-brand-navy">Redemption History</h3>
         <button
           onClick={onAddRedemption}
           data-testid="add-redemption-button"
@@ -44,18 +45,23 @@ export function RedemptionHistory({
       </div>
 
       {sorted.length === 0 ? (
-        <p className="text-center py-6 text-gray-400">
-          No redemptions yet. Use &quot;Add Redemption&quot; to log historical data.
-        </p>
+        <EmptyState
+          icon={Receipt}
+          title="No redemptions yet"
+          description="Redeem a perk above, or add a past redemption to log historical data."
+          action={{ label: 'Add redemption', onClick: onAddRedemption, testId: 'redemptions-empty-add' }}
+          compact
+          data-testid="redemptions-empty"
+        />
       ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left py-2 px-2 font-medium text-gray-600">Perk</th>
-              <th className="text-left py-2 px-2 font-medium text-gray-600">Period</th>
-              <th className="text-right py-2 px-2 font-medium text-gray-600">Amount</th>
-              <th className="text-right py-2 px-2 font-medium text-gray-600">Actions</th>
+              <th className="text-left py-2 px-2 font-medium text-text-muted">Perk</th>
+              <th className="text-left py-2 px-2 font-medium text-text-muted">Period</th>
+              <th className="text-right py-2 px-2 font-medium text-text-muted">Amount</th>
+              <th className="text-right py-2 px-2 font-medium text-text-muted">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -75,10 +81,10 @@ export function RedemptionHistory({
                   className="border-b border-gray-100 hover:bg-gray-50"
                   data-testid={`redemption-row-${redemption.id}`}
                 >
-                  <td className="py-2 px-2 text-gray-900">
+                  <td className="py-2 px-2 text-text-main">
                     {perk?.name ?? 'Unknown perk'}
                   </td>
-                  <td className="py-2 px-2 text-gray-500">
+                  <td className="py-2 px-2 text-text-muted">
                     {periodLabel}
                   </td>
                   <td className="py-2 px-2 text-right text-green-600 font-medium">
@@ -108,7 +114,7 @@ export function RedemptionHistory({
           </tbody>
           <tfoot>
             <tr className="border-t border-gray-200">
-              <td colSpan={2} className="py-2 px-2 font-medium text-gray-600">
+              <td colSpan={2} className="py-2 px-2 font-medium text-text-muted">
                 Total ({sorted.length} redemption{sorted.length !== 1 ? 's' : ''})
               </td>
               <td className="py-2 px-2 text-right font-bold text-green-600">

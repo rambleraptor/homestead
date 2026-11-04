@@ -11,7 +11,7 @@ import { Lock, LockOpen } from 'lucide-react';
 
 export function DocumentEncryptionBadge({ encrypted }: { encrypted: boolean }) {
   const Icon = encrypted ? Lock : LockOpen;
-  const className = encrypted ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600';
+  const className = encrypted ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-text-muted';
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs ${className}`}

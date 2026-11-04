@@ -50,7 +50,7 @@ function NewVaccine() {
 
 function EditVaccine({ vaccineId }: { vaccineId: string }) {
   const navigate = useNavigate();
-  const { data: vaccine, isLoading, isError, error } = useVaccine(vaccineId);
+  const { data: vaccine, isLoading, isError, error, refetch } = useVaccine(vaccineId);
   const updateVaccine = useUpdateVaccine();
 
   const handleSubmit = async (data: VaccineFormData) => {
@@ -75,7 +75,7 @@ function EditVaccine({ vaccineId }: { vaccineId: string }) {
   }
 
   if (isError || !vaccine) {
-    return <HealthLoadError noun="vaccine" error={error} />;
+    return <HealthLoadError noun="vaccine" error={error} onRetry={() => void refetch()} />;
   }
 
   return (

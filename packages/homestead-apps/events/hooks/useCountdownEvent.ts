@@ -19,6 +19,9 @@ export interface UseCountdownEventResult {
   event: Event | null;
   nextDate: Date | null;
   isLoading: boolean;
+  /** A failed read other than the event being gone (which is `event: null`). */
+  error: Error | null;
+  refetch: () => void;
 }
 
 export function useCountdownEvent(eventId: string): UseCountdownEventResult {
@@ -47,5 +50,7 @@ export function useCountdownEvent(eventId: string): UseCountdownEventResult {
     event,
     nextDate,
     isLoading: !!eventId && query.isLoading,
+    error: query.error,
+    refetch: () => void query.refetch(),
   };
 }

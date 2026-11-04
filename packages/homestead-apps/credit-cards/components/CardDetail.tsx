@@ -6,7 +6,8 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Pencil, Trash2, Plus } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Plus, Gift } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { CoverageProgressBar } from './CoverageProgressBar';
 import { PerkForm } from './PerkForm';
@@ -87,11 +88,11 @@ export function CardDetail({
   return (
     <div className="space-y-6" data-testid="credit-card-detail">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+      <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <Link
             to={backHref}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            className="flex items-center gap-2 text-sm text-text-muted hover:text-gray-700 transition-colors"
             data-testid="card-detail-back"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -122,7 +123,7 @@ export function CardDetail({
           <div>
             <div className="flex items-center gap-3">
               <h2
-                className="text-2xl font-bold text-gray-900"
+                className="text-2xl font-bold text-brand-navy"
                 style={viewTransitionName('credit-card', card.id)}
               >
                 {card.name}
@@ -131,8 +132,8 @@ export function CardDetail({
                 <span className="text-sm text-gray-400">····{card.last_four}</span>
               )}
             </div>
-            <p className="text-gray-500 mt-1">{card.issuer}</p>
-            <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
+            <p className="text-text-muted mt-1">{card.issuer}</p>
+            <div className="flex items-center gap-3 mt-2 text-sm text-text-muted">
               <span>Reset: {card.reset_mode === 'calendar_year' ? 'Calendar Year' : 'Anniversary'}</span>
               {card.archived && (
                 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">archived</span>
@@ -141,26 +142,26 @@ export function CardDetail({
           </div>
 
           <div className="text-right">
-            <div className="text-2xl font-bold text-gray-900">${card.annual_fee}</div>
-            <div className="text-sm text-gray-500">annual fee</div>
+            <div className="text-2xl font-bold text-brand-navy">${card.annual_fee}</div>
+            <div className="text-sm text-text-muted">annual fee</div>
           </div>
         </div>
 
         {/* Summary stats */}
         <div className="mt-4 grid grid-cols-3 gap-4">
           <div className="bg-gray-50 rounded-lg p-3 text-center">
-            <div className="text-lg font-semibold text-gray-900">${totalAnnualValue}</div>
-            <div className="text-xs text-gray-500">Available/yr</div>
+            <div className="text-lg font-semibold text-brand-navy">${totalAnnualValue}</div>
+            <div className="text-xs text-text-muted">Available/yr</div>
           </div>
           <div className="bg-gray-50 rounded-lg p-3 text-center">
             <div className="text-lg font-semibold text-green-600">${ytdRedeemed}</div>
-            <div className="text-xs text-gray-500">YTD Redeemed</div>
+            <div className="text-xs text-text-muted">YTD Redeemed</div>
           </div>
           <div className="bg-gray-50 rounded-lg p-3 text-center">
             <div className={`text-lg font-semibold ${ytdRedeemed - card.annual_fee >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {ytdRedeemed - card.annual_fee >= 0 ? '+' : ''}${Math.abs(ytdRedeemed - card.annual_fee)}
             </div>
-            <div className="text-xs text-gray-500">Net Value</div>
+            <div className="text-xs text-text-muted">Net Value</div>
           </div>
         </div>
 
@@ -173,14 +174,14 @@ export function CardDetail({
         </div>
 
         {card.notes && (
-          <p className="mt-3 text-sm text-gray-500 italic">{card.notes}</p>
+          <p className="mt-3 text-sm text-text-muted italic">{card.notes}</p>
         )}
       </div>
 
       {/* Perks */}
-      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+      <div className="bg-surface-white rounded-2xl shadow-md p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900">Perks</h3>
+          <h3 className="text-lg font-bold text-brand-navy">Perks</h3>
           <button
             onClick={() => { setEditingPerk(null); setShowPerkForm(true); }}
             data-testid="add-perk-button"
@@ -192,9 +193,19 @@ export function CardDetail({
         </div>
 
         {perks.length === 0 ? (
-          <p className="text-center py-6 text-gray-400">
-            No perks yet. Add perks to track their value.
-          </p>
+          <EmptyState
+            icon={Gift}
+            title="No perks yet"
+            description="Add the card’s credits and benefits to track what you’ve used each period."
+            action={{
+              label: 'Add perk',
+              onClick: () => { setEditingPerk(null); setShowPerkForm(true); },
+              testId: 'perks-empty-add',
+            }}
+            assistantPrompt={`Add a $10 monthly dining credit to my ${card.name}`}
+            compact
+            data-testid="perks-empty"
+          />
         ) : (
           <div className="space-y-2">
             {perks.map((perk) => {

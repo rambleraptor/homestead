@@ -69,7 +69,7 @@ export function VaccinationCard({
             <Link
               to={`${HEALTH_HOME}/vaccines/${vaccineId}/doses/${vaccination.id}/edit`}
               aria-label={`Edit dose from ${vaccination.date_administered}`}
-              className="p-1.5 text-text-muted hover:text-brand-navy rounded-md hover:bg-white transition-colors"
+              className="p-1.5 text-text-muted hover:text-brand-navy rounded-md hover:bg-surface-white transition-colors"
             >
               <Pencil className="w-4 h-4" />
             </Link>

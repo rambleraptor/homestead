@@ -12,11 +12,13 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { AlertCircle, Plus, ShieldCheck } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Plus, ShieldCheck } from 'lucide-react';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useVaccines } from '../hooks/useVaccines';
 import { useDeleteVaccine } from '../hooks/useVaccineMutations';
 import { useAllVaccinations } from '../hooks/useVaccinations';
@@ -32,6 +34,7 @@ type DeleteTarget =
 
 export function HealthHome() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   // A dose form returns here naming the series it touched, so it opens with
   // the change visible.
@@ -40,8 +43,8 @@ export function HealthHome() {
     return new Set(expand ? [expand] : []);
   });
 
-  const { data: vaccines, isLoading, isError, error } = useVaccines();
-  const { dosesByVaccine } = useAllVaccinations(vaccines);
+  const { data: vaccines, isLoading, isError, error, refetch } = useVaccines();
+  const { dosesByVaccine, doseErrorsByVaccine } = useAllVaccinations(vaccines);
 
   const deleteVaccine = useDeleteVaccine();
   const deleteDose = useDeleteVaccination();
@@ -85,17 +88,12 @@ export function HealthHome() {
 
   if (isError) {
     return (
-      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">Failed to load health records</h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load health records"
+        data-testid="health-error"
+      />
     );
   }
 
@@ -119,7 +117,7 @@ export function HealthHome() {
       {needingAttention.length > 0 && (
         <div
           data-testid="vaccines-due-soon"
-          className="bg-amber-50 border border-amber-200 rounded-lg p-4"
+          className="bg-amber-50 border border-amber-200 rounded-2xl p-4"
         >
           <h2 className="font-semibold text-amber-900 mb-2">Due soon</h2>
           <ul className="space-y-1">
@@ -135,16 +133,18 @@ export function HealthHome() {
       )}
 
       {(vaccines?.length ?? 0) === 0 ? (
-        <div
+        <EmptyState
+          icon={ShieldCheck}
+          title="No vaccines tracked yet"
+          description="Add a vaccine (like Tdap or Influenza), then record each dose under it."
+          action={{
+            label: 'Add vaccine',
+            onClick: () => navigate(`${HEALTH_HOME}/vaccines/new`),
+            testId: 'vaccines-empty-add',
+          }}
+          assistantPrompt="Record my flu shot from October 2"
           data-testid="vaccines-empty"
-          className="bg-white rounded-lg border border-gray-200 p-10 text-center"
-        >
-          <ShieldCheck className="w-10 h-10 text-text-muted mx-auto mb-3" aria-hidden="true" />
-          <h2 className="font-semibold text-brand-navy mb-1">No vaccines tracked yet</h2>
-          <p className="text-sm text-text-muted">
-            Add a vaccine (like Tdap or Influenza), then record each dose under it.
-          </p>
-        </div>
+        />
       ) : (
         <div data-testid="vaccines-list" className="space-y-3">
           {vaccines!.map((vaccine) => (
@@ -152,6 +152,7 @@ export function HealthHome() {
               key={vaccine.id}
               vaccine={vaccine}
               doses={dosesByVaccine.get(vaccine.id)}
+              dosesError={doseErrorsByVaccine.get(vaccine.id)}
               expanded={expandedIds.has(vaccine.id)}
               onToggle={toggleExpanded}
               onDelete={(v) => setDeleteTarget({ kind: 'vaccine', vaccine: v })}

@@ -172,7 +172,7 @@ function RedemptionFormBody({
           disabled={!!initialData}
           value={(form.values.perk as string) ?? ''}
           onChange={(e) => handlePerkChange(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta disabled:bg-gray-100 disabled:text-gray-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-terracotta focus:border-accent-terracotta disabled:bg-gray-100 disabled:text-text-muted"
         >
           {perks.map((p) => (
             <option key={p.id} value={p.id}>
@@ -210,7 +210,7 @@ function RedemptionFormBody({
           Amount <span className="text-red-500">*</span>
         </label>
         <div className="relative">
-          <span className="absolute left-3 top-2 text-gray-500">$</span>
+          <span className="absolute left-3 top-2 text-text-muted">$</span>
           <input
             type="number"
             id="redemption-amount"
