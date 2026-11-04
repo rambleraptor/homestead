@@ -46,6 +46,16 @@ describe('oauth client', () => {
     await expect(actual.listOAuthProviders()).rejects.toThrow();
   });
 
+  it('listOAuthProviders treats a 404 as no providers', async () => {
+    // A server with no OAuth block has no /oauth routes at all and answers a
+    // plain 404; the login page must not report that as a failed load.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('404 page not found\n', { status: 404 })),
+    );
+    expect(await actual.listOAuthProviders()).toEqual([]);
+  });
+
   it('completeOAuthLogin resolves the user via whoami and persists the session', async () => {
     const userJson = {
       id: 'u1',
@@ -130,6 +140,46 @@ describe('oauth client', () => {
       'fetch',
       vi.fn(async () => jsonResponse({ error: 'nope' }, 401)),
     );
+    expect(await actual.refreshSession()).toBe(false);
+    expect(actual.aepbase.authStore.isValid).toBe(false);
+  });
+});
+
+describe('refreshSession behind a proxy', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    window.localStorage.clear();
+  });
+
+  it.each([502, 503, 504, 500])(
+    'keeps the session when the refresh gets a %i instead of a verdict',
+    async (status) => {
+      // A reverse proxy answers for a server that is restarting. That is not
+      // the auth service rejecting the token, so the session must survive for
+      // the next attempt.
+      actual.aepbase.authStore.saveSession(
+        { accessToken: 'acc', refreshToken: 'ref', expiresIn: 3600 },
+        null,
+      );
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response('<html>Bad gateway</html>', { status })),
+      );
+
+      expect(await actual.refreshSession()).toBe(false);
+      expect(actual.aepbase.authStore.token).toBe('acc');
+      expect(actual.aepbase.authStore.refreshToken).toBe('ref');
+      expect(window.localStorage.getItem('aepbase_auth_token')).toBe('acc');
+    },
+  );
+
+  it.each([400, 401])('ends the session on the auth service\'s own %i', async (status) => {
+    actual.aepbase.authStore.saveSession(
+      { accessToken: 'acc', refreshToken: 'ref', expiresIn: 3600 },
+      null,
+    );
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ error: 'nope' }, status)));
+
     expect(await actual.refreshSession()).toBe(false);
     expect(actual.aepbase.authStore.isValid).toBe(false);
   });

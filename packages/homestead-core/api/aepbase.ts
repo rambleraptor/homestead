@@ -263,6 +263,16 @@ interface RefreshResponse {
   expires_in: number;
 }
 
+/**
+ * The statuses `/api/auth/refresh` itself answers with when it rejects the
+ * token (400: no token sent, 401: unknown or expired). A reverse proxy in
+ * front of a restarting server answers 502/503/504 instead — not a verdict on
+ * the session.
+ */
+function isRefreshRejected(status: number): boolean {
+  return status === 400 || status === 401;
+}
+
 /** The cross-tab lock a refresh runs under (Web Locks, where the browser has them). */
 const REFRESH_LOCK = 'homestead:session-refresh';
 
@@ -279,9 +289,10 @@ function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
 
 /**
  * Exchange the stored refresh token for a fresh session. Returns true on
- * success. A definitive rejection (non-ok response — the refresh token is
- * revoked/expired) clears the session; a network error leaves it intact so a
- * later call can retry.
+ * success. A definitive rejection (the auth service answering 400 or 401 —
+ * the refresh token is revoked/expired) clears the session; a network error
+ * or any other status (a proxy's 502 mid-restart) leaves it intact so a later
+ * call can retry.
  *
  * Refresh tokens are single-use and every tab shares one in localStorage, so
  * before spending it this re-reads the stored session: if another tab already
@@ -306,6 +317,10 @@ async function performRefresh(): Promise<boolean> {
       if (!res.ok) {
         authStore.adoptStored();
         if (authStore.refreshToken && authStore.refreshToken !== refreshToken) return true;
+        // Only the auth service's own verdict ends the session. Anything else
+        // (a reverse proxy's 502 while the server restarts, a gateway's 503)
+        // is transient: keep the session so the next call tries again.
+        if (!isRefreshRejected(res.status)) return false;
         authStore.clear();
         return false;
       }
@@ -860,8 +875,15 @@ export interface OAuthProvider {
  * none — a missing "Sign in with Google" button is not the same as no Google.
  */
 export async function listOAuthProviders(): Promise<OAuthProvider[]> {
-  const res = await request<{ providers?: OAuthProvider[] }>('/oauth/providers');
-  return res.providers ?? [];
+  try {
+    const res = await request<{ providers?: OAuthProvider[] }>('/oauth/providers');
+    return res.providers ?? [];
+  } catch (err) {
+    // An older server with no OAuth configured has no /oauth routes at all
+    // and answers 404: that is "no providers", not a failed load.
+    if (err instanceof AepbaseError && err.code === 404) return [];
+    throw err;
+  }
 }
 
 /**

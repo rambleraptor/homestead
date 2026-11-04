@@ -198,3 +198,18 @@ describe('user CRUD permissions', () => {
     expect(patched.status).toBe(400);
   });
 });
+
+describe('oauth routes without any provider configured', () => {
+  test('GET /oauth/providers answers an empty list rather than 404', async () => {
+    // The login page asks for this on every visit: "none configured" has to
+    // be distinguishable from "couldn't reach the server".
+    const res = await call(t.engine, 'GET', '/oauth/providers');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ providers: [] });
+  });
+
+  test('other /oauth paths stay 404', async () => {
+    const res = await call(t.engine, 'GET', '/oauth/google/start');
+    expect(res.status).toBe(404);
+  });
+});
