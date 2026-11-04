@@ -15,6 +15,7 @@ import { useUpdateRecipe } from '../hooks/useUpdateRecipe';
 import { useDeleteRecipe } from '../hooks/useDeleteRecipe';
 import { RecipesList } from './RecipesList';
 import { RecipeForm } from './RecipeForm';
+import { CookbooksRail } from './cookbooks/CookbooksRail';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import {
@@ -134,6 +135,8 @@ export function RecipesHome() {
               </div>
             }
           />
+
+          <CookbooksRail recipes={recipes} />
 
           <AppFiltersProvider
             appId={recipesApp.id}

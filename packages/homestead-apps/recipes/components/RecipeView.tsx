@@ -28,6 +28,8 @@ import { RecipeImage } from './RecipeImage';
 import { RecipeIngredients } from './RecipeIngredients';
 import { RecipeSteps } from './RecipeSteps';
 import { RecipeTags } from './RecipeTags';
+import { AddToCookbookMenu } from './cookbooks/AddToCookbookMenu';
+import { CookbookChips } from './cookbooks/CookbookChips';
 import { isWakeLockSupported, useWakeLock } from '../hooks/useWakeLock';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
@@ -229,6 +231,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
               <ShoppingCart className="w-4 h-4" />
               Add to grocery list
             </button>
+            <AddToCookbookMenu recipe={recipe} />
             <button
               onClick={() => setIsEditing(true)}
               data-testid="recipe-view-edit"
@@ -264,6 +267,8 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           className="w-full max-h-96 object-cover rounded-lg border border-gray-200"
         />
       )}
+
+      <CookbookChips recipeId={recipeId} label="In" className="text-sm" />
 
       {hasMeta && (
         <div

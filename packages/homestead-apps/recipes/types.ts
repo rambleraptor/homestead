@@ -66,3 +66,28 @@ export interface RecipeFormData {
   /** Recipe photo to upload. Sent as a multipart file field on create. */
   image?: File | null;
 }
+
+/**
+ * Cookbook record from aepbase — a named, ordered collection of recipes.
+ *
+ * Matches the schema in `resources.ts`. `recipes` holds recipe ids in display
+ * order; `auto` is set only on the server-kept "From social" cookbook.
+ */
+export interface Cookbook {
+  id: string;
+  path: string;
+  name: string;
+  description?: string;
+  recipes?: string[];
+  /** Set on the server-kept "From social" cookbook; read back as null when unset. */
+  auto?: 'social' | null;
+  created_by?: string;
+  create_time: string;
+  update_time: string;
+}
+
+/** Form data for creating/updating a cookbook's own fields. */
+export interface CookbookFormData {
+  name: string;
+  description?: string;
+}

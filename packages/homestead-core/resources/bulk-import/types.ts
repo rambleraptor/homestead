@@ -72,6 +72,13 @@ export interface BulkImportContext {
   auth: CustomMethodAuth;
   /** Plural of the resource being imported into, e.g. `gift-cards`. */
   plural: string;
+  /**
+   * Id of the {@link BulkImportFormat} that produced the items, e.g. `csv`. A
+   * saver that treats one source differently (recipes file social-post
+   * imports into an automatic cookbook) branches on it rather than guessing
+   * from the data.
+   */
+  format: string;
 }
 
 /**
@@ -141,6 +148,12 @@ export interface BulkImportFormat {
 export interface BulkImportSaveResult {
   created: number;
   failed: Array<{ index: number; error: string }>;
+  /**
+   * Ids of the records created, in item order. Filled by the default saver
+   * (`createOnePerItem`) so a custom saver that wraps it can follow up on the
+   * new records; left out of the operation's response.
+   */
+  createdIds?: string[];
 }
 
 /**

@@ -109,7 +109,11 @@ describe('parseCsv', () => {
 });
 
 describe('createCsvParser', () => {
-  const ctx = { auth: { token: 't', user: { id: 'u', path: 'users/u', email: 'e' } }, plural: 'gift-cards' };
+  const ctx = {
+    auth: { token: 't', user: { id: 'u', path: 'users/u', email: 'e' } },
+    plural: 'gift-cards',
+    format: 'csv',
+  };
 
   it('merges rows across multiple files', async () => {
     const parser = createCsvParser(schema);

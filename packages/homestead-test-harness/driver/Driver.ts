@@ -104,6 +104,7 @@ export interface LocatorAssertions {
   /** The negations Playwright specs use, under `not`. */
   not: {
     toBeVisible(opts?: TimeoutOptions): Promise<void>;
+    toBeChecked(opts?: TimeoutOptions): Promise<void>;
     toContainText(text: string | RegExp, opts?: TimeoutOptions): Promise<void>;
     toHaveCount(count: number, opts?: TimeoutOptions): Promise<void>;
   };
