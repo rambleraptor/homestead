@@ -30,6 +30,7 @@ import {
 } from '@rambleraptor/homestead-client';
 import { CLIENT_ID_HEADER, getClientId } from './clientId';
 import { fetchOrNetworkError } from './connectivity';
+import { isProxySignInChallenge, ProxySignInError, reloadForProxySignIn } from './proxySignIn';
 import type { OAuthSession, User, UserType } from '../auth/types';
 
 const AEP_BASE = '/api/aep';
@@ -315,6 +316,12 @@ async function performRefresh(): Promise<boolean> {
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
       if (!res.ok) {
+        // The sign-in proxy answered, not the auth service: its session with
+        // this browser lapsed, ours is fine. Keep it and let the page reload.
+        if (isProxySignInChallenge(res)) {
+          reloadForProxySignIn();
+          return false;
+        }
         authStore.adoptStored();
         if (authStore.refreshToken && authStore.refreshToken !== refreshToken) return true;
         // Only the auth service's own verdict ends the session. Anything else
@@ -375,6 +382,13 @@ export async function authorizedFetch(
   };
   await ensureFreshToken();
   let res = await send();
+  // A sign-in proxy's 401 is not the server's verdict on our token — the
+  // request never reached it — and a refresh would meet the same wall. Reload
+  // so the proxy can sign the person in again, and hand the challenge back.
+  if (isProxySignInChallenge(res)) {
+    reloadForProxySignIn();
+    return res;
+  }
   if (res.status === 401 && authStore.refreshToken && (await refreshSession())) {
     res = await send();
   }
@@ -438,6 +452,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (!res.ok) {
+    if (isProxySignInChallenge(res, parsed)) throw new ProxySignInError(url);
     const envelope = parsed as { error?: { code?: number; message?: string } } | undefined;
     const code = envelope?.error?.code ?? res.status;
     const message = envelope?.error?.message ?? text ?? `HTTP ${res.status}`;
@@ -753,6 +768,10 @@ export async function login(email: string, password: string): Promise<User> {
     parsed = undefined;
   }
   if (!res.ok) {
+    if (isProxySignInChallenge(res, parsed)) {
+      reloadForProxySignIn();
+      throw new ProxySignInError(`${AUTH_BASE}/login`);
+    }
     const envelope = parsed as { error?: string | { message?: string } } | undefined;
     const message =
       (typeof envelope?.error === 'string' ? envelope.error : envelope?.error?.message) ??
@@ -815,6 +834,7 @@ async function postForNewSession(
     parsed = undefined;
   }
   if (!res.ok) {
+    if (isProxySignInChallenge(res, parsed)) throw new ProxySignInError(url);
     const envelope = parsed as { error?: string | { message?: string } } | undefined;
     const message =
       (typeof envelope?.error === 'string' ? envelope.error : envelope?.error?.message) ??

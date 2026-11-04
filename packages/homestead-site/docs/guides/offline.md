@@ -91,7 +91,13 @@ shell — `index.html`, styles, and the code of every app's screens — so an ap
 added to the Home Screen launches with no network, even one the person has
 never opened before. A navigation tries the network first (so an online
 launch always gets the current build) and falls back to the cached shell when
-the network fails or takes more than a few seconds. Code that only a library
+the network fails or takes more than a few seconds. An answer from the server
+— or from a sign-in proxy in front of it, such as Cloudflare Access — is handed
+to the browser as is, redirects included: when the proxy's session has lapsed,
+launching the installed app lands on its sign-in page and comes back, rather
+than on a cached shell the proxy then refuses to serve. Mid-session, a request
+the proxy turns away reloads the page (once) for the same sign-in, and never
+drops Homestead's own session. Code that only a library
 loads on demand (syntax-highlighting grammars, diagram renderers), plus the
 packages listed in `lazyPackages` in `packages/homestead-app/vite.config.ts`,
 is cached the first time it loads instead. Each build ships a new worker, which

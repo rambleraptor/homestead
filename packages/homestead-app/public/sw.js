@@ -67,6 +67,13 @@ self.addEventListener('fetch', (event) => {
  * Network first, so an online launch always gets the current page (with the
  * server's per-app head); the cached shell when the network fails or stalls.
  * The SPA routes on the URL, so one cached index serves every path.
+ *
+ * An answer — from the server, or from a sign-in proxy in front of it such as
+ * Cloudflare Access — goes back to the browser as is, redirects included. A
+ * navigation's redirect arrives here as an opaque response the browser then
+ * follows itself; swallowing it would strand the person on a cached shell
+ * whose every request the proxy refuses. Only no usable answer (offline, a
+ * timeout, a proxy's 502 while the server restarts) means the shell.
  */
 async function navigate(request) {
   const network = fetch(request);
@@ -74,7 +81,7 @@ async function navigate(request) {
   network.catch(() => {});
   try {
     const response = await withTimeout(network, NAVIGATION_TIMEOUT_MS);
-    if (response.ok) return response;
+    if (response.type === 'opaqueredirect' || response.status < 500) return response;
   } catch {
     // Offline, or slow enough to fall back.
   }
