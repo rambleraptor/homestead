@@ -205,6 +205,27 @@ export class ChatPage {
     await this.driver.getByTestId('agentic-new-chat').click();
   }
 
+  /** A thumb under the (last) assistant reply. */
+  rateButton(rating: 'up' | 'down'): Locator {
+    return this.driver.getByTestId(`chat-rate-${rating}`).last();
+  }
+
+  /** Rate the last reply — or, tapping the chosen thumb again, take the rating back. */
+  async rateReply(rating: 'up' | 'down') {
+    await this.rateButton(rating).click();
+  }
+
+  /** The line saying a rating was shared with the admins. */
+  get ratingNotice(): Locator {
+    return this.driver.getByTestId('chat-rating-notice');
+  }
+
+  /** After a thumbs down: say what the reply should have done. */
+  async addRatingNote(note: string) {
+    await this.driver.getByTestId('chat-rating-note').fill(note);
+    await this.driver.getByTestId('chat-rating-note-send').click();
+  }
+
   /** Delete a conversation from the drawer, confirming the prompt. */
   async deleteConversation(title: string | RegExp) {
     await this.openHistory();

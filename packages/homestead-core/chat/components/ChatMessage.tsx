@@ -25,6 +25,7 @@ import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
 import { groupParts, ownerForTool, rollsUp } from '../cards';
 import { MessageAttachments } from './MessageAttachments';
 import { ApprovalCard } from './ApprovalCard';
+import { ReplyRating } from './ReplyRating';
 import type { BulkImportPreview } from '@rambleraptor/homestead-client';
 import { ReadRollup, ResourceToolCall } from './ChatCard';
 import { ReplyLink, replyRehypePlugins, replyUrlTransform } from './ChatValue';
@@ -199,11 +200,16 @@ export function ChatMessage({
           </p>
         )}
       </MessageContent>
-      {!isUser && !streaming && text && (
-        <MessageActions>
-          <MessageAction tooltip="Copy" label="Copy reply" onClick={() => void copy()}>
-            <CopyIcon className="size-3.5" />
-          </MessageAction>
+      {!isUser && !streaming && (text || (conversationId && stored)) && (
+        <MessageActions className="flex-wrap">
+          {text && (
+            <MessageAction tooltip="Copy" label="Copy reply" onClick={() => void copy()}>
+              <CopyIcon className="size-3.5" />
+            </MessageAction>
+          )}
+          {conversationId && stored && stored.status !== 'streaming' && (
+            <ReplyRating conversationId={conversationId} messageId={stored.id} rating={stored.rating} />
+          )}
         </MessageActions>
       )}
     </Message>

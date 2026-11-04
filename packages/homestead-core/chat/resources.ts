@@ -102,6 +102,41 @@ export const chatResources: ResourceDefinition[] = [
       },
       error: { type: 'string', description: 'Why the turn failed, when status is error.' },
       usage: { type: 'object', description: 'Token counts for this turn (assistant messages).' },
+      rating: {
+        type: 'string',
+        enum: ['up', 'down'],
+        description:
+          'How the person rated this reply. Set through :rate, which also files the ' +
+          'conversation up to here as an eval case.',
+      },
+    },
+    customMethods: {
+      rate: {
+        target: 'item',
+        modelTools: { chat: false, mcp: false },
+        description:
+          'Rate an assistant reply up or down, or clear the rating (null). A rating files the ' +
+          'conversation up to this reply as an eval case for superusers to review; clearing ' +
+          'it withdraws the case.',
+        request: {
+          type: 'object',
+          properties: {
+            rating: { type: ['string', 'null'], enum: ['up', 'down', null] },
+            note: { type: 'string', maxLength: 1000, description: 'What it should have done.' },
+            timezone: { type: 'string', description: 'The person’s IANA timezone.' },
+          },
+          required: ['rating'],
+        },
+        response: {
+          type: 'object',
+          properties: {
+            rating: { type: ['string', 'null'] },
+            eval_case: { type: ['string', 'null'], description: 'The filed case’s path.' },
+          },
+          required: ['rating'],
+        },
+        load: () => import('./methods/rate'),
+      },
     },
   },
 ];

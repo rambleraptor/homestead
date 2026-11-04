@@ -13,6 +13,7 @@ import { usersApp } from './users/app.config';
 import { homesteadInformationApp } from './homestead-information/app.config';
 import { credentialsApp } from './credentials/app.config';
 import { mcpServersApp } from './mcp-servers/app.config';
+import { evalCasesApp } from './eval-cases/app.config';
 import { operationsApp } from '@rambleraptor/homestead-core/operations/app.config';
 import { permissionsApp } from '@rambleraptor/homestead-core/permissions/app.config';
 import { sidebarDefaultsApp } from './sidebar-defaults/app.config';
@@ -28,6 +29,7 @@ export const superuserApp: AppConfig = {
     sidebarDefaultsApp,
     credentialsApp,
     mcpServersApp,
+    evalCasesApp,
     operationsApp,
     homesteadInformationApp,
   ],
