@@ -44,6 +44,11 @@ export class TodoCards {
     return this.card(title).getByTestId('todo-card-later');
   }
 
+  /** A toast about a todo, carrying the todo's card. */
+  get toast(): Locator {
+    return this.driver.getByTestId('record-toast');
+  }
+
   /** The note a todo's card shows once the todo is gone. */
   removedNote(title: string): Locator {
     return this.card(title).getByTestId('todo-card-removed');

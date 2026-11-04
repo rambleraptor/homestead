@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { toast as sonnerToast } from 'sonner';
 import { Toaster } from '@rambleraptor/homestead-core/shared/components/ui/sonner';
 import { CelebrationToast } from '@rambleraptor/homestead-core/shared/components/CelebrationToast';
+import { RecordToast, type RecordToastProps } from '@rambleraptor/homestead-core/shared/components/RecordToast';
 import type { ToastType } from '@rambleraptor/homestead-core/shared/types/toast';
 import { getAepErrorMessage } from '@rambleraptor/homestead-core/api/errorMessage';
 
@@ -56,6 +57,13 @@ interface ToastContextValue {
    * stays with the caller; this is only the message.
    */
   celebrate: (title: string, options?: CelebrateOptions) => void;
+  /**
+   * Say something about a record and show the record with it, as its app draws
+   * it (`AppConfig.records`), so the person can act on it from the toast. A
+   * resource with no record card shows its title. Stays as long as an undo
+   * toast: there's something to do in it.
+   */
+  record: (message: string, card: RecordToastProps['card'], duration?: number) => void;
 }
 
 /** Long enough to notice a mistake and reach the button, short of a nuisance. */
@@ -122,6 +130,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const record = useCallback(
+    (message: string, card: RecordToastProps['card'], duration?: number) =>
+      sonnerToast.custom(() => <RecordToast message={message} card={card} />, {
+        duration: duration ?? UNDO_DURATION_MS,
+        className: 'w-full',
+      }),
+    []
+  );
+
   const celebrate = useCallback(
     (title: string, options?: CelebrateOptions) =>
       sonnerToast.custom(
@@ -140,8 +157,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   // consumer may list `toast` in an effect's deps without re-running it on
   // every render.
   const value = useMemo(
-    () => ({ showToast, success, error, info, warning, undo, celebrate }),
-    [showToast, success, error, info, warning, undo, celebrate],
+    () => ({ showToast, success, error, info, warning, undo, celebrate, record }),
+    [showToast, success, error, info, warning, undo, celebrate, record],
   );
 
   return (

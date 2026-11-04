@@ -525,6 +525,13 @@ to carry it on (`send(text)`), and is null anywhere else.
 
 - The result is shaped for the model: secret fields are gone, and a large one
   is stored as a preview. Treat it as a hint and read the record by id.
+- An update or delete also carries `previous`, what it replaced. The generic
+  card uses it to offer Undo; an app card that claims those actions can too
+  (`undoPlan` and `UndoCall` in `.../chat/`).
+- `useChangeToasts(resource, describe, { showRecord: true })` puts your record
+  card in the toast for someone else's change, for screens that may not be
+  showing that record. An inbox row about one of your records shows its card
+  too, from the notification's `source_collection` and `source_id`.
 - Build any link from the record and your own routes, never from the reply.
 - See [Agent cards](../design/agent-cards) for how a card is chosen.
 

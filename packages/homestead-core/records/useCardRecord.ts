@@ -65,15 +65,18 @@ export function useCardRecord<T extends { id: string }>({
   });
 
   // The change feed drops a deleted record's cache slot, but this card keeps
-  // showing what it last had: so it hears the delete itself. A record that
-  // comes back (an undo) is live again.
-  const [removed, setRemoved] = useState(false);
+  // showing what it last had: so it hears the delete itself. Either kind of
+  // "gone" lasts only until the record is back in the cache — restored here
+  // (an undo, which the feed doesn't echo to this tab) or by someone else.
+  const [removedAt, setRemovedAt] = useState<number | null>(null);
   useResourceEvents(singular, (change) => {
     if (change.id !== id) return;
-    setRemoved(change.kind === 'deleted');
+    setRemovedAt(change.kind === 'deleted' ? Date.now() : null);
   });
 
-  const deleted = removed || isNotFound(query.error);
+  const removed = removedAt !== null && query.dataUpdatedAt <= removedAt;
+  const notFound = isNotFound(query.error) && query.errorUpdatedAt >= query.dataUpdatedAt;
+  const deleted = removed || notFound;
   return {
     record: query.data ?? placeholder,
     deleted,

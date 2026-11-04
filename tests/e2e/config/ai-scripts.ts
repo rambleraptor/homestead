@@ -167,6 +167,8 @@ export const CHAT_MARKERS = {
   addTodo: 'e2e-chat-add-todo',
   /** List the shared todos, then say so. */
   listTodos: 'e2e-chat-list-todos',
+  /** Look up people, then gift cards, then answer: reads in a row. */
+  lookAround: 'e2e-chat-look-around',
   /** Read a light's state from the test MCP server, then repeat what came back. */
   mcpCheckLight: 'e2e-chat-mcp-check-light',
   /** Unlock the front door on the test MCP server (an "ask first" tool), then say so. */
@@ -395,6 +397,15 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
     steps: [
       { toolCalls: [{ name: 'todos', args: { action: 'create', fields: { title: 'Water the plants', status: 'pending' } } }] },
       { text: 'Added it.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.lookAround,
+    steps: [
+      // One call per round: the stub picks a round by counting tool results.
+      { toolCalls: [{ name: 'people', args: { action: 'list' } }] },
+      { toolCalls: [{ name: 'gift_cards', args: { action: 'list' } }] },
+      { text: 'Nothing needs doing.' },
     ],
   },
   {

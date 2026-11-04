@@ -356,6 +356,12 @@ export interface ChatCardProps {
   result?: unknown;
   /** Why it failed, on `failed`. */
   error?: string;
+  /**
+   * What a finished update or delete replaced: the changed fields' earlier
+   * values (`null` where there were none), or the deleted record. What the
+   * card's undo writes back.
+   */
+  previous?: Record<string, unknown>;
 }
 
 export interface ChatCardType {

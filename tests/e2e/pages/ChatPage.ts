@@ -110,6 +110,26 @@ export class ChatPage {
     return this.driver.getByTestId('chat-card-title');
   }
 
+  /** A card's Undo: put back what the assistant changed or deleted. */
+  get undoButton(): Locator {
+    return this.driver.getByTestId('chat-card-undo');
+  }
+
+  /** What a card says once its change has been put back ("Undone", "Restored"). */
+  get undoneNote(): Locator {
+    return this.driver.getByTestId('chat-card-undone');
+  }
+
+  /** A run of reads folded into one "Looked at …" line. */
+  get readRollup(): Locator {
+    return this.driver.getByTestId('chat-tool-rollup');
+  }
+
+  /** Unfold a "Looked at …" line to show each read's card. */
+  async openReadRollup(index = 0) {
+    await this.readRollup.nth(index).getByTestId('chat-tool-rollup-toggle').click();
+  }
+
   /** A message card's "To …" line: who a message is (or was) for. */
   get cardRecipient(): Locator {
     return this.driver.getByTestId('chat-card-recipient');

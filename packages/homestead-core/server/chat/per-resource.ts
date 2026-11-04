@@ -120,6 +120,7 @@ export function buildResourceTools(
   {
     write = true,
     attachments,
+    recordPrevious = false,
   }: {
     /** Whether writes are offered, everywhere or per resource. */
     write?: WriteAccess;
@@ -128,6 +129,8 @@ export function buildResourceTools(
      * conversation. Without it (MCP), file fields stay out of the tools.
      */
     attachments?: AttachmentSource;
+    /** Report what an update or delete replaced (`previous`): the chat's undo. */
+    recordPrevious?: boolean;
   } = {},
 ): ToolSurface {
   // Reference hints name this surface's tools: one per resource, listed with
@@ -287,8 +290,11 @@ export function buildResourceTools(
     const out = await executeToolCall({ name: call.name, args: call.args }, bindings, token, {
       attachments,
       include: include.names,
+      recordPrevious,
     });
-    return out.ok ? { ok: true, result: out.result } : { ok: false, error: out.error ?? 'error' };
+    return out.ok
+      ? { ok: true, result: out.result, ...(out.previous ? { previous: out.previous } : {}) }
+      : { ok: false, error: out.error ?? 'error' };
   }
 
   return {

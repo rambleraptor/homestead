@@ -17,6 +17,7 @@ export interface RecordOwner {
 
 interface OwnerMaps {
   bySingular: Map<string, RecordOwner>;
+  byPlural: Map<string, RecordOwner>;
   byTool: Map<string, RecordOwner>;
 }
 
@@ -28,12 +29,14 @@ function maps(): OwnerMaps {
   const cached = cache.get(registry);
   if (cached) return cached;
   const bySingular = new Map<string, RecordOwner>();
+  const byPlural = new Map<string, RecordOwner>();
   const byTool = new Map<string, RecordOwner>();
   for (const { app, def } of getAllResourceDefsWithApp()) {
     bySingular.set(def.singular, { app, def });
+    byPlural.set(def.plural, { app, def });
     byTool.set(resourceToolName(def), { app, def });
   }
-  const out = { bySingular, byTool };
+  const out = { bySingular, byPlural, byTool };
   cache.set(registry, out);
   return out;
 }
@@ -43,9 +46,22 @@ export function ownerOf(singular: string): RecordOwner | undefined {
   return maps().bySingular.get(singular);
 }
 
+/** The app and definition behind a collection (`todos`), as records name their source. */
+export function ownerOfCollection(plural: string): RecordOwner | undefined {
+  return maps().byPlural.get(plural);
+}
+
 /** The app and definition behind a per-resource chat tool (`gift_cards`). */
 export function ownerOfTool(toolName: string): RecordOwner | undefined {
   return maps().byTool.get(toolName);
+}
+
+/** Whether any resource is nested under this one (deleting it takes its children with it). */
+export function hasChildren(singular: string): boolean {
+  for (const { def } of maps().bySingular.values()) {
+    if (def.parents?.includes(singular)) return true;
+  }
+  return false;
 }
 
 /** The app's record card for the resource, if it declares one. */

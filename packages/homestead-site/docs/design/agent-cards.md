@@ -1,6 +1,6 @@
 # Agent cards — Design and implementation plan
 
-**Status:** Phases 1–2 implemented, phase 3 proposed · **Audience:** contributors
+**Status:** Implemented (phases 1–3) · **Audience:** contributors
 
 > How a tool call in an assistant reply renders as a card the person can read
 > and act on, instead of a JSON disclosure — and how the record half of that
@@ -242,21 +242,60 @@ an app card handles the call, the approval leaves out its own "To" row
 
 ### 3.5 Read rollup
 
-Consecutive `read`/`list` parts on resources with no app `list` card collapse
-into one quiet "Looked at todos, groceries" line with one disclosure. Writes,
-failures and approvals always render individually. Implemented as a grouping
-pass over `message.parts` in `ChatMessage` before rendering.
+Two or more finished reads in a row, on resources whose app doesn't draw that
+action itself, fold into one quiet "Looked at people and gift cards" line
+(`ReadRollup` in `ChatCard.tsx`, `chat-tool-rollup`), with each read's card
+behind it. A step boundary or an empty text between them doesn't break the
+run; anything else does. A lone read, a write, a failure, an approval, and a
+list an app draws (todos, groceries) always render on their own. The rules are
+`rollsUp` and `groupParts` in `chat/cards.ts`; `ChatMessage` renders through
+the groups.
+
+### 3.6 Undo
+
+A finished update or delete can be put back from its card (`UndoCall.tsx`,
+`undoPlan` in `chat/cards.ts`). The chat's executor reads the record before
+the write (`recordPrevious`, on only for the chat; MCP doesn't pay for the
+read) and reports what the call replaced as `previous` beside the result: the
+changed fields' earlier values (`null` where there were none) on an update,
+the record on a delete. Secret and file fields are never in it. The model sees
+it too, which tells it what the call replaced.
+
+- **Update**: offered while the live record still holds exactly what the call
+  set, so an undo never writes over a later change; it merge-patches the
+  earlier values back through the resource's shared update mutation. Not
+  offered when the call wrote a field `previous` couldn't cover (a file).
+  Afterwards the card says "Undone" (`chat-card-undone`), after a reload too,
+  because the record holds the earlier values again.
+- **Delete**: offered while the record is still gone; it recreates it under
+  its old id through the shared create mutation (`useResourceCreate` now keeps
+  a caller's `recordId`). Only for a top-level resource that takes a chosen id
+  (`user_settable_create`), has no child resources (they went with it), no
+  secret fields, and held no files. Afterwards: "Restored".
+
+The undo is an ordinary write: optimistic, queued offline, and seen by
+everyone through the change feed. The assistant isn't told about it; it learns
+only if the person says so. `useCardRecord` treats a record as deleted only
+until it's back in the cache, so a restore shows at once (the feed doesn't
+echo this tab's own write).
 
 ## 4. Where record cards are reused
 
-- **Change toasts.** `useChangeToasts` gains an optional `render` so a
-  created/updated change can toast the record card at `size: 'row'` with the
-  actor line above it. Todos and groceries keep their `describe` sentences as
-  the fallback text.
-- **Notifications inbox.** A row with `source_collection`/`source_id` renders
-  the record card under the message when the resource declares one.
-- **Reference fields.** `ReferenceField` renders a chosen record as the record
-  card at `size: 'row'` when one exists, else `labelField` as today.
+- **Change toasts.** `useChangeToasts({ showRecord: true })` toasts a lone
+  create or update with the record's card under the sentence, through
+  `useToast().record` (`RecordToast.tsx`, `record-toast`), which stays as long
+  as an undo toast. A burst or a delete stays a sentence. Todos turn it on:
+  the page shows one list at a time, so the todo someone else touched is often
+  on another one. Groceries don't: the whole list is already on screen.
+- **Notifications inbox.** A row whose `source_collection`/`source_id` names a
+  resource with a record card shows the record under the message
+  (`NotificationRecord.tsx`, `notification-record`). No sender points at a
+  carded resource yet (the grocery notification still names the legacy
+  `grocery_items`), so this waits for one; a reminder about a todo is the spec.
+- **Reference fields** (not done). The one reference to a carded resource
+  today is the home app's `charge_todo`, which Homestead manages and no form
+  edits; and a live card inside a form control would write (a tick) outside
+  the form's own save. Revisit with a read-only record card size.
 - **Cross-app widgets** (later): a "Recent changes" widget over
   `useRecentRemoteChanges` rendering record cards.
 
@@ -317,14 +356,19 @@ No app changes. Every reply reads better immediately.
   A card follows a change and a delete made by `h.householdMember` with no
   reload.
 
-### Phase 3 — undo, rollup, reuse outside chat
+### Phase 3 — undo, rollup, reuse outside chat (done)
 
-- **Undo** on `update` (patch previous values from the was/now diff) and
-  `delete` (recreate from `input.fields`), via the app's hooks through
-  `RecordCard`'s owner; shown for the session only.
+- **Undo** (§3.6). Changed from the plan: the executor records what a call
+  replaced instead of the card guessing from the input (a delete's input has
+  no fields), and the offer depends on the record's state rather than the
+  session, so it survives a reload and never overwrites a later change.
 - **Read rollup** (§3.5).
-- **Change toasts** `render` option, used by todos and groceries.
-- **Inbox** and **ReferenceField** rendering through `RecordCard`.
+- **Change toasts**: a `showRecord` option, used by todos (§4).
+- **Inbox** through `RecordCard` (§4). `ReferenceField` left out, for the
+  reasons in §4.
+- Specs: undo (update, a later change blocks it, delete, a failed call), the
+  rollup (new `lookAround` script), a todo toast on the Todos page, and a
+  reminder about a todo in the inbox.
 
 ## 6. Out of scope (for now)
 
@@ -339,8 +383,10 @@ No app changes. Every reply reads better immediately.
 
 ## 7. Open questions
 
-- Should `update` cards show "was" when the stored part has no prior value?
-  Phase 1 shows only "now" in that case; Phase 3's undo would want the prior
-  value, which means the executor recording it (a server change, small).
+- Should an update card show "was" beside "now"? The prior values are in the
+  stored part now (§3.6), so it's a rendering choice; the card shows "now"
+  and offers the undo.
+- Should the assistant hear about an undo? Today it learns only if the person
+  says so; a note in the next turn's context would close the gap.
 - Does `list` under an app card want paging? The executor caps at `limit`;
   the card shows what came back plus the executor's "more matched" note.

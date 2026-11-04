@@ -31,7 +31,8 @@ export type McpToolMode = 'typed' | 'resource' | 'generic';
 
 /** Outcome of a surface tool call; never thrown, always reported. */
 export type SurfaceResult =
-  | { ok: true; result: unknown }
+  /** `previous`: what an update or delete replaced (see `ChatToolCall.previous`). */
+  | { ok: true; result: unknown; previous?: Record<string, unknown> }
   | { ok: false; error: string };
 
 /** A built tool surface: what to register, and how to run it. */

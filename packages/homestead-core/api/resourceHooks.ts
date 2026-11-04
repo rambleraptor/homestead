@@ -318,8 +318,15 @@ export function byCreateTimeAsc<T extends { create_time?: string }>(a: T, b: T):
  * Create-mutation wrapper. Each call picks the new record's id up front
  * (AEP-133), so the optimistic record, the queued request and the stored
  * record all share it: a caller can link to or edit the new record at once,
- * online or not.
+ * online or not. A caller that already has the id — putting a deleted record
+ * back under its old one — passes it as `recordId`.
  */
+/** The id a create will have: the caller's, when it chose one, else a new one. */
+function chosenId(vars: object): string {
+  const given = (vars as CreateVarsBase).recordId;
+  return typeof given === 'string' && given ? given : newRecordId();
+}
+
 export function useResourceCreate<T, V extends object>(
   appId: string,
   singular: string,
@@ -335,11 +342,11 @@ export function useResourceCreate<T, V extends object>(
   return {
     ...mutation,
     mutate: (vars: V) =>
-      mutation.mutate({ ...(vars as object), recordId: newRecordId() } as V & CreateVarsBase),
+      mutation.mutate({ ...(vars as object), recordId: chosenId(vars) } as V & CreateVarsBase),
     mutateAsync: (vars: V) =>
       mutation.mutateAsync({
         ...(vars as object),
-        recordId: newRecordId(),
+        recordId: chosenId(vars),
       } as V & CreateVarsBase),
   } as UseMutationResult<T, Error, V> & {
     mutate: (vars: V) => void;

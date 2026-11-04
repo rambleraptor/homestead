@@ -157,4 +157,81 @@ describe('Chat cards', () => {
     await d.expect(chat.cardHeadlines.first()).toHaveText('Sent to Sam');
     await d.expect(chat.cardMessage).toContainText('Running late');
   });
+
+  describe('undo', () => {
+    test("an update can be put back, and then says it's undone", async () => {
+      const d = h.driver;
+      await seedTodo();
+      const chat = new ChatPage(d);
+      await chat.goto();
+      await chat.send(`Move the plumber to later ${CHAT_MARKERS.updateTodo}`);
+      await d.expect(chat.messages).toContainText('Moved it to Do Later.');
+      await chat.expectSettled(/plumber/);
+
+      await chat.undoButton.click();
+      await d.expect(chat.undoneNote).toHaveText('Undone');
+      await d.expect(chat.undoButton).toHaveCount(0);
+      expect((await todos().get(TODO_ID)).status).toBe('pending');
+
+      // After a reload it still knows: the todo holds what it had before.
+      await d.reload();
+      await d.expect(chat.undoneNote).toHaveText('Undone');
+    });
+
+    test('an update someone has changed since is not offered for undo', async () => {
+      const d = h.driver;
+      await seedTodo();
+      const chat = new ChatPage(d);
+      await chat.goto();
+      await chat.send(`Move the plumber to later ${CHAT_MARKERS.updateTodo}`);
+      await d.expect(chat.undoButton).toBeVisible();
+
+      await e2eClient(h.householdMember.token).collection('todos').record(TODO_ID).update({ status: 'completed' });
+      await d.expect(chat.undoButton).toHaveCount(0);
+      await d.expect(chat.undoneNote).toHaveCount(0);
+      await chat.expectSettled(/plumber/);
+    });
+
+    test('a delete can be put back under the same id', async () => {
+      const d = h.driver;
+      await seedTodo();
+      const chat = new ChatPage(d);
+      await chat.goto();
+      await chat.send(`Remove the plumber todo ${CHAT_MARKERS.deleteTodo}`);
+      await d.expect(chat.messages).toContainText('Removed it.');
+      await chat.expectSettled(/plumber/);
+
+      await chat.undoButton.click();
+      await d.expect(chat.undoneNote).toHaveText('Restored');
+      expect(await todos().get(TODO_ID)).toMatchObject({ title: 'Call the plumber', status: 'pending' });
+    });
+
+    test('a call that failed has nothing to undo', async () => {
+      const d = h.driver;
+      const chat = new ChatPage(d);
+      await chat.goto();
+      await chat.send(`Move the plumber to later ${CHAT_MARKERS.updateTodo}`);
+      await d.expect(chat.card('todo')).toHaveAttribute('data-mode', 'failed');
+      await d.expect(chat.undoButton).toHaveCount(0);
+      await chat.expectSettled(/plumber/);
+    });
+  });
+
+  test('reads in a row fold into one line, with each one behind it', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    await chat.goto();
+    await chat.send(`Anything to do? ${CHAT_MARKERS.lookAround}`);
+
+    await d.expect(chat.messages).toContainText('Nothing needs doing.');
+    await d.expect(chat.readRollup).toHaveCount(1);
+    await d.expect(chat.readRollup).toContainText('Looked at people and gift cards');
+    await d.expect(chat.toolCalls).toHaveCount(0);
+
+    await chat.openReadRollup();
+    await d.expect(chat.toolCalls).toHaveCount(2);
+    await d.expect(chat.card('person')).toBeVisible();
+    await d.expect(chat.card('gift-card')).toBeVisible();
+    await chat.expectSettled(/Anything to do/);
+  });
 });

@@ -157,12 +157,15 @@ describe('useRecentRemoteChanges', () => {
 
 describe('useChangeToasts', () => {
   const info = vi.fn();
+  const record = vi.fn();
 
   beforeEach(() => {
     vi.useFakeTimers();
     info.mockReset();
+    record.mockReset();
     vi.spyOn(toastModule, 'useToast').mockReturnValue({
       info,
+      record,
     } as unknown as ReturnType<typeof toastModule.useToast>);
   });
   afterEach(() => {
@@ -181,6 +184,28 @@ describe('useChangeToasts', () => {
     act(() => vi.advanceTimersByTime(CHANGE_TOAST_WINDOW_MS));
 
     expect(info).toHaveBeenCalledExactlyOnceWith('Sam touched milk');
+  });
+
+  it('shows the record with a lone change when asked, but not with a delete or a burst', () => {
+    renderHook(() => useChangeToasts('grocery', describeIt, { showRecord: true }));
+
+    publish('resource.updated', 'milk');
+    act(() => vi.advanceTimersByTime(CHANGE_TOAST_WINDOW_MS));
+    expect(record).toHaveBeenCalledExactlyOnceWith('Sam touched milk', {
+      singular: 'grocery',
+      id: 'milk',
+      snapshot: { id: 'milk', name: 'milk' },
+      parent: undefined,
+    });
+    expect(info).not.toHaveBeenCalled();
+
+    publish('resource.deleted', 'eggs');
+    act(() => vi.advanceTimersByTime(CHANGE_TOAST_WINDOW_MS));
+    publish('resource.created', 'a');
+    publish('resource.created', 'b');
+    act(() => vi.advanceTimersByTime(CHANGE_TOAST_WINDOW_MS));
+    expect(info.mock.calls).toEqual([['Sam touched eggs'], ['Sam made 2 changes']]);
+    expect(record).toHaveBeenCalledTimes(1);
   });
 
   it('collapses a burst into one summary, skipping what describe declines', () => {

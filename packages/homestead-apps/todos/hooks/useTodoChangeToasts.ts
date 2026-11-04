@@ -39,5 +39,7 @@ export function describeTodoChange(change: TodoChange): string | null {
  * only other writer is the same person on another device — not news.
  */
 export function useTodoChangeToasts(): void {
-  useChangeToasts<Pick<Todo, 'title' | 'status'>>('todo', describeTodoChange);
+  // The page shows one list at a time, so the todo someone else touched is
+  // often on another one: the toast carries it, checkbox and all.
+  useChangeToasts<Pick<Todo, 'title' | 'status'>>('todo', describeTodoChange, { showRecord: true });
 }

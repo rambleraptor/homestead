@@ -36,6 +36,12 @@ export interface ExecuteOptions {
   attachments?: AttachmentSource;
   /** Linked records a read brings along (`include`), already checked by the surface. */
   include?: string[];
+  /**
+   * Read a record before updating or deleting it, and report what the call
+   * replaced as `previous` — the chat's undo needs it. Off by default: it
+   * costs a read, and other surfaces (MCP) have no use for it.
+   */
+  recordPrevious?: boolean;
 }
 
 /**
@@ -52,6 +58,38 @@ function withoutSecrets<R>(binding: ToolBinding, record: R): R {
   for (const name of secrets) delete out[name];
   if (out.$included !== undefined) out.$included = withoutDescriptors(out.$included);
   return out as R;
+}
+
+/**
+ * What an update is about to replace, field by field, so the person can put
+ * it back (the reply's undo). A field the record didn't have reads as `null`,
+ * which a merge patch clears. File and secret fields are left out: neither can
+ * be written back from here, so a call that changed one isn't undoable.
+ */
+function priorValues(
+  binding: ToolBinding,
+  before: Record<string, unknown>,
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const name of Object.keys(body)) {
+    const field = binding.def.fields[name];
+    if (field?.type === 'file' || field?.secret) continue;
+    out[name] = before[name] ?? null;
+  }
+  return out;
+}
+
+/** The record as it stands, or undefined when this caller can't read it (the write still goes ahead). */
+async function readBefore(
+  records: ReturnType<typeof collectionAt>,
+  id: string,
+): Promise<Record<string, unknown> | undefined> {
+  try {
+    return (await records.get(id)) as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -169,7 +207,7 @@ export async function executeToolCall(
   call: ToolCall,
   bindings: Map<string, ToolBinding>,
   token: string,
-  { attachments, include }: ExecuteOptions = {},
+  { attachments, include, recordPrevious = false }: ExecuteOptions = {},
 ): Promise<ChatToolCall> {
   const args = (call.args ?? {}) as Record<string, unknown>;
   const base = { tool: call.name, args };
@@ -225,14 +263,26 @@ export async function executeToolCall(
         const body = await buildBody(binding, args, attachments);
         const refErr = await validateReferences(binding, body, hs);
         if (refErr) return { ...base, ok: false, error: refErr };
+        const before = recordPrevious ? await readBefore(records, id) : undefined;
         const result = withoutSecrets(binding, await records.record(id).update(body));
-        return { ...base, ok: true, result };
+        return {
+          ...base,
+          ok: true,
+          result,
+          ...(before ? { previous: priorValues(binding, before, body) } : {}),
+        };
       }
       case 'delete': {
         const id = stringArg(args.id);
         if (!id) throw new Error('missing required parameter "id"');
+        const before = recordPrevious ? await readBefore(records, id) : undefined;
         await records.record(id).delete();
-        return { ...base, ok: true, result: { deleted: true, id } };
+        return {
+          ...base,
+          ok: true,
+          result: { deleted: true, id },
+          ...(before ? { previous: withoutSecrets(binding, before) } : {}),
+        };
       }
     }
   } catch (err) {

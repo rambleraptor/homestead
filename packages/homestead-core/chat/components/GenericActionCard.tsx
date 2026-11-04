@@ -22,8 +22,14 @@ import { AppIcon } from '@rambleraptor/homestead-core/apps/lazy';
 import { recordTitle, resourceLabel, TITLE_FIELDS } from '@rambleraptor/homestead-core/resources/display';
 import { Shimmer } from '@rambleraptor/homestead-core/shared/components/ai-elements/shimmer';
 import { RecordCard, RecordTitleLine } from '@rambleraptor/homestead-core/records/components/RecordCard';
-import { parentFromPath, recordCardOf, recordParent } from '@rambleraptor/homestead-core/records/owners';
-import { cardRecordId, cardRows, humanizeName, listedRecords, type CardRow } from '../cards';
+import {
+  hasChildren,
+  parentFromPath,
+  recordCardOf,
+  recordParent,
+} from '@rambleraptor/homestead-core/records/owners';
+import { cardRecordId, cardRows, humanizeName, listedRecords, undoPlan, type CardRow } from '../cards';
+import { UndoCall } from './UndoCall';
 
 const LIST_PREVIEW = 5;
 
@@ -181,6 +187,10 @@ export function GenericActionCard(props: GenericActionCardProps) {
   const id = mode === 'done' && action !== 'delete' && action !== 'list' ? cardRecordId(input, result) : undefined;
   const showRecord = hasRecordCard && id !== undefined;
 
+  // Putting the change back, when it can be.
+  const plan = undoPlan(props, hasChildren(resource.singular));
+  const undoParent = plan?.kind === 'update' ? recordParent(resource, input, result) : undefined;
+
   return (
     <div
       className="min-w-0 text-sm"
@@ -239,6 +249,8 @@ export function GenericActionCard(props: GenericActionCardProps) {
           )}
         </ul>
       )}
+
+      {plan && <UndoCall owner={{ app, def: resource }} plan={plan} parent={undoParent} />}
 
       {mode === 'failed' && (
         <p className="mt-1 text-destructive" role="alert" data-testid="chat-card-error">
