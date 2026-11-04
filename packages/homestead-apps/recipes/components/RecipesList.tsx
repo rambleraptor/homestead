@@ -10,6 +10,7 @@ import { ChefHat, Clock, Pencil, Trash2 } from 'lucide-react';
 import type { Recipe } from '../types';
 import { RecipeImage } from './RecipeImage';
 import { RecipeTags } from './RecipeTags';
+import { CookbookChips } from './cookbooks/CookbookChips';
 
 interface RecipesListProps {
   recipes: Recipe[];
@@ -97,6 +98,8 @@ export function RecipesList({ recipes, onEdit, onDelete }: RecipesListProps) {
               max={3}
               className={recipe.cook_time ? 'mt-1' : 'mt-3'}
             />
+            {/* Chips are links, so they sit above the card's overlay link. */}
+            <CookbookChips recipeId={recipe.id} max={2} className="relative mt-2 pointer-events-auto" />
           </div>
         </li>
       ))}

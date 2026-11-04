@@ -81,3 +81,31 @@ export const testRecipes = [
     tags: ['drink', 'breakfast'],
   },
 ];
+
+export interface CreateCookbookInput {
+  name: string;
+  description?: string;
+  /** Recipe ids, in order. */
+  recipes?: string[];
+  auto?: 'social';
+}
+
+export interface CookbookRecord {
+  id: string;
+  name: string;
+  description?: string;
+  recipes?: string[];
+  auto?: 'social';
+}
+
+export async function createCookbook(
+  token: string,
+  data: CreateCookbookInput,
+): Promise<CookbookRecord> {
+  return e2eClient(token).collection<CookbookRecord>('cookbooks').create({
+    name: data.name,
+    description: data.description,
+    recipes: data.recipes ?? [],
+    ...(data.auto ? { auto: data.auto } : {}),
+  });
+}

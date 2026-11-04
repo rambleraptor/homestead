@@ -25,6 +25,7 @@ import {
   type BulkImportRequest,
   type BulkImportResult,
   type BulkImportSaveResult,
+  type BulkImportSaver,
   type BulkImportSummary,
   type ParsedItem,
 } from '../../resources/bulk-import/types';
@@ -136,7 +137,11 @@ export default async function bulkImport(
   const format = def.formats.find((f) => f.id === body.format);
   if (!format) throw new Error(`Unknown format ${body.format}`);
 
-  const importCtx: BulkImportContext = { auth: ctx.auth, plural: ctx.plural };
+  const importCtx: BulkImportContext = {
+    auth: ctx.auth,
+    plural: ctx.plural,
+    format: format.id,
+  };
   const owner = previewOwner(ctx, format.id);
 
   let items: ParsedItem[];
@@ -156,7 +161,7 @@ export default async function bulkImport(
   }
 
   const selected = resolveSelection(items, body.selected_indices);
-  const save = def.save ? (await def.save()).save : defaultSaver;
+  const save = def.save ? (await def.save()).save : createOnePerItem;
   const { created, failed } = await save({ items: selected, ctx: importCtx });
   return { validate_only: false, created, failed, summary };
 }
@@ -241,30 +246,26 @@ export function resolveSelection(
 }
 
 /**
- * Create one record per item in the resource's own collection. Per-item
- * failures are collected rather than thrown so a single rejected row doesn't
- * abandon the rest of the import.
+ * The default saver: create one record per item in the resource's own
+ * collection. Per-item failures are collected rather than thrown so a single
+ * rejected row doesn't abandon the rest of the import. Exported so a custom
+ * saver that only needs to follow up on the new records (recipes filing a
+ * social import into its cookbook) can reuse it and read `createdIds`.
  */
-const defaultSaver = async ({
-  items,
-  ctx,
-}: {
-  items: ParsedItem[];
-  ctx: BulkImportContext;
-}): Promise<BulkImportSaveResult> => {
+export const createOnePerItem: BulkImportSaver = async ({ items, ctx }) => {
   const stampsCreatedBy = resourceHasCreatedBy(ctx.plural);
-  const collection = serverClient(ctx.auth.token).collection(ctx.plural);
-  let created = 0;
+  const collection = serverClient(ctx.auth.token).collection<{ id: string }>(ctx.plural);
+  const createdIds: string[] = [];
   const failed: BulkImportSaveResult['failed'] = [];
   for (const item of items) {
     const data = item.data as Record<string, unknown>;
     try {
-      await collection.create(
+      const record = await collection.create(
         stampsCreatedBy && data.created_by === undefined
           ? { ...data, created_by: ctx.auth.user.path }
           : data,
       );
-      created++;
+      createdIds.push(record.id);
     } catch (error) {
       failed.push({
         index: item.index,
@@ -272,7 +273,7 @@ const defaultSaver = async ({
       });
     }
   }
-  return { created, failed };
+  return { created: createdIds.length, failed, createdIds };
 };
 
 /**

@@ -2,6 +2,14 @@ import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/
 
 export const RECIPES = 'recipes' as const;
 export const RECIPE_LOGS = 'logs' as const;
+export const COOKBOOKS = 'cookbooks' as const;
+
+/**
+ * The `auto` value of the one cookbook the server keeps for social-post
+ * imports (TikTok, Instagram, YouTube). Created on the first such import and
+ * appended to on every later one; the SPA hides delete for it.
+ */
+export const SOCIAL_COOKBOOK = 'social' as const;
 
 export const recipesResources: ResourceDefinition[] = [
   {
@@ -9,9 +17,11 @@ export const recipesResources: ResourceDefinition[] = [
     plural: RECIPES,
     description: 'A culinary recipe with parsed ingredients for scaling.',
     user_settable_create: true,
-    // No `save`: an imported recipe is one plain record, and importers never
-    // produce an image, so the default one-create-per-item saver is enough.
+    // Importers never produce an image, so the saver is the default
+    // one-create-per-item step plus one follow-up: a social-post import is
+    // filed into the automatic "From social" cookbook.
     bulkImport: {
+      save: () => import('./methods/bulk-import-save'),
       formats: [
         {
           id: 'url',
@@ -136,6 +146,54 @@ export const recipesResources: ResourceDefinition[] = [
       image: {
         type: 'file',
         description: 'Recipe photo (jpeg/png/webp/gif, <=5MB).',
+      },
+      created_by: { type: 'string', reference: { resource: 'user' } },
+    },
+  },
+  {
+    singular: 'cookbook',
+    plural: COOKBOOKS,
+    description:
+      'A named, ordered collection of recipes someone assembles on purpose ' +
+      '(a weeknight rotation, a holiday menu). Tags classify a recipe; a ' +
+      'cookbook curates. A recipe can be in many cookbooks. People may call ' +
+      'a cookbook a "collection".',
+    user_settable_create: true,
+    fields: {
+      name: {
+        type: 'string',
+        required: true,
+        description: 'Display name of the cookbook.',
+      },
+      description: {
+        type: 'string',
+        description: 'What the cookbook is for, in a sentence.',
+      },
+      /**
+       * Membership lives here, not on the recipe, so a cookbook has an order
+       * and adding a recipe doesn't rewrite the recipe. `set-null` drops a
+       * deleted recipe's id out of every cookbook.
+       */
+      recipes: {
+        type: 'array',
+        items: {
+          type: 'string',
+          reference: { resource: 'recipe', onDelete: 'set-null' },
+        },
+        description:
+          'Ids of the recipes in this cookbook, in display order. Replace the ' +
+          'whole list to add, remove or reorder.',
+      },
+      /**
+       * Set only on the server-kept cookbook that collects social-post imports;
+       * absent on cookbooks people make. One per value.
+       */
+      auto: {
+        type: 'string',
+        enum: [SOCIAL_COOKBOOK],
+        description:
+          'Marks the automatic cookbook that collects recipes imported from ' +
+          'social posts. Not set on cookbooks people make; never set it by hand.',
       },
       created_by: { type: 'string', reference: { resource: 'user' } },
     },

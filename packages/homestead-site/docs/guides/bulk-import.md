@@ -363,6 +363,14 @@ what lets it do things a row-at-a-time loop can't:
 Collect per-item failures into `failed` instead of throwing, so one bad row
 doesn't abandon the rest.
 
+A saver that only needs to *follow up* on the new records can reuse the default
+step — `createOnePerItem` from `core/server/bulk-import/handler` — which also
+returns the new records' ids as `createdIds`. `ctx.format` names the format
+that produced the items, so one saver can treat one source differently:
+
+- **Recipes** creates every item the default way, then, for the `social`
+  format only, files the new recipes into the automatic "From social" cookbook.
+
 ## Preview rows
 
 The default preview dumps each record as key/value pairs. Pass a `preview`

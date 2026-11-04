@@ -14,6 +14,26 @@ export const recipesApp: AppConfig = {
   name: 'Recipes',
   description: 'Manage household recipes with structured ingredients.',
   resources: recipesResources,
+  chat: {
+    instructions: [
+      'Tags classify a recipe (cuisine, diet, "quick"); a cookbook is a named, ordered ' +
+        'list someone curates ("Weeknight dinners", "Thanksgiving"). People may call a ' +
+        'cookbook a "collection" — that means a cookbook, not a documents collection.',
+      'To add, remove or reorder recipes in a cookbook, update its "recipes" list ' +
+        '(recipe ids, in order), replacing the whole list. The cookbook marked ' +
+        'auto: "social" is kept by the server for social-post imports; never create ' +
+        'another one, delete it, or set "auto" yourself.',
+    ],
+  },
+  // Seed the new "From social" cookbook from recipes already imported from
+  // social posts (recognised by their source URL). One-shot and idempotent.
+  migrations: [
+    {
+      id: 'recipes-backfill-social-cookbook',
+      title: 'File social-post imports into the From social cookbook',
+      load: () => import('./migrations/backfill-social-cookbook'),
+    },
+  ],
   web: {
     icon: () => import('lucide-react').then((m) => m.ChefHat),
     basePath: '/recipes',
@@ -28,6 +48,12 @@ export const recipesApp: AppConfig = {
       {
         path: 'import',
         component: () => import('./bulk-import').then((m) => m.RecipesBulkImport),
+      },
+      {
+        path: 'cookbooks/:id',
+        component: () =>
+          import('./components/cookbooks/CookbookRoute').then((m) => m.CookbookRoute),
+        dynamic: true,
       },
       {
         path: ':id',

@@ -495,6 +495,7 @@ function assertions(loc: VmLoc): LocatorAssertions {
     not: {
       toBeVisible: (o) =>
         poll(describe, () => (loc.resolve().some(isVisible) ? { ok: false, why: 'element is visible' } : ok), o?.timeout),
+      toBeChecked: (o) => one((el) => (isChecked(el) ? 'element is checked' : null), o?.timeout),
       toContainText: (expected, o) =>
         one((el) => (textMatches(el.textContent ?? '', expected) ? `text was "${text(el)}"` : null), o?.timeout),
       toHaveCount: (n, o) => count((actual) => actual !== n, `not ${n}`, o?.timeout),

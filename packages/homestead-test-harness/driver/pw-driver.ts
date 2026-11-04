@@ -155,6 +155,7 @@ export function playwrightDriver(page: Page): Driver {
         toHaveAttribute: (name, value, o) => expect(pw).toHaveAttribute(name, value, o),
         not: {
           toBeVisible: (o) => expect(pw).not.toBeVisible(o),
+          toBeChecked: (o) => expect(pw).not.toBeChecked(o),
           toContainText: (text, o) => expect(pw).not.toContainText(text, o),
           toHaveCount: (count, o) => expect(pw).not.toHaveCount(count, o),
         },
