@@ -7,6 +7,7 @@
 import type { RecordCardProps } from '@rambleraptor/homestead-core/apps/types';
 import { useCardRecord } from '@rambleraptor/homestead-core/records/useCardRecord';
 import { RecordTitleLine } from '@rambleraptor/homestead-core/records/components/RecordCard';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useStores } from '../../hooks/useStores';
 import { GROCERIES } from '../../resources';
 import { GroceryCardRow, storeIdOf, type CardGrocery } from './GroceryCardRow';
@@ -23,9 +24,12 @@ export function GroceryCard({ id, snapshot, size }: RecordCardProps) {
   if (!record) {
     if (error) {
       return (
-        <p className="text-destructive text-sm" role="alert">
-          Couldn't load this item: {error.message}
-        </p>
+        <QueryError
+          compact
+          error={error}
+          title="Couldn’t load this item"
+          data-testid="grocery-card-error"
+        />
       );
     }
     return <RecordTitleLine snapshot={snapshot} struck={deleted} />;

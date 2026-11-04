@@ -79,7 +79,7 @@ export function GroceriesHome() {
     try {
       await deleteAllMutation.mutateAsync();
       setShowClearConfirm(false);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -90,7 +90,7 @@ export function GroceriesHome() {
     try {
       await notifyMutation.mutateAsync();
       toast.success('Household notified');
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -152,14 +152,14 @@ export function GroceriesHome() {
         <StoreManagement onClose={() => setShowStoreManagement(false)} />
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
+      <div className="bg-surface-white rounded-2xl shadow-sm p-4 border border-gray-100">
         <div className="flex gap-2">
           <select
             value={storeValue}
             onChange={(e) => setSelectedStore(e.target.value)}
             disabled={isSubmitting}
             data-testid="store-select"
-            className="px-2 py-2 sm:px-3 border border-gray-200 rounded-lg font-body bg-white text-brand-navy focus:outline-none focus:ring-2 focus:ring-accent-terracotta focus:border-transparent disabled:opacity-50 text-sm sm:text-base w-20 sm:w-auto"
+            className="px-2 py-2 sm:px-3 border border-gray-200 rounded-lg font-body bg-surface-white text-brand-navy focus:outline-none focus:ring-2 focus:ring-accent-terracotta focus:border-transparent disabled:opacity-50 text-sm sm:text-base w-20 sm:w-auto"
           >
             <option value="">No Store</option>
             {stores.map((store) => (

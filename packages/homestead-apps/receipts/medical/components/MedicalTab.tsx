@@ -8,7 +8,8 @@
  */
 
 import { useState } from 'react';
-import { AlertCircle, PiggyBank, Sparkles } from 'lucide-react';
+import { PiggyBank, Sparkles } from 'lucide-react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
@@ -40,7 +41,7 @@ export function MedicalTab({ addOpen, onOpenAdd, onCloseAdd }: MedicalTabProps) 
   const [editingReceipt, setEditingReceipt] = useState<HSAReceipt | null>(null);
   const [statusFilter, setStatusFilter] = useState<ReceiptStatus | 'All'>('All');
 
-  const { stats, isLoading, isError, error } = useHSAStats();
+  const { stats, isLoading, isError, error, refetch } = useHSAStats();
   const createMutation = useCreateHSAReceipt();
   const updateMutation = useUpdateHSAReceipt();
   const deleteMutation = useDeleteHSAReceipt();
@@ -49,7 +50,7 @@ export function MedicalTab({ addOpen, onOpenAdd, onCloseAdd }: MedicalTabProps) 
     try {
       await createMutation.mutateAsync(data);
       onCloseAdd();
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -63,7 +64,7 @@ export function MedicalTab({ addOpen, onOpenAdd, onCloseAdd }: MedicalTabProps) 
   const handleMarkAsReimbursed = async (id: string) => {
     try {
       await updateMutation.mutateAsync({ id, data: { status: 'Reimbursed' } });
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -89,17 +90,12 @@ export function MedicalTab({ addOpen, onOpenAdd, onCloseAdd }: MedicalTabProps) 
 
   if (isError) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50/40 p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">Failed to load HSA receipts</h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load HSA receipts"
+        data-testid="hsa-error"
+      />
     );
   }
 

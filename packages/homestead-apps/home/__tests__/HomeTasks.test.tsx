@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import type { HomeTask } from '../types';
 
 const useHomeTasks = vi.fn();
@@ -54,7 +55,12 @@ function setup(data: HomeTask[] | undefined, extra: Record<string, unknown> = {}
     error: null,
     ...extra,
   });
-  render(<HomeTasks />);
+  // The empty state's "Ask the assistant" link needs a router.
+  render(
+    <MemoryRouter>
+      <HomeTasks />
+    </MemoryRouter>,
+  );
 }
 
 beforeEach(() => {

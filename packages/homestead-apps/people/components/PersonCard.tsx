@@ -111,7 +111,7 @@ function HouseholdLine({
         >
           {address}
         </a>
-        {showName && <span className="text-gray-500"> · {household.name}</span>}
+        {showName && <span className="text-text-muted"> · {household.name}</span>}
       </span>
     </li>
   );
@@ -137,7 +137,7 @@ export function PersonCard({ person, onEdit, onDelete }: PersonCardProps) {
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={person.name} style={viewTransitionName('person', person.id)} />
           <div className="min-w-0">
-            <h3 className="font-semibold text-gray-900">
+            <h3 className="font-semibold text-brand-navy">
               <Link
                 to={`/people/${person.id}`}
                 className="after:absolute after:inset-0 after:content-[''] hover:text-brand-navy"
@@ -147,7 +147,7 @@ export function PersonCard({ person, onEdit, onDelete }: PersonCardProps) {
               </Link>
             </h3>
             {person.aliases.length > 0 && (
-              <p className="text-xs text-gray-500" data-testid="person-aliases-list">
+              <p className="text-xs text-text-muted" data-testid="person-aliases-list">
                 aka {person.aliases.join(', ')}
               </p>
             )}
@@ -178,7 +178,7 @@ export function PersonCard({ person, onEdit, onDelete }: PersonCardProps) {
                 align="end"
                 sideOffset={4}
                 role="menu"
-                className="z-50 w-40 rounded-xl border border-gray-200 bg-white p-1 shadow-md"
+                className="z-50 w-40 rounded-xl border border-gray-200 bg-surface-white p-1 shadow-md"
               >
                 <button
                   type="button"
@@ -205,7 +205,7 @@ export function PersonCard({ person, onEdit, onDelete }: PersonCardProps) {
       </div>
 
       {(partner || events.length > 0) && (
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-muted">
           {partner && (
             <span className="inline-flex items-center gap-1.5">
               <Users className={ICON} aria-label="Partner icon" />

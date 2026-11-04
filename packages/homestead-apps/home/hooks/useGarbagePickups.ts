@@ -28,11 +28,12 @@ export function useUpcomingPickupDays(days = 14): {
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
+  refetch: () => void;
 } {
-  const { data, isLoading, isError, error } = useGarbagePickups();
+  const { data, isLoading, isError, error, refetch } = useGarbagePickups();
   const upcoming = useMemo(
     () => (data ? upcomingPickupDays(data, { days }) : undefined),
     [data, days],
   );
-  return { data: upcoming, isLoading, isError, error };
+  return { data: upcoming, isLoading, isError, error, refetch: () => void refetch() };
 }

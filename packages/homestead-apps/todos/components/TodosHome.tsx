@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { AlertCircle, ListChecks } from 'lucide-react';
+import { ListChecks } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { finishesList, useTodoBuckets } from '../hooks/useTodos';
@@ -53,7 +55,7 @@ export function TodosHome() {
     (location.state as { scope?: ProjectScope } | null)?.scope ??
     MAIN_PROJECT_ID;
   const [scope, setScope] = useState<ProjectScope>(initialScope);
-  const { buckets, scoped, isLoading, isError, error } = useTodoBuckets(scope);
+  const { buckets, scoped, isLoading, isError, error, refetch } = useTodoBuckets(scope);
   const projectsQuery = useProjects();
   const synthetic = useSyntheticTodos();
   const create = useCreateTodo();
@@ -227,7 +229,7 @@ export function TodosHome() {
             data-testid="todos-add-category"
             value={addCategoryId}
             onChange={(e) => setAddCategoryId(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-2 py-1 font-body text-sm text-text-main focus:border-accent-terracotta focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-surface-white px-2 py-1 font-body text-sm text-text-main focus:border-accent-terracotta focus:outline-none"
           >
             <option value="">Uncategorized</option>
             {categories.map((c) => (
@@ -251,12 +253,12 @@ export function TodosHome() {
       )}
 
       {isError && (
-        <div className="bg-red-50/50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <p className="text-sm text-red-700">
-            {error instanceof Error ? error.message : 'Failed to load todos'}
-          </p>
-        </div>
+        <QueryError
+          error={error}
+          onRetry={() => void refetch()}
+          title="Failed to load todos"
+          data-testid="todos-error"
+        />
       )}
 
       {!isLoading && !isError && (
@@ -289,11 +291,11 @@ export function TodosHome() {
                       )}
                     </div>
                     {group.items.length === 0 ? (
-                      <p className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-3 text-center font-body text-xs text-text-muted">
+                      <p className="rounded-2xl border border-dashed border-gray-200 bg-surface-white px-4 py-3 text-center font-body text-xs text-text-muted">
                         No items in this category yet.
                       </p>
                     ) : (
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
+                      <div className="bg-surface-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
                         <TodoRows
                           todos={group.items}
                           variant="active"
@@ -306,14 +308,15 @@ export function TodosHome() {
               </div>
             ) : buckets.active.length === 0 &&
               (!showSynthetic || synthetic.length === 0) ? (
-              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center">
-                <ListChecks className="h-8 w-8 text-accent-terracotta/60" />
-                <p className="font-body text-sm text-text-muted">
-                  Nothing pending — add an item above to get started.
-                </p>
-              </div>
+              <EmptyState
+                icon={ListChecks}
+                title="Nothing pending"
+                description="Add an item above to get started."
+                assistantPrompt="Add a todo to call the plumber tomorrow"
+                data-testid="todos-empty"
+              />
             ) : (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
+              <div className="bg-surface-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
                 {showSynthetic &&
                   synthetic.map((todo, index) => (
                     <TodoRow

@@ -87,7 +87,7 @@ export function HomeTaskRow({
           disabled={busy}
           title="Mark done and roll the schedule forward"
           data-testid="home-task-done"
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1 text-xs font-medium text-text-muted transition-colors hover:bg-gray-50 disabled:opacity-50"
         >
           <Check className="h-3.5 w-3.5" aria-hidden="true" />
           Done
@@ -99,7 +99,7 @@ export function HomeTaskRow({
           title={task.paused ? 'Resume reminders' : 'Keep the schedule but stop reminding'}
           aria-label={task.paused ? `Resume ${task.name}` : `Pause ${task.name}`}
           data-testid="home-task-pause"
-          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:opacity-50"
+          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-50 hover:text-text-muted disabled:opacity-50"
         >
           {task.paused ? (
             <Play className="h-4 w-4" aria-hidden="true" />
@@ -112,7 +112,7 @@ export function HomeTaskRow({
           onClick={() => onEdit(task)}
           aria-label={`Edit ${task.name}`}
           data-testid="home-task-edit"
-          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600"
+          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-50 hover:text-text-muted"
         >
           <Pencil className="h-4 w-4" aria-hidden="true" />
         </button>

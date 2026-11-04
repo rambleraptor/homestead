@@ -80,7 +80,7 @@ export function ImageUploadDialog({ isOpen, onClose }: ImageUploadDialogProps) {
           handleClose();
         }, SUCCESS_AUTO_CLOSE_DELAY_MS);
       }
-    } catch (error) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -108,16 +108,16 @@ export function ImageUploadDialog({ isOpen, onClose }: ImageUploadDialogProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-brand-navy flex items-center gap-2">
             <ImageIcon className="w-6 h-6" />
             Upload Grocery List Image
           </h2>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-text-muted"
             disabled={isProcessing}
             data-testid="image-upload-dialog-close"
           >
@@ -139,12 +139,12 @@ export function ImageUploadDialog({ isOpen, onClose }: ImageUploadDialogProps) {
           {!previewUrl && (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-accent-terracotta hover:bg-accent-terracotta/5 transition-colors"
               data-testid="image-upload-dropzone"
             >
               <Upload className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-              <p className="text-gray-600 mb-1">Click to upload a grocery list image</p>
-              <p className="text-sm text-gray-500">Supports JPG, PNG, HEIC (max 20MB)</p>
+              <p className="text-text-muted mb-1">Click to upload a grocery list image</p>
+              <p className="text-sm text-text-muted">Supports JPG, PNG, HEIC (max 20MB)</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -184,11 +184,11 @@ export function ImageUploadDialog({ isOpen, onClose }: ImageUploadDialogProps) {
 
               {/* Processing Status */}
               {isProcessing && (
-                <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                <div className="flex items-center gap-3 p-4 bg-accent-terracotta/10 rounded-lg">
+                  <Loader2 className="w-5 h-5 animate-spin text-accent-terracotta" />
                   <div>
-                    <p className="font-medium text-blue-900">Processing image...</p>
-                    <p className="text-sm text-blue-700">Extracting items from image</p>
+                    <p className="font-medium text-brand-navy">Processing image...</p>
+                    <p className="text-sm text-text-muted">Extracting items from image</p>
                   </div>
                 </div>
               )}
@@ -275,7 +275,7 @@ export function ImageUploadDialog({ isOpen, onClose }: ImageUploadDialogProps) {
             <button
               onClick={handleUpload}
               disabled={!selectedFile || isProcessing}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-accent-terracotta text-white rounded-md hover:bg-accent-terracotta-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               data-testid="image-upload-dialog-submit"
             >
               {isProcessing ? (

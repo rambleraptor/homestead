@@ -22,6 +22,7 @@ import {
   type RemoteChange,
 } from '@rambleraptor/homestead-core/api/remoteChanges';
 import { Checkbox } from '@rambleraptor/homestead-core/shared/components/Checkbox';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { SwipeRow } from '@rambleraptor/homestead-core/shared/gestures';
 import { haptic } from '@rambleraptor/homestead-core/shared/haptics';
 import {
@@ -152,15 +153,13 @@ export function GroceryList({
 
   if (groups.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-12 border border-gray-200 text-center">
-        <ShoppingCart className="w-12 h-12 text-text-muted mx-auto mb-4" />
-        <p className="text-base font-body text-brand-navy font-medium">
-          No items in your grocery list.
-        </p>
-        <p className="text-sm font-body text-text-muted mt-1">
-          Add your first item to get started!
-        </p>
-      </div>
+      <EmptyState
+        icon={ShoppingCart}
+        title="No items in your grocery list."
+        description="Add your first item above, or upload a photo of a paper list."
+        assistantPrompt="Add milk, eggs and bread to the grocery list"
+        data-testid="groceries-empty"
+      />
     );
   }
 
@@ -189,7 +188,7 @@ export function GroceryList({
                 onClick={() => handleClear(group)}
                 data-testid="clear-checked-items-button"
                 title="Remove crossed-off items from this store"
-                className="ml-1 flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 text-sm whitespace-nowrap"
+                className="ml-1 flex items-center gap-1.5 px-3 py-1.5 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 text-sm whitespace-nowrap"
               >
                 <Eraser className="w-4 h-4" />
                 <span className="hidden sm:inline">Clear crossed off</span>
@@ -198,7 +197,7 @@ export function GroceryList({
             )}
           </div>
 
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+          <div className="bg-surface-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="divide-y divide-gray-100">
               {group.rows.map(({ item, exiting, firstPaint }) => {
                 const index = rowIndex++;
@@ -296,7 +295,7 @@ function GroceryItemRow({
           className: 'bg-red-600 text-white',
           onAction: () => onDelete(item),
         }}
-        className="bg-white"
+        className="bg-surface-white"
       >
         <div
           className={cn(

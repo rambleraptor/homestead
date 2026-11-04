@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { SectionCard } from '@rambleraptor/homestead-core/shared/components/SectionCard';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { useToday } from '../hooks/useToday';
@@ -92,10 +93,14 @@ export function TodayWidget() {
             ))}
           </ul>
         ) : (
-          <div className="text-center py-8" data-testid="today-empty">
-            <Sun className="w-10 h-10 text-gray-300 mx-auto mb-3" aria-hidden="true" />
-            <p className="font-body text-text-muted">Nothing on for today</p>
-          </div>
+          <EmptyState
+            compact
+            icon={Sun}
+            title="Nothing on for today"
+            description="Todos, pickups and plans due today show up here."
+            className="my-4"
+            data-testid="today-empty"
+          />
         )}
       </SectionCard>
     </div>

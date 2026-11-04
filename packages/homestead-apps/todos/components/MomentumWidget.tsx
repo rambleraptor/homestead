@@ -8,7 +8,9 @@
  * more: enough days to be a habit rather than a coincidence.
  */
 
-import { Flame } from 'lucide-react';
+import { Flame, Sprout } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { Skeleton, SkeletonRegion } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { TickingCount } from '@rambleraptor/homestead-core/shared/components/TickingCount';
 import { WidgetCard } from '@rambleraptor/homestead-core/shared/components/WidgetCard';
@@ -19,7 +21,7 @@ import { useMomentum } from '../hooks/useMomentum';
 export const HOT_STREAK_DAYS = 3;
 
 export function MomentumWidget() {
-  const { doneThisWeek, streak, isLoading } = useMomentum();
+  const { doneThisWeek, streak, isLoading, isError, error, refetch } = useMomentum();
   const hot = streak >= HOT_STREAK_DAYS;
 
   return (
@@ -38,10 +40,22 @@ export function MomentumWidget() {
           <Skeleton className="h-8 w-10" />
           <Skeleton className="h-5 w-28" />
         </SkeletonRegion>
+      ) : isError && doneThisWeek === 0 ? (
+        <QueryError
+          compact
+          error={error}
+          onRetry={refetch}
+          title="Couldn’t load your todos"
+          data-testid="todos-momentum-error"
+        />
       ) : doneThisWeek === 0 ? (
-        <p className="font-body text-text-muted py-2" data-testid="todos-momentum-empty">
-          Nothing checked off this week yet — a streak starts with one.
-        </p>
+        <EmptyState
+          compact
+          icon={Sprout}
+          title="Nothing checked off this week yet"
+          description="A streak starts with one."
+          data-testid="todos-momentum-empty"
+        />
       ) : (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-2 py-2">
           <div className="flex items-baseline gap-2">

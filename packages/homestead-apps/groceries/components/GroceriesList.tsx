@@ -7,8 +7,8 @@
  * notify, upload, new-list and store-management controls.
  */
 
-import { AlertCircle } from 'lucide-react';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useGroupedGroceries } from '../hooks/useGroupedGroceries';
 import { useUpdateGroceryItem } from '../hooks/useUpdateGroceryItem';
 import { useDeleteGroceryItem } from '../hooks/useDeleteGroceryItem';
@@ -21,7 +21,7 @@ import { StoreConfetti } from './StoreConfetti';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 
 export function GroceriesList() {
-  const { stats, isLoading, isError, error } = useGroupedGroceries();
+  const { stats, isLoading, isError, error, refetch } = useGroupedGroceries();
   const updateMutation = useUpdateGroceryItem();
   const deleteMutation = useDeleteGroceryItem();
   const createMutation = useCreateGroceryItem();
@@ -105,17 +105,12 @@ export function GroceriesList() {
 
   if (isError) {
     return (
-      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">Failed to load groceries</h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={refetch}
+        title="Failed to load groceries"
+        data-testid="groceries-error"
+      />
     );
   }
 

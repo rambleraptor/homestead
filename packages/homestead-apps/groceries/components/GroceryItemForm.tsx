@@ -1,8 +1,8 @@
 /**
  * Grocery Item Form Component
  *
- * Add-item form. Markup, styling (blue), and behavior are unchanged; state,
- * validation, and submission run through the shared `useSchemaForm` engine.
+ * Add-item form. State, validation, and submission run through the shared
+ * `useSchemaForm` engine.
  * The store select stays a native `<select>` over the stores collection (not a
  * combobox), and the default store is still pre-selected from the household
  * `default_store` flag. Submit stays disabled until a name is entered.
@@ -53,9 +53,9 @@ export function GroceryItemForm({
   const busy = isSubmitting || form.isSubmitting;
 
   return (
-    <form onSubmit={form.handleSubmit} className="bg-white rounded-lg border p-4 space-y-4">
+    <form onSubmit={form.handleSubmit} className="bg-surface-white rounded-2xl border border-gray-100 p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Add Grocery Item</h3>
+        <h3 className="text-lg font-semibold text-brand-navy">Add Grocery Item</h3>
         <button
           type="button"
           onClick={onCancel}
@@ -76,7 +76,7 @@ export function GroceryItemForm({
           name="store"
           value={(form.values.store as string) ?? ''}
           onChange={(e) => form.setValue('store', e.target.value)}
-          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-accent-terracotta focus:border-transparent bg-surface-white"
           disabled={busy}
           data-testid="grocery-form-store-select"
         >
@@ -100,7 +100,7 @@ export function GroceryItemForm({
           value={(form.values.name as string) ?? ''}
           onChange={(e) => form.setValue('name', e.target.value)}
           placeholder="e.g., Milk, Apples, Chicken Breast"
-          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-accent-terracotta focus:border-transparent"
           required
           autoFocus
           disabled={busy}
@@ -118,7 +118,7 @@ export function GroceryItemForm({
           onChange={(e) => form.setValue('notes', e.target.value)}
           placeholder="e.g., 2 gallons, organic only"
           rows={2}
-          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-accent-terracotta focus:border-transparent"
           disabled={busy}
         />
       </div>
@@ -127,7 +127,7 @@ export function GroceryItemForm({
         <button
           type="submit"
           disabled={busy || !form.isValid}
-          className="flex-1 bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+          className="flex-1 bg-accent-terracotta text-white px-3 py-2 sm:px-4 rounded-md hover:bg-accent-terracotta-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
           data-testid="grocery-form-submit"
         >
           {busy ? (

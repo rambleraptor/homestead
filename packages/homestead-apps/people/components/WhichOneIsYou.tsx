@@ -120,7 +120,7 @@ export function WhichOneIsYou() {
         <button
           type="button"
           onClick={dismiss}
-          className="text-gray-400 hover:text-gray-600"
+          className="text-gray-400 hover:text-text-muted"
           aria-label="Dismiss"
           data-testid="which-one-is-you-dismiss"
         >

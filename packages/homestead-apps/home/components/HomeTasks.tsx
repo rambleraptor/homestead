@@ -12,8 +12,10 @@
  */
 
 import { useState } from 'react';
-import { AlertCircle, Plus, Wrench } from 'lucide-react';
+import { Plus, Wrench } from 'lucide-react';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
@@ -36,7 +38,7 @@ export function HomeTasks() {
   const [editing, setEditing] = useState<HomeTask | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomeTask | null>(null);
 
-  const { data: tasks, isLoading, isError, error } = useHomeTasks();
+  const { data: tasks, isLoading, isError, error, refetch } = useHomeTasks();
   const createTask = useCreateHomeTask();
   const updateTask = useUpdateHomeTask();
   const deleteTask = useDeleteHomeTask();
@@ -122,7 +124,7 @@ export function HomeTasks() {
   return (
     <section data-testid="home-tasks">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Upkeep
         </h2>
         <div className="flex items-center gap-2">
@@ -138,7 +140,7 @@ export function HomeTasks() {
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-surface-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             data-testid="home-task-add"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -152,22 +154,25 @@ export function HomeTasks() {
       )}
 
       {isError && (
-        <div className="flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error instanceof Error ? error.message : 'Failed to load upkeep tasks'}
-        </div>
+        <QueryError
+          compact
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load upkeep tasks"
+          data-testid="home-tasks-error"
+        />
       )}
 
       {tasks && tasks.length === 0 && (
-        <p
-          className="rounded-2xl border border-gray-100 bg-surface-white px-4 py-8 text-center text-sm text-gray-500"
+        <EmptyState
+          compact
+          icon={Wrench}
+          title="Nothing scheduled yet"
+          description="Add the things the house needs on a cycle — gutters cleaned, furnace filter replaced, water heater flushed — and keep the details you always forget (filter size, who you called last time) in the notes."
+          action={{ label: 'Add reminder', onClick: openCreate, testId: 'home-tasks-empty-add' }}
+          assistantPrompt="Remind us to replace the furnace filter every three months"
           data-testid="home-tasks-empty"
-        >
-          Nothing scheduled yet. Add the things the house needs on a cycle —
-          gutters cleaned, furnace filter replaced, water heater flushed — and
-          keep the details you always forget (filter size, who you called last
-          time) in the notes.
-        </p>
+        />
       )}
 
       {tasks && tasks.length > 0 && (

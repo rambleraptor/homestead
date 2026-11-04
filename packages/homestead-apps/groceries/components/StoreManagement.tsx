@@ -8,6 +8,8 @@ import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/Co
 import { useState } from 'react';
 import { Plus, Trash2, Star, Store as StoreIcon, X } from 'lucide-react';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useStores } from '../hooks/useStores';
 import { useCreateStore } from '../hooks/useCreateStore';
 import { useDeleteStore } from '../hooks/useDeleteStore';
@@ -20,7 +22,7 @@ interface StoreManagementProps {
 export function StoreManagement({ onClose }: StoreManagementProps) {
   const [storeName, setStoreName] = useState('');
   const [deletingStore, setDeletingStore] = useState<string | null>(null);
-  const { data: stores = [], isLoading } = useStores();
+  const { data: stores = [], isLoading, isError, error, refetch } = useStores();
   const createMutation = useCreateStore();
   const deleteMutation = useDeleteStore();
   const {
@@ -55,7 +57,7 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 space-y-4">
+    <div className="bg-surface-white rounded-2xl shadow-sm p-6 border border-gray-100 space-y-4">
       <ConfirmDialog
         isOpen={deletingStore !== null}
         onClose={() => setDeletingStore(null)}
@@ -115,10 +117,22 @@ export function StoreManagement({ onClose }: StoreManagementProps) {
           label="Loading stores"
           data-testid="stores-loading"
         />
+      ) : isError ? (
+        <QueryError
+          compact
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load stores"
+          data-testid="stores-error"
+        />
       ) : stores.length === 0 ? (
-        <p className="text-center text-text-muted font-body py-8">
-          No stores yet. Add your first store above!
-        </p>
+        <EmptyState
+          compact
+          icon={StoreIcon}
+          title="No stores yet"
+          description="Add the shops you visit above, and the list groups each item by where you buy it."
+          data-testid="stores-empty"
+        />
       ) : (
         <div className="space-y-2">
           {stores.map((store) => {

@@ -30,19 +30,19 @@ export function HouseholdSummary({ household, showName = false }: HouseholdSumma
       )}
       {address && (
         <div className="flex items-center gap-2 mt-1">
-          <MapPin className="w-5 h-5 text-blue-500" aria-label="Map pin icon" />
+          <MapPin className="w-5 h-5 text-accent-terracotta" aria-label="Map pin icon" />
           <a
             href={getMapUrl(address, mapProvider)}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-blue-500 hover:underline"
+            className="text-sm text-accent-terracotta hover:text-accent-terracotta-hover hover:underline"
           >
             {address}
           </a>
         </div>
       )}
       {household.wifi_network && (
-        <div className="ml-7 mt-1 text-xs text-gray-600">
+        <div className="ml-7 mt-1 text-xs text-text-muted">
           <span className="font-medium">WiFi:</span> {household.wifi_network}
           {household.wifi_password && (
             <span className="ml-2 font-mono">{household.wifi_password}</span>

@@ -10,7 +10,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle,
   ArrowLeft,
   ChefHat,
   Clock,
@@ -20,6 +19,7 @@ import {
   ShoppingCart,
   Users,
 } from 'lucide-react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { viewTransitionName } from '@rambleraptor/homestead-core/shared/motion/viewTransition';
 import { useRecipe } from '../hooks/useRecipe';
@@ -44,7 +44,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
     () => new Set(),
   );
   const [currentStep, setCurrentStep] = useState<number | null>(null);
-  const { data: recipe, isLoading, isError, error } = useRecipe(recipeId);
+  const { data: recipe, isLoading, isError, error, refetch } = useRecipe(recipeId);
   const { addIngredients, isPending: isAddingToGroceries } =
     useAddIngredientsToGroceryList();
   const toast = useToast();
@@ -89,17 +89,12 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           <ArrowLeft className="w-4 h-4" />
           Back to recipes
         </Link>
-        <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">Failed to load recipe</h3>
-              <p className="text-sm text-red-700">
-                {error instanceof Error ? error.message : 'Recipe not found'}
-              </p>
-            </div>
-          </div>
-        </div>
+        <QueryError
+          error={isError ? error : 'It may have been deleted, or the link is wrong.'}
+          onRetry={isError ? () => void refetch() : undefined}
+          title={isError ? 'Failed to load recipe' : 'Recipe not found'}
+          data-testid="recipe-error"
+        />
       </div>
     );
   }
@@ -160,7 +155,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium font-body transition-colors shadow-sm border ${
                 cookMode
                   ? 'bg-accent-terracotta hover:bg-accent-terracotta-hover text-white border-accent-terracotta'
-                  : 'bg-white hover:bg-bg-pearl text-brand-navy border-gray-200'
+                  : 'bg-surface-white hover:bg-bg-pearl text-brand-navy border-gray-200'
               }`}
             >
               <CookingPot className="w-4 h-4" />
@@ -170,7 +165,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
               onClick={handleAddToGroceries}
               disabled={ingredients.length === 0 || isAddingToGroceries}
               data-testid="recipe-view-add-to-groceries"
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ShoppingCart className="w-4 h-4" />
               Add to grocery list
@@ -179,7 +174,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
             <Link
               to={`/recipes/${recipeId}/edit`}
               data-testid="recipe-view-edit"
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
             >
               <Pencil className="w-4 h-4" />
               Edit
@@ -251,7 +246,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
       >
         <section
           aria-labelledby="ingredients-heading"
-          className="bg-white rounded-lg border border-gray-200 p-5 lg:sticky lg:top-4 lg:self-start"
+          className="bg-surface-white rounded-2xl border border-gray-100 p-5 lg:sticky lg:top-4 lg:self-start"
         >
           <h2
             id="ingredients-heading"
@@ -269,7 +264,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 
         <section
           aria-labelledby="method-heading"
-          className="bg-white rounded-lg border border-gray-200 p-5 space-y-6"
+          className="bg-surface-white rounded-2xl border border-gray-100 p-5 space-y-6"
         >
           <div>
             <h2

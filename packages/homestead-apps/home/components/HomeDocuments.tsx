@@ -14,8 +14,10 @@
 
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useDocuments } from '../../documents/hooks/useDocuments';
 import { DocumentListItem } from '../../documents/components/DocumentListItem';
 import { getDocType } from '../../documents/doc-types/registry';
@@ -43,7 +45,7 @@ function groupByType(documents: Document[]): HomeGroup[] {
 }
 
 export function HomeDocuments() {
-  const { data: documents, isLoading, isError, error } = useDocuments();
+  const { data: documents, isLoading, isError, error, refetch } = useDocuments();
 
   const groups = useMemo(
     () => groupByType((documents ?? []).filter(isHomeDocument)),
@@ -57,12 +59,12 @@ export function HomeDocuments() {
   return (
     <div className="space-y-6" data-testid="home-documents">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Documents
         </h2>
         <Link
           to="/documents"
-          className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-surface-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           data-testid="home-documents-upload-link"
         >
           <FileText className="h-4 w-4" />
@@ -80,21 +82,35 @@ export function HomeDocuments() {
       )}
 
       {isError && (
-        <div className="flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error instanceof Error ? error.message : 'Failed to load documents'}
-        </div>
+        <QueryError
+          compact
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load documents"
+          data-testid="home-documents-error"
+        />
       )}
 
       {documents && total === 0 && (
-        <p className="py-12 text-center text-sm text-gray-500" data-testid="home-documents-empty">
-          No home documents yet. Upload a manual, warranty, insurance policy, or
-          property-tax statement in{' '}
-          <Link to="/documents" className="text-blue-600 hover:underline">
-            Documents
-          </Link>{' '}
-          and it’ll show up here once it’s read.
-        </p>
+        <EmptyState
+          compact
+          icon={FileText}
+          title="No home documents yet"
+          description={
+            <>
+              Upload a manual, warranty, insurance policy, or property-tax
+              statement in{' '}
+              <Link
+                to="/documents"
+                className="text-accent-terracotta hover:text-accent-terracotta-hover hover:underline"
+              >
+                Documents
+              </Link>{' '}
+              and it’ll show up here once it’s read.
+            </>
+          }
+          data-testid="home-documents-empty"
+        />
       )}
 
       {groups.map((group) => (

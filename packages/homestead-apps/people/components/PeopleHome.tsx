@@ -61,7 +61,7 @@ export function PeopleHome() {
 
       <WhichOneIsYou />
 
-      <PeopleList />
+      <PeopleList onAdd={() => setIsCreateModalOpen(true)} />
 
       <Modal
         isOpen={isCreateModalOpen}

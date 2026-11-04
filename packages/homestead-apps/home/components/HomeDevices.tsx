@@ -11,8 +11,10 @@
  */
 
 import { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { BatteryCharging } from 'lucide-react';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { SkeletonList } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { ReminderOptInToggle } from '@rambleraptor/homestead-core/user-settings';
 import { BATTERY_REMINDER_SETTING } from '../batteryReminderSetting';
@@ -22,14 +24,14 @@ import { DeviceRow } from './DeviceRow';
 
 export function HomeDevices() {
   const [deleteTarget, setDeleteTarget] = useState<DeviceInfo | null>(null);
-  const { data: devices, isLoading, isError, error } = useDevices();
+  const { data: devices, isLoading, isError, error, refetch } = useDevices();
   const updateDevice = useUpdateDevice();
   const deleteDevice = useDeleteDevice();
 
   const handleThresholdChange = async (device: DeviceInfo, threshold: number) => {
     try {
       await updateDevice.mutateAsync({ id: device.id, data: { low_threshold: threshold } });
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
   };
@@ -38,7 +40,7 @@ export function HomeDevices() {
     if (!deleteTarget) return;
     try {
       await deleteDevice.mutateAsync(deleteTarget.id);
-    } catch (err) {
+    } catch {
       // Error surfaced by the global mutation error toast (queryClient.ts).
     }
     setDeleteTarget(null);
@@ -47,7 +49,7 @@ export function HomeDevices() {
   return (
     <section data-testid="home-devices">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Devices
         </h2>
         <ReminderOptInToggle
@@ -66,20 +68,28 @@ export function HomeDevices() {
       )}
 
       {isError && (
-        <div className="flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error instanceof Error ? error.message : 'Failed to load devices'}
-        </div>
+        <QueryError
+          compact
+          error={error}
+          onRetry={() => void refetch()}
+          title="Couldn’t load devices"
+          data-testid="devices-error"
+        />
       )}
 
       {devices && devices.length === 0 && (
-        <p
-          className="rounded-2xl border border-gray-100 bg-surface-white px-4 py-8 text-center text-sm text-gray-500"
+        <EmptyState
+          compact
+          icon={BatteryCharging}
+          title="No devices have reported yet"
+          description={
+            <>
+              A device shows up here the first time it writes its battery level
+              to <code>/device-infos</code>.
+            </>
+          }
           data-testid="devices-empty"
-        >
-          No devices have reported yet. A device shows up here the first time
-          it writes its battery level to <code>/device-infos</code>.
-        </p>
+        />
       )}
 
       {devices && devices.length > 0 && (

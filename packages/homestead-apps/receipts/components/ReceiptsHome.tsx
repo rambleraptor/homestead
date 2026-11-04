@@ -93,7 +93,7 @@ export function ReceiptsHome() {
               className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                 tab === id
                   ? 'border-accent-terracotta text-accent-terracotta'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  : 'border-transparent text-text-muted hover:border-gray-300 hover:text-gray-700'
               }`}
             >
               {label}

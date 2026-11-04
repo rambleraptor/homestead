@@ -13,7 +13,8 @@
 
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import type { AppRouteProps } from '@rambleraptor/homestead-core/apps/types';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { useRemoteEdits } from '@rambleraptor/homestead-core/api/remoteChanges';
@@ -61,7 +62,7 @@ export interface RecipeEditLinkState {
 function EditRecipe({ recipeId }: { recipeId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: recipe, isLoading, isError, error } = useRecipe(recipeId);
+  const { data: recipe, isLoading, isError, error, refetch } = useRecipe(recipeId);
   const updateMutation = useUpdateRecipe();
   // Bumped to remount the form on the latest saved recipe.
   const [formVersion, setFormVersion] = useState(0);
@@ -93,17 +94,12 @@ function EditRecipe({ recipeId }: { recipeId: string }) {
     return (
       <div className="space-y-4">
         <BackLink to="/recipes" label="Back to recipes" />
-        <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">Failed to load recipe</h3>
-              <p className="text-sm text-red-700">
-                {error instanceof Error ? error.message : 'Recipe not found'}
-              </p>
-            </div>
-          </div>
-        </div>
+        <QueryError
+          error={isError ? error : 'It may have been deleted, or the link is wrong.'}
+          onRetry={isError ? () => void refetch() : undefined}
+          title={isError ? 'Failed to load recipe' : 'Recipe not found'}
+          data-testid="recipe-error"
+        />
       </div>
     );
   }
@@ -165,8 +161,8 @@ function FormPage({
     <div className="space-y-6" data-testid="recipe-form-page">
       <BackLink to={backTo} label={backLabel} />
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">{title}</h2>
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">{children}</div>
+        <h2 className="text-2xl font-bold text-brand-navy mb-6">{title}</h2>
+        <div className="bg-surface-white rounded-2xl shadow-sm p-6 border border-gray-100">{children}</div>
       </div>
     </div>
   );

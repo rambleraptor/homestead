@@ -52,7 +52,7 @@ function StatusBadge({ status }: { status: ReceiptStatus }) {
       Stored
     </span>
   ) : (
-    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-text-muted">
       Reimbursed
     </span>
   );
@@ -187,7 +187,7 @@ export function HSAAuditVault({
             onClick={() => onEdit(receipt)}
             aria-label={`Edit ${receipt.merchant} receipt`}
             data-testid={`hsa-receipt-edit-${receipt.id}`}
-            className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-brand-navy"
+            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-gray-100 hover:text-brand-navy"
             title="Edit receipt"
           >
             <Pencil className="w-4 h-4" />
@@ -300,7 +300,7 @@ export function HSAAuditVault({
             <button
               onClick={() => onEdit(receipt)}
               aria-label="Edit receipt"
-              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-brand-navy"
+              className="rounded-lg p-2 text-text-muted transition-colors hover:bg-gray-100 hover:text-brand-navy"
             >
               <Pencil className="w-4 h-4" />
             </button>

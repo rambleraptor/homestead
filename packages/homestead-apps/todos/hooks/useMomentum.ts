@@ -15,7 +15,12 @@ export function completionTimes(todos: ReadonlyArray<Todo | PersonalTodo>): stri
   return todos.filter((todo) => todo.status === 'completed').map((todo) => todo.update_time);
 }
 
-export function useMomentum(): Momentum & { isLoading: boolean } {
+export function useMomentum(): Momentum & {
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => void;
+} {
   const family = useTodos();
   const personal = usePersonalTodos();
   const momentum = useMemo(
@@ -26,5 +31,14 @@ export function useMomentum(): Momentum & { isLoading: boolean } {
       ),
     [family.data, personal.data],
   );
-  return { ...momentum, isLoading: family.isLoading || personal.isLoading };
+  return {
+    ...momentum,
+    isLoading: family.isLoading || personal.isLoading,
+    isError: family.isError || personal.isError,
+    error: family.error ?? personal.error,
+    refetch: () => {
+      void family.refetch();
+      void personal.refetch();
+    },
+  };
 }

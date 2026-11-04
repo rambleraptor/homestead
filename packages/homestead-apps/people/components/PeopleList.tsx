@@ -6,7 +6,10 @@
  */
 
 import { useState } from 'react';
-import { Card } from '@rambleraptor/homestead-core/shared/components/Card';
+import { useNavigate } from 'react-router-dom';
+import { SearchX, Users } from 'lucide-react';
+import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { Modal } from '@rambleraptor/homestead-core/shared/components/Modal';
 import { Spinner } from '@rambleraptor/homestead-core/shared/components/Spinner';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
@@ -14,6 +17,7 @@ import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastPr
 import {
   FilterBar,
   AppFiltersProvider,
+  useAppFilterValues,
   useFilteredItems,
 } from '@rambleraptor/homestead-core/shared/filters';
 import { usePeople } from '../hooks/usePeople';
@@ -24,8 +28,13 @@ import { PersonForm } from './PersonForm';
 import { PersonCard } from './PersonCard';
 import type { Person, PersonFormData } from '../types';
 
-export function PeopleList() {
-  const { data: people, isLoading } = usePeople();
+interface PeopleListProps {
+  /** Opens the add-person form — the empty state's call to action. */
+  onAdd?: () => void;
+}
+
+export function PeopleList({ onAdd }: PeopleListProps) {
+  const { data: people, isLoading, isError, error, refetch } = usePeople();
 
   if (isLoading) {
     return (
@@ -35,19 +44,32 @@ export function PeopleList() {
     );
   }
 
+  if (isError) {
+    return (
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Couldn’t load people"
+        data-testid="people-error"
+      />
+    );
+  }
+
   return (
     <AppFiltersProvider
       appId={peopleApp.id}
       decls={peopleApp.web?.filters ?? []}
       items={people ?? []}
     >
-      <PeopleListInner hasAny={(people?.length ?? 0) > 0} />
+      <PeopleListInner hasAny={(people?.length ?? 0) > 0} onAdd={onAdd} />
     </AppFiltersProvider>
   );
 }
 
-function PeopleListInner({ hasAny }: { hasAny: boolean }) {
+function PeopleListInner({ hasAny, onAdd }: { hasAny: boolean; onAdd?: () => void }) {
   const filteredPeople = useFilteredItems<Person>();
+  const { reset: clearFilters } = useAppFilterValues();
+  const navigate = useNavigate();
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const updatePerson = useUpdatePerson();
   const deletePerson = useDeletePerson();
@@ -95,22 +117,34 @@ function PeopleListInner({ hasAny }: { hasAny: boolean }) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <h2 className="text-xl font-semibold text-brand-navy mb-4">
         All People
       </h2>
       <FilterBar />
       {!hasAny ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8">
-            No people yet. Add your first person to get started!
-          </p>
-        </Card>
+        <EmptyState
+          icon={Users}
+          title="No people yet"
+          description="Keep birthdays, addresses and family in one place. Add someone, or import a list you already have."
+          action={
+            onAdd ? { label: 'Add a person', onClick: onAdd, testId: 'people-empty-add' } : undefined
+          }
+          secondaryAction={{
+            label: 'Import',
+            onClick: () => navigate('/people/import'),
+            testId: 'people-empty-import',
+          }}
+          assistantPrompt="Add my mom to People — her birthday is March 3"
+          data-testid="people-empty"
+        />
       ) : filteredPeople.length === 0 ? (
-        <Card>
-          <p className="text-center text-gray-600 py-8">
-            No people match the current filters
-          </p>
-        </Card>
+        <EmptyState
+          icon={SearchX}
+          title="No people match the current filters"
+          description="Try a different filter, or clear them to see everyone."
+          action={{ label: 'Clear filters', onClick: clearFilters, testId: 'people-filters-clear' }}
+          data-testid="people-filtered-empty"
+        />
       ) : (
         <div className="space-y-3">
           {filteredPeople.map((person) => (

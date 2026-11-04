@@ -8,8 +8,9 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, Download, Plus } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import { SkeletonPage } from '@rambleraptor/homestead-core/shared/components/Skeleton';
+import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useRecipes } from '../hooks/useRecipes';
 import { useDeleteRecipe } from '../hooks/useDeleteRecipe';
 import { RecipesList } from './RecipesList';
@@ -19,6 +20,7 @@ import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageH
 import {
   FilterBar,
   AppFiltersProvider,
+  useAppFilterValues,
   useFilteredItems,
 } from '@rambleraptor/homestead-core/shared/filters';
 import { recipesApp } from '../app.config';
@@ -28,7 +30,7 @@ export function RecipesHome() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<string | null>(null);
 
-  const { data: recipes, isLoading, isError, error } = useRecipes();
+  const { data: recipes, isLoading, isError, error, refetch } = useRecipes();
   const deleteMutation = useDeleteRecipe();
 
   const handleDeleteRecipe = (id: string) => {
@@ -56,17 +58,12 @@ export function RecipesHome() {
 
   if (isError) {
     return (
-      <div className="bg-red-50/20 border border-red-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600" />
-          <div>
-            <h3 className="font-semibold text-red-900">Failed to load recipes</h3>
-            <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'An error occurred'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => void refetch()}
+        title="Failed to load recipes"
+        data-testid="recipes-error"
+      />
     );
   }
 
@@ -80,7 +77,7 @@ export function RecipesHome() {
             <Link
               to="/recipes/import"
               data-testid="import-recipe-button"
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200"
             >
               <Download className="w-5 h-5" />
               Import
@@ -105,7 +102,10 @@ export function RecipesHome() {
         items={recipes ?? []}
       >
         <FilterBar />
-        <FilteredRecipesList onDelete={handleDeleteRecipe} />
+        <FilteredRecipesList
+          onDelete={handleDeleteRecipe}
+          hasAny={(recipes?.length ?? 0) > 0}
+        />
       </AppFiltersProvider>
 
       <ConfirmDialog
@@ -123,7 +123,21 @@ export function RecipesHome() {
   );
 }
 
-function FilteredRecipesList({ onDelete }: { onDelete: (id: string) => void }) {
+function FilteredRecipesList({
+  onDelete,
+  hasAny,
+}: {
+  onDelete: (id: string) => void;
+  hasAny: boolean;
+}) {
   const filteredRecipes = useFilteredItems<Recipe>();
-  return <RecipesList recipes={filteredRecipes} onDelete={onDelete} />;
+  const { reset } = useAppFilterValues();
+  return (
+    <RecipesList
+      recipes={filteredRecipes}
+      onDelete={onDelete}
+      filtered={hasAny}
+      onClearFilters={reset}
+    />
+  );
 }

@@ -15,13 +15,15 @@ export interface DocumentsForPerson {
   documents: Document[];
   isLoading: boolean;
   isError: boolean;
+  error: unknown;
+  refetch: () => void;
 }
 
 export function useDocumentsForPerson(personId: string): DocumentsForPerson {
-  const { data, isLoading, isError } = useDocuments();
+  const { data, isLoading, isError, error, refetch } = useDocuments();
   const documents = useMemo(
     () => (data ?? []).filter((doc) => (doc.people ?? []).includes(personId)),
     [data, personId],
   );
-  return { documents, isLoading, isError };
+  return { documents, isLoading, isError, error, refetch: () => void refetch() };
 }
