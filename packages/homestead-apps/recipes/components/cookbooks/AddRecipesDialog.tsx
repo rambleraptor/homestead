@@ -1,6 +1,6 @@
 /**
- * Pick recipes to add to a cookbook: every recipe not already in it, searched
- * by title, ticked, then added in one patch (appended in the order ticked).
+ * Pick recipes to add to a collection: every recipe not already in it,
+ * searched by title, ticked, then added in one patch.
  */
 
 import { useMemo, useState } from 'react';
@@ -74,7 +74,7 @@ export function AddRecipesDialog({ isOpen, onClose, cookbook, recipes }: AddReci
 
         {candidates.length === 0 ? (
           <p className="py-6 text-center text-sm text-text-muted" data-testid="add-recipes-empty">
-            {query ? 'No recipes match.' : 'Every recipe is already in this cookbook.'}
+            {query ? 'No recipes match.' : 'Every recipe is already in this collection.'}
           </p>
         ) : (
           <ul className="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-md border border-gray-200">

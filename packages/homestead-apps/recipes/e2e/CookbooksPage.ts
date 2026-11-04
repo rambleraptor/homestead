@@ -1,6 +1,7 @@
 /**
- * Cookbooks Page Object Model — the rail on the recipes home, a cookbook's
- * own page, and the "Add to cookbook" menu on a recipe page. Written against
+ * Recipe collections Page Object Model (stored as the `cookbook` resource) —
+ * the rail on the recipes home, a collection's own page, and the "Add to
+ * collection" menu on a recipe page. Written against
  * the shared `Driver`, like `RecipesPage`.
  */
 
@@ -42,7 +43,7 @@ export class CookbooksPage {
     await this.expect(this.driver.getByTestId('cookbook-page')).toBeVisible();
   }
 
-  /** Create a cookbook through the rail's "New cookbook" card and its dialog. */
+  /** Create a collection through the rail's "New collection" card and its dialog. */
   async createCookbook(name: string, description?: string) {
     await this.driver.getByTestId('cookbook-new-button').click();
     await this.driver.getByTestId('cookbook-name-input').fill(name);
@@ -57,12 +58,12 @@ export class CookbooksPage {
   // ---- a cookbook's page ---------------------------------------------------
 
   async gotoCookbook(id: string) {
-    await this.driver.goto(`/recipes/cookbooks/${id}`);
+    await this.driver.goto(`/recipes/collections/${id}`);
     await this.expect(this.driver.getByTestId('cookbook-page')).toBeVisible();
   }
 
   async expectOnCookbookPage(id: string) {
-    await this.driver.expectURL(new RegExp(`/recipes/cookbooks/${id}$`));
+    await this.driver.expectURL(new RegExp(`/recipes/collections/${id}$`));
     await this.expect(this.driver.getByTestId('cookbook-page')).toBeVisible();
   }
 
@@ -78,9 +79,9 @@ export class CookbooksPage {
     await this.expect(this.driver.getByTestId('cookbook-empty-state')).toBeVisible();
   }
 
-  /** The recipe titles in the cookbook, in display order. */
-  async expectRecipeOrder(titles: string[]) {
-    const rows = this.driver.getByTestId('cookbook-recipes').locator('li');
+  /** The recipe titles shown in the collection, top to bottom. */
+  async expectRecipes(titles: string[]) {
+    const rows = this.driver.getByTestId('cookbook-page').getByTestId('recipes-list').locator('li');
     await this.expect(rows).toHaveCount(titles.length);
     for (let i = 0; i < titles.length; i++) {
       await this.expect(rows.nth(i)).toContainText(titles[i]);
@@ -88,23 +89,33 @@ export class CookbooksPage {
   }
 
   async expectRecipeInCookbook(title: string) {
-    await this.expect(this.driver.getByTestId(`cookbook-recipe-row-${title}`)).toBeVisible();
+    await this.expect(this.driver.getByTestId(`recipe-row-${title}`)).toBeVisible();
   }
 
   async expectRecipeNotInCookbook(title: string) {
-    await this.expect(this.driver.getByTestId(`cookbook-recipe-row-${title}`)).toHaveCount(0);
-  }
-
-  async moveRecipeUp(title: string) {
-    await this.driver.getByTestId(`cookbook-recipe-up-${title}`).click();
-  }
-
-  async moveRecipeDown(title: string) {
-    await this.driver.getByTestId(`cookbook-recipe-down-${title}`).click();
+    await this.expect(this.driver.getByTestId(`recipe-row-${title}`)).toHaveCount(0);
   }
 
   async removeRecipe(title: string) {
-    await this.driver.getByTestId(`cookbook-recipe-remove-${title}`).click();
+    await this.driver.getByTestId(`recipe-remove-${title}`).click();
+  }
+
+  async searchWithin(text: string) {
+    await this.driver.getByTestId('filter-text-title').fill(text);
+  }
+
+  async expectNoMatches() {
+    await this.expect(this.driver.getByTestId('recipes-filtered-empty')).toBeVisible();
+  }
+
+  async expectNoReorderControls() {
+    await this.expect(this.driver.getByRole('button', { name: /move .* (up|down)/i })).toHaveCount(0);
+  }
+
+  async expectNoAddAllToGroceries() {
+    await this.expect(
+      this.driver.getByTestId('cookbook-page').getByRole('button', { name: /groceries/i }),
+    ).toHaveCount(0);
   }
 
   /** Add recipes through the "Add recipes" picker, ticking them in the given order. */
@@ -117,10 +128,6 @@ export class CookbooksPage {
     const submit = this.driver.getByTestId('add-recipes-submit');
     await submit.click();
     await submit.waitFor({ state: 'hidden' });
-  }
-
-  async clickAddAllToGroceries() {
-    await this.driver.getByTestId('cookbook-add-all-to-groceries').click();
   }
 
   async openMenu() {
