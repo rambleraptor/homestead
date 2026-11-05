@@ -35,10 +35,16 @@ interface ErrorEnvelope {
   message?: string;
 }
 
+/** A proxy's HTML error page (Cloudflare, nginx) — not a message to show. */
+function isHtmlPage(text: string): boolean {
+  return /^\s*<(!doctype\s+html|html|head|body)\b/i.test(text);
+}
+
 /**
  * Build a {@link HomesteadError} from a non-OK response's already-read text and
  * parsed body. Prefers the envelope's `code`/`message`, then a bare string
- * `error`, then a top-level `message`, then the raw text, then the status.
+ * `error`, then a top-level `message`, then the raw text (unless it's an HTML
+ * error page), then the status.
  */
 export function errorFromResponse(
   status: number,
@@ -54,6 +60,6 @@ export function errorFromResponse(
     errObj?.message ??
     (typeof envelope?.error === 'string' ? envelope.error : undefined) ??
     envelope?.message ??
-    (text || `HTTP ${status}`);
+    (text && !isHtmlPage(text) ? text : `HTTP ${status}`);
   return new HomesteadError(code, message, path, parsed);
 }

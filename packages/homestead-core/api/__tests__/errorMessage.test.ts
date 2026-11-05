@@ -22,6 +22,16 @@ describe('getAepErrorMessage', () => {
     expect(getAepErrorMessage(err)).toBe("You don't have permission to do that.");
   });
 
+  it("reads a proxy's HTML error page as its status", () => {
+    const page = '<!DOCTYPE html> <html lang="en-US"><head><title>502: Bad gateway</title></head></html>';
+    expect(getAepErrorMessage(new AepbaseError(502, page, '/x'))).toBe(
+      'The server is unavailable. Please try again shortly.',
+    );
+    expect(getAepErrorMessage(new AepbaseError(418, '  <html><body>nope</body></html>', '/x'))).toBe(
+      'Something went wrong. Please try again.',
+    );
+  });
+
   it('uses the generic message for an unmapped code with no message', () => {
     const err = new AepbaseError(418, '', '/x');
     expect(getAepErrorMessage(err)).toBe('Something went wrong. Please try again.');

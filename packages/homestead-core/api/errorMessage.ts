@@ -37,10 +37,19 @@ const CODE_FALLBACKS: Record<number, string> = {
 
 const GENERIC_MESSAGE = 'Something went wrong. Please try again.';
 
+/**
+ * An error page rather than a message: a proxy in front of Homestead
+ * (Cloudflare, nginx) answered with its own HTML when the server didn't —
+ * its body is no use to read, so the status speaks instead.
+ */
+function isHtmlPage(message: string): boolean {
+  return /^<(!doctype\s+html|html|head|body)\b/i.test(message);
+}
+
 export function getAepErrorMessage(error: unknown): string {
   if (error instanceof AepbaseError) {
     const message = error.message?.trim();
-    if (message) return message;
+    if (message && !isHtmlPage(message)) return message;
     return CODE_FALLBACKS[error.code] ?? GENERIC_MESSAGE;
   }
   // The request never reached the server: aepbase rewraps fetch's TypeError

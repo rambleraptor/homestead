@@ -160,6 +160,18 @@ describe('errors', () => {
       HomesteadError,
     );
   });
+
+  it("reports a proxy's HTML error page by its status, not its markup", async () => {
+    const mock = mockFetch(() => ({
+      status: 502,
+      text: '<!DOCTYPE html>\n<html><head><title>502: Bad gateway</title></head></html>',
+    }));
+    const hs = createHomesteadClient({ auth: bearerToken('t'), fetch: mock.fetch });
+    await expect(hs.collection('gift-cards').get('x')).rejects.toMatchObject({
+      code: 502,
+      message: 'HTTP 502',
+    });
+  });
 });
 
 describe('download', () => {
