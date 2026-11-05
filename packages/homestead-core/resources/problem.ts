@@ -18,6 +18,14 @@
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+/**
+ * The status for "a server we called on the caller's behalf failed" (an MCP
+ * server, an OAuth provider). Not 502: Cloudflare and other proxies replace a
+ * 502's body with their own error page, which hides the reason, and the SPA
+ * reads 502 as "Homestead is restarting".
+ */
+export const UPSTREAM_FAILED = 424;
+
 /** HTTP reason phrases (RFC 9110) for the statuses the API emits. */
 export const REASON_PHRASES: Record<number, string> = {
   400: 'Bad Request',
@@ -30,6 +38,7 @@ export const REASON_PHRASES: Record<number, string> = {
   413: 'Content Too Large',
   415: 'Unsupported Media Type',
   422: 'Unprocessable Content',
+  424: 'Failed Dependency',
   429: 'Too Many Requests',
   500: 'Internal Server Error',
   502: 'Bad Gateway',

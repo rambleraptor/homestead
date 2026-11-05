@@ -12,6 +12,7 @@
 
 import { createHash } from 'node:crypto';
 import type { Database } from './sqlite';
+import { UPSTREAM_FAILED } from '@rambleraptor/homestead-core/resources/problem';
 import { errorResponse, jsonResponse } from './errors';
 import { generateId, generateToken, nowRFC3339 } from './ids';
 import type { User } from './types';
@@ -428,17 +429,17 @@ export class OAuthRoutes {
     try {
       accessToken = await exchangeCode(provider, code, this.providerFetch);
     } catch (err) {
-      return errorResponse(502, `code exchange failed: ${err instanceof Error ? err.message : err}`);
+      return errorResponse(UPSTREAM_FAILED, `code exchange failed: ${err instanceof Error ? err.message : err}`);
     }
 
     let info: UserInfo;
     try {
       info = await fetchUserInfo(provider, accessToken, this.providerFetch);
     } catch (err) {
-      return errorResponse(502, `userinfo fetch failed: ${err instanceof Error ? err.message : err}`);
+      return errorResponse(UPSTREAM_FAILED, `userinfo fetch failed: ${err instanceof Error ? err.message : err}`);
     }
     if (!info.sub || !info.email) {
-      return errorResponse(502, 'provider userinfo missing required fields (sub, email)');
+      return errorResponse(UPSTREAM_FAILED, 'provider userinfo missing required fields (sub, email)');
     }
 
     let user: User;

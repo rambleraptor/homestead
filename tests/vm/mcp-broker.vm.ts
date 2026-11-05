@@ -175,7 +175,7 @@ describe('MCP broker', () => {
 
   test('a tool’s own error, and an oversized result', async () => {
     const failed = await callTool(h.admin.token, 'fail');
-    expect(failed.status).toBe(502);
+    expect(failed.status).toBe(424);
     expect(await errorOf(failed)).toBe('the device is unreachable');
 
     const big = (await (await callTool(h.admin.token, 'big', { size: MAX_RESULT_CHARS + 500 })).json()) as {

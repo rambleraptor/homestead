@@ -11,7 +11,7 @@ import { serverClient } from '../../../server/client';
 import { loadOAuthCredential, OAuthConnectionError } from '../../../server/mcp/oauth';
 import { MCP_SERVERS } from '../resources';
 import type { McpServer } from '../types';
-import { problemResponse } from '../../../resources/problem';
+import { problemResponse, UPSTREAM_FAILED } from '../../../resources/problem';
 
 export const error = (status: number, message: string) => problemResponse(status, message);
 
@@ -45,5 +45,5 @@ export async function loadOAuthServer({ auth, id, verb }: CustomMethodContext): 
 export function signInFailure(err: unknown): Response {
   if (err instanceof OAuthConnectionError) return error(400, err.message);
   const message = err instanceof Error ? err.message : String(err);
-  return error(502, `the sign-in failed: ${message.slice(0, 300)}`);
+  return error(UPSTREAM_FAILED, `the sign-in failed: ${message.slice(0, 300)}`);
 }
