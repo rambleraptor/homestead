@@ -142,7 +142,7 @@ describe('MCP servers with OAuth', () => {
     await connect(server.id);
     stub.revokeAll();
     const res = await useGetState(server.id);
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(424);
     expect(((await res.json()) as { error: { message: string } }).error.message).toContain('reconnect');
   });
 

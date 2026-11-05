@@ -10,7 +10,7 @@
 
 import type { CustomMethodHandler } from '../../../resources/types';
 import { callConnectionTool } from '../../../server/mcp/broker';
-import { problemResponse } from '../../../resources/problem';
+import { problemResponse, UPSTREAM_FAILED } from '../../../resources/problem';
 
 const error = (status: number, message: string) => problemResponse(status, message);
 
@@ -36,7 +36,7 @@ const callTool: CustomMethodHandler = async ({ request, auth, id }) => {
     approved: true,
   });
   if (called.outcome === 'ok') return Response.json(called.result);
-  if (called.outcome === 'error') return error(502, called.error);
+  if (called.outcome === 'error') return error(UPSTREAM_FAILED, called.error);
   return error(403, called.error);
 };
 

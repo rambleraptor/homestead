@@ -635,7 +635,8 @@ curl -X POST "$HOMESTEAD/api/aep/mcp-servers/$ID:call-tool" \
 ```
 
 A refusal is a `403` with the reason; the tool's own failure, or a server that
-can't be reached, is a `502`.
+can't be reached, is a `424` (not a `502`, which proxies like Cloudflare
+replace with their own error page).
 
 ### The call log
 
