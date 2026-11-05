@@ -376,7 +376,13 @@ SPA and apps share:
   the app's component (`chat/values.ts`, `chat/components/ChatValue.tsx`), the
   link built from the value's text, never from the reply. Its SPA half is
   the AI SDK's `useChat` over a stored-turn transport (`chat/api.ts`,
-  `chat/hooks/useConversation.ts`), rendered with AI Elements. A tool call on
+  `chat/hooks/useConversation.ts`), rendered with AI Elements. A reply carries
+  👍/👎 (`chat/components/ReplyRating.tsx`): `chat-messages/{id}:rate`
+  (`chat/methods/rate.ts`, the conversation's creator only) marks the message
+  and files the conversation up to it as an `eval-case` (Superuser → Eval
+  cases, `superuser/eval-cases/`; superusers only, out of the model tools),
+  with encrypted values masked (`server/chat/eval-capture.ts`); clearing the
+  rating deletes the case. A tool call on
   a resource renders as a card (`chat/cards.ts`, `chat/components/ChatCard.tsx`):
   the app's `chat.cards` entry for the action, else the generic card wrapping
   the app's record card (`AppConfig.records`, hosted by

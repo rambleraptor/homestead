@@ -10,6 +10,7 @@ import { CHAT_MESSAGES, CONVERSATIONS } from './resources';
 import type {
   ChatTurnRequest,
   HomesteadUIMessage,
+  ReplyRating,
   StoredChatMessage,
 } from './types';
 
@@ -96,7 +97,7 @@ export function dataUrlBytes(url: string): Uint8Array<ArrayBuffer> {
 }
 
 /** The browser's IANA timezone, so the assistant reads "today" as the person does. */
-function browserTimezone(): string | undefined {
+export function browserTimezone(): string | undefined {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
   } catch {
@@ -182,6 +183,26 @@ export async function cancelTurn(conversationId: string): Promise<boolean> {
     { id: conversationId },
   );
   return out?.cancelled === true;
+}
+
+/**
+ * Rate an assistant reply up or down, or clear its rating (`null`). A rating
+ * files the conversation up to that reply as an eval case for the household's
+ * superusers; clearing it withdraws the case.
+ */
+export async function rateReply(
+  conversationId: string,
+  messageId: string,
+  rating: ReplyRating | null,
+  note?: string,
+): Promise<void> {
+  const timezone = browserTimezone();
+  await aepbase.customMethod(
+    CHAT_MESSAGES,
+    'rate',
+    { rating, ...(note ? { note } : {}), ...(timezone ? { timezone } : {}) },
+    { id: messageId, parent: [CONVERSATIONS, conversationId] },
+  );
 }
 
 /** A conversation's stored messages, oldest first. */

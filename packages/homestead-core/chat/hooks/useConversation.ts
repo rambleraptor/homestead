@@ -90,7 +90,8 @@ export function changedData(message: HomesteadUIMessage): boolean {
   });
 }
 
-function messagesKey(conversationId: string) {
+/** The query slot holding a conversation's stored messages. */
+export function messagesKey(conversationId: string) {
   return [...queryKeys.app(CHAT_APP_ID).resource('chat-message').all(), conversationId] as const;
 }
 

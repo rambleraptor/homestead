@@ -83,4 +83,12 @@ export interface StoredChatMessage {
   error?: string;
   /** Files attached to a person's message. */
   attachments?: FileDescriptor[];
+  /** Token counts for the turn (assistant messages). */
+  usage?: unknown;
+  /** How the person rated this reply (`:rate`). */
+  rating?: ReplyRating;
+  create_time?: string;
 }
+
+/** A thumbs up or down on an assistant reply. */
+export type ReplyRating = 'up' | 'down';
