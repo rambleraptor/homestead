@@ -90,6 +90,25 @@ export class NotesPage {
     await this.expect(this.driver.getByTestId('notes-composer-input')).toHaveValue(value);
   }
 
+  /** Start editing a note and type, without saving. */
+  async startEditing(text: string, newBody: string) {
+    await this.open(text);
+    await this.driver.getByTestId('note-edit-input').fill(newBody);
+  }
+
+  async expectEditing(value: string) {
+    await this.expect(this.driver.getByTestId('note-edit-input')).toHaveValue(value);
+  }
+
+  get syncStatus(): Locator {
+    return this.driver.getByTestId('sync-status');
+  }
+
+  /** The "waiting to sync" mark on one note. */
+  pendingMark(text: string): Locator {
+    return this.note(text).getByTestId('pending-sync-badge');
+  }
+
   async expectMatchCount(text: string) {
     await this.expect(this.driver.getByTestId('notes-match-count')).toHaveText(text);
   }

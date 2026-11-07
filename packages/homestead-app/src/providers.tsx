@@ -9,8 +9,10 @@ import { persistOptions } from '@rambleraptor/homestead-core/api/persistQueryCli
 import {
   overlayPendingWrites,
   registerResourceMutationDefaults,
+  stampedFields,
   syncCacheWithOutbox,
 } from '@rambleraptor/homestead-core/api/registerResourceMutationDefaults';
+import { registerOfflineKeep } from '@rambleraptor/homestead-core/api/offlineKeep';
 import { startOutbox } from '@rambleraptor/homestead-core/api/outbox';
 import { getAllResourceDefsWithApp } from '@/apps/registry';
 import { ToastProvider } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
@@ -26,7 +28,11 @@ for (const { app, def } of getAllResourceDefsWithApp()) {
     singular: def.singular,
     plural: def.plural,
     parents: def.parents,
+    offline: def.offline,
+    conflicts: def.conflicts,
+    stamps: stampedFields(def),
   });
+  registerOfflineKeep(queryClient, app.id, def);
 }
 
 // Writes queued on this device (AEP requests in the outbox) start sending as

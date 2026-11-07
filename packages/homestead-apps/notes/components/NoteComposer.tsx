@@ -1,11 +1,17 @@
-import { useRef, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
 import { Textarea } from '@rambleraptor/homestead-core/shared/components/ui/textarea';
-import { useNoteDraft } from '../hooks/useNoteDraft';
+import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
+import { useDeviceDraft } from '@rambleraptor/homestead-core/shared/hooks/useDeviceDraft';
+import { haptic } from '@rambleraptor/homestead-core/shared/haptics';
+import { COMPOSE_DRAFT } from '../notes';
 
 interface NoteComposerProps {
   onSave: (body: string) => Promise<unknown>;
+  /** Put the cursor in the box on mount (a "New note" launch). */
+  autoFocus?: boolean;
+  className?: string;
 }
 
 /**
@@ -13,9 +19,18 @@ interface NoteComposerProps {
  * line (notes are often lists); Ctrl/Cmd+Enter or the button saves. The box
  * clears and keeps focus, so the next note can follow straight away.
  */
-export function NoteComposer({ onSave }: NoteComposerProps) {
-  const [draft, setDraft] = useNoteDraft();
+export function NoteComposer({ onSave, autoFocus = false, className }: NoteComposerProps) {
+  const [draft, setDraft] = useDeviceDraft(COMPOSE_DRAFT);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!autoFocus) return;
+    const input = inputRef.current;
+    if (!input) return;
+    input.focus();
+    // At the end of any draft, ready to keep writing.
+    input.setSelectionRange(input.value.length, input.value.length);
+  }, [autoFocus]);
   const canSave = draft.trim().length > 0;
 
   const save = async () => {
@@ -23,6 +38,7 @@ export function NoteComposer({ onSave }: NoteComposerProps) {
     if (!body) return;
     setDraft('');
     inputRef.current?.focus();
+    haptic('tap');
     try {
       await onSave(body);
     } catch {
@@ -47,7 +63,10 @@ export function NoteComposer({ onSave }: NoteComposerProps) {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex items-end gap-2 border-t border-gray-200 bg-surface-white px-4 py-3 lg:px-6"
+      className={cn(
+        'flex items-end gap-2 border-t border-gray-200 bg-surface-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6',
+        className,
+      )}
       data-testid="notes-composer"
     >
       <Textarea

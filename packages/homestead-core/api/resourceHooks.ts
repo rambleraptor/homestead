@@ -24,6 +24,7 @@ import { isConfirmedMediaType } from '../resources/media-type';
 import { queryKeys } from './queryClient';
 import { registerListShape } from './resourceEvents';
 import {
+  isKeptOffline,
   newRecordId,
   resourceNameFromCache,
   resourceHasParents,
@@ -33,7 +34,9 @@ import {
   type CreateVarsBase,
   type DeleteVars,
   type UpdateVars,
+  withCreateStamps,
 } from './registerResourceMutationDefaults';
+import { requestPersistentStorage } from './offlineKeep';
 
 // ----------------------------------------------------------------------------
 // Reads
@@ -135,7 +138,8 @@ export function useResourceList<T, R = T>(
     comparator: comparator as ((a: never, b: never) => number) | undefined,
     complete: !filter && !parent,
   });
-  return useQuery<R[], Error>({
+  const kept = isKeptOffline(appId, singular);
+  const query = useQuery<R[], Error>({
     queryKey: queryKeys.app(appId).resource(singular).list(),
     queryFn: async (): Promise<R[]> => {
       const fetched = await aepbase.list<T>(plural, { filter, orderBy, parent, maxPageSize });
@@ -148,6 +152,13 @@ export function useResourceList<T, R = T>(
     },
     ...queryOptions,
   });
+  // A kept list is worth protecting from the browser's storage eviction once
+  // the person has something in it (`offlineKeep.ts`).
+  const hasRecords = (query.data?.length ?? 0) > 0;
+  useEffect(() => {
+    if (kept && hasRecords) void requestPersistentStorage();
+  }, [kept, hasRecords]);
+  return query;
 }
 
 export interface ResourceItemOptions<T> extends ExtraQueryOptions<T> {
@@ -339,15 +350,18 @@ export function useResourceCreate<T, V extends object>(
     mutationKey: keys.create as unknown as readonly unknown[],
   });
 
+  // The id and any `stamp: 'create'` times are fixed here, once, so the
+  // optimistic record, the queued request and a replay all agree on them.
+  const prepare = (vars: V) =>
+    withCreateStamps(appId, singular, {
+      ...(vars as object),
+      recordId: chosenId(vars),
+    } as V & CreateVarsBase);
+
   return {
     ...mutation,
-    mutate: (vars: V) =>
-      mutation.mutate({ ...(vars as object), recordId: chosenId(vars) } as V & CreateVarsBase),
-    mutateAsync: (vars: V) =>
-      mutation.mutateAsync({
-        ...(vars as object),
-        recordId: chosenId(vars),
-      } as V & CreateVarsBase),
+    mutate: (vars: V) => mutation.mutate(prepare(vars)),
+    mutateAsync: (vars: V) => mutation.mutateAsync(prepare(vars)),
   } as UseMutationResult<T, Error, V> & {
     mutate: (vars: V) => void;
     mutateAsync: (vars: V) => Promise<T>;

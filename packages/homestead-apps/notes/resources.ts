@@ -14,8 +14,20 @@ export const notesResources: ResourceDefinition[] = [
       'A quick, free-form note — like a line jotted on paper. Private to the person who wrote it. ' +
       'There is no title: the first line reads as one. Words starting with # in the body are tags.',
     user_settable_create: true,
+    // A notebook has to be there with no signal, the morning after an update.
+    offline: 'keep',
+    // Two devices editing one note offline must not silently lose either text.
+    conflicts: 'keep-both',
     fields: {
       body: { type: 'string', required: true, description: 'The note text. #words are tags.' },
+      written_at: {
+        type: 'string',
+        format: 'date-time',
+        stamp: 'create',
+        description:
+          'When the note was written, by the writer\'s clock. Notes are ordered by it. ' +
+          'Leave it out to mean now.',
+      },
       struck: {
         type: 'boolean',
         description: 'Crossed out: kept in the list, but shown struck through.',

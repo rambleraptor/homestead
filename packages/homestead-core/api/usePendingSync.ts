@@ -72,3 +72,25 @@ export function useHasQueuedWrites(outbox: Outbox = pageOutbox): boolean {
     () => false,
   );
 }
+
+function waitingCount(outbox: Outbox, collections: readonly string[]): number {
+  if (!outbox.isParked()) return 0;
+  const wanted = new Set(collections);
+  return outbox.requests().filter((r) => wanted.has(parseResourceName(r.name).collection)).length;
+}
+
+/**
+ * How many changes to these collections (plurals, e.g. `['notes']`) are
+ * waiting for a connection — for a quiet "3 changes will sync" line. Zero
+ * while the queue is sending online, like the other hooks here.
+ */
+export function usePendingSyncCount(
+  collections: readonly string[],
+  outbox: Outbox = pageOutbox,
+): number {
+  return useSyncExternalStore(
+    (onChange) => outbox.subscribe(onChange),
+    () => waitingCount(outbox, collections),
+    () => 0,
+  );
+}

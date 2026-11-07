@@ -141,3 +141,35 @@ describe('dynamic defaults from an app flag', () => {
     expect((await res.json()).store).toBe(store);
   });
 });
+
+describe('stamp: create', () => {
+  beforeEach(async () => {
+    await defineResource(t, {
+      singular: 'jotting',
+      plural: 'jottings',
+      user_settable_create: true,
+      schema: {
+        type: 'object',
+        properties: {
+          body: { type: 'string' },
+          written_at: { type: 'string', format: 'date-time', 'x-aepbase-stamp': 'create' },
+        },
+      },
+    });
+  });
+
+  test('fills an omitted stamp with the time of the write', async () => {
+    const res = await call(t.engine, 'POST', '/jottings', { token: t.adminToken, body: { body: 'hi' } });
+    expect(res.status).toBe(201);
+    const created = await res.json();
+    expect(created.written_at).toBe(created.create_time);
+  });
+
+  test("keeps the writer's own time", async () => {
+    const res = await call(t.engine, 'POST', '/jottings', {
+      token: t.adminToken,
+      body: { body: 'written offline', written_at: '2026-01-02T09:00:00.000Z' },
+    });
+    expect((await res.json()).written_at).toBe('2026-01-02T09:00:00.000Z');
+  });
+});

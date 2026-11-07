@@ -78,6 +78,34 @@ describe('buildAppManifest', () => {
     });
   });
 
+  it('takes shared text and links when the app asks for them', () => {
+    expect(
+      buildAppManifest({ ...GROCERIES, basePath: '/notes', shareText: true }).share_target,
+    ).toEqual({
+      action: '/notes/share-target?chrome=none',
+      method: 'POST',
+      enctype: 'multipart/form-data',
+      params: { title: 'title', text: 'text', url: 'url' },
+    });
+  });
+
+  it('puts shortcuts on the icon, chromeless under the base path', () => {
+    const manifest = buildAppManifest({
+      ...GROCERIES,
+      basePath: '/notes',
+      shortcuts: [{ name: 'New note', path: '?compose' }],
+    });
+    expect(manifest.shortcuts).toEqual([
+      {
+        name: 'New note',
+        short_name: 'New note',
+        url: '/notes?compose=&chrome=none',
+        icons: [{ src: '/app-icons/groceries.png', sizes: '192x192', type: 'image/png' }],
+      },
+    ]);
+    expect(buildAppManifest(GROCERIES)).not.toHaveProperty('shortcuts');
+  });
+
   it('infers the icon type from its extension', () => {
     const icons = buildAppManifest({
       ...GROCERIES,

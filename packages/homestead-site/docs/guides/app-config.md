@@ -139,6 +139,8 @@ Everything about how the app surfaces in the browser. Lives under the required
 | `filters`          | `AppFilterDecl[]`                           | —           | Client-side, in-memory list filters.                               |
 | `settingsWidget`   | `LazyComponent`                             | —           | Custom settings-page UI in place of the auto-generated form.       |
 | `widgets`          | `DashboardWidget[]`                         | —           | Dashboard summary cards ([below](#adding-dashboard-widgets)).      |
+| `shortcuts`        | `{ name, path, description? }[]`            | —           | Shortcuts on the installed icon ([below](#shortcuts-and-sharing)). |
+| `shareTarget`      | `{ accept?: string[]; text?: boolean }`     | —           | Take files, text or links from the share sheet ([below](#shortcuts-and-sharing)). |
 
 `*` = required.
 
@@ -254,6 +256,30 @@ is kept inside the safe zone and the platform does the rest. Sub-apps
 The `homeScreenIcons` test in `packages/homestead-app/src/apps/__tests__`
 fails when a user-facing app (anything outside the dashboard and the superuser
 tree) is missing the field or the file.
+
+### Shortcuts and sharing
+
+An installed app can offer **shortcuts** on its icon — long-press on Android,
+right-click on desktop; iOS doesn't show them. Each opens a path under
+`basePath`, chromeless like the app (`path` may be just a query):
+
+```ts
+shortcuts: [{ name: 'New note', path: '?compose' }],
+```
+
+`shareTarget` lets the installed app receive what other apps share (Android;
+iOS has no web share target). `accept` takes files of those types; `text: true`
+takes shared text and links. The service worker parks the share and opens the
+app's base path with `?shared=<id>`; take it once with `useShare`:
+
+```ts
+shareTarget: { text: true },
+// in the app's home:
+useShare({ onText: (shared) => startNote(sharedTextBody(shared)) });
+```
+
+`useShare({ onFiles })` (or the older `useSharedFiles`) receives files the same
+way. Both live in `@rambleraptor/homestead-core/shared/pwa/shareTarget`.
 
 ## Adding flags and user settings
 

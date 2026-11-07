@@ -4,6 +4,12 @@
 
 import type { Note } from './types';
 
+/** The write box's device-draft key — shared by every composer (page and widget). */
+export const COMPOSE_DRAFT = 'notes.compose';
+
+/** The query the installed icon's "New note" shortcut opens `/notes` with. */
+export const COMPOSE_PARAM = 'compose';
+
 /** `#word` at the start or after whitespace; letters, digits, `_` and `-`. */
 const TAG_PATTERN = /(^|\s)#([\p{L}\p{N}_-]+)/gu;
 
@@ -45,6 +51,22 @@ export function matchesQuery(note: Pick<Note, 'body'>, query: string): boolean {
   );
 }
 
+/** When a note was written: its own stamp, else when the server got it. */
+export function writtenAt(note: Pick<Note, 'written_at' | 'create_time'>): string {
+  return note.written_at || note.create_time;
+}
+
+/** Newest first, by when each note was written. */
+export function byWrittenDesc(a: Note, b: Note): number {
+  return writtenAt(b).localeCompare(writtenAt(a));
+}
+
+/** How many notes were written today, by the device's calendar. */
+export function notesWrittenToday(notes: readonly Note[], now: Date = new Date()): number {
+  const today = localDayKey(now);
+  return notes.filter((note) => localDayKey(new Date(writtenAt(note))) === today).length;
+}
+
 export interface DayGroup {
   /** Local calendar day, `YYYY-MM-DD`. */
   key: string;
@@ -79,10 +101,10 @@ export function dayLabel(date: Date, now: Date = new Date()): string {
  * order of a page you write down, with the newest beside the composer.
  */
 export function groupByDay(notes: readonly Note[], now: Date = new Date()): DayGroup[] {
-  const sorted = [...notes].sort((a, b) => a.create_time.localeCompare(b.create_time));
+  const sorted = [...notes].sort((a, b) => byWrittenDesc(b, a));
   const groups: DayGroup[] = [];
   for (const note of sorted) {
-    const date = new Date(note.create_time);
+    const date = new Date(writtenAt(note));
     const key = localDayKey(date);
     const current = groups[groups.length - 1];
     if (current?.key === key) current.notes.push(note);

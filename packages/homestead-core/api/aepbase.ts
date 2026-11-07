@@ -405,10 +405,12 @@ interface RequestOptions {
   query?: Record<string, string | number | undefined>;
   // When true, send the body as application/merge-patch+json (used by PATCH).
   mergePatch?: boolean;
+  /** Extra request headers (e.g. `If-Match`). */
+  headers?: Record<string, string>;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, mergePatch } = options;
+  const { method = 'GET', body, query, mergePatch, headers: extraHeaders } = options;
 
   let url = `${AEP_BASE}${path}`;
   if (query) {
@@ -420,7 +422,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (qs) url += `?${qs}`;
   }
 
-  const headers: Record<string, string> = { [CLIENT_ID_HEADER]: getClientId() };
+  const headers: Record<string, string> = { ...extraHeaders, [CLIENT_ID_HEADER]: getClientId() };
   const init: RequestInit & { headers: Record<string, string> } = { method, headers };
   if (body instanceof FormData) {
     init.body = body;
@@ -586,18 +588,23 @@ export async function create<T>(
  * partial object to merge into an existing object field. There is no
  * `update_mask` (that is a proto-only FieldMask concept). A `FormData` body
  * (multipart file update) is sent as-is, not as merge-patch.
+ *
+ * `ifMatch` makes the update conditional: it names the version (the record's
+ * `update_time`) the change was made against, and the engine refuses it with
+ * 412 if the record has changed since.
  */
 export async function update<T>(
   plural: string,
   id: string,
   body: Record<string, unknown> | FormData,
-  options: ItemOptions = {},
+  options: ItemOptions & { ifMatch?: string } = {},
 ): Promise<T> {
   const encoded = encodeBody(body);
   return await request<T>(itemPath(plural, id, options.parent), {
     method: 'PATCH',
     body: encoded,
     mergePatch: !(encoded instanceof FormData),
+    ...(options.ifMatch ? { headers: { 'If-Match': `"${options.ifMatch}"` } } : {}),
   });
 }
 

@@ -259,6 +259,15 @@ export interface FieldDef {
    * still a store reference). See `homestead-server/src/engine/defaults.ts`.
    */
   defaultFromFlag?: { app: string; key: string };
+  /**
+   * `'create'`: when the record was written, as the writer saw it. The SPA's
+   * create hooks fill it with the device's clock at the moment of the write,
+   * so a record made offline keeps the time it was made rather than the time it
+   * synced; the engine fills it with the request's time when a caller leaves it
+   * out (the chat tools, scripts). String fields only (RFC 3339). See
+   * `homestead-server/src/engine/defaults.ts`.
+   */
+  stamp?: 'create';
   /** Element type for `array` fields. */
   items?: FieldDef;
   /** Nested fields for `object` fields. */
@@ -795,4 +804,24 @@ export interface ResourceDefinition {
    * nothing.
    */
   access?: ResourceAccess;
+  /**
+   * How the SPA keeps this resource on the device. `'keep'`: its list is kept
+   * in the offline cache for good — through app updates and past the cache's
+   * 7-day limit — and dropped only when the resource's own shape (its fields
+   * or parents) changes; the browser is asked to make the site's storage
+   * persistent the first time it's read. For data a person writes and expects
+   * to find again offline (notes), not for what can simply be refetched.
+   * Client-only — never sent to the engine. See `core/api/offlineKeep.ts`.
+   */
+  offline?: 'keep';
+  /**
+   * What happens when an edit made on this device meets a newer change made
+   * elsewhere. By default the last write wins. `'keep-both'`: each edit is sent
+   * with the version it was made against (`If-Match`), and if the record has
+   * since changed — or been deleted — the edit is saved as a new record instead
+   * of overwriting it, and the person is told. For free-text records where a
+   * silent overwrite loses someone's words. Client-only. See
+   * `core/api/registerResourceMutationDefaults.ts`.
+   */
+  conflicts?: 'keep-both';
 }

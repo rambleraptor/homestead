@@ -89,6 +89,12 @@ export interface OutboxRequest {
   body?: Record<string, unknown>;
   /** When the person made the change (RFC 3339). */
   enqueue_time: string;
+  /**
+   * update: the version (`update_time`) the change was made against, sent as
+   * `If-Match` so the server refuses it (412) if the record has changed since.
+   * Kept current as this device's own earlier writes to the record land.
+   */
+  if_match?: string;
 }
 
 /** Sends one request to the server. The default goes through the aepbase client. */
@@ -101,7 +107,7 @@ function isHttpStatus(error: unknown, status: number): boolean {
 }
 
 export const aepTransport: OutboxTransport = {
-  async send({ method, name, body = {} }) {
+  async send({ method, name, body = {}, if_match }) {
     const { parent, collection, id } = parseResourceName(name);
     const at = parent.length > 0 ? { parent } : {};
     switch (method) {
@@ -114,10 +120,13 @@ export const aepTransport: OutboxTransport = {
           if (!isHttpStatus(error, 409)) throw error;
           return await aepbase.get(collection, id, at);
         }
-      case 'update':
-        return parent.length > 0
-          ? await aepbase.update(collection, id, body, { parent })
+      case 'update': {
+        const conditional = if_match ? { ifMatch: if_match } : {};
+        if (parent.length > 0) return await aepbase.update(collection, id, body, { parent, ...conditional });
+        return if_match
+          ? await aepbase.update(collection, id, body, conditional)
           : await aepbase.update(collection, id, body);
+      }
       case 'delete':
         try {
           // force: deleting in the UI means the whole subtree (the apps'
@@ -339,7 +348,12 @@ export class Outbox {
    * already has a queued (not yet sent) write is folded into it where the
    * methods allow — see the class comment.
    */
-  enqueue(method: OutboxMethod, name: string, body?: Record<string, unknown>): OutboxTicket {
+  enqueue(
+    method: OutboxMethod,
+    name: string,
+    body?: Record<string, unknown>,
+    options: { ifMatch?: string } = {},
+  ): OutboxTicket {
     parseResourceName(name); // reject a malformed name now, not at replay
     const request: OutboxRequest = {
       request_id: newRequestId(),
@@ -347,6 +361,7 @@ export class Outbox {
       name,
       ...(body !== undefined ? { body } : {}),
       enqueue_time: new Date().toISOString(),
+      ...(method === 'update' && options.ifMatch ? { if_match: options.ifMatch } : {}),
     };
     const ticket = this.ticketFor(request.request_id);
     const followed = this.fold(request);
@@ -424,6 +439,10 @@ export class Outbox {
           // Nothing under a name that was never created can succeed.
           this.dropWithin(request.name, result.error);
         }
+        if (result.ok) this.rebase(request.name, result.record);
+        if (!result.ok && request.method === 'update' && isHttpStatus(result.error, 412)) {
+          this.absorbRefusedEdits(request);
+        }
         // Report the outcome before announcing the shorter queue, so a
         // listener that acts on "queue empty" has already seen this result.
         this.settle(request, result);
@@ -473,6 +492,38 @@ export class Outbox {
 
     this.queue.push(request);
     return request.request_id;
+  }
+
+  /**
+   * This device's own write to `name` landed: later queued edits to it were
+   * made on top of that write, so they're now against the version the server
+   * just returned — not the one they were queued with.
+   */
+  private rebase(name: string, record: Record<string, unknown> | undefined): void {
+    const version = record?.update_time;
+    if (typeof version !== 'string') return;
+    for (const r of this.queue) {
+      if (r.name === name && r.method === 'update' && r.if_match) r.if_match = version;
+    }
+  }
+
+  /**
+   * An edit was refused because the record changed elsewhere (412). Every
+   * later queued edit to it was made on top of the refused one, so they're
+   * refused with it: folded into its body, and their callers answered with its
+   * outcome, so the refusal is reported once, carrying the person's whole
+   * change.
+   */
+  private absorbRefusedEdits(refused: OutboxRequest): void {
+    const later = this.queue.filter(
+      (q) => q.name === refused.name && q.method === 'update' && q.request_id !== this.inFlight,
+    );
+    for (const r of later) {
+      refused.body = applyMergePatch(refused.body ?? {}, r.body ?? {});
+      this.follow(refused.request_id, r.request_id);
+    }
+    const absorbed = new Set(later.map((r) => r.request_id));
+    this.queue = this.queue.filter((q) => !absorbed.has(q.request_id));
   }
 
   /** Remove every queued request on `name` or beneath it (not one in flight). */

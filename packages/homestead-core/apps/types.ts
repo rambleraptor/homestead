@@ -194,8 +194,24 @@ export interface AppWebConfig {
    */
   shareTarget?: {
     /** MIME types or extensions the app takes, as in an `<input accept>`. */
-    accept: string[];
+    accept?: string[];
+    /**
+     * Also take shared text and links (the manifest's `title`/`text`/`url`
+     * params) — a highlighted sentence or a page from another app. Read them
+     * with `useShare({ onText })`.
+     */
+    text?: boolean;
   };
+
+  /**
+   * Shortcuts on the installed app's icon (long-press on Android, right-click
+   * on desktop): each opens a path under the app's `basePath`, chromeless like
+   * the app itself. `path` is appended to `basePath` and may carry a query
+   * (`'?compose'`). Needs `homeScreenIcon`; iOS doesn't show them.
+   *
+   * Example: `shortcuts: [{ name: 'New note', path: '?compose' }]`
+   */
+  shortcuts?: { name: string; path: string; description?: string }[];
 
   /**
    * Whether this app should appear in the main navigation

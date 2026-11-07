@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { dayLabel, extractTags, groupByDay, matchesQuery, splitBody } from '../notes';
+import {
+  byWrittenDesc,
+  dayLabel,
+  extractTags,
+  groupByDay,
+  matchesQuery,
+  notesWrittenToday,
+  splitBody,
+  writtenAt,
+} from '../notes';
 import type { Note } from '../types';
 
 function note(id: string, body: string, create_time: string): Note {
@@ -61,5 +70,27 @@ describe('groupByDay', () => {
   it('adds the year only outside the current one', () => {
     expect(dayLabel(new Date(2026, 9, 3), now)).not.toMatch(/2026/);
     expect(dayLabel(new Date(2025, 9, 3), now)).toMatch(/2025/);
+  });
+});
+
+describe('written time', () => {
+  it('prefers the time the note was written over when the server got it', () => {
+    const offline = { ...note('a', 'x', '2026-11-07T17:00:00Z'), written_at: '2026-11-07T09:00:00.000Z' };
+    const online = note('b', 'y', '2026-11-07T12:00:00Z');
+    expect(writtenAt(offline)).toBe('2026-11-07T09:00:00.000Z');
+    expect([offline, online].sort(byWrittenDesc).map((n) => n.id)).toEqual(['b', 'a']);
+  });
+
+  it('counts the notes written today', () => {
+    const now = new Date(2026, 10, 7, 12, 0);
+    expect(
+      notesWrittenToday(
+        [
+          note('a', 'x', new Date(2026, 10, 7, 8, 0).toISOString()),
+          note('b', 'y', new Date(2026, 10, 6, 8, 0).toISOString()),
+        ],
+        now,
+      ),
+    ).toBe(1);
   });
 });

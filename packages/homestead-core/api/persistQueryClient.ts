@@ -19,7 +19,9 @@ import type {
   Persister,
 } from '@tanstack/react-query-persist-client';
 import { logger } from '../utils/logger';
+import { getAllResourceDefs } from '../apps/registry';
 import { deviceStore, type KeyValueStore } from './offlineStore';
+import { isKeptQuery, keptShapes } from './offlineKeep';
 import {
   installedSecretFields,
   redactPersistedClient,
@@ -79,7 +81,22 @@ export const PERSIST_BUSTER = process.env.NEXT_PUBLIC_BUILD_ID ?? 'dev';
  */
 export function salvageQueuedWrites(
   persisted: PersistedClient,
-  { buster, maxAge, now }: { buster: string; maxAge: number; now: number },
+  {
+    buster,
+    maxAge,
+    now,
+    keep = () => false,
+  }: {
+    buster: string;
+    maxAge: number;
+    now: number;
+    /**
+     * Reads to keep anyway: the lists of `offline: 'keep'` resources whose
+     * shape hasn't changed (`offlineKeep.ts`). Data a person wrote shouldn't
+     * vanish from the device because the app updated or they were away.
+     */
+    keep?: (query: PersistedClient['clientState']['queries'][number]) => boolean;
+  },
 ): PersistedClient {
   const current = persisted.buster === buster && now - persisted.timestamp <= maxAge;
   if (current) return persisted;
@@ -87,7 +104,7 @@ export function salvageQueuedWrites(
     buster,
     timestamp: now,
     clientState: {
-      queries: [],
+      queries: (persisted.clientState?.queries ?? []).filter(keep),
       mutations: (persisted.clientState?.mutations ?? []).filter(
         (mutation) => mutation.state.status === 'pending',
       ),
@@ -98,6 +115,8 @@ export function salvageQueuedWrites(
 export interface OfflinePersisterOptions {
   /** Where the snapshot is kept; the device's IndexedDB by default. */
   store?: KeyValueStore | null;
+  /** Which saved reads outlive a build or the age limit; kept resources' lists by default. */
+  keepQuery?: () => (query: PersistedClient['clientState']['queries'][number]) => boolean;
   /** Where a pre-IndexedDB snapshot may still be; localStorage by default. */
   legacy?: Storage | null;
   /** Which fields to keep off the disk; the installed resources' by default. */
@@ -115,6 +134,7 @@ export function createOfflinePersister(options: OfflinePersisterOptions = {}): O
   if (!store) return null;
   const legacy = options.legacy === undefined ? legacyStorage() : options.legacy;
   const secretFields = options.secretFields ?? installedSecretFields;
+  const keepQuery = options.keepQuery ?? installedKeptQuery;
 
   const serialize = (client: PersistedClient) =>
     JSON.stringify(redactPersistedClient(client, secretFields()));
@@ -167,6 +187,7 @@ export function createOfflinePersister(options: OfflinePersisterOptions = {}): O
             buster: PERSIST_BUSTER,
             maxAge: PERSIST_MAX_AGE_MS,
             now: Date.now(),
+            keep: keepQuery(),
           })
         : undefined;
     },
@@ -179,6 +200,17 @@ export function createOfflinePersister(options: OfflinePersisterOptions = {}): O
     },
     flush: save,
   };
+}
+
+/** The kept lists of the installed resources (`offline: 'keep'`). */
+function installedKeptQuery(): (query: PersistedClient['clientState']['queries'][number]) => boolean {
+  let shapes: ReadonlyMap<string, string>;
+  try {
+    shapes = keptShapes(getAllResourceDefs());
+  } catch {
+    shapes = new Map();
+  }
+  return (query) => isKeptQuery(query, shapes);
 }
 
 const persister = createOfflinePersister();

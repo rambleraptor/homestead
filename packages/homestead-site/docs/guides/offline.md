@@ -13,6 +13,7 @@ This page covers:
 - [Disable actions that need the network](#disable-actions-that-need-the-network).
 - [Handle file uploads](#handle-file-uploads) — the one thing that doesn't queue.
 - [Customize per resource](#customize-per-resource) — cascade deletes and opt-out.
+- [Data people write: keep it, time it, never lose an edit](#data-people-write) — `offline: 'keep'`, `stamp: 'create'`, `conflicts: 'keep-both'`, drafts.
 - [Reference](#reference).
 
 ---
@@ -157,6 +158,18 @@ function SyncHint() {
 It returns `{ isOnline, isOffline }` and re-renders the moment the connection
 changes.
 
+To say what's waiting rather than just that you're offline, mark each queued
+record with `usePendingSyncIds()` and `<PendingSyncBadge />` (`iconOnly` for a
+dense row), and put one quiet line over the list with `<SyncStatus>` —
+"Offline · 3 changes will sync" — which renders nothing when nothing is
+waiting:
+
+```tsx
+import { SyncStatus } from '@rambleraptor/homestead-core/shared/components/PendingSyncBadge';
+
+<SyncStatus collections={['notes']} />
+```
+
 ---
 
 ## Disable actions that need the network
@@ -204,8 +217,11 @@ file-carrying write is online-only.
 
 The default offline behavior fits standard CRUD, and the factory derives
 everything it needs — list cache key, mutation keys, optimistic shape, request
-body, and each record's resource name — from the resource definition. There
-are no per-resource config overrides.
+body, and each record's resource name — from the resource definition. A
+resource under the built-in `user` root (`parents: ['user']`, private per
+person) is written under the signed-in person's name (`users/{id}/…`) with no
+extra wiring. For data people write themselves, see
+[the options below](#data-people-write).
 
 **Cascade a delete.** When deleting one record should also delete or fix up
 related records, compose the standard hooks in a hand-written hook rather than
@@ -248,6 +264,74 @@ invalidation to reconcile it.
 
 ---
 
+## Data people write
+
+Cached reads are a cache: they can be fetched again, so they're dropped when
+the app updates and after a week. Records a person *wrote* — notes, a journal —
+need more than that to feel like a native app. Three declarations on the
+resource cover it, with no app code (the Notes app uses all three):
+
+```ts
+{
+  singular: 'note',
+  plural: 'notes',
+  parents: ['user'],
+  offline: 'keep',
+  conflicts: 'keep-both',
+  fields: {
+    body: { type: 'string', required: true },
+    written_at: { type: 'string', format: 'date-time', stamp: 'create' },
+  },
+}
+```
+
+**`offline: 'keep'` — never vanish from the device.** The resource's list
+stays in the device cache through app updates and past the 7-day limit; it's
+dropped only when the resource's own shape (its fields or parents) changes,
+since the saved records might no longer fit. The slot is never
+garbage-collected while the app is open, so it's always in the saved snapshot.
+The first time the list has records, the browser is asked to make the site's
+storage persistent (`navigator.storage.persist()`), so it isn't evicted for
+space — Safari otherwise clears a site's storage after a week unvisited unless
+it's on the home screen. Firefox may ask the person. Client-only; see
+`core/api/offlineKeep.ts`.
+
+**`stamp: 'create'` — the time it was written.** The server stamps
+`create_time` when a request *arrives*, so a record made offline at 9:00 and
+synced at 17:00 says 17:00. A `stamp: 'create'` string field is filled by
+`useResourceCreate` with the device's clock at the moment of the write (fixed
+once, so the optimistic record, the queued request and any replay agree), and
+by the engine with the request's time when a caller leaves it out (the chat
+tools, scripts). Sort and group by it, falling back to `create_time` for
+records made before the field existed. Passing it explicitly — an undo putting
+a deleted record back — keeps the original time.
+
+**`conflicts: 'keep-both'` — never lose an edit.** By default the last write
+wins, so editing one record offline on two devices silently drops one of the
+edits. With `keep-both`, every update is sent with `If-Match` naming the
+version it was made against (the record's `update_time`; the engine moves it
+forward on every change, so a version names exactly one state). If the record
+changed elsewhere meanwhile (412), or was deleted (404), the edit isn't
+dropped: the person's version is saved as a new record beside it and a toast
+says so. The outbox keeps queued edits' versions current as this device's own
+earlier writes land, and folds every queued edit made on top of a refused one
+into a single copy. The mutation resolves rather than failing — the edit was
+saved, just not over the newer one.
+
+**Drafts.** Text that hasn't been saved yet isn't a write and doesn't belong in
+the outbox. Keep it on the device with `useDeviceDraft(key)` (per person;
+`readDeviceDraft`/`writeDeviceDraft` outside React) so a reload, a closed tab
+or a locked phone loses nothing:
+
+```tsx
+import { useDeviceDraft } from '@rambleraptor/homestead-core/shared/hooks/useDeviceDraft';
+
+const [draft, setDraft] = useDeviceDraft('notes.compose');
+// setDraft('') once it's saved
+```
+
+---
+
 ## Reference
 
 | Item | Import | Use |
@@ -256,7 +340,10 @@ invalidation to reconcile it.
 | `resourceMutationKeys(appId, singular)` | `@rambleraptor/homestead-core/api/registerResourceMutationDefaults` | Mutation keys for a hand-written `useMutation` |
 | `useOnlineStatus()` | `@rambleraptor/homestead-core/shared/hooks/useOnlineStatus` | `{ isOnline, isOffline }`, reactive |
 | `usePendingSync(id)` / `usePendingSyncIds()` | `@rambleraptor/homestead-core/api/usePendingSync` | Which records have a write waiting for a connection |
-| `<PendingSyncBadge />` | `@rambleraptor/homestead-core/shared/components/PendingSyncBadge` | "Waiting to sync" marker for a row |
+| `<PendingSyncBadge />` | `@rambleraptor/homestead-core/shared/components/PendingSyncBadge` | "Waiting to sync" marker for a row (`iconOnly` for a dense one) |
+| `<SyncStatus collections />` / `usePendingSyncCount(collections)` | `…/shared/components/PendingSyncBadge` / `…/api/usePendingSync` | "Offline · N changes will sync" |
+| `useDeviceDraft(key)` | `@rambleraptor/homestead-core/shared/hooks/useDeviceDraft` | Unsaved text kept on the device |
+| `offline: 'keep'` / `conflicts: 'keep-both'` / `stamp: 'create'` | resource definition | See [Data people write](#data-people-write) |
 | `outbox` | `@rambleraptor/homestead-core/api/outbox` | The queued AEP requests (read-only for apps) |
 | `<OfflineBanner />` | (in the app shell) | Global offline banner — already mounted |
 
@@ -269,7 +356,9 @@ invalidation to reconcile it.
 | Read a secret field after an offline restart | Missing until the next refetch — never stored on the device |
 | Create / update / delete | Applies on screen, queues in the outbox, syncs on reconnect (oldest first) |
 | Several writes to one record | Collapse into one request (or none, for create + delete) |
-| App updated (or 7+ days) before reconnecting | Cached reads dropped; the outbox is kept and sent |
+| App updated (or 7+ days) before reconnecting | Cached reads dropped (an `offline: 'keep'` list stays); the outbox is kept and sent |
+| Record created offline | Shows when it was made, not when it synced, via a `stamp: 'create'` field |
+| Edit to a record changed elsewhere meanwhile | Last write wins — or, with `conflicts: 'keep-both'`, saved as a copy |
 | Queued write rejected by server | Optimistic change rolls back |
 | Upload a file | Fails — uploads are online-only |
 | Action with no offline meaning | You disable it via `useOnlineStatus` |

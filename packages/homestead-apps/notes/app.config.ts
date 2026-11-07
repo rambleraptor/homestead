@@ -33,8 +33,21 @@ export const notesApp: AppConfig = {
         component: () => import('./components/NotesHome').then((m) => m.NotesHome),
       },
     ],
+    // Long-press the installed icon → straight into a new note.
+    shortcuts: [{ name: 'New note', path: '?compose' }],
+    // Share a link or a highlighted sentence from any app into a note (Android).
+    shareTarget: { text: true },
     showInNav: true,
     navOrder: 6,
     section: 'Tasks',
+    widgets: [
+      {
+        id: 'notes-capture',
+        label: 'Notes',
+        summary: () => import('./hooks/useNotesSummary'),
+        component: () => import('./components/NotesWidget').then((m) => m.NotesWidget),
+        order: 7,
+      },
+    ],
   },
 };

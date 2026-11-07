@@ -33,6 +33,10 @@ export interface HomeScreenApp {
   iconHref: string;
   /** What the installed app accepts from the share sheet, when it takes shares. */
   shareAccept?: string[];
+  /** Whether it also takes shared text and links. */
+  shareText?: boolean;
+  /** Shortcuts on the installed icon, each a path under `basePath`. */
+  shortcuts?: { name: string; path: string; description?: string }[];
 }
 
 /** Where the server serves an app's manifest. */
@@ -73,8 +77,23 @@ export function buildAppManifest(app: HomeScreenApp): Record<string, unknown> {
       { src: app.iconHref, sizes: '192x192', type, purpose: 'any' },
       { src: app.iconHref, sizes: '512x512', type, purpose: 'any maskable' },
     ],
-    ...(app.shareAccept?.length
-      ? { share_target: shareTargetManifest(app.basePath, app.shareAccept) }
+    ...(app.shareAccept?.length || app.shareText
+      ? {
+          share_target: shareTargetManifest(app.basePath, app.shareAccept ?? [], {
+            text: app.shareText,
+          }),
+        }
+      : {}),
+    ...(app.shortcuts?.length
+      ? {
+          shortcuts: app.shortcuts.map((shortcut) => ({
+            name: shortcut.name,
+            short_name: shortcut.name,
+            ...(shortcut.description ? { description: shortcut.description } : {}),
+            url: chromelessUrl(`${app.basePath.replace(/\/+$/, '')}${shortcut.path}`),
+            icons: [{ src: app.iconHref, sizes: '192x192', type }],
+          })),
+        }
       : {}),
   };
 }
@@ -88,7 +107,9 @@ export function toHomeScreenApp(app: AppConfig): HomeScreenApp | null {
     description: app.description,
     basePath: app.web.basePath,
     iconHref: app.web.homeScreenIcon,
-    ...(app.web.shareTarget ? { shareAccept: app.web.shareTarget.accept } : {}),
+    ...(app.web.shareTarget?.accept?.length ? { shareAccept: app.web.shareTarget.accept } : {}),
+    ...(app.web.shareTarget?.text ? { shareText: true } : {}),
+    ...(app.web.shortcuts?.length ? { shortcuts: app.web.shortcuts } : {}),
   };
 }
 

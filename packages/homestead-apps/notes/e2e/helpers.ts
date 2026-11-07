@@ -9,6 +9,7 @@ export interface NoteRecord {
   path: string;
   body: string;
   struck?: boolean;
+  written_at?: string;
   create_time: string;
 }
 
@@ -27,4 +28,13 @@ export async function createNote(
 
 export async function listNotes(token: string, userId: string): Promise<NoteRecord[]> {
   return notes(token, userId).listAll();
+}
+
+export async function updateNote(
+  token: string,
+  userId: string,
+  noteId: string,
+  data: { body?: string; struck?: boolean },
+): Promise<NoteRecord> {
+  return notes(token, userId).record(noteId).update(data);
 }

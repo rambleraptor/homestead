@@ -1,6 +1,15 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { NotebookPen, Search, X } from 'lucide-react';
 import { useFillPage } from '@rambleraptor/homestead-core/layout/pageFill';
+import { useMediaQuery } from '@rambleraptor/homestead-core/shared/hooks/useMediaQuery';
+import {
+  readDeviceDraft,
+  writeDeviceDraft,
+} from '@rambleraptor/homestead-core/shared/hooks/useDeviceDraft';
+import { sharedTextBody, useShare } from '@rambleraptor/homestead-core/shared/pwa/shareTarget';
+import { usePendingSyncIds } from '@rambleraptor/homestead-core/api/usePendingSync';
+import { SyncStatus } from '@rambleraptor/homestead-core/shared/components/PendingSyncBadge';
 import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { Skeleton } from '@rambleraptor/homestead-core/shared/components/Skeleton';
@@ -11,13 +20,15 @@ import { useCreateNote } from '../hooks/useCreateNote';
 import { useDeleteNote } from '../hooks/useDeleteNote';
 import { useNotes } from '../hooks/useNotes';
 import { useUpdateNote } from '../hooks/useUpdateNote';
-import { groupByDay, matchesQuery } from '../notes';
+import { COMPOSE_DRAFT, COMPOSE_PARAM, groupByDay, matchesQuery, writtenAt } from '../notes';
+import { NOTES } from '../resources';
 import type { Note } from '../types';
 import { NoteComposer } from './NoteComposer';
 import { NoteRow } from './NoteRow';
 
 /** How many notes render at first, and how many more each step back in time adds. */
 const PAGE_SIZE = 100;
+const NOTE_COLLECTIONS = [NOTES] as const;
 
 /**
  * The notebook: every note in one stream, oldest at the top and the newest
@@ -28,11 +39,32 @@ export function NotesHome() {
   useFillPage();
   const toast = useToast();
   const notesQuery = useNotes();
+  const pendingIds = usePendingSyncIds();
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
   const deleteNote = useDeleteNote();
 
   const [query, setQuery] = useState('');
+  const [params] = useSearchParams();
+  // Opened from the icon's "New note" shortcut (`?compose`), or on a desktop,
+  // where a keyboard is always there: straight to the write box.
+  const finePointer = useMediaQuery('(pointer: fine)');
+  const [composerKey, setComposerKey] = useState(0);
+  const [sharedFocus, setSharedFocus] = useState(false);
+  const focusComposer = params.has(COMPOSE_PARAM) || finePointer || sharedFocus;
+
+  // Text or a link shared from another app lands in the write box, after any
+  // draft, ready to add a word of context and save.
+  useShare({
+    onText: (shared) => {
+      const incoming = sharedTextBody(shared);
+      if (!incoming) return;
+      const draft = readDeviceDraft(COMPOSE_DRAFT);
+      writeDeviceDraft(COMPOSE_DRAFT, draft ? `${draft}\n${incoming}` : incoming);
+      setSharedFocus(true);
+      setComposerKey((k) => k + 1);
+    },
+  });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const scrollRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -97,6 +129,8 @@ export function NotesHome() {
       createNote.mutate({
         body: note.body,
         ...(note.struck ? { struck: true } : {}),
+        // Back where it was in the stream, not at the bottom.
+        written_at: writtenAt(note),
         recordId: note.id,
       }),
     );
@@ -107,7 +141,10 @@ export function NotesHome() {
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="notes-home">
       <div className="flex items-center gap-3 border-b border-gray-200 px-4 py-3 lg:px-6">
-        <h1 className="font-display text-xl font-bold tracking-tight text-brand-navy">Notes</h1>
+        <div className="min-w-0">
+          <h1 className="font-display text-xl font-bold tracking-tight text-brand-navy">Notes</h1>
+          <SyncStatus collections={NOTE_COLLECTIONS} />
+        </div>
         <div className="relative ml-auto w-full max-w-sm">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted"
@@ -191,6 +228,7 @@ export function NotesHome() {
                       <NoteRow
                         key={note.id}
                         note={note}
+                        pending={pendingIds.has(note.id)}
                         onTag={(tag) => search(`#${tag}`)}
                         onUpdate={update}
                         onDelete={remove}
@@ -204,7 +242,7 @@ export function NotesHome() {
         </div>
       </div>
 
-      <NoteComposer onSave={save} />
+      <NoteComposer key={composerKey} onSave={save} autoFocus={focusComposer} />
     </div>
   );
 }
