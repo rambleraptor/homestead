@@ -4,6 +4,8 @@ export interface Note {
   path: string;
   body: string;
   struck?: boolean;
+  /** When it was written, by the writer's clock (older notes may lack it). */
+  written_at?: string;
   create_time: string;
   update_time: string;
 }
@@ -11,4 +13,5 @@ export interface Note {
 export interface NoteFormData {
   body: string;
   struck?: boolean;
+  written_at?: string;
 }

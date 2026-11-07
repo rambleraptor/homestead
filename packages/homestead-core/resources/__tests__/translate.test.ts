@@ -156,6 +156,19 @@ describe('toWireSchema', () => {
     expect(properties.count).toEqual({ type: 'integer', default: 0 });
   });
 
+  it('emits an x-aepbase-stamp marker (+ note) for stamp', () => {
+    const { properties } = toWireSchema(
+      { written_at: { type: 'string', format: 'date-time', stamp: 'create' } },
+      'note',
+    );
+    expect(properties.written_at).toEqual({
+      type: 'string',
+      format: 'date-time',
+      description: 'when it was written (RFC 3339); filled with the time of the write when omitted',
+      'x-aepbase-stamp': 'create',
+    });
+  });
+
   it('emits an x-aepbase-default-from marker (+ note) for defaultFromFlag', () => {
     const { properties } = toWireSchema({
       store: {
@@ -466,6 +479,29 @@ describe('validateResourceDefinition', () => {
         }),
       ),
     ).not.toThrow();
+  });
+
+  it('accepts stamp on a string field and rejects it elsewhere', () => {
+    expect(() =>
+      validateResourceDefinition(def({ fields: { written_at: { type: 'string', stamp: 'create' } } })),
+    ).not.toThrow();
+    expect(() =>
+      validateResourceDefinition(def({ fields: { n: { type: 'integer', stamp: 'create' } } })),
+    ).toThrow(/declares stamp but is not a string/);
+    expect(() =>
+      validateResourceDefinition(
+        def({ fields: { t: { type: 'string', stamp: 'create', default: 'x' } } }),
+      ),
+    ).toThrow(/a stamp is a time/);
+  });
+
+  it('rejects unknown offline and conflicts policies', () => {
+    expect(() =>
+      validateResourceDefinition(def({ offline: 'always' as unknown as 'keep', fields: {} })),
+    ).toThrow(/offline must be 'keep'/);
+    expect(() =>
+      validateResourceDefinition(def({ conflicts: 'merge' as unknown as 'keep-both', fields: {} })),
+    ).toThrow(/conflicts must be 'keep-both'/);
   });
 
   it('rejects defaultFromFlag on a non-string field', () => {

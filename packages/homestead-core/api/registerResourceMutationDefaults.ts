@@ -34,13 +34,15 @@
 import type { QueryClient, MutationOptions } from '@tanstack/react-query';
 import { onlineManager } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { aepbase, type ParentPath } from './aepbase';
+import type { ResourceDefinition } from '../resources/types';
+import { aepbase, AepbaseError, type ParentPath } from './aepbase';
 import { getAepErrorMessage } from './errorMessage';
 import { queryKeys } from './queryClient';
 import {
   applyMergePatch,
   applyPendingWrites,
   outbox,
+  type OutboxRequest,
   parseResourceName,
   resourceName,
   type Outbox,
@@ -96,6 +98,10 @@ interface ResourceMeta {
   singular: string;
   plural: string;
   parents: string[];
+  offline?: 'keep';
+  conflicts?: 'keep-both';
+  /** Fields the device fills with the time of a create (`stamp: 'create'`). */
+  stamps: string[];
 }
 
 const resourceMetaRegistry = new Map<string, ResourceMeta>();
@@ -133,6 +139,32 @@ export function appIdsForResource(singular: string): string[] {
     if (meta.singular === singular) ids.push(meta.appId);
   }
   return ids;
+}
+
+/** The `stamp: 'create'` fields of a definition — top-level only. */
+export function stampedFields(def: Pick<ResourceDefinition, 'fields'>): string[] {
+  return Object.entries(def.fields)
+    .filter(([, field]) => field.stamp === 'create')
+    .map(([name]) => name);
+}
+
+/**
+ * A create's variables with every `stamp: 'create'` field the caller left out
+ * set to now — the moment the person made the record, which is what it should
+ * say even when it only reaches the server hours later.
+ */
+export function withCreateStamps<V extends object>(appId: string, singular: string, vars: V): V {
+  const stamps = metaFor(appId, singular)?.stamps ?? [];
+  const given = vars as Record<string, unknown>;
+  const missing = stamps.filter((field) => given[field] === undefined);
+  if (missing.length === 0) return vars;
+  const now = new Date().toISOString();
+  return { ...vars, ...Object.fromEntries(missing.map((field) => [field, now])) };
+}
+
+/** Whether a resource's list is kept on the device for good (`offline: 'keep'`). */
+export function isKeptOffline(appId: string, singular: string): boolean {
+  return metaFor(appId, singular)?.offline === 'keep';
 }
 
 /** True when a resource declares any parent (i.e. is nested). */
@@ -259,6 +291,12 @@ export interface ResourceMutationOpts {
    * id rides in. Empty/omitted for top-level resources.
    */
   parents?: string[];
+  /** `offline: 'keep'` on the definition (`offlineKeep.ts`). */
+  offline?: 'keep';
+  /** `conflicts: 'keep-both'` on the definition: edits carry `If-Match`, and a refused one is kept as a copy. */
+  conflicts?: 'keep-both';
+  /** Fields a create fills with the device's clock (`stamp: 'create'`; see {@link stampedFields}). */
+  stamps?: string[];
   /** The outbox writes go through; the page's by default. */
   outbox?: Outbox;
 }
@@ -303,10 +341,18 @@ export function registerResourceMutationDefaults<
   C extends CreateVarsBase = CreateVarsBase & Record<string, unknown>,
   U = Record<string, unknown>,
 >(qc: QueryClient, opts: ResourceMutationOpts): ResourceMutationKeys {
-  const { appId, singular, plural, parents = [] } = opts;
+  const { appId, singular, plural, parents = [], offline, conflicts, stamps = [] } = opts;
   const queue = opts.outbox ?? outbox;
 
-  resourceMetaRegistry.set(metaKey(appId, singular), { appId, singular, plural, parents });
+  resourceMetaRegistry.set(metaKey(appId, singular), {
+    appId,
+    singular,
+    plural,
+    parents,
+    offline,
+    conflicts,
+    stamps,
+  });
 
   const listKey = queryKeys.app(appId).resource(singular).list();
   const detailKey = (id: string) => queryKeys.app(appId).resource(singular).detail(id);
@@ -440,6 +486,9 @@ export function registerResourceMutationDefaults<
   qc.setMutationDefaults(keys.create, createDef);
 
   // ---- update (AEP-134) ---------------------------------------------------
+  // `conflicts: 'keep-both'`: the version each edit was made against, read in
+  // `onMutate` before the optimistic write stamps a local `update_time` over it.
+  const baseVersions = new WeakMap<object, string>();
   const updateDef: MutationOptions<
     T | undefined,
     Error,
@@ -449,14 +498,26 @@ export function registerResourceMutationDefaults<
     networkMode: 'always',
     mutationFn: async (vars: UpdateVars<U>) => {
       const patch = withoutParentFields({ ...(vars.data as Record<string, unknown>) });
-      const ticket = queue.enqueue('update', nameForExisting(vars.id), patch);
-      return sentOrSaved(ticket, () => cachedRow(vars.id));
+      const ifMatch = conflicts === 'keep-both' ? baseVersions.get(vars) : undefined;
+      const ticket = queue.enqueue('update', nameForExisting(vars.id), patch, { ifMatch });
+      try {
+        return await sentOrSaved(ticket, () => cachedRow(vars.id));
+      } catch (error) {
+        // The edit met a newer change (or a delete) made elsewhere; it's kept as
+        // a copy by `syncCacheWithOutbox` — saved, not failed.
+        if (conflicts === 'keep-both' && isConflict(error)) return cachedRow(vars.id);
+        throw error;
+      }
     },
     onMutate: async (vars: UpdateVars<U>) => {
       await qc.cancelQueries({ queryKey: listKey });
       await qc.cancelQueries({ queryKey: detailKey(vars.id) });
       const previous = qc.getQueryData<T[]>(listKey) ?? [];
       const previousDetail = qc.getQueryData<T>(detailKey(vars.id));
+      const base = (previous.find((r) => r.id === vars.id) ?? previousDetail) as
+        | { update_time?: unknown }
+        | undefined;
+      if (typeof base?.update_time === 'string') baseVersions.set(vars, base.update_time);
       const ts = nowIso();
       const patch = { ...(vars.data as object), update_time: ts, updated: ts };
       qc.setQueryData<T[]>(
@@ -582,6 +643,11 @@ export function syncCacheWithOutbox(qc: QueryClient, queue: Outbox = outbox): ()
     for (const meta of metas) touched.add(meta.appId);
 
     if (!result.ok) {
+      const keepBoth = metas.filter((m) => m.conflicts === 'keep-both');
+      if (result.request.method === 'update' && keepBoth.length > 0 && isConflict(result.error)) {
+        keepAsCopy(qc, queue, keepBoth, result.request, result.error);
+        return;
+      }
       if (!result.awaited) toast.error(getAepErrorMessage(result.error));
       return;
     }
@@ -610,6 +676,67 @@ export function syncCacheWithOutbox(qc: QueryClient, queue: Outbox = outbox): ()
     stopResults();
     stopChanges();
   };
+}
+
+// ---------------------------------------------------------------------------
+// Conflicts (`conflicts: 'keep-both'`)
+// ---------------------------------------------------------------------------
+
+/** The server refused an edit because the record changed (412) or is gone (404). */
+function isConflict(error: unknown): boolean {
+  return error instanceof AepbaseError && (error.code === 412 || error.code === 404);
+}
+
+/** What a record is, without who it is — the fields a copy of it carries. */
+const IDENTITY_FIELDS = ['id', 'path', 'create_time', 'update_time', 'created', 'updated'];
+
+/**
+ * An edit to a `conflicts: 'keep-both'` record was refused: someone changed it
+ * on another device (412), or deleted it (404). The person's version — the
+ * record as this device shows it, with the refused edit applied — is saved as
+ * a new record beside it rather than lost, and they're told. The original
+ * returns to the server's copy when the queue drains and the list refetches.
+ */
+function keepAsCopy(
+  qc: QueryClient,
+  queue: Outbox,
+  metas: ResourceMeta[],
+  request: OutboxRequest,
+  error: unknown,
+): void {
+  const { collection, id } = parseResourceName(request.name);
+  const parent = request.name.slice(0, -(collection.length + id.length + 2)) || undefined;
+  let local: CachedRecord | undefined;
+  for (const meta of metas) {
+    const keys = queryKeys.app(meta.appId).resource(meta.singular);
+    local ??=
+      qc.getQueryData<CachedRecord[]>(keys.list())?.find((r) => r.id === id) ??
+      qc.getQueryData<CachedRecord>(keys.detail(id));
+  }
+  const mine = applyMergePatch(local ?? {}, request.body ?? {});
+  const parentFields = new Set(metas.flatMap((m) => m.parents.map(parentFkField)));
+  const body = Object.fromEntries(
+    Object.entries(mine).filter(
+      ([key, value]) => !IDENTITY_FIELDS.includes(key) && !parentFields.has(key) && value !== undefined,
+    ),
+  );
+
+  const copyId = newRecordId();
+  const copyName = resourceName(collection, copyId, parent);
+  const now = nowIso();
+  const optimistic = { ...body, id: copyId, path: copyName, create_time: now, update_time: now };
+  for (const meta of metas) {
+    qc.setQueryData<CachedRecord[]>(queryKeys.app(meta.appId).resource(meta.singular).list(), (list) =>
+      list ? [...list, optimistic] : list,
+    );
+  }
+  queue.enqueue('create', copyName, body);
+  const deleted = error instanceof AepbaseError && error.code === 404;
+  toast.info(
+    deleted
+      ? 'This was deleted on another device — your version was kept.'
+      : 'This changed on another device — your version was saved as a copy.',
+  );
 }
 
 // ---------------------------------------------------------------------------

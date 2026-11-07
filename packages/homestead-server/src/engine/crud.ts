@@ -679,6 +679,35 @@ export function handleList(
   return jsonResponse(resp);
 }
 
+const VERSION_CHANGED = 'the resource has changed since that version; read it again';
+
+/**
+ * Whether an `If-Match` header names the record's current version. A version
+ * is the record's `update_time`, quoted like an entity tag (`"2026-…Z"`; the
+ * quotes and a `W/` prefix are optional); `*` matches any existing record.
+ * Every change moves `update_time` forward (see {@link nextVersion}), so a
+ * version names exactly one state of the record.
+ */
+export function versionMatches(header: string, updateTime: string): boolean {
+  return header.split(',').some((raw) => {
+    const tag = raw.trim().replace(/^W\//, '').replace(/^"(.*)"$/, '$1');
+    return tag === '*' || tag === updateTime;
+  });
+}
+
+/**
+ * A record's next `update_time`: now, or — when the record already changed
+ * within this second — one second past its last one. Timestamps have
+ * one-second resolution, and `update_time` is the version `If-Match` checks,
+ * so every change must move it: two edits in one second would otherwise share
+ * a version, and a stale edit could overwrite the newer one unnoticed.
+ */
+export function nextVersion(previous: string, now: string): string {
+  if (now > previous) return now;
+  const bumped = new Date(Date.parse(previous) + 1000);
+  return Number.isNaN(bumped.getTime()) ? now : bumped.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 export async function handleUpdate(
   reg: Registry,
   match: RouteMatch,
@@ -689,6 +718,14 @@ export async function handleUpdate(
 
   const existing = getResource(reg.db, r.plural, path, r.schema);
   if (!existing) return errorResponse(404, `resource "${path}" not found`);
+
+  // `If-Match`: the caller's edit was made against a version of the record
+  // (its `update_time`). Checked here to fail fast, and again on the fresh
+  // read below, which nothing can change before the commit.
+  const ifMatch = req.headers.get('if-match');
+  if (ifMatch !== null && !versionMatches(ifMatch, existing.update_time)) {
+    return errorResponse(412, VERSION_CHANGED);
+  }
 
   const { fields: patch, uploaded, parts } = await readCreateOrApplyBody(req, r, reg, path);
   preparePayload(r, patch, uploaded);
@@ -702,6 +739,10 @@ export async function handleUpdate(
   // Merge onto the record as it is now: nothing below awaits until the commit.
   const target = freshTarget(reg, r, path, files);
   if (target instanceof Response) return target;
+  if (ifMatch !== null && !versionMatches(ifMatch, target.update_time)) {
+    discardNestedFiles(reg, path, files);
+    return errorResponse(412, VERSION_CHANGED);
+  }
   // Snapshot the pre-state for the sync's `previous`, before the patch mutates
   // `target.fields`. Only materialized when a dispatcher is wired.
   const preState = reg.syncDispatcher ? storedToMap(reg, r, target) : null;
@@ -709,8 +750,8 @@ export async function handleUpdate(
   try {
     // RFC 7396 merge patch onto existing fields (AEP-134 HTTP semantics).
     applyMergePatch(r.schema, target.fields, patch);
-    target.update_time = now;
-    updateResource(reg.db, r.plural, path, target.fields, now, r.schema);
+    target.update_time = nextVersion(target.update_time, now);
+    updateResource(reg.db, r.plural, path, target.fields, target.update_time, r.schema);
   } catch (err) {
     discardNestedFiles(reg, path, files);
     throw err;
@@ -788,8 +829,8 @@ function applyResolved(
     // Snapshot the pre-state before the merge mutates `existing.fields`.
     const preState = reg.syncDispatcher ? storedToMap(reg, r, existing) : null;
     applyMergePatch(r.schema, existing.fields, fields);
-    existing.update_time = now;
-    updateResource(reg.db, r.plural, path, existing.fields, now, r.schema);
+    existing.update_time = nextVersion(existing.update_time, now);
+    updateResource(reg.db, r.plural, path, existing.fields, existing.update_time, r.schema);
     collectReplacedFiles(reg, r, path, files, existing.fields);
     const updated = storedToMap(reg, r, existing);
     // Post-commit mirror (fire-and-forget) — an apply onto an existing record

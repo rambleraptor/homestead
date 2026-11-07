@@ -24,11 +24,12 @@ import {
   overlayPendingWrites,
   serverIdForTempId,
   syncCacheWithOutbox,
+  withCreateStamps,
   withPendingWrites,
 } from '../registerResourceMutationDefaults';
 import { queryKeys } from '../queryClient';
 
-vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
 interface Thingy {
   id: string;
@@ -611,5 +612,89 @@ describe('reads that include queued writes', () => {
     expect(client.getQueryData(perks)).toEqual([
       expect.objectContaining({ id: 'p9', name: 'Lounge', credit_card: 'c1', path: 'credit-cards/c1/perks/p9' }),
     ]);
+  });
+});
+
+describe('stamp: create', () => {
+  it('fills a stamped field the caller left out with the time of the write, once', () => {
+    const client = new QueryClient();
+    registerResourceMutationDefaults(client, {
+      appId: 'notes-app',
+      singular: 'note',
+      plural: 'notes',
+      parents: ['user'],
+      stamps: ['written_at'],
+    });
+    const stamped = withCreateStamps('notes-app', 'note', { body: 'Hi' });
+    expect(typeof stamped.written_at).toBe('string');
+    expect(Number.isNaN(Date.parse(stamped.written_at as string))).toBe(false);
+
+    const given = { body: 'Back', written_at: '2026-01-02T09:00:00.000Z' };
+    expect(withCreateStamps('notes-app', 'note', given)).toBe(given);
+  });
+});
+
+describe("conflicts: 'keep-both'", () => {
+  const NOTES = 'notes-app';
+  const noteKeys = resourceMutationKeys(NOTES, 'note');
+  const noteList = queryKeys.app(NOTES).resource('note').list();
+
+  function makeClient(): QueryClient {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } },
+    });
+    registerResourceMutationDefaults(client, {
+      appId: NOTES,
+      singular: 'note',
+      plural: 'notes',
+      parents: ['user'],
+      conflicts: 'keep-both',
+    });
+    return client;
+  }
+
+  const original = {
+    id: 'n1',
+    path: 'users/test-user-id/notes/n1',
+    body: 'Milk',
+    written_at: '2026-11-01T09:00:00.000Z',
+    create_time: '2026-11-01T09:00:05Z',
+    update_time: '2026-11-01T09:00:05Z',
+  };
+
+  it('sends each edit with the version it was made against', async () => {
+    const client = makeClient();
+    client.setQueryData(noteList, [original]);
+    vi.mocked(aepbase.update).mockImplementationOnce(async (_p, id, body) => ({ ...original, id, ...(body as object) }));
+
+    await run(client, noteKeys.update, { id: 'n1', data: { body: 'Milk, eggs' } });
+
+    expect(aepbase.update).toHaveBeenCalledWith(
+      'notes',
+      'n1',
+      { body: 'Milk, eggs' },
+      { parent: ['users', 'test-user-id'], ifMatch: original.update_time },
+    );
+  });
+
+  it('saves a refused edit as a copy instead of failing', async () => {
+    const client = makeClient();
+    client.setQueryData(noteList, [original]);
+    const stop = syncCacheWithOutbox(client);
+    vi.mocked(aepbase.update).mockRejectedValueOnce(new AepbaseError(412, 'changed', '/notes/n1'));
+
+    await expect(
+      run(client, noteKeys.update, { id: 'n1', data: { body: 'Milk, eggs' } }),
+    ).resolves.toBeDefined();
+
+    await vi.waitFor(() => expect(aepbase.create).toHaveBeenCalled());
+    const [plural, body, options] = vi.mocked(aepbase.create).mock.calls[0]!;
+    expect(plural).toBe('notes');
+    expect(body).toEqual({ body: 'Milk, eggs', written_at: original.written_at });
+    expect(options).toEqual(expect.objectContaining({ parent: ['users', 'test-user-id'] }));
+    expect((options as { id: string }).id).not.toBe('n1');
+    expect(toast.info).toHaveBeenCalledWith(expect.stringMatching(/saved as a copy/));
+    expect(toast.error).not.toHaveBeenCalled();
+    stop();
   });
 });

@@ -71,6 +71,10 @@ export function validateResourceDefinition(def: ResourceDefinition): void {
   validateFilePlacement(def.fields, fail);
   validateAccess(def, fail);
   validateRetention(def, fail);
+  if (def.offline !== undefined && def.offline !== 'keep') fail(`offline must be 'keep'`);
+  if (def.conflicts !== undefined && def.conflicts !== 'keep-both') {
+    fail(`conflicts must be 'keep-both'`);
+  }
 }
 
 /**
@@ -300,6 +304,7 @@ function validateField(
     if (typeErr) fail(`field "${path}" default ${typeErr}`);
   }
   validateDefaultFromFlag(field, path, fail);
+  validateStamp(field, path, fail);
   if (field.properties) validateFields(field.properties, path, fail);
   if (field.items) validateField(field.items, `${path}[]`, fail);
 }
@@ -553,6 +558,20 @@ function validateDefaultFromFlag(
   }
   if (!from.app || !from.key) {
     fail(`field "${path}" defaultFromFlag must name both an app and a key`);
+  }
+}
+
+/**
+ * Validate a `stamp` annotation: a time the writer fills, so a string field
+ * with no other source of its value (no static or flag default, no enum, no
+ * reference).
+ */
+function validateStamp(field: FieldDef, path: string, fail: (message: string) => never): void {
+  if (field.stamp === undefined) return;
+  if (field.stamp !== 'create') fail(`field "${path}" stamp must be 'create'`);
+  if (field.type !== 'string') fail(`field "${path}" declares stamp but is not a string`);
+  if (field.default !== undefined || field.defaultFromFlag || field.enum || field.reference) {
+    fail(`field "${path}" declares stamp with a default, enum or reference — a stamp is a time`);
   }
 }
 
@@ -853,6 +872,7 @@ function toWireProperty(
           },
         }
       : {}),
+    ...(field.stamp ? { 'x-aepbase-stamp': field.stamp } : {}),
     ...(field.defaultFromFlag
       ? {
           'x-aepbase-default-from': {
@@ -886,6 +906,7 @@ function wireDescription(field: FieldDef): string | undefined {
   if (field.reference) {
     notes.push(`reference to a ${field.reference.resource} record (by id)`);
   }
+  if (field.stamp) notes.push('when it was written (RFC 3339); filled with the time of the write when omitted');
   if (field.defaultFromFlag) {
     notes.push(
       `defaults to the household "${field.defaultFromFlag.key}" setting when omitted`,

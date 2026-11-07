@@ -840,7 +840,18 @@ writes to one name collapse; list reads apply what's still queued
 (`withPendingWrites`); and the queue is saved in IndexedDB (minus secret-bearing
 entries) and survives reloads and app updates. Pending-sync UI reads it
 (`usePendingSync`). Don't write a separate queue or retry loop for a resource
-write — go through the hooks so it lands in the outbox. See
+write — go through the hooks so it lands in the outbox. A user-parented
+resource (`parents: ['user']`) is written under `users/{me}/…` with no extra
+wiring. For data people write themselves, three client-side declarations make
+it behave natively: `offline: 'keep'` keeps the resource's list in the device
+cache through app updates and the 7-day limit (dropped only when its shape
+changes; `api/offlineKeep.ts`, and asks for persistent storage);
+`conflicts: 'keep-both'` sends each edit with `If-Match` (the engine refuses a
+stale one with 412 and moves `update_time` forward on every change, so it's an
+exact version) and saves a refused edit as a copy instead of losing it; and a
+`stamp: 'create'` string field records when the record was written by the
+device's clock (the engine fills it when a caller leaves it out). Unsaved text
+belongs in `useDeviceDraft`, not the outbox. See
 [`docs/guides/offline.md`](packages/homestead-site/docs/guides/offline.md).
 
 Row-level security **is** modeled and enforced: per-collection and per-record

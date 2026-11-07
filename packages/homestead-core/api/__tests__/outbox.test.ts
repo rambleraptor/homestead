@@ -376,3 +376,38 @@ describe('applyPendingWrites', () => {
     expect(out[0]!.name).toBe('Lounge+');
   });
 });
+
+describe('conditional edits (If-Match)', () => {
+  it('sends an edit with the version it was made against, rebased on this device’s own writes', async () => {
+    const versions: Array<string | undefined> = [];
+    const transport = fakeTransport(async (r) => {
+      versions.push(r.if_match);
+      return { path: r.name, ...(r.body ?? {}), update_time: `v${versions.length + 1}` };
+    });
+    const { outbox, goOnline } = setup({ online: false, transport });
+    outbox.enqueue('update', 'notes/n1', { meta: null }, { ifMatch: 'v1' });
+    // Can't fold into the first (a removed key then set to an object), so it's
+    // queued on its own, with the version this device last saw.
+    outbox.enqueue('update', 'notes/n1', { meta: { x: 1 } }, { ifMatch: 'local' });
+    await goOnline();
+    expect(versions[0]).toBe('v1');
+    // Queued on top of the first edit: sent against the version it produced.
+    expect(versions[1]).toBe('v2');
+  });
+
+  it('refuses later edits with a refused one, reporting it once with the whole change', async () => {
+    const transport = fakeTransport(async () => {
+      throw new AepbaseError(412, 'changed', '/notes/n1');
+    });
+    const { outbox, goOnline, results } = setup({ online: false, transport });
+    const first = outbox.enqueue('update', 'notes/n1', { body: null }, { ifMatch: 'v1' });
+    const second = outbox.enqueue('update', 'notes/n1', { body: { text: 'b' } }, { ifMatch: 'local' });
+    await goOnline();
+    await expect(first.done).rejects.toThrow();
+    await expect(second.done).rejects.toThrow();
+    expect(transport.send).toHaveBeenCalledTimes(1);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.request.body).toEqual({ body: { text: 'b' } });
+    expect(outbox.requests()).toHaveLength(0);
+  });
+});

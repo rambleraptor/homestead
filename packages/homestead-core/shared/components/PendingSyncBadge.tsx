@@ -25,6 +25,7 @@
 
 import { CloudOff } from 'lucide-react';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
+import { usePendingSyncCount } from '@rambleraptor/homestead-core/api/usePendingSync';
 
 /**
  * Row styling for a record awaiting sync. Always include this (rather than
@@ -38,7 +39,26 @@ export function pendingSyncClass(isPending: boolean): string {
   );
 }
 
-export function PendingSyncBadge({ className }: { className?: string }) {
+export function PendingSyncBadge({
+  className,
+  iconOnly = false,
+}: {
+  className?: string;
+  /** Just the icon (with its screen-reader label), for a margin or a dense row. */
+  iconOnly?: boolean;
+}) {
+  if (iconOnly) {
+    return (
+      <span
+        className={cn('inline-flex shrink-0 items-center text-text-muted', className)}
+        title="Waiting to sync"
+        data-testid="pending-sync-badge"
+      >
+        <CloudOff className="h-3 w-3" aria-hidden="true" />
+        <span className="sr-only">Waiting to sync</span>
+      </span>
+    );
+  }
   return (
     <span
       className={cn(
@@ -56,5 +76,32 @@ export function PendingSyncBadge({ className }: { className?: string }) {
       <span className="sr-only">Waiting to sync</span>
       <span aria-hidden="true">Unsynced</span>
     </span>
+  );
+}
+
+/**
+ * One quiet line saying how many of the person's changes are waiting for a
+ * connection — "Offline · 3 changes will sync". Renders nothing when nothing
+ * is waiting, so a screen can always include it.
+ */
+export function SyncStatus({
+  collections,
+  className,
+}: {
+  /** Which collections' changes to count (plurals). */
+  collections: readonly string[];
+  className?: string;
+}) {
+  const count = usePendingSyncCount(collections);
+  if (count === 0) return null;
+  return (
+    <p
+      role="status"
+      className={cn('flex items-center gap-1.5 font-body text-xs text-text-muted', className)}
+      data-testid="sync-status"
+    >
+      <CloudOff className="h-3 w-3" aria-hidden="true" />
+      {count === 1 ? 'Offline · 1 change will sync' : `Offline · ${count} changes will sync`}
+    </p>
   );
 }

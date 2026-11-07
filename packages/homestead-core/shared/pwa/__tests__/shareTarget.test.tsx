@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { SHARE_CACHE, takeSharedFiles, useSharedFiles } from '../shareTarget';
+import {
+  SHARE_CACHE,
+  sharedTextBody,
+  takeSharedFiles,
+  takeSharedText,
+  useShare,
+  useSharedFiles,
+} from '../shareTarget';
 
 /** The slice of Cache Storage the share target uses, in memory. */
 function fakeCaches() {
@@ -107,5 +114,46 @@ describe('useSharedFiles', () => {
     await Promise.resolve();
     expect(onFiles).not.toHaveBeenCalled();
     expect(getByTestId('search').textContent).toBe('');
+  });
+});
+
+describe('shared text', () => {
+  async function parkText(id: string, text: Record<string, string>) {
+    const cache = await caches.open(SHARE_CACHE);
+    await cache.put(
+      `/__shared/${id}/text`,
+      new Response(JSON.stringify(text), { headers: { 'content-type': 'application/json' } }),
+    );
+  }
+
+  it('takes a share’s text once, and keeps it out of its files', async () => {
+    await parkText('abc', { title: 'A page', url: 'https://example.com' });
+    const cache = await caches.open(SHARE_CACHE);
+    await park(cache, 'abc', 0, 'shot.png', 'x', 'image/png');
+
+    expect(await takeSharedFiles('abc')).toHaveLength(1);
+    expect(await takeSharedText('abc')).toEqual({ title: 'A page', url: 'https://example.com' });
+    expect(await takeSharedText('abc')).toBeNull();
+  });
+
+  it('joins title, text and link without repeating the link', () => {
+    expect(
+      sharedTextBody({ title: 'Recipe', text: 'Look at this https://x.test/r', url: 'https://x.test/r' }),
+    ).toBe('Recipe\nLook at this https://x.test/r');
+  });
+
+  it('hands shared text to onText', async () => {
+    await parkText('abc', { text: 'Call Dave' });
+    const onText = vi.fn();
+    function Probe() {
+      useShare({ onText });
+      return null;
+    }
+    render(
+      <MemoryRouter initialEntries={['/notes?shared=abc']}>
+        <Probe />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(onText).toHaveBeenCalledWith({ text: 'Call Dave' }));
   });
 });

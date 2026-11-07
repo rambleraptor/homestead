@@ -1,5 +1,6 @@
 /**
- * Dynamic field defaults sourced from another collection's field.
+ * Dynamic field defaults: values sourced from another collection's field, and
+ * `stamp: 'create'` times.
  *
  * A field annotated `defaultFromFlag: { app, key }` in an app's schema is
  * translated to an `x-aepbase-default-from` marker on its wire property (see
@@ -18,6 +19,7 @@ import type { Registry } from './registry';
 import type { Schema, SchemaProperty } from './types';
 import { STANDARD_FIELDS } from './types';
 import { listResources } from './store';
+import { nowRFC3339 } from './ids';
 
 /** The default-from marker on a property, if it declares a valid one. */
 function defaultFromMarker(
@@ -58,6 +60,13 @@ export function applyDynamicDefaults(
     if (STANDARD_FIELDS.has(name) || prop.readOnly) continue;
     if (prop['x-aepbase-file-field']) continue;
     if (name in fields) continue;
+    // A `stamp: 'create'` field the caller left out: the time of this write.
+    // The SPA fills it itself, with the device's clock, so a record made
+    // offline keeps the time it was made.
+    if (prop['x-aepbase-stamp'] === 'create') {
+      fields[name] = nowRFC3339();
+      continue;
+    }
     const marker = defaultFromMarker(prop);
     if (!marker) continue;
     const value = readSourceValue(reg, marker.resource, marker.field);

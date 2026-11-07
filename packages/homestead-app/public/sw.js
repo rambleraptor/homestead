@@ -193,7 +193,8 @@ self.addEventListener('fetch', (event) => {
 });
 
 /**
- * Park the shared files in Cache Storage under a fresh share id, then send the
+ * Park the shared files — and any shared title/text/url, as one JSON entry —
+ * in Cache Storage under a fresh share id, then send the
  * app to its base path with `?shared=<id>` (keeping the action's own query,
  * e.g. `chrome=none`) to pick them up. A failure still lands on the app, just
  * without a share to take.
@@ -204,9 +205,21 @@ async function receiveShare(request, url) {
   try {
     const form = await request.formData();
     const files = form.getAll('files').filter((entry) => entry instanceof File);
-    if (files.length) {
+    const text = {};
+    for (const field of ['title', 'text', 'url']) {
+      const value = form.get(field);
+      if (typeof value === 'string' && value) text[field] = value;
+    }
+    const hasText = Object.keys(text).length > 0;
+    if (files.length || hasText) {
       const id = self.crypto.randomUUID();
       const cache = await caches.open(SHARE_CACHE);
+      if (hasText) {
+        await cache.put(
+          `/__shared/${id}/text`,
+          new Response(JSON.stringify(text), { headers: { 'content-type': 'application/json' } }),
+        );
+      }
       await Promise.all(
         files.map((file, i) =>
           cache.put(
