@@ -19,6 +19,7 @@ import {
   groceriesApp,
   healthApp,
   homeApp,
+  notesApp,
   peopleApp,
   receiptsApp,
   recipesApp,
@@ -187,6 +188,7 @@ const config: HomesteadConfig = {
   apps: [
     homeApp,
     todosApp,
+    notesApp,
     documentsApp,
     giftCardsApp,
     groceriesApp,

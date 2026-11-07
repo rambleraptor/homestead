@@ -519,6 +519,69 @@ describe('nested resources (AEP-122 names)', () => {
   });
 });
 
+describe('resources under the built-in user root', () => {
+  const NOTES = 'notes-app';
+  const noteKeys = resourceMutationKeys(NOTES, 'note');
+  const noteList = queryKeys.app(NOTES).resource('note').list();
+
+  function makeUserClient(): QueryClient {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } },
+    });
+    registerResourceMutationDefaults(client, { appId: NOTES, singular: 'note', plural: 'notes', parents: ['user'] });
+    return client;
+  }
+
+  it('creates under the signed-in person’s own name', async () => {
+    const client = makeUserClient();
+    client.setQueryData(noteList, []);
+
+    await run(client, noteKeys.create, { body: 'Milk', recordId: 'n1' });
+
+    expect(aepbase.create).toHaveBeenCalledWith('notes', expect.objectContaining({ body: 'Milk' }), {
+      parent: ['users', 'test-user-id'],
+      id: 'n1',
+    });
+    expect(client.getQueryData<Array<{ path?: string }>>(noteList)?.[0]?.path).toBe(
+      'users/test-user-id/notes/n1',
+    );
+  });
+
+  it('names a cached record without a path under its owner', () => {
+    const client = makeUserClient();
+    client.setQueryData(noteList, [
+      { id: 'n1', body: 'Mine' },
+      { id: 'n2', user: 'someone-else', body: 'Theirs' },
+    ]);
+    expect(resourceNameFromCache(client, NOTES, 'note', 'n1')).toBe('users/test-user-id/notes/n1');
+    expect(resourceNameFromCache(client, NOTES, 'note', 'n2')).toBe('users/someone-else/notes/n2');
+  });
+
+  it('updates and deletes by the record’s name', async () => {
+    const client = makeUserClient();
+    client.setQueryData(noteList, [{ id: 'n1', path: 'users/test-user-id/notes/n1', body: 'Milk' }]);
+    vi.mocked(aepbase.update).mockImplementationOnce(async (plural, id, body) => ({
+      id,
+      path: `users/test-user-id/${plural}/${id}`,
+      ...(body as object),
+    }));
+
+    await run(client, noteKeys.update, { id: 'n1', data: { struck: true } });
+    expect(aepbase.update).toHaveBeenCalledWith(
+      'notes',
+      'n1',
+      { struck: true },
+      expect.objectContaining({ parent: ['users', 'test-user-id'] }),
+    );
+
+    await run(client, noteKeys.delete, 'n1');
+    expect(aepbase.remove).toHaveBeenCalledWith('notes', 'n1', {
+      parent: ['users', 'test-user-id'],
+      force: true,
+    });
+  });
+});
+
 describe('reads that include queued writes', () => {
   it('a list fetched while writes are queued still shows them', () => {
     makeClient();
