@@ -16,6 +16,7 @@ export { giftCardsApp } from './gift-cards';
 export { groceriesApp } from './groceries';
 export { healthApp } from './health';
 export { homeApp } from './home';
+export { notesApp } from './notes';
 export { peopleApp } from './people';
 export { receiptsApp } from './receipts';
 export { recipesApp } from './recipes';

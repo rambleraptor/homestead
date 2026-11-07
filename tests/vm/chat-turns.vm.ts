@@ -389,11 +389,11 @@ describe('what a turn tells the model', () => {
   });
 
   test('app notes come from the apps the person can use', async () => {
-    expect((await context(token)).notes).toBe('People, Recipes, Todos');
+    expect((await context(token)).notes).toBe('Notes, People, Recipes, Todos');
 
     // A guest who may only chat and read gift cards loses People's and
-    // Recipes' notes. Todos stays: their own personal todos live in their user
-    // subtree, so that tool is still theirs.
+    // Recipes' notes. Notes and Todos stay: their own notes and personal todos
+    // live in their user subtree, so those tools are still theirs.
     const email = `guest-${Date.now()}@example.com`;
     const password = 'guest-vm-password';
     const guest = await createUser(h.admin.token, { email, password, display_name: 'Guest', noRole: true });
@@ -401,7 +401,7 @@ describe('what a turn tells the model', () => {
     const allow = { subject_type: 'user', subject_id: guest.id, effect: 'allow' };
     await grants.create({ ...allow, target_scope: 'collection', resource_type: 'conversation', capability: 'write' });
     await grants.create({ ...allow, target_scope: 'collection', resource_type: 'gift-card', capability: 'read' });
-    expect((await context(await login(email, password))).notes).toBe('Todos');
+    expect((await context(await login(email, password))).notes).toBe('Notes, Todos');
   });
 
   test('the household is everyone else who shares the Homestead, by name', async () => {

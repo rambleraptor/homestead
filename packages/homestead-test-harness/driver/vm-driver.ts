@@ -346,7 +346,14 @@ class VmLoc implements Locator {
   async press(key: string): Promise<void> {
     const el = (await this.actionable()) as HTMLElement;
     el.focus();
-    await this.user.keyboard(`{${key}}`);
+    // Playwright's chord syntax (`Control+Enter`): hold each modifier while
+    // pressing the last key, then release them.
+    // A `+` that ends the string is the key itself (`+`, `Shift++`).
+    const keys = key.length > 1 ? key.split(/\+(?=.)/) : [key];
+    const last = keys.pop()!;
+    const held = keys.map((k) => `{${k}>}`).join('');
+    const released = keys.reverse().map((k) => `{/${k}}`).join('');
+    await this.user.keyboard(`${held}{${last}}${released}`);
   }
 
   async selectOption(value: SelectValue): Promise<void> {

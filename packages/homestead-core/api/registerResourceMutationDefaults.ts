@@ -184,8 +184,9 @@ function findCachedRecord(
  * followed by the record's own collection and id. Undefined when a nested
  * record's parent can't be found.
  *
- * A parent the registry doesn't know (the built-in `user`) is left out of the
- * name, as earlier versions did.
+ * A record under the built-in `user` root (a private, per-person resource)
+ * is named under its `user` field, else the signed-in person. Any other parent
+ * the registry doesn't know is left out of the name, as earlier versions did.
  */
 export function resourceNameFromCache(
   qc: QueryClient,
@@ -198,6 +199,10 @@ export function resourceNameFromCache(
   const record = findCachedRecord(qc, appId, singular, id);
   if (typeof record?.path === 'string') return record.path;
   const parentSingular = meta.parents[0];
+  if (parentSingular === USER_ROOT) {
+    const owner = userRootName(record?.[parentFkField(USER_ROOT)]);
+    return owner ? resourceName(meta.plural, serverId(id), owner) : undefined;
+  }
   if (!parentSingular || !metaFor(appId, parentSingular)) {
     return resourceName(meta.plural, serverId(id));
   }
@@ -334,6 +339,11 @@ export function registerResourceMutationDefaults<
   /** The name a create makes: under its parent's name when it has one. */
   function nameForCreate(vars: C): string {
     const id = idForCreate(vars);
+    if (primaryParent === USER_ROOT) {
+      const owner = userRootName((vars as unknown as Record<string, unknown>)[parentFkField(USER_ROOT)]);
+      if (!owner) throw new Error(`Cannot create a ${singular}: nobody is signed in`);
+      return resourceName(plural, id, owner);
+    }
     if (!primaryParent || !metaFor(appId, primaryParent)) return resourceName(plural, id);
     const parentId = (vars as unknown as Record<string, unknown>)[parentFkField(primaryParent)];
     const parent =
@@ -529,6 +539,19 @@ export function registerResourceMutationDefaults<
 
 function aepbaseUserId(): string | undefined {
   return aepbase.getCurrentUser?.()?.id;
+}
+
+/**
+ * The built-in user root. It has no definition in the registry, but a
+ * resource declared `parents: ['user']` (a private, per-person collection)
+ * still has a name to write to: `users/{id}/...`.
+ */
+const USER_ROOT = 'user';
+
+/** `users/{id}` for the given owner id, else for the signed-in person. */
+function userRootName(owner: unknown): string | undefined {
+  const id = typeof owner === 'string' && owner ? owner : aepbaseUserId();
+  return id ? resourceName('users', serverId(id)) : undefined;
 }
 
 // ---------------------------------------------------------------------------
