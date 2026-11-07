@@ -13,6 +13,7 @@ import { Input } from '@rambleraptor/homestead-core/shared/components/Input';
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { useSidebarPinActions } from '../hooks/useSidebarPinActions';
+import { HomeScreenApps } from './HomeScreenApps';
 import { SidebarLists } from './SidebarLists';
 
 export function AppDrawerHome() {
@@ -90,6 +91,8 @@ export function AppDrawerHome() {
           whose="your"
         />
       )}
+
+      <HomeScreenApps entries={entries} query={query} />
     </div>
   );
 }

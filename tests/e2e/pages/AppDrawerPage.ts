@@ -99,6 +99,21 @@ export class AppDrawerPage extends SidebarListsPage {
     return this.driver.getByTestId('app-drawer-reset');
   }
 
+  /** The "Add to your Home Screen" section. */
+  get homeScreenSection() {
+    return this.driver.getByTestId('app-drawer-home-screen');
+  }
+
+  /** One app's "Add" button in that section. */
+  homeScreenAdd(appId: string) {
+    return this.driver.getByTestId(`home-screen-add-${appId}`);
+  }
+
+  /** The guide an app's page shows when opened with `?install`. */
+  get installGuide() {
+    return this.driver.getByTestId('install-guide');
+  }
+
   async reset() {
     await this.resetLink.click();
     await this.expect(this.resetLink).toHaveCount(0);
