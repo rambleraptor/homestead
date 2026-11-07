@@ -82,6 +82,24 @@ export const myApp: AppConfig = {
 };
 ```
 
+**Skip changes that don't matter with `when`.** Every firing is recorded as an
+operation, so a sync that only cares about some records or some edits should
+say so up front: `when` gets the change (`event`, `record`, `previous`) and
+returns whether to fire. It runs synchronously after the commit, before any
+operation is started, so keep it pure and cheap; a check that throws fires the
+handler anyway. Notes uses it to file `#todo` lines as todos without an
+operation for every note saved:
+
+```ts
+{
+  id: 'notes-todo-tag',
+  resource: 'note',
+  on: ['create', 'update'],
+  when: ({ record, previous }) => newTodoTitles(record, previous).length > 0,
+  load: () => import('./syncs/note-todos'),
+}
+```
+
 Either way, keep the handler under a `syncs/` directory (or name it
 `*.server.ts`) so the production build stubs it out of the browser bundle.
 

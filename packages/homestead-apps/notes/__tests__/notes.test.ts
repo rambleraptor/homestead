@@ -5,7 +5,9 @@ import {
   extractTags,
   groupByDay,
   matchesQuery,
+  newTodoTitles,
   notesWrittenToday,
+  todoTitles,
   splitBody,
   writtenAt,
 } from '../notes';
@@ -92,5 +94,27 @@ describe('written time', () => {
         now,
       ),
     ).toBe(1);
+  });
+});
+
+describe('#todo lines', () => {
+  it('makes one todo per tagged line, without the tag or a list marker', () => {
+    const body = 'Weekend\n- call the plumber #todo\n#todo buy paint\nhallway is #todo-ish\n[ ] Fix gate #Todo';
+    expect(todoTitles({ body })).toEqual(['call the plumber', 'buy paint', 'Fix gate']);
+  });
+
+  it('asks for nothing from a crossed-out note, or a bare tag', () => {
+    expect(todoTitles({ body: 'call the plumber #todo', struck: true })).toEqual([]);
+    expect(todoTitles({ body: '#todo' })).toEqual([]);
+  });
+
+  it('adds only the lines new to a change', () => {
+    const before = { body: 'call the plumber #todo' };
+    const after = { body: 'call the plumber #todo\nbuy paint #todo' };
+    expect(newTodoTitles(after, before)).toEqual(['buy paint']);
+    expect(newTodoTitles(before, before)).toEqual([]);
+    expect(newTodoTitles(before, null)).toEqual(['call the plumber']);
+    // Restoring a crossed-out note doesn't bring back todos dealt with since.
+    expect(newTodoTitles(before, { ...before, struck: true })).toEqual([]);
   });
 });

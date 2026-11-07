@@ -153,6 +153,20 @@ export interface ResourceSync {
   on?: SyncEvent[];
 
   /**
+   * Whether this change concerns the sync at all — checked before a firing is
+   * started, so a change it would ignore spawns no operation (most notes
+   * contain no `#todo`; most edits don't touch the field a mirror cares
+   * about). Pure and cheap: it runs on the write's path, after the commit. A
+   * check that throws counts as `true`, so a bug fires the handler rather than
+   * silently skipping a change. Omit to fire on every change.
+   */
+  when?: (change: {
+    event: SyncEvent;
+    record: Record<string, unknown> | null;
+    previous: Record<string, unknown> | null;
+  }) => boolean;
+
+  /**
    * Lazy import of the handler module. The dispatcher awaits this on demand and
    * invokes the default export.
    */

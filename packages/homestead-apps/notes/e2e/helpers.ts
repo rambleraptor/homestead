@@ -38,3 +38,13 @@ export async function updateNote(
 ): Promise<NoteRecord> {
   return notes(token, userId).record(noteId).update(data);
 }
+
+/** The writer's personal todos — where a note's `#todo` lines are filed. */
+export async function listPersonalTodoTitles(token: string, userId: string): Promise<string[]> {
+  const todos = await e2eClient(token)
+    .collection('users')
+    .record(userId)
+    .collection<{ title: string }>('personal-todos')
+    .listAll();
+  return todos.map((t) => t.title).sort();
+}
