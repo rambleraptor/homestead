@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { aepbase } from '../api/aepbase';
+import { isAllowedRedirectUri } from '../auth/redirectUri';
 import { Home, AlertCircle, ShieldCheck } from 'lucide-react';
 
 interface RequestInfo {
@@ -75,6 +76,11 @@ export function Authorize() {
       });
       if (!res.ok) throw new Error('Could not complete authorization. Please try again.');
       const body = (await res.json()) as { redirect: string };
+      // Never navigate this origin to a script-running address (javascript:,
+      // data:, …): it would run as Homestead, next to the session token.
+      if (!isAllowedRedirectUri(body.redirect)) {
+        throw new Error('This application asked to return to an address that is not allowed.');
+      }
       // Hand control back to the client app at the server-formed redirect.
       window.location.href = body.redirect;
     } catch (e) {

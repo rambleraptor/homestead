@@ -15,6 +15,7 @@
 
 import { Hono } from 'hono';
 import type { AuthServerConfig } from '@rambleraptor/homestead-core/apps/config';
+import { redirectUriProblem } from '@rambleraptor/homestead-core/auth/redirectUri';
 import type { Database } from '../../engine/sqlite';
 import { generateToken } from '../../engine/ids';
 import { extractBearerToken } from '../../engine/users';
@@ -108,11 +109,8 @@ export function makeOAuthServerRoutes(
       return oauthError(400, 'invalid_redirect_uri', 'at least one redirect_uri is required');
     }
     for (const uri of redirectUris) {
-      try {
-        new URL(uri);
-      } catch {
-        return oauthError(400, 'invalid_redirect_uri', `not a valid URI: ${uri}`);
-      }
+      const problem = redirectUriProblem(uri);
+      if (problem) return oauthError(400, 'invalid_redirect_uri', `${uri}: ${problem}`);
     }
     const authMethod =
       body?.token_endpoint_auth_method === 'client_secret_basic' ||
@@ -160,6 +158,11 @@ export function makeOAuthServerRoutes(
     if (!client) return errorPage('Unknown or missing client_id.');
     if (!redirectUri || !client.redirect_uris.includes(redirectUri)) {
       return errorPage('The redirect_uri does not match a registered value for this client.');
+    }
+    // Re-checked here, not only at registration: a client registered before the
+    // rule existed may hold an address the consent page must never navigate to.
+    if (redirectUriProblem(redirectUri)) {
+      return errorPage('This client registered a redirect_uri that is not allowed.');
     }
 
     const state = q.get('state');

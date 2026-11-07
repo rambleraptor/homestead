@@ -7,7 +7,8 @@
 import { errorResponse, isUniqueConstraintError, jsonResponse } from './errors';
 import { generateId, generateToken, nowRFC3339 } from './ids';
 import { hashToken } from './pat';
-import { hashPassword, validatePassword, verifyPassword } from './password';
+import { loginThrottleFor, throttledMessage } from './login-throttle';
+import { hashPassword, validatePassword, verifyPassword, verifyPasswordDummy } from './password';
 import type { Database } from './sqlite';
 import type { User } from './types';
 import { TYPE_REGULAR, TYPE_SUPERUSER } from './types';
@@ -351,16 +352,47 @@ export async function handleLogin(db: Database, req: Request): Promise<Response>
   if (!body.email || !body.password) {
     return errorResponse(400, 'email and password are required');
   }
+  if (typeof body.email !== 'string' || typeof body.password !== 'string') {
+    return errorResponse(400, 'email and password must be strings');
+  }
+
+  const throttle = loginThrottleFor(db);
+  const retryAfter = throttle.retryAfterSeconds(body.email);
+  if (retryAfter > 0) return throttledResponse(retryAfter);
 
   const found = getUserByEmail(db, body.email);
-  if (!found) return errorResponse(401, 'invalid email or password');
-
-  const ok = await verifyPassword(body.password, found.hash);
-  if (!ok) return errorResponse(401, 'invalid email or password');
+  // An unknown address pays for a bcrypt verification too, so response time
+  // doesn't reveal which emails have accounts.
+  const ok = found
+    ? await verifyPassword(body.password, found.hash)
+    : await verifyPasswordDummy(body.password);
+  if (!ok || !found) {
+    throttle.recordFailure(body.email);
+    return errorResponse(401, 'invalid email or password');
+  }
+  throttle.recordSuccess(body.email);
 
   const token = generateToken();
-  insertToken(db, token, found.user.id);
+  insertToken(db, token, found.user.id, expiryAfterSeconds(LOGIN_TOKEN_TTL_SECONDS));
   return jsonResponse({ token, user: found.user });
+}
+
+/**
+ * Lifetime of a `/users/:login` token (the CLI's and scripts' login). These
+ * tokens have no refresh token, so they live as long as an idle SPA session
+ * can (its refresh-token lifetime) and then the caller signs in again.
+ */
+export const LOGIN_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+
+function expiryAfterSeconds(seconds: number): string {
+  return new Date(Date.now() + seconds * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+/** A 429 for a throttled sign-in, with `Retry-After`. */
+export function throttledResponse(retryAfterSeconds: number): Response {
+  const res = errorResponse(429, throttledMessage(retryAfterSeconds));
+  res.headers.set('Retry-After', String(retryAfterSeconds));
+  return res;
 }
 
 export function handleLogout(db: Database, req: Request): Response {

@@ -752,7 +752,7 @@ interface LoginResponse {
  * exchanges email + password for a short-lived access token plus a refresh
  * token. On success the full session + user are persisted and any `onChange`
  * listeners fire. (The engine's own `/users:login` still exists for the CLI,
- * which wants a long-lived token; the SPA uses this refreshable path.)
+ * which wants a long-lived, non-refreshing token; the SPA uses this refreshable path.)
  */
 export async function login(email: string, password: string): Promise<User> {
   const res = await fetch(`${AUTH_BASE}/login`, {

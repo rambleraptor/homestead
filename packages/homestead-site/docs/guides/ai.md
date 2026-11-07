@@ -375,6 +375,11 @@ Homestead's sign-in and consent screen in your browser; approve it and the
 client is connected. The model can then list, read, and write your household
 resources.
 
+A client may only register `https` redirect URIs, `http` ones on a loopback
+host (`localhost`, `127.0.0.1`, `[::1]`), or an app's own scheme
+(`com.example.app:/cb`). Browser schemes such as `javascript:` and `data:` are
+refused, at registration and again at sign-in.
+
 ### The tool surface
 
 Three surfaces are available, chosen by the `settings` app's **MCP tool

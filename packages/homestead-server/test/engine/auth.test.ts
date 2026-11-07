@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { call, makeEngine, seedUser, type TestEngine } from './helpers';
-import { insertUser } from '../../src/engine/users';
+import { getTokenRecord, insertUser, LOGIN_TOKEN_TTL_SECONDS } from '../../src/engine/users';
+import { LOGIN_MAX_FAILURES } from '../../src/engine/login-throttle';
 import { generateId, nowRFC3339 } from '../../src/engine/ids';
 
 let t: TestEngine;
@@ -35,6 +36,46 @@ describe('login/logout', () => {
       expect(res.status).toBe(401);
       expect((await res.json()).error.message).toBe('invalid email or password');
     }
+  });
+
+  test('a login token expires instead of living forever', async () => {
+    await seedUser(t.engine, { email: 'u@example.com', password: 'hunter22' });
+    const res = await call(t.engine, 'POST', '/users/:login', {
+      body: { email: 'u@example.com', password: 'hunter22' },
+    });
+    const { token } = await res.json();
+    const expiresAt = getTokenRecord(t.engine.db, token)?.expires_at;
+    expect(expiresAt).toBeTruthy();
+    const lifetime = (Date.parse(expiresAt!) - Date.now()) / 1000;
+    expect(lifetime).toBeGreaterThan(LOGIN_TOKEN_TTL_SECONDS - 60);
+    expect(lifetime).toBeLessThanOrEqual(LOGIN_TOKEN_TTL_SECONDS);
+  });
+
+  test('repeated failures lock the email out, even for the right password', async () => {
+    await seedUser(t.engine, { email: 'u@example.com', password: 'hunter22' });
+    for (let i = 0; i < LOGIN_MAX_FAILURES; i++) {
+      const res = await call(t.engine, 'POST', '/users/:login', {
+        body: { email: 'u@example.com', password: 'wrong' },
+      });
+      expect(res.status).toBe(401);
+    }
+    const locked = await call(t.engine, 'POST', '/users/:login', {
+      body: { email: 'u@example.com', password: 'hunter22' },
+    });
+    expect(locked.status).toBe(429);
+    expect(Number(locked.headers.get('retry-after'))).toBeGreaterThan(0);
+  });
+
+  test('an unknown email is throttled the same way as a real one', async () => {
+    for (let i = 0; i < LOGIN_MAX_FAILURES; i++) {
+      await call(t.engine, 'POST', '/users/:login', {
+        body: { email: 'ghost@example.com', password: 'wrong' },
+      });
+    }
+    const res = await call(t.engine, 'POST', '/users/:login', {
+      body: { email: 'ghost@example.com', password: 'wrong' },
+    });
+    expect(res.status).toBe(429);
   });
 
   test('verifies Go-era $2a$ bcrypt hashes (data compatibility)', async () => {

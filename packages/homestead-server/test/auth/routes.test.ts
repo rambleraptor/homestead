@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import { Database } from '../../src/engine/sqlite';
 import { generateId, nowRFC3339 } from '../../src/engine/ids';
 import { createUserTables, hashPassword, insertUser } from '../../src/engine/users';
+import { LOGIN_MAX_FAILURES, loginThrottleFor } from '../../src/engine/login-throttle';
 import type { User } from '../../src/engine/types';
 import { TYPE_REGULAR } from '../../src/engine/types';
 import { AuthService } from '../../src/auth/service';
@@ -16,6 +17,7 @@ import { makeAuthRoutes } from '../../src/routes/auth';
 const PASSWORD = 'correct horse battery';
 
 interface Harness {
+  db: Database;
   app: Hono;
   auth: AuthService;
   user: User;
@@ -39,7 +41,7 @@ async function harness(): Promise<Harness> {
     update_time: now,
   };
   insertUser(db, user, await hashPassword(PASSWORD));
-  return { app, auth, user };
+  return { db, app, auth, user };
 }
 
 function post(app: Hono, path: string, body?: unknown, token?: string): Promise<Response> {
@@ -77,6 +79,34 @@ describe('POST /api/auth/login', () => {
     expect(body.expires_in).toBeGreaterThan(0);
     expect(body.user.email).toBe('member@example.com');
     expect(h.auth.validateAccessToken(body.access_token)?.id).toBe(h.user.id);
+  });
+
+  test('repeated failures lock the email out, even for the right password', async () => {
+    for (let i = 0; i < LOGIN_MAX_FAILURES; i++) {
+      const res = await post(h.app, '/api/auth/login', {
+        email: 'member@example.com',
+        password: 'wrong password',
+      });
+      expect(res.status).toBe(401);
+    }
+    const locked = await post(h.app, '/api/auth/login', {
+      email: 'member@example.com',
+      password: PASSWORD,
+    });
+    expect(locked.status).toBe(429);
+    expect(Number(locked.headers.get('retry-after'))).toBeGreaterThan(0);
+    expect(((await locked.json()) as { error: string }).error).toMatch(/too many failed/);
+  });
+
+  test('failures counted at the other login door count here too', async () => {
+    // `/users/:login` records into the same per-database throttle.
+    const throttle = loginThrottleFor(h.db);
+    for (let i = 0; i < LOGIN_MAX_FAILURES; i++) throttle.recordFailure('Member@Example.com');
+    const res = await post(h.app, '/api/auth/login', {
+      email: 'member@example.com',
+      password: PASSWORD,
+    });
+    expect(res.status).toBe(429);
   });
 
   test('a wrong password is 401', async () => {

@@ -3,7 +3,7 @@
  * `POST /api/auth/{login,refresh,logout,change-password,logout-all}`.
  *
  * This is the SPA's login path. Unlike the engine's `/users:login` (which the
- * CLI uses and which mints a non-expiring token), these routes go through the
+ * CLI uses and which mints a 30-day token with no refresh), these routes go through the
  * auth service, so the SPA gets a short-lived access token plus a refresh
  * token it can rotate. Access tokens are ordinary engine tokens, so every
  * other `/api/aep` call keeps working with the returned `access_token`.
@@ -16,6 +16,7 @@
 import { Hono } from 'hono';
 import type { Database } from '../engine/sqlite';
 import { nowRFC3339 } from '../engine/ids';
+import { loginThrottleFor, throttledMessage } from '../engine/login-throttle';
 import { hashPassword, validatePassword, verifyPasswordDummy } from '../engine/password';
 import {
   extractBearerToken,
@@ -56,6 +57,13 @@ export function makeAuthRoutes(db: Database, auth: AuthService): Hono {
       return c.json({ error: 'email and password are required' }, 400);
     }
 
+    const throttle = loginThrottleFor(db);
+    const retryAfter = throttle.retryAfterSeconds(email);
+    if (retryAfter > 0) {
+      c.header('Retry-After', String(retryAfter));
+      return c.json({ error: throttledMessage(retryAfter) }, 429);
+    }
+
     const found = getUserByEmail(db, email);
     // Same generic message whether the email is unknown or the password is
     // wrong. An unknown address still pays for a bcrypt verification (against a
@@ -65,8 +73,10 @@ export function makeAuthRoutes(db: Database, auth: AuthService): Hono {
       ? await verifyPassword(password, found.hash)
       : await verifyPasswordDummy(password);
     if (!ok || !found) {
+      throttle.recordFailure(email);
       return c.json({ error: 'invalid email or password' }, 401);
     }
+    throttle.recordSuccess(email);
 
     const session = auth.issueSession(found.user.id);
     return c.json({

