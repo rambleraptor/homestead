@@ -67,6 +67,48 @@ export function notesWrittenToday(notes: readonly Note[], now: Date = new Date()
   return notes.filter((note) => localDayKey(new Date(writtenAt(note))) === today).length;
 }
 
+/** The tag that also files a line of a note as a todo. */
+export const TODO_TAG = 'todo';
+
+const TODO_TAG_PATTERN = /(^|\s)#todo(?![\p{L}\p{N}_-])/giu;
+/** A list marker a line may start with: `- `, `* `, `• `, `1. `, `[ ] `. */
+const LIST_MARKER = /^\s*(?:[-*•]|\d+[.)]|\[[ xX]?\])\s+/u;
+
+/**
+ * The todos a note asks for: one per line carrying `#todo`, titled with the
+ * line's own words — the tag and any list marker taken off. A crossed-out note
+ * asks for none.
+ */
+export function todoTitles(note: Pick<Note, 'body' | 'struck'>): string[] {
+  if (note.struck) return [];
+  const titles: string[] = [];
+  for (const line of note.body.split('\n')) {
+    if (!extractTags(line).includes(TODO_TAG)) continue;
+    const title = line
+      .replace(TODO_TAG_PATTERN, '$1')
+      .replace(LIST_MARKER, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (title && !titles.includes(title)) titles.push(title);
+  }
+  return titles;
+}
+
+/**
+ * The todos a change to a note adds: its `#todo` lines that weren't in it
+ * before. Editing, removing or crossing out a line never touches the todo it
+ * made — from then on the todo is the todo's own — and restoring a crossed-out
+ * note doesn't bring back todos that may have been dealt with since.
+ */
+export function newTodoTitles(
+  note: Pick<Note, 'body' | 'struck'> | null,
+  previous: Pick<Note, 'body' | 'struck'> | null,
+): string[] {
+  if (!note) return [];
+  const before = new Set(previous ? todoTitles({ body: previous.body }) : []);
+  return todoTitles(note).filter((title) => !before.has(title));
+}
+
 export interface DayGroup {
   /** Local calendar day, `YYYY-MM-DD`. */
   key: string;

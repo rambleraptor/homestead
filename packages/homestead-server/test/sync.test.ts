@@ -288,6 +288,31 @@ describe('createSyncDispatcher', () => {
     db.close();
   });
 
+  test("skips a change its when check rejects, starting no operation; a throwing check fires", async () => {
+    const db = await freshDb();
+    const { store, created } = fakeOperationStore();
+    const dispatcher = createSyncDispatcher(
+      db,
+      [
+        sync('picky', async () => {}, { when: ({ record }) => record?.wanted === true }),
+        sync('broken', async () => {}, {
+          when: () => {
+            throw new Error('bug');
+          },
+        }),
+      ],
+      store,
+    );
+
+    dispatcher.dispatch(input({ record: { id: 'r', wanted: false } }));
+    dispatcher.dispatch(input({ recordId: 'r2', record: { id: 'r2', wanted: true } }));
+
+    await waitUntil(() => created.length >= 3);
+    await sleep(30);
+    expect(created.map((o) => o.method).sort()).toEqual(['sync:broken', 'sync:broken', 'sync:picky']);
+    db.close();
+  });
+
   test('serializes runs for the same record; different records run concurrently', async () => {
     const db = await freshDb();
     const { store } = fakeOperationStore();

@@ -7,7 +7,9 @@
  */
 
 import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
+import { newTodoTitles } from './notes';
 import { notesResources } from './resources';
+import type { Note } from './types';
 
 export const notesApp: AppConfig = {
   id: 'notes',
@@ -20,8 +22,23 @@ export const notesApp: AppConfig = {
         'When someone asks to note, jot or write something down, create a note with their words as the body. ' +
         'To recall something they wrote, list their notes with a filter such as body.contains("plumber") ' +
         '(try a few likely words), newest first; #words in a body are tags.',
+      'A line of a note with #todo is also added to the writer\'s personal todos automatically — ' +
+        'don\'t create the todo separately.',
     ],
   },
+  // `#todo` on a line of a note also files it as a personal todo.
+  syncs: [
+    {
+      id: 'notes-todo-tag',
+      resource: 'note',
+      title: 'File #todo lines as todos',
+      on: ['create', 'update'],
+      // Most notes have no #todo: skip them without starting an operation.
+      when: ({ record, previous }) =>
+        newTodoTitles(record as Note | null, previous as Note | null).length > 0,
+      load: () => import('./syncs/note-todos'),
+    },
+  ],
   web: {
     icon: () => import('lucide-react').then((m) => m.NotebookPen),
     basePath: '/notes',

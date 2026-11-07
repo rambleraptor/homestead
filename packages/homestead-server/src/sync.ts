@@ -124,6 +124,20 @@ function delay(ms: number): Promise<void> {
   });
 }
 
+/** Whether a change passes the sync's `when` check (a throwing check passes). */
+function concerns(sync: RegisteredResourceSync, input: SyncDispatchInput): boolean {
+  if (!sync.when) return true;
+  try {
+    return sync.when({ event: input.event, record: input.record, previous: input.previous });
+  } catch (error) {
+    syncLog.warn('when check threw; firing anyway', {
+      syncId: sync.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return true;
+  }
+}
+
 /** The events a sync fires on, defaulting to all three when unset. */
 function firesOn(sync: RegisteredResourceSync, event: SyncEvent): boolean {
   return (sync.on ?? ['create', 'update', 'delete']).includes(event);
@@ -269,6 +283,7 @@ export function createSyncDispatcher(
       if (!matches) return;
       for (const sync of matches) {
         if (!firesOn(sync, input.event)) continue;
+        if (!concerns(sync, input)) continue;
         enqueue(sync, input);
       }
     },
