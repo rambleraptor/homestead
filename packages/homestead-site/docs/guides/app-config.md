@@ -253,6 +253,17 @@ its own rounded mask and the manifest marks the image `maskable`, so the glyph
 is kept inside the safe zone and the platform does the rest. Sub-apps
 (`children`) declare their own icon; the parent's is not inherited.
 
+Every app with an icon also appears under **All apps → Add to your Home
+Screen**, one tap from being added. Browsers only add the page you're on, and an
+app already on the Home Screen has no browser toolbar (on iOS, no Share button at
+all), so the button opens the app's page with `?install` in the browser — from an
+installed app on iOS it hands the address to Safari (`x-safari-https://`, iOS
+17+), with the link to copy in case nothing opened. That page shows a short
+guide for the browser: a one-tap install in Chrome and Edge, Share → Add to Home
+Screen on iOS. See `homestead-core/shared/pwa/install.ts`. An icon added this
+way is its own installed app: on iOS it keeps its own storage, so it starts
+signed out.
+
 The `homeScreenIcons` test in `packages/homestead-app/src/apps/__tests__`
 fails when a user-facing app (anything outside the dashboard and the superuser
 tree) is missing the field or the file.

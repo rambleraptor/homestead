@@ -15,6 +15,7 @@ import { PullToRefresh } from './PullToRefresh';
 import { AuthGuard } from '../auth/AuthGuard';
 import { OfflineBanner } from '../shared/components/OfflineBanner';
 import { useHomeScreenIcon } from '../shared/pwa';
+import { InstallGuide } from '../shared/pwa/components/InstallGuide';
 import { useSeasonalTheme } from '../seasonal';
 import { useBuildReload } from '../shared/useBuildReload';
 import { useChromeless } from './useChromeless';
@@ -135,6 +136,8 @@ export function AppShell({ children }: AppShellProps) {
         </div>
 
         <OfflineBanner />
+        {/* `?install`, from All apps → Add to Home Screen. */}
+        <InstallGuide />
       </div>
     </AuthGuard>
   );
