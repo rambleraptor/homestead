@@ -15,6 +15,10 @@
  *    the first message.
  *  - Without the assistant (no AI provider, or no access to Chat) the home
  *    keeps its chips and says why the conversation isn't there.
+ *  - Offline, the home says so where it matters instead of looking broken:
+ *    the thread shows what's saved on the device and its composer waits
+ *    (`ChatThread`), and a start with no connection and no remembered answer
+ *    about the assistant gets the offline note, not a blank page.
  *  - Above a new conversation: the admin setup checklist (until dismissed) and
  *    the notice for someone with no apps yet.
  *
@@ -25,7 +29,7 @@
 
 import { Suspense, useCallback, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { History, MessageCircleOff, MessageSquarePlus } from 'lucide-react';
+import { History, MessageCircleOff, MessageSquarePlus, WifiOff } from 'lucide-react';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
 import {
@@ -37,6 +41,8 @@ import { AppIcon, getLazyComponent } from '@rambleraptor/homestead-core/apps/laz
 import { resolveDashboardWidgets } from '@rambleraptor/homestead-core/settings/utils/resolveDashboardWidgets';
 import { useConversation } from '@rambleraptor/homestead-core/chat/hooks/useConversation';
 import { ChatThread } from '@rambleraptor/homestead-core/chat/components/ChatThread';
+import { OFFLINE_EMPTY_DESCRIPTION } from '@rambleraptor/homestead-core/chat/offline';
+import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import { ConversationList } from '@rambleraptor/homestead-core/chat/components/ConversationList';
 import { ConversationEmptyState } from '@rambleraptor/homestead-core/shared/components/ai-elements/conversation';
 import {
@@ -80,6 +86,7 @@ export function AgenticHome({ conversationId }: AgenticHomeProps) {
   const isVisible = useAppVisible();
   const navigate = useNavigate();
   const assistant = useAssistantAvailability();
+  const { isOffline } = useOnlineStatus();
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const widgets = useMemo(
@@ -207,6 +214,16 @@ export function AgenticHome({ conversationId }: AgenticHomeProps) {
         <HomeThread conversationId={conversationId} greeting={greeting} />
       ) : assistant !== undefined ? (
         <AssistantUnavailable reason={assistant} greeting={greeting} isSuperuser={user?.type === 'superuser'} />
+      ) : isOffline ? (
+        // Whether the assistant is set up was never learned on this device,
+        // and can't be asked now.
+        <ConversationEmptyState
+          className="flex-1 [&_p]:max-w-sm"
+          icon={<WifiOff className="size-10" />}
+          title={greeting}
+          description={OFFLINE_EMPTY_DESCRIPTION}
+          data-testid="home-assistant-offline"
+        />
       ) : (
         <div className="flex-1" />
       )}

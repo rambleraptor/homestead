@@ -133,9 +133,10 @@ export function AppShell({ children }: AppShellProps) {
               <PageFillContext.Provider value={setFill}>{children}</PageFillContext.Provider>
             </div>
           </main>
+          {/* Its own row under the page, so it never covers a docked composer. */}
+          <OfflineBanner />
         </div>
 
-        <OfflineBanner />
         {/* `?install`, from All apps → Add to Home Screen. */}
         <InstallGuide />
       </div>

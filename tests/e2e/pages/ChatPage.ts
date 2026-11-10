@@ -66,6 +66,16 @@ export class ChatPage {
     return this.driver.getByTestId('chat-messages');
   }
 
+  /** The starter prompts under an empty new conversation. */
+  get suggestions(): Locator {
+    return this.driver.getByTestId('chat-suggestions');
+  }
+
+  /** The line over the composer saying the assistant is waiting for a connection. */
+  get offlineNote(): Locator {
+    return this.driver.getByTestId('chat-offline');
+  }
+
   get userMessages(): Locator {
     return this.driver.getByTestId('chat-message-user');
   }

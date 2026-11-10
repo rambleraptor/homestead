@@ -5,7 +5,8 @@
  * reply streams in — the chat outlives the route change (`useConversation`).
  *
  * Shown only when the assistant can serve this person, so an instance without
- * an AI provider never shows a box that can't answer.
+ * an AI provider never shows a box that can't answer. Offline it stays, but
+ * waits: it says the assistant needs a connection and keeps what's typed.
  */
 
 import { useCallback, useRef } from 'react';
@@ -26,6 +27,7 @@ import {
   Suggestions,
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/suggestion';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
+import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import {
   ATTACHMENT_ERRORS,
   ATTACHMENT_TYPES,
@@ -34,6 +36,7 @@ import {
 } from '@rambleraptor/homestead-core/chat/attachment-limits';
 import { useConversation } from '@rambleraptor/homestead-core/chat/hooks/useConversation';
 import { ComposerAttachments } from '@rambleraptor/homestead-core/chat/components/ComposerAttachments';
+import { OFFLINE_PLACEHOLDER } from '@rambleraptor/homestead-core/chat/offline';
 import { availableStarters } from '@rambleraptor/homestead-core/chat/starters';
 import { usePrefillComposer } from '@rambleraptor/homestead-core/chat/hooks/usePrefillComposer';
 import { homeConversationPath, useAssistantAvailability } from '../home';
@@ -53,7 +56,8 @@ function AskComposer() {
     [navigate],
   );
   const chat = useConversation(null, { onCreated });
-  const starters = availableStarters().slice(0, 2);
+  const { isOffline } = useOnlineStatus();
+  const starters = isOffline ? [] : availableStarters().slice(0, 2);
   const composer = useRef<HTMLElement>(null);
   usePrefillComposer(composer, useAskPrefill());
 
@@ -72,18 +76,27 @@ function AskComposer() {
         </PromptInputHeader>
         <PromptInputBody>
           <PromptInputTextarea
-            placeholder="Ask Homestead…"
+            placeholder={isOffline ? OFFLINE_PLACEHOLDER : 'Ask Homestead…'}
             aria-label="Ask Homestead"
             data-testid="ask-input"
+            disabled={isOffline}
             className="min-h-12"
           />
         </PromptInputBody>
         <PromptInputFooter>
           <PromptInputTools>
             <Sparkles className="ml-2 size-4 text-gray-400" aria-hidden />
-            <PromptInputActionAddAttachments label="Attach photos or PDFs" data-testid="ask-attach" />
+            <PromptInputActionAddAttachments
+              label="Attach photos or PDFs"
+              disabled={isOffline}
+              data-testid="ask-attach"
+            />
           </PromptInputTools>
-          <PromptInputSubmit status={chat.busy ? 'submitted' : 'ready'} data-testid="ask-send" />
+          <PromptInputSubmit
+            status={chat.busy ? 'submitted' : 'ready'}
+            disabled={isOffline}
+            data-testid="ask-send"
+          />
         </PromptInputFooter>
       </PromptInput>
       {starters.length > 0 && (

@@ -21,6 +21,7 @@ import type { FileUIPart } from 'ai';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useResourceEvents } from '@rambleraptor/homestead-core/api/remoteChanges';
 import { authStore } from '@rambleraptor/homestead-core/api/aepbase';
+import { isNetworkError, reportNetworkFailure } from '@rambleraptor/homestead-core/api/connectivity';
 import { queryKeys } from '@rambleraptor/homestead-core/api/queryClient';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import {
@@ -30,6 +31,7 @@ import {
   listMessages,
   toUiMessage,
 } from '../api';
+import { OFFLINE_SEND_MESSAGE } from '../offline';
 import { assistantChangeToasts, showAssistantChanges } from '../recordToast';
 import { CONVERSATIONS } from '../resources';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
@@ -213,7 +215,14 @@ export function useConversation(conversationId: string | null, options: UseConve
   const notConfigured = error instanceof ChatNotConfiguredError;
   useEffect(() => {
     if (!error || notConfigured) return;
-    toast.error(error);
+    if (isNetworkError(error)) {
+      // Never reached the server: show the app as offline (the composer says
+      // so and waits), rather than a bare network error.
+      reportNetworkFailure();
+      toast.error(OFFLINE_SEND_MESSAGE);
+    } else {
+      toast.error(error);
+    }
     clearError();
     if (conversationId) {
       void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });

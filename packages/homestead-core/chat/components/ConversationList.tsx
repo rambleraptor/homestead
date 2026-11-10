@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { MessageSquarePlus, MessagesSquare, Trash2 } from 'lucide-react';
+import { MessageSquarePlus, MessagesSquare, Trash2, WifiOff } from 'lucide-react';
 import { Loader } from '@rambleraptor/homestead-core/shared/components/ai-elements/loader';
 import { Button } from '@rambleraptor/homestead-core/shared/components/ui/button';
 import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/ConfirmDialog';
 import { EmptyState } from '@rambleraptor/homestead-core/shared/components/EmptyState';
 import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
+import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import { useConversations, useDeleteConversation } from '../hooks/useConversations';
 import { forgetConversation } from '../hooks/useConversation';
 import type { Conversation } from '../types';
@@ -43,6 +44,7 @@ export function ConversationList({
 }: ConversationListProps) {
   const conversations = useConversations();
   const remove = useDeleteConversation();
+  const { isOffline } = useOnlineStatus();
   const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
 
   const confirmDelete = async () => {
@@ -75,6 +77,15 @@ export function ConversationList({
           onRetry={() => void conversations.refetch()}
           title="Couldn’t load conversations"
           data-testid="chat-conversations-error"
+        />
+      ) : conversations.isPending && isOffline ? (
+        // Never loaded on this device: not "none yet", just out of reach.
+        <EmptyState
+          compact
+          icon={WifiOff}
+          title="You're offline"
+          description="Past conversations will show when you reconnect."
+          data-testid="chat-conversations-offline"
         />
       ) : conversations.isSuccess && conversations.data.length === 0 ? (
         <EmptyState
