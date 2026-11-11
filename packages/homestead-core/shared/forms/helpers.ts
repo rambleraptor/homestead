@@ -49,10 +49,12 @@ export function resolvedWidgetName(field: FieldDef, config?: FieldConfig): Widge
 }
 
 /** Fields the form never renders by default: audit/ownership pointers to the
- *  built-in user root, fields on their way out, and secrets that aren't text
- *  (structured secrets — OAuth tokens — are the server's to write). */
+ *  built-in user root, fields on their way out, system fields (Homestead's to
+ *  write), and secrets that aren't text (structured secrets — OAuth tokens —
+ *  are the server's to write). */
 export function isAutoHidden(field: FieldDef): boolean {
   if (field.deprecated) return true;
+  if (field.system) return true;
   if (field.secret && field.type !== 'string') return true;
   if (field.reference?.resource === 'user') return true;
   return false;

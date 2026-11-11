@@ -56,9 +56,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 
   // Apply app-declared schema in the background; serving doesn't depend on
   // it (the sync is idempotent and best-effort).
+  // Pulls start once it has run: they list their connection records and
+  // write each one's sync status, which need the resources in place.
   void (async () => {
     const { syncSchema } = await import('./schema-sync');
-    await syncSchema(engine.db, engineBase);
+    try {
+      await syncSchema(engine.db, engineBase);
+    } finally {
+      await app.syncPulls.start();
+    }
   })();
 
   // Start the app-declared cron hooks. Each firing mints its own short-lived

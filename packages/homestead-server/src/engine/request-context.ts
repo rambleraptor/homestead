@@ -39,3 +39,20 @@ export function originOf(req: Request): string | null {
   if (!raw || raw.length > MAX_ORIGIN_LENGTH) return null;
   return /^[A-Za-z0-9_.:-]+$/.test(raw) ? raw : null;
 }
+
+const systemWrites = new AsyncLocalStorage<true>();
+
+/**
+ * Run `fn` as a system write: an engine request made in-process from inside it
+ * may set `system` fields (wire `x-aepbase-system`), which the engine otherwise
+ * drops from every payload. Server code only — there is no way to ask for this
+ * over HTTP, so a client can never write a system field.
+ */
+export function runAsSystemWrite<T>(fn: () => T): T {
+  return systemWrites.run(true, fn);
+}
+
+/** Whether the current request is a system write (see {@link runAsSystemWrite}). */
+export function isSystemWrite(): boolean {
+  return systemWrites.getStore() === true;
+}

@@ -20,6 +20,9 @@ import {
   bulkExportOptionInfo,
   BULK_EXPORT_VERB,
 } from '@rambleraptor/homestead-core/server/bulk-export/method';
+import {
+  allSyncNowCustomMethods,
+} from '@rambleraptor/homestead-core/server/sync-now/method';
 import { getAllResourceCustomMethods } from '../app-registry';
 
 export async function customMethodsResponse(): Promise<Response> {
@@ -27,6 +30,7 @@ export async function customMethodsResponse(): Promise<Response> {
   const registered = {
     ...allBulkImportCustomMethods(),
     ...allBulkExportCustomMethods(),
+    ...allSyncNowCustomMethods(),
     ...declared,
   };
 

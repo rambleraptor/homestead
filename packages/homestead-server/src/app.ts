@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { join } from 'node:path';
 import { Engine } from './engine/engine';
 import type { ServerOptions } from './options';
+import type { PullScheduler } from './sync-pull';
 import type { ChangeFeed } from './change-feed';
 import { diskSpaAssets, type IndexRewrite, type SpaAssets } from './static';
 
@@ -28,6 +29,8 @@ export interface HomesteadApp {
   engine: Engine;
   /** The record-change feed behind /api/events. */
   changeFeed: ChangeFeed;
+  /** The inbound side of the syncs; `start()` it once the schema is synced. */
+  syncPulls: PullScheduler;
   /** `${origin}/api/aep` — what the schema sync and server helpers call. */
   engineBase: string;
   /** Static SPA assets in prod; null in dev (Vite serves the SPA). */
@@ -176,6 +179,7 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   const { PERMISSION_RESOURCE_DEFS } = await import(
     '@rambleraptor/homestead-core/permissions/resources'
   );
+  const resourceDefs = registry.getAllResourceDefs();
   validateSyncResources(
     [
       'user',
@@ -183,9 +187,10 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
       'app-flag',
       ...BUILTIN_RESOURCE_DEFS.map((d) => d.singular),
       ...PERMISSION_RESOURCE_DEFS.map((d) => d.singular),
-      ...registry.getAllResourceDefs().map((d) => d.singular),
+      ...resourceDefs.map((d) => d.singular),
     ],
     resourceSyncs,
+    resourceDefs,
   );
 
   // The same post-commit seam also feeds /api/events, which tells open tabs a
@@ -193,7 +198,14 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   const { createChangeFeed, teeDispatcher } = await import('./change-feed');
   const changeFeed = createChangeFeed(engine);
   const syncDispatcher = createSyncDispatcher(engine.db, resourceSyncs, operationStore);
-  engine.setSyncDispatcher(teeDispatcher(syncDispatcher, changeFeed));
+  // The inbound side of the same syncs. It watches writes too — a connection
+  // created or edited is pulled at once — but runs nothing until `start()`,
+  // which the server calls once the schema is in place.
+  const { createPullScheduler } = await import('./sync-pull');
+  const syncPulls = createPullScheduler(engine, resourceSyncs, resourceDefs, operationStore);
+  const { setPullTrigger } = await import('@rambleraptor/homestead-core/server/sync-pulls');
+  setPullTrigger(syncPulls.trigger);
+  engine.setSyncDispatcher(teeDispatcher(syncDispatcher, syncPulls, changeFeed));
 
   // Homestead-as-OAuth-provider (authorization server). Opt-in via
   // auth.authServer.enabled. When on, create its tables up front.
@@ -298,8 +310,11 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
     spa,
     rewriteIndex,
     setupState,
+    syncPulls,
     close: () => {
       syncDispatcher.stop();
+      syncPulls.stop();
+      setPullTrigger(null);
       engine.db.close();
       vectorStore.close();
     },

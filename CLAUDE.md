@@ -736,6 +736,23 @@ a migration declaring `drops: [{ resource, field }]` to authorize the drop
    tokens one at a time per credential and never starting a sign-in itself.
    `vm/oauth-mcp-stub.ts` is an OAuth-protected MCP server with its own
    authorization server, for specs.
+10. **`system: true`** marks a top-level field only Homestead writes (wire
+   `readOnly` + `x-aepbase-system`): the engine drops it from every client
+   payload, and only server code inside `runAsSystemWrite`
+   (`homestead-server/src/engine/request-context.ts`) calling the engine
+   in-process can set it. Forms hide it; the chat tools don't offer to write it.
+   Used for a pull connection's `sync_status`.
+
+### Resource syncs
+
+`syncs` on an `AppConfig` (or `homestead.config.ts`) declare a sync with an
+external system — a `push` side (mirror changes out after commit, through a
+durable outbox, `homestead-server/src/sync.ts`) and/or a `pull` side (bring
+changes in per connection record on a schedule, `src/sync-pull.ts`), sharing the
+write origin `sync:<id>` so neither echoes the other. A pull's connection
+resource gains the `sync_status` system field and a `:sync` method
+(`core/server/sync-now/`). See
+[`docs/guides/resource-sync.md`](packages/homestead-site/docs/guides/resource-sync.md).
 
 ### Resource references
 

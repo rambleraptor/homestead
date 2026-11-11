@@ -52,6 +52,11 @@ export interface SchemaProperty {
    * signature) because the write path branches on it.
    */
   'x-aepbase-immutable'?: boolean;
+  /**
+   * A field only Homestead writes (wire `readOnly` plus this marker): dropped
+   * from client payloads, kept on a write made inside `runAsSystemWrite`.
+   */
+  'x-aepbase-system'?: boolean;
   [extension: string]: unknown; // x-aepbase-file-field and friends
 }
 

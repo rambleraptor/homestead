@@ -44,7 +44,7 @@ import { createLogger } from './log';
 import { mintAdminToken } from './bootstrap';
 import { SyncOutbox, outboxKey, type OutboxEntry } from './sync-outbox';
 import type { RegisteredResourceSync } from '@rambleraptor/homestead-core/apps/registry';
-import type { SyncEvent } from '@rambleraptor/homestead-core/apps/sync';
+import { syncPushOf, type SyncEvent } from '@rambleraptor/homestead-core/apps/sync';
 import {
   makeOperationLogger,
   type Operation,
@@ -206,9 +206,10 @@ function concerns(
   sync: RegisteredResourceSync,
   change: Omit<SyncDelivery, 'resource' | 'recordId' | 'delivery'>,
 ): boolean {
-  if (!sync.when) return true;
+  const when = syncPushOf(sync)?.when;
+  if (!when) return true;
   try {
-    return sync.when(change);
+    return when(change);
   } catch (error) {
     syncLog.warn('when check threw; firing anyway', {
       syncId: sync.id,
@@ -220,7 +221,7 @@ function concerns(
 
 /** The events a sync fires on, defaulting to all three when unset. */
 function firesOn(sync: RegisteredResourceSync, event: SyncEvent): boolean {
-  return (sync.on ?? ['create', 'update', 'delete']).includes(event);
+  return (syncPushOf(sync)?.on ?? ['create', 'update', 'delete']).includes(event);
 }
 
 /**
@@ -281,7 +282,9 @@ export async function runResourceSync(
         let lastError: unknown;
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
           try {
-            const mod = await sync.load();
+            const push = syncPushOf(sync);
+            if (!push) throw new Error(`sync "${sync.id}" has no push side`);
+            const mod = await push.load();
             const response = await mod.default({
               id: sync.id,
               appId: sync.appId,
@@ -356,6 +359,7 @@ export function createSyncDispatcher(
   const byResource = new Map<string, RegisteredResourceSync[]>();
   const byId = new Map<string, RegisteredResourceSync>();
   for (const sync of syncs) {
+    if (!syncPushOf(sync)) continue;
     const list = byResource.get(sync.resource) ?? [];
     list.push(sync);
     byResource.set(sync.resource, list);

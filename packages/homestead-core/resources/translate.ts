@@ -276,6 +276,17 @@ function validateField(
   if (field.deprecated && field.required) {
     fail(`field "${path}" cannot be both deprecated and required`);
   }
+  if (field.system) {
+    if (path.includes('.') || path.includes('[')) {
+      fail(`field "${path}" is nested; only top-level fields can be system fields`);
+    }
+    if (field.required || field.default !== undefined || field.immutable) {
+      fail(`system field "${path}" cannot be required, immutable or have a default`);
+    }
+    if (field.type === 'file' || field.encrypted || field.secret) {
+      fail(`system field "${path}" cannot be a file, encrypted or secret`);
+    }
+  }
   validateReference(field, path, fail);
   validateEncrypted(field, path, fail);
   if (field.items?.encrypted || field.items?.secret) {
@@ -641,6 +652,7 @@ export interface SyncResourceTarget {
   id: string;
   resource: string;
   appId?: string;
+  pull?: { connections?: string };
 }
 
 /**
@@ -648,6 +660,8 @@ export interface SyncResourceTarget {
  * this instance, so a typo or a sync pointing at an app that isn't installed
  * fails loudly at boot instead of silently never firing. The sibling of
  * {@link validateReferenceTargets} for `AppConfig.syncs` / `HomesteadConfig.syncs`.
+ * A pull's `connections` must exist too, and — when `defs` is given — be a
+ * top-level or user-parented resource, the two shapes the scheduler can list.
  *
  * `known` is the full set of resource singulars the instance declares — the
  * caller passes it because some resources (the built-in `user`, and the
@@ -658,14 +672,31 @@ export interface SyncResourceTarget {
 export function validateSyncResources(
   known: Iterable<string>,
   syncs: readonly SyncResourceTarget[],
+  defs: readonly Pick<ResourceDefinition, 'singular' | 'parents'>[] = [],
 ): void {
   const knownSet = known instanceof Set ? known : new Set(known);
+  const parentsOf = new Map(defs.map((d) => [d.singular, d.parents ?? []]));
   for (const sync of syncs) {
+    const where = sync.appId ? ` (app "${sync.appId}")` : '';
     if (!knownSet.has(sync.resource)) {
-      const where = sync.appId ? ` (app "${sync.appId}")` : '';
       throw new Error(
         `[resources] sync "${sync.id}"${where} targets unknown resource ` +
           `"${sync.resource}" — no such resource is declared`,
+      );
+    }
+    const connections = sync.pull?.connections;
+    if (!connections) continue;
+    if (!knownSet.has(connections)) {
+      throw new Error(
+        `[resources] sync "${sync.id}"${where} pulls per unknown resource ` +
+          `"${connections}" — no such resource is declared`,
+      );
+    }
+    const parents = parentsOf.get(connections);
+    if (parents && !(parents.length === 0 || (parents.length === 1 && parents[0] === 'user'))) {
+      throw new Error(
+        `[resources] sync "${sync.id}"${where} pulls per "${connections}", which is nested ` +
+          `under ${parents.join(', ')} — a connection resource must be top-level or user-parented`,
       );
     }
   }
@@ -862,6 +893,7 @@ function toWireProperty(
     ...(field.default !== undefined ? { default: field.default } : {}),
     ...(field.type === 'file' ? { 'x-aepbase-file-field': true } : {}),
     ...(field.immutable ? { 'x-aepbase-immutable': true } : {}),
+    ...(field.system ? { readOnly: true, 'x-aepbase-system': true } : {}),
     ...(field.encrypted ? { 'x-aepbase-encrypted': true } : {}),
     ...(field.secret ? { 'x-aepbase-secret': secretMarker(field.secret) } : {}),
     ...(field.reference
