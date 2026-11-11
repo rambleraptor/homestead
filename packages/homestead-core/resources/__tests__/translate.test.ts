@@ -835,6 +835,62 @@ describe('validateSyncResources', () => {
       validateSyncResources(new Set(known), [{ id: 'a', resource: 'user' }]),
     ).not.toThrow();
   });
+
+  it("checks a pull's connection resource exists and can be listed", () => {
+    const defs = [
+      { singular: 'address', parents: [] },
+      { singular: 'user-preference', parents: ['user'] },
+      { singular: 'room', parents: ['address'] },
+    ];
+    const all = [...known, 'room'];
+    expect(() =>
+      validateSyncResources(all, [
+        { id: 'a', resource: 'address', pull: { connections: 'address' } },
+        { id: 'b', resource: 'address', pull: { connections: 'user-preference' } },
+        { id: 'c', resource: 'address', pull: {} },
+      ], defs),
+    ).not.toThrow();
+    expect(() =>
+      validateSyncResources(all, [{ id: 'd', resource: 'address', pull: { connections: 'feed' } }], defs),
+    ).toThrow(/sync "d" pulls per unknown resource "feed"/);
+    expect(() =>
+      validateSyncResources(all, [{ id: 'e', resource: 'address', pull: { connections: 'room' } }], defs),
+    ).toThrow(/pulls per "room", which is nested under address/);
+  });
+});
+
+describe('system fields', () => {
+  const def = (fields: Record<string, FieldDef>): ResourceDefinition => ({
+    singular: 'feed',
+    plural: 'feeds',
+    fields,
+  });
+
+  it('are read-only on the wire, with the system marker', () => {
+    const { properties } = toWireSchema(
+      { status: { type: 'object', system: true, properties: { state: { type: 'string' } } } },
+      'feed',
+    );
+    expect(properties.status).toMatchObject({ readOnly: true, 'x-aepbase-system': true });
+  });
+
+  it('must be top-level and not required, defaulted, immutable, encrypted or a file', () => {
+    expect(() => validateResourceDefinition(def({ s: { type: 'string', system: true } }))).not.toThrow();
+    for (const bad of [
+      { type: 'string', system: true, required: true },
+      { type: 'string', system: true, default: 'x' },
+      { type: 'string', system: true, immutable: true },
+      { type: 'string', system: true, encrypted: true },
+      { type: 'file', system: true },
+    ] as FieldDef[]) {
+      expect(() => validateResourceDefinition(def({ s: bad }))).toThrow(/system field/);
+    }
+    expect(() =>
+      validateResourceDefinition(
+        def({ o: { type: 'object', properties: { inner: { type: 'string', system: true } } } }),
+      ),
+    ).toThrow(/only top-level fields can be system fields/);
+  });
 });
 
 describe('toWireSchema — ai file fields', () => {

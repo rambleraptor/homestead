@@ -202,6 +202,16 @@ export interface FieldDef {
    */
   immutable?: boolean;
   /**
+   * Written only by Homestead itself (a platform job's status, a stamp it
+   * keeps), never by a client. Emitted as wire `readOnly`, so the engine drops
+   * the field from every client payload, while server code writing through
+   * the engine's system-write seam can set it. Forms don't render it and the
+   * model tools don't offer to write it; reads are unchanged. Top-level only,
+   * and not with `required`, `default`, `immutable`, `encrypted` or `secret`.
+   * @default false
+   */
+  system?: boolean;
+  /**
    * Store the value encrypted at rest with the instance master key, so a
    * stolen disk, database or backup doesn't give it away. Reads are unchanged
    * for anyone allowed to read the record — this is privacy at rest, not
@@ -359,6 +369,11 @@ export interface JsonSchemaProperty {
   /** Default applied by the engine when the field is omitted on create. */
   default?: unknown;
   /**
+   * Never accepted from a client: the engine drops it from every payload.
+   * Emitted for {@link FieldDef.system} fields, with `x-aepbase-system`.
+   */
+  readOnly?: boolean;
+  /**
    * Allowed values. Only emitted for a variant's discriminator tag, where a
    * single-value enum pins the variant — aepbase strips `enum` from *top-level*
    * properties (hence the `one of: a, b` description encoding), but preserves
@@ -405,6 +420,8 @@ export interface JsonSchemaProperty {
    * carries it (see `homestead-server/src/engine/validate.ts`).
    */
   'x-aepbase-immutable'?: boolean;
+  /** Written only through the engine's system-write seam (see {@link FieldDef.system}). */
+  'x-aepbase-system'?: boolean;
   /**
    * Marks a field stored encrypted at rest, produced by the translator from a
    * field's `encrypted` annotation (see

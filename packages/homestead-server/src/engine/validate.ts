@@ -2,6 +2,7 @@
 
 import type { Schema } from './types';
 import { STANDARD_FIELDS } from './types';
+import { isSystemWrite } from './request-context';
 
 export function validateRequired(
   schema: Schema,
@@ -223,11 +224,17 @@ function cloneDefault(value: unknown): unknown {
   return JSON.parse(JSON.stringify(value));
 }
 
-/** Remove readOnly-marked fields from a client payload, in place. */
+/**
+ * Remove readOnly-marked fields from a client payload, in place. A system
+ * field (`x-aepbase-system`) is kept when the write is a system write — server
+ * code inside `runAsSystemWrite`.
+ */
 export function stripReadOnlyFields(schema: Schema, fields: Record<string, unknown>): void {
+  const system = isSystemWrite();
   for (const name of Object.keys(fields)) {
     if (STANDARD_FIELDS.has(name)) continue;
-    if (schema.properties?.[name]?.readOnly) {
+    const prop = schema.properties?.[name];
+    if (prop?.readOnly && !(system && prop['x-aepbase-system'])) {
       delete fields[name];
     }
   }

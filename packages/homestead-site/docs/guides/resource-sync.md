@@ -1,19 +1,26 @@
 # Resource Syncs
 
-A **resource sync** mirrors a resource's records to an external system, one
-way, after they change. When a record is created, updated, or deleted, Homestead
-fires a handler you write — *after* the write has committed — so you can push the
-change to a CRM, a mapping service, a search index, an accounting system, or
-anything else with an API.
+A **resource sync** keeps a resource's records in step with an external system.
+It has up to two sides, declared together under one id:
+
+- **push** — when a record is created, updated, or deleted, Homestead fires a
+  handler you write — *after* the write has committed — so you can send the
+  change to a CRM, a mapping service, a calendar, an accounting system, or
+  anything else with an API.
+- **pull** — on a schedule, per *connection* (each person's calendar account,
+  each feed), Homestead calls a handler that brings the external system's
+  changes in. See [Pulling changes in](#pulling-changes-in).
+
+The two sides share the sync's write origin, `sync:<id>`, so what the pull
+brings in is never pushed straight back out.
 
 A sync is asynchronous and durable: the write that triggered it returns to the
 caller first, then the mirror runs out-of-band, and the change waits in a
 database outbox until your handler succeeds — across restarts. A sync can never
 block or fail the write it observes.
 
-## What it is (and isn't)
+## Pushing changes out
 
-- **One-way.** Homestead → external. It does not pull changes back.
 - **Post-commit.** The handler runs after the record change is durable, so the
   snapshots it sees are the real committed state.
 - **Durable, at-least-once.** Each change is written to an outbox before it
@@ -52,8 +59,10 @@ const syncs: HomesteadConfig['syncs'] = [
     id: 'users-mirror-to-maps',   // stable, globally unique — the operation key
     resource: 'user',            // any resource singular; 'user' is built-in
     title: 'Mirror user to Maps', // Operations-app label; defaults to id
-    // on: ['create', 'update', 'delete'],  // subset; default is all three
-    load: () => import('./syncs/mirror-user-to-maps'),
+    push: {
+      // on: ['create', 'update', 'delete'],  // subset; default is all three
+      load: () => import('./syncs/mirror-user-to-maps'),
+    },
   },
 ];
 
@@ -65,6 +74,10 @@ export default config;
 ```
 
 Config-level syncs are recorded under the app id `config`.
+
+A push-only sync may also be written flat, with `on`, `when` and `load` at the
+top level instead of under `push` — `{ id, resource, load }` is shorthand for
+`{ id, resource, push: { load } }`. Use one form or the other, not both.
 
 ### On an app (`AppConfig.syncs`)
 
@@ -80,7 +93,7 @@ export const myApp: AppConfig = {
     {
       id: 'address-mirror-to-maps',
       resource: 'address',
-      load: () => import('./syncs/mirror-address-to-maps'),
+      push: { load: () => import('./syncs/mirror-address-to-maps') },
     },
   ],
 };
@@ -98,6 +111,7 @@ operation for every note saved:
 {
   id: 'notes-todo-tag',
   resource: 'note',
+  // the flat, push-only form
   on: ['create', 'update'],
   when: ({ record, previous }) => newTodoTitles(record, previous).length > 0,
   load: () => import('./syncs/note-todos'),
@@ -114,7 +128,7 @@ built-ins, and `user`) and **refuses to start** with a
 exist — so a typo or a sync pointing at an app you haven't installed fails
 loudly instead of silently never firing.
 
-## Writing a handler
+## Writing a push handler
 
 A handler is a plain async function that default-exports. It receives a
 `SyncContext`:
@@ -191,12 +205,13 @@ ready-made one as `ctx.writeOrigin` (`cron:<id>`, `sync:<id>`).
   await hs.collection('calendar-events').update(ctx.recordId, { external_id });
   ```
 
-- **Skip an import's writes with `when`.** A cron that pulls changes *in* tags
-  its writes with its own `writeOrigin`; the outbound sync leaves them alone so
-  they don't bounce back out:
+- **A pull's writes don't bounce back out.** The pull side of a sync writes
+  with the same `writeOrigin` as its push side, so nothing is needed. Writes from
+  some *other* job — a cron that imports into the same resource — can be skipped
+  with `when`:
 
   ```ts
-  when: ({ origin }) => origin !== 'cron:calendar-pull',
+  when: ({ origin }) => origin !== 'cron:legacy-import',
   ```
 
 ## How it runs
@@ -240,7 +255,117 @@ ready-made one as `ctx.writeOrigin` (`cron:<id>`, `sync:<id>`).
    yourself.
 4. **Return a small summary** (`{ mirrored, placeId }`) — it's stored as the
    operation's response and makes the log useful.
-5. **One-way only.** A sync mirrors out. It may write its own bookkeeping back
-   (an external id, a sync stamp) with `writeOrigin`, but bringing external
-   changes in is a separate job — a cron that tags its writes so the sync can
-   skip them.
+5. **Write back with `writeOrigin`.** A push handler may write its own
+   bookkeeping back (an external id, a sync stamp); bringing external changes
+   in is the pull side's job.
+
+## Pulling changes in
+
+A sync's `pull` side brings an external system's changes into the resource on a
+schedule — one loop per **connection**: a record that says where to pull from
+and as whom (a person's Google account, an iCal feed URL).
+
+```ts
+{
+  id: 'gcal',
+  resource: 'calendar-event',          // what the pull writes
+  title: 'Google Calendar',
+  push: { load: () => import('./syncs/gcal-push') },
+  pull: {
+    connections: 'calendar-connection', // one loop per record of this resource
+    every: 15 * 60,                     // seconds between pulls; at least 60
+    load: () => import('./syncs/gcal-pull'),
+  },
+}
+```
+
+Leave out `connections` for a single household-wide loop (a hauler's pickup
+schedule). A connection resource must be top-level or user-parented, and only
+one sync may pull per a given connection resource.
+
+### Writing a pull handler
+
+The handler is called a page at a time with a `PullContext`:
+
+| Field         | What it is |
+|---------------|------------|
+| `connection`  | A fresh read of the connection record, or `null` for a household-wide pull. |
+| `cursor`      | Where the last page stopped, as you returned it (a provider sync token, an ETag). `null` means do a full sync. |
+| `page`        | Which page of this run, from 1. |
+| `token`       | A short-lived admin token for this run. |
+| `writeOrigin` | `sync:<id>` — tag your writes with it: `serverClient(ctx.token, undefined, { origin: ctx.writeOrigin })`. |
+| `id`, `appId`, `resource`, `firedAt`, `log` | As for a push handler. |
+
+It returns `{ cursor, more }`: the cursor to save (omit to keep the current one,
+`null` to clear it) and whether to call again straight away for the next page.
+
+```ts
+import { ResyncRequired, type PullHandler } from '@rambleraptor/homestead-core/apps/sync';
+import { serverClient } from '@rambleraptor/homestead-core/server/client';
+
+const pull: PullHandler = async (ctx) => {
+  const hs = serverClient(ctx.token, undefined, { origin: ctx.writeOrigin });
+  const page = await google.events.list({ syncToken: ctx.cursor ?? undefined })
+    .catch((err) => {
+      if (err.status === 410) throw new ResyncRequired(); // token expired
+      throw err;
+    });
+  for (const event of page.items) {
+    // upsert / delete calendar-events, keyed on the Google event id
+  }
+  return { cursor: page.nextSyncToken ?? page.nextPageToken, more: !!page.nextPageToken };
+};
+export default pull;
+```
+
+Write it idempotently — a run that's interrupted resumes from its last saved
+cursor, and a full resync revisits everything.
+
+### How it runs
+
+- **When.** At boot for anything due; as soon as a connection is created or
+  edited (an edit clears the cursor, so that run is a full sync); every `every`
+  seconds after a run that succeeded; and on demand through the connection's
+  `:sync` method (`POST <plural>/{id}:sync`, for anyone who may edit the
+  connection — a "Sync now" button). Deleting the connection stops its loop.
+- **One at a time.** Runs for one connection never overlap; asking for a run
+  while one is under way queues exactly one more.
+- **Page by page.** The cursor is saved after every page (stored in
+  `_homestead_sync_state`, encrypted when a master key is set), so an
+  interrupted run picks up where it stopped. A run stops after 500 pages; the
+  next carries on.
+- **`ResyncRequired`.** Throw it when the cursor is no good: the cursor is
+  cleared and the handler is called again at once for a full sync (once per
+  run).
+- **Failures back off, never give up.** A run that throws is retried on the
+  push redelivery schedule (1m, 5m, 30m, 2h, 6h, 12h, then every 12h;
+  `HOMESTEAD_SYNC_REDELIVERY_MS`). The connection shows the error until a run
+  succeeds.
+- **Recorded when it matters.** A run becomes an operation (`sync:<id>:pull`)
+  only when it wrote something or failed — a quiet pull every 15 minutes per
+  connection would bury everything else in the Operations app.
+- **Clearing out with the connection.** Give the synced records a reference to
+  their connection with `onDelete: 'cascade'`, and deleting the connection
+  deletes what it brought in.
+
+### The connection's `sync_status`
+
+Homestead adds a read-only `sync_status` field to the connection resource (don't
+declare one yourself) and updates it after every run:
+
+```ts
+{
+  state: 'ok' | 'error',
+  last_attempt_time: string,   // when the last run finished
+  last_success_time?: string,  // when one last succeeded
+  last_error?: string,         // while state is 'error'
+  next_time: string,           // when the next run is due
+}
+```
+
+It's a **system field** (`system: true` on a `FieldDef`): the engine drops it
+from every client write, forms don't show it, and the model tools don't offer to
+write it — only Homestead's own in-process writes set it. It arrives through the
+normal list hooks and the change feed, so a screen can show "Synced 3 min ago"
+or the error with no extra API. Each status write updates the record's
+`update_time`, so avoid `conflicts: 'keep-both'` on a connection resource.

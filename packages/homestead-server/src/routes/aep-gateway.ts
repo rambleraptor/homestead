@@ -18,6 +18,10 @@ import {
   allBulkExportCustomMethods,
   bulkExportCustomMethod,
 } from '@rambleraptor/homestead-core/server/bulk-export/method';
+import {
+  allSyncNowCustomMethods,
+  syncNowCustomMethod,
+} from '@rambleraptor/homestead-core/server/sync-now/method';
 import { getResourceCustomMethod, getAllResourceCustomMethods } from '../app-registry';
 import { handleCrudWithIndexing } from './file-index-trigger';
 import { injectCustomMethods } from './openapi-custom-methods';
@@ -31,7 +35,8 @@ function resolveMethod(plural: string, verb: string) {
   return (
     getResourceCustomMethod(plural, verb) ??
     bulkImportCustomMethod(plural, verb) ??
-    bulkExportCustomMethod(plural, verb)
+    bulkExportCustomMethod(plural, verb) ??
+    syncNowCustomMethod(plural, verb)
   );
 }
 
@@ -73,6 +78,7 @@ export function makeAepGateway(engine: Engine, engineOrigin: string): Hono {
       injectCustomMethods(doc, {
         ...allBulkImportCustomMethods(),
         ...allBulkExportCustomMethods(),
+        ...allSyncNowCustomMethods(),
         ...getAllResourceCustomMethods(),
       });
       return Response.json(doc);

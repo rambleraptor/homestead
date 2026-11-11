@@ -32,9 +32,14 @@ import type {
 } from './types';
 import type { CronHook } from './cron';
 import type { Migration } from './migrations';
-import type { ResourceSync } from './sync';
+import {
+  SYNC_STATUS_FIELD,
+  syncPushOf,
+  type ResourceSync,
+} from './sync';
 import { CREDENTIAL_SLOT_ID, type CredentialSlot } from './credential-slots';
 import type {
+  FieldDef,
   ResourceCustomMethod,
   ResourceDefinition,
 } from '../resources/types';
@@ -387,9 +392,10 @@ export function resolveResources(mod: AppConfig): ResourceDefinition[] {
 
 export function getAllResourceDefs(): ResourceDefinition[] {
   const out: ResourceDefinition[] = [];
+  const connections = getPullConnectionResources();
   const visit = (mod: AppConfig): void => {
     for (const def of resolveResources(mod)) {
-      out.push(def);
+      out.push(withSyncStatus(def, connections));
     }
     for (const child of mod.children ?? []) {
       visit(child);
@@ -402,6 +408,53 @@ export function getAllResourceDefs(): ResourceDefinition[] {
 }
 
 /**
+ * The read-only field a pull adds to its connection resource — written by
+ * Homestead after each run (see `SyncPull.connections`).
+ */
+export const SYNC_STATUS_FIELD_DEF: FieldDef = {
+  type: 'object',
+  system: true,
+  description:
+    'Written by Homestead after each sync run: how the last run went, when, and when the next one is due.',
+  properties: {
+    state: { type: 'string', enum: ['ok', 'error'], description: 'how the last run went' },
+    last_attempt_time: { type: 'string', format: 'date-time', description: 'when the last run finished' },
+    last_success_time: { type: 'string', format: 'date-time', description: 'when a run last succeeded' },
+    last_error: { type: 'string', description: 'what went wrong, while state is error' },
+    next_time: { type: 'string', format: 'date-time', description: 'when the next run is due' },
+  },
+};
+
+/**
+ * Singulars of every resource some sync pulls per record of (its
+ * `pull.connections`). A quiet scan — validation and warnings belong to
+ * {@link getAllResourceSyncs}, which runs once at boot.
+ */
+export function getPullConnectionResources(): Set<string> {
+  const out = new Set<string>();
+  const visit = (mod: AppConfig): void => {
+    for (const sync of mod.syncs ?? []) {
+      if (sync.pull?.connections) out.add(sync.pull.connections);
+    }
+    for (const child of mod.children ?? []) visit(child);
+  };
+  for (const mod of getAppRegistry().apps) visit(mod);
+  return out;
+}
+
+/** `def` with the sync-status field added when it's a pull's connection resource. */
+function withSyncStatus(def: ResourceDefinition, connections: Set<string>): ResourceDefinition {
+  if (!connections.has(def.singular) || !def.fields) return def;
+  if (def.fields[SYNC_STATUS_FIELD]) {
+    throw new Error(
+      `[resources] "${def.singular}" is a sync's connection resource, so Homestead adds its ` +
+        `"${SYNC_STATUS_FIELD}" field — remove the declared one`,
+    );
+  }
+  return { ...def, fields: { ...def.fields, [SYNC_STATUS_FIELD]: SYNC_STATUS_FIELD_DEF } };
+}
+
+/**
  * Same traversal as {@link getAllResourceDefs}, but pairs each
  * definition with the owning app so callers can read `app.id` while
  * iterating. Used by the offline mutation factory's auto-registration loop.
@@ -411,9 +464,10 @@ export function getAllResourceDefsWithApp(): {
   def: ResourceDefinition;
 }[] {
   const out: { app: AppConfig; def: ResourceDefinition }[] = [];
+  const connections = getPullConnectionResources();
   const visit = (mod: AppConfig): void => {
     for (const def of resolveResources(mod)) {
-      out.push({ app: mod, def });
+      out.push({ app: mod, def: withSyncStatus(def, connections) });
     }
     for (const child of mod.children ?? []) {
       visit(child);
@@ -614,6 +668,7 @@ export type RegisteredResourceSync = ResourceSync & { appId: string };
 export function getAllResourceSyncs(): RegisteredResourceSync[] {
   const out: RegisteredResourceSync[] = [];
   const seen = new Set<string>();
+  const pulledConnections = new Map<string, string>();
   const visit = (mod: AppConfig): void => {
     for (const sync of mod.syncs ?? []) {
       if (!sync.id || !sync.resource) {
@@ -621,6 +676,14 @@ export function getAllResourceSyncs(): RegisteredResourceSync[] {
           `Resource sync (app "${mod.id}") missing id or resource; ignored`,
           { appId: mod.id, syncId: sync.id },
         );
+        continue;
+      }
+      const problem = syncShapeProblem(sync, pulledConnections);
+      if (problem) {
+        logger.warn(`Resource sync "${sync.id}" (app "${mod.id}") ${problem}; ignored`, {
+          appId: mod.id,
+          syncId: sync.id,
+        });
         continue;
       }
       if (seen.has(sync.id)) {
@@ -631,6 +694,7 @@ export function getAllResourceSyncs(): RegisteredResourceSync[] {
         continue;
       }
       seen.add(sync.id);
+      if (sync.pull?.connections) pulledConnections.set(sync.pull.connections, sync.id);
       out.push({ ...sync, appId: mod.id });
     }
     for (const child of mod.children ?? []) {
@@ -641,6 +705,30 @@ export function getAllResourceSyncs(): RegisteredResourceSync[] {
     visit(mod);
   }
   return out;
+}
+
+/** Shortest allowed `pull.every`, in seconds. */
+export const MIN_PULL_INTERVAL_SECONDS = 60;
+
+/** Why a sync's declaration can't be wired up, or null when it can. */
+function syncShapeProblem(
+  sync: ResourceSync,
+  pulledConnections: ReadonlyMap<string, string>,
+): string | null {
+  const flat = sync.load !== undefined || sync.on !== undefined || sync.when !== undefined;
+  if (flat && sync.push) return 'declares both `push` and the flat `on`/`when`/`load` form';
+  if (!syncPushOf(sync) && !sync.pull) return 'has neither a push nor a pull side';
+  if (sync.pull) {
+    const every = sync.pull.every;
+    if (!Number.isFinite(every) || every < MIN_PULL_INTERVAL_SECONDS) {
+      return `pulls every ${every}s — at least ${MIN_PULL_INTERVAL_SECONDS}s`;
+    }
+    const other = sync.pull.connections && pulledConnections.get(sync.pull.connections);
+    if (other) {
+      return `pulls per "${sync.pull.connections}", which sync "${other}" already does`;
+    }
+  }
+  return null;
 }
 
 /**
