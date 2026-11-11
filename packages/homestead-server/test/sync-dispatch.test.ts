@@ -13,7 +13,9 @@ import { generateId, generateToken, nowRFC3339 } from '../src/engine/ids';
 import { hashPassword, insertToken, insertUser } from '../src/engine/users';
 import { TYPE_SUPERUSER } from '../src/engine/types';
 import type { User } from '../src/engine/types';
-import type { SyncDispatcher, SyncDispatchInput } from '../src/sync';
+import { createSyncDispatcher, type SyncDispatcher, type SyncDispatchInput } from '../src/sync';
+import type { SyncContext } from '@rambleraptor/homestead-core/apps/types';
+import type { OperationStore } from '@rambleraptor/homestead-core/resources/operations';
 
 /** A fake dispatcher that records every dispatch call. */
 function fakeDispatcher(): { dispatcher: SyncDispatcher; calls: SyncDispatchInput[] } {
@@ -60,8 +62,9 @@ async function call(
   path: string,
   token: string,
   body?: unknown,
+  extraHeaders: Record<string, string> = {},
 ): Promise<Response> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}`, ...extraHeaders };
   let payload: string | undefined;
   if (body !== undefined) {
     payload = JSON.stringify(body);
@@ -200,6 +203,95 @@ describe('dynamic-resource write dispatch', () => {
 
     const res = await call(engine, 'POST', '/users?id=u9', token, { email: 'x@example.com', password: 'pw-long-enough' });
     expect(res.status).toBe(200);
+    engine.db.close();
+  });
+});
+
+describe('writer and origin reach the syncs', () => {
+  const noOperations: OperationStore = {
+    async create() {
+      return { id: 'op', path: 'operations/op', done: false } as Awaited<
+        ReturnType<OperationStore['create']>
+      >;
+    },
+    async complete() {},
+    async updateMetadata() {},
+  };
+
+  test("a sync sees who wrote the change and their X-Homestead-Client tag, and skips its own", async () => {
+    const { engine, token } = await makeEngine();
+    const defRes = await call(engine, 'POST', '/aep-resource-definitions', token, BOOK_DEF);
+    expect(defRes.ok).toBe(true);
+
+    const seen: SyncContext[] = [];
+    const dispatcher = createSyncDispatcher(
+      engine.db,
+      [
+        {
+          id: 'book-mirror',
+          appId: 'test-app',
+          resource: 'book',
+          load: async () => ({ default: async (ctx: SyncContext) => void seen.push(ctx) }),
+        },
+      ],
+      noOperations,
+    );
+    engine.setSyncDispatcher(dispatcher);
+    const admin = (await engine.authenticateToken(token))!;
+
+    await call(engine, 'POST', '/books?id=b1', token, { title: 'Imported' }, {
+      'X-Homestead-Client': 'cron:book-import',
+    });
+    // The sync writing back to the record it mirrors doesn't fire it again.
+    await call(engine, 'PATCH', '/books/b1', token, { title: 'Stamped' }, {
+      'X-Homestead-Client': 'sync:book-mirror',
+    });
+    // A malformed tag is dropped, not passed on.
+    await call(engine, 'PATCH', '/books/b1', token, { title: 'Edited' }, {
+      'X-Homestead-Client': 'not a tag!',
+    });
+    await dispatcher.idle();
+
+    expect(seen.map((c) => [c.event, c.record?.title, c.actor, c.origin])).toEqual([
+      ['create', 'Imported', `users/${admin.id}`, 'cron:book-import'],
+      ['update', 'Edited', `users/${admin.id}`, null],
+    ]);
+    dispatcher.stop();
+    engine.db.close();
+  });
+
+  test('user writes carry the writer too', async () => {
+    const { engine, token } = await makeEngine();
+    const calls: Array<{ actor: string | null; origin: string | null }> = [];
+    const dispatcher = createSyncDispatcher(
+      engine.db,
+      [
+        {
+          id: 'user-mirror',
+          appId: 'test-app',
+          resource: 'user',
+          when: ({ actor, origin }) => {
+            calls.push({ actor, origin });
+            return false;
+          },
+          load: async () => ({ default: async () => {} }),
+        },
+      ],
+      noOperations,
+    );
+    engine.setSyncDispatcher(dispatcher);
+    const admin = (await engine.authenticateToken(token))!;
+
+    await call(engine, 'POST', '/users?id=u1', token, { email: 'a@example.com', password: 'pw-long-enough' }, {
+      'X-Homestead-Client': 'tab-1',
+    });
+    await call(engine, 'PATCH', '/users/u1', token, { display_name: 'A' });
+
+    expect(calls).toEqual([
+      { actor: `users/${admin.id}`, origin: 'tab-1' },
+      { actor: `users/${admin.id}`, origin: null },
+    ]);
+    dispatcher.stop();
     engine.db.close();
   });
 });

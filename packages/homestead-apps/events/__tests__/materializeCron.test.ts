@@ -87,6 +87,7 @@ function ctx(): CronContext {
     id: 'events-materialize-reminders',
     appId: 'events',
     token: 'admin-token',
+    writeOrigin: 'cron:events-materialize-reminders',
     firedAt: NOW.toISOString(),
     log: async () => {},
   };

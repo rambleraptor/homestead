@@ -19,6 +19,14 @@ export interface HomesteadClientOptions {
    * and for runtimes that scope fetch differently.
    */
   fetch?: typeof fetch;
+  /**
+   * Tag every request with this origin (`X-Homestead-Client`). Server-side
+   * writers use it to mark their own writes — e.g. a calendar import tags its
+   * writes `cron:calendar-pull` so the outbound sync can tell them apart from a
+   * person's edit and not echo them back. Letters, digits and `_.:-`, at most
+   * 128 characters; the server ignores anything else.
+   */
+  origin?: string;
 }
 
 /**
@@ -79,6 +87,7 @@ export function createHomesteadClient(
   const transport: Transport = {
     baseUrl: normalizeBaseUrl(options.baseUrl ?? ''),
     fetch: options.fetch ?? globalThis.fetch.bind(globalThis),
+    origin: options.origin,
   };
   return new HomesteadClient(transport, options.auth ?? anonymous());
 }

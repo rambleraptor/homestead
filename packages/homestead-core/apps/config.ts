@@ -4,7 +4,7 @@ import type { ResourceSync } from './sync';
 // Re-exported here so an operator can author a sync — its declaration and its
 // handler's `SyncContext`/`SyncHandler` types — from the same module they
 // already import `HomesteadConfig` from, without reaching into app internals.
-export type { SyncEvent, SyncContext, SyncHandler, ResourceSync } from './sync';
+export type { SyncChange, SyncEvent, SyncContext, SyncHandler, ResourceSync } from './sync';
 
 /**
  * One OAuth provider in {@link OAuthConfig}. Field names mirror the JSON the

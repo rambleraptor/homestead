@@ -93,6 +93,7 @@ function ctx(): CronContext {
     id: 'notifications-dispatch',
     appId: 'notifications',
     token: 'admin-token',
+    writeOrigin: 'cron:notifications-dispatch',
     firedAt: NOW.toISOString(),
     log: async () => {},
   };

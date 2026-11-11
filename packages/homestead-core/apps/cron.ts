@@ -41,6 +41,13 @@ export interface CronContext {
    * settles — don't retain it past the handler's lifetime.
    */
   token: string;
+  /**
+   * The origin tag for this handler's writes: `cron:<id>`. Pass it to
+   * `serverClient` (`{ origin: ctx.writeOrigin }`) so a resource sync can tell
+   * the cron's writes from a person's — an outbound mirror skips what an
+   * inbound import wrote by checking `origin` in its `when`.
+   */
+  writeOrigin: string;
   /** RFC3339 timestamp of this firing. */
   firedAt: string;
   /**

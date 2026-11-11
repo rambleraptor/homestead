@@ -6,19 +6,23 @@ fires a handler you write — *after* the write has committed — so you can pus
 change to a CRM, a mapping service, a search index, an accounting system, or
 anything else with an API.
 
-A sync is best-effort and asynchronous: the write that triggered it returns to
-the caller first, then the mirror runs out-of-band. A sync can never block or
-fail the write it observes.
+A sync is asynchronous and durable: the write that triggered it returns to the
+caller first, then the mirror runs out-of-band, and the change waits in a
+database outbox until your handler succeeds — across restarts. A sync can never
+block or fail the write it observes.
 
 ## What it is (and isn't)
 
 - **One-way.** Homestead → external. It does not pull changes back.
 - **Post-commit.** The handler runs after the record change is durable, so the
   snapshots it sees are the real committed state.
-- **Best-effort, at-least-once.** A failing handler is retried a few times with
-  backoff, and each firing is recorded as an operation you can inspect. There is
-  no durable outbox, though — if the process dies mid-retry, that change is not
-  replayed. **Write handlers to be idempotent.**
+- **Durable, at-least-once.** Each change is written to an outbox before it
+  runs and stays there until the handler succeeds. A failing handler is retried
+  quickly, then redelivered on a growing backoff for about a day — through
+  restarts — before the change is given up on. Each delivery is recorded as an
+  operation you can inspect. **Write handlers to be idempotent.**
+- **Knows who wrote it.** Each change carries its writer and the writer's origin
+  tag, so a sync can ignore its own writes and those of an import job.
 - **Handler-owned mapping.** Homestead stays agnostic about external ids; your
   handler owns the id mapping and the idempotency that at-least-once delivery
   requires.
@@ -84,8 +88,8 @@ export const myApp: AppConfig = {
 
 **Skip changes that don't matter with `when`.** Every firing is recorded as an
 operation, so a sync that only cares about some records or some edits should
-say so up front: `when` gets the change (`event`, `record`, `previous`) and
-returns whether to fire. It runs synchronously after the commit, before any
+say so up front: `when` gets the change (`event`, `record`, `previous`, `actor`,
+`origin`) and returns whether to fire. It runs synchronously after the commit, before any
 operation is started, so keep it pure and cheap; a check that throws fires the
 handler anyway. Notes uses it to file `#todo` lines as todos without an
 operation for every note saved:
@@ -124,6 +128,10 @@ A handler is a plain async function that default-exports. It receives a
 | `recordId`  | Id of the record that changed. |
 | `record`    | Post-change state — `null` on `delete`. For `user`, the wire shape (never the password hash). |
 | `previous`  | Pre-change state — `null` on `create`. |
+| `actor`     | Who made the change, as `users/{id}`; `null` with no signed-in caller. Crons and syncs write as the superuser, so tell them apart by `origin`. |
+| `origin`    | The writer's origin tag (its `X-Homestead-Client` header): a per-tab id from the app, `cron:<id>` / `sync:<id>` from a cron or sync that tagged its client, or `null`. |
+| `writeOrigin` | The tag for this handler's own writes: `sync:<id>`. Pass it to `serverClient`. |
+| `delivery`  | Which delivery this is, from 1. Above 1, an earlier delivery failed — part of it may already have reached the external system. |
 | `token`     | A short-lived admin bearer token, minted for this firing and revoked after. Pair it with `serverClient(token)`. |
 | `firedAt`   | RFC3339 timestamp of the firing. |
 | `log`       | Append a progress line to the firing's operation log. |
@@ -166,23 +174,60 @@ A commented starting point ships in `homestead.config.ts` (the `syncs` block
 near the top) — uncomment it and drop your handler at
 `./syncs/mirror-user-to-maps.ts`.
 
+## Telling writers apart
+
+Every write can carry an origin tag in its `X-Homestead-Client` header, and the
+change a sync sees carries it as `origin`. Server code sets it with
+`serverClient(token, undefined, { origin })`, and crons and syncs are handed a
+ready-made one as `ctx.writeOrigin` (`cron:<id>`, `sync:<id>`).
+
+- **A sync never fires on its own writes.** A change tagged with the sync's own
+  `writeOrigin` is skipped before it's queued, so a handler can store the
+  external id or a last-synced time back on the record it's mirroring without
+  mirroring it again:
+
+  ```ts
+  const hs = serverClient(ctx.token, undefined, { origin: ctx.writeOrigin });
+  await hs.collection('calendar-events').update(ctx.recordId, { external_id });
+  ```
+
+- **Skip an import's writes with `when`.** A cron that pulls changes *in* tags
+  its writes with its own `writeOrigin`; the outbound sync leaves them alone so
+  they don't bounce back out:
+
+  ```ts
+  when: ({ origin }) => origin !== 'cron:calendar-pull',
+  ```
+
 ## How it runs
 
 - **After the commit.** The engine's write path fires the dispatcher after a
-  create/update/delete is durable, then returns to the caller. Dispatch is
-  fire-and-forget.
+  create/update/delete is durable, writes the change to the outbox
+  (`_homestead_sync_outbox` in the engine database), then returns to the caller.
+  The outbox insert happens right after the commit, not inside it, so a crash in
+  that instant can still lose a change.
 - **Inside an operation.** Every firing runs inside an AEP-151 operation (like a
   cron firing), so its status, timing, result, and any `log()` lines land in the
   `operations` collection and show up in the Operations app. The operation's
   `method` is `sync:<id>`.
-- **Retried with backoff.** A throwing handler is retried up to 3 total attempts
-  (default 1s then 4s backoff, tunable with
-  `HOMESTEAD_SYNC_RETRY_BACKOFF_MS`). If every attempt fails, the operation
-  records the error — the triggering write is unaffected.
-- **Serialized per record.** Runs for the same `(sync, resource, recordId)` are
-  chained so two rapid edits mirror in order. Different records run
-  concurrently, under the same `HOMESTEAD_MAX_OPERATIONS` pool as every other
-  operation.
+- **Retried, then redelivered.** Within one delivery, a throwing handler is
+  retried up to 3 total attempts (default 1s then 4s apart, tunable with
+  `HOMESTEAD_SYNC_RETRY_BACKOFF_MS`); if they all fail, the delivery's
+  operation records the error. The change stays in the outbox and is delivered
+  again after 1m, 5m, 30m, 2h, 6h and 12h (tunable with
+  `HOMESTEAD_SYNC_REDELIVERY_MS`, a comma-separated list of milliseconds whose
+  length sets the number of redeliveries). Pending changes survive a restart and
+  are picked up at boot. The triggering write is never affected.
+- **Given up on, visibly.** After its last delivery a change is parked as
+  `dead` in the outbox (with the last error) and the server logs
+  `giving up on change`. Dead changes are kept for 30 days. A change whose sync
+  is no longer installed is parked the same way. With a master key configured,
+  queued snapshots are stored encrypted.
+- **In order per record.** Changes to the same `(sync, resource, recordId)` are
+  delivered in the order they were made: a later change waits while an earlier
+  one is being retried, and goes once that one succeeds or is given up on.
+  Different records run concurrently, under the same `HOMESTEAD_MAX_OPERATIONS`
+  pool as every other operation.
 
 ## Rules
 
@@ -195,5 +240,7 @@ near the top) — uncomment it and drop your handler at
    yourself.
 4. **Return a small summary** (`{ mirrored, placeId }`) — it's stored as the
    operation's response and makes the log useful.
-5. **One-way only.** A sync mirrors out; it never writes external state back
-   into Homestead as part of the same flow.
+5. **One-way only.** A sync mirrors out. It may write its own bookkeeping back
+   (an external id, a sync stamp) with `writeOrigin`, but bringing external
+   changes in is a separate job — a cron that tags its writes so the sync can
+   skip them.

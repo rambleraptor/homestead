@@ -36,6 +36,25 @@ describe('CRUD', () => {
     expect(mock.calls[0].headers.Authorization).toBe('Bearer tok');
   });
 
+  it('tags every request with the origin when one is set', async () => {
+    const mock = mockFetch(() => ({ json: {} }));
+    const tagged = createHomesteadClient({
+      auth: bearerToken('t'),
+      fetch: mock.fetch,
+      origin: 'cron:calendar-pull',
+    });
+    await tagged.collection('events').get('a');
+    await tagged.collection('events').create({});
+    expect(mock.calls.map((c) => c.headers['X-Homestead-Client'])).toEqual([
+      'cron:calendar-pull',
+      'cron:calendar-pull',
+    ]);
+
+    const plain = createHomesteadClient({ auth: bearerToken('t'), fetch: mock.fetch });
+    await plain.collection('events').get('a');
+    expect(mock.calls[2].headers['X-Homestead-Client']).toBeUndefined();
+  });
+
   it('creates via POST with a JSON body', async () => {
     const mock = mockFetch((c) => ({ status: 201, json: { id: 'new', ...(jsonBody(c) as object) } }));
     const hs = createHomesteadClient({ auth: bearerToken('t'), fetch: mock.fetch });

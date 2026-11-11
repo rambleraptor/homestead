@@ -83,6 +83,7 @@ function ctx(): CronContext {
     id: 'home-pickup-reminders',
     appId: 'home',
     token: 'admin-token',
+    writeOrigin: 'cron:home-pickup-reminders',
     firedAt: NOW.toISOString(),
     log: async () => {},
   };

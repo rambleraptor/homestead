@@ -15,14 +15,27 @@
  * which no app owns a definition for, but which lives in the engine registry —
  * just as easily as an app-owned collection.
  *
- * **Semantics.** Best-effort and asynchronous: the dispatcher retries the
- * handler a small number of times with backoff, but there is no durable outbox
- * — if the process dies mid-retry the change is not replayed. Runs for the same
- * `(sync, resource, recordId)` are serialized so two rapid edits mirror in
- * order; different records run concurrently. The framework is agnostic about
- * how the external side maps ids: the **handler owns** the external-id mapping
- * and idempotency, so write handlers to tolerate being re-run for the same
- * change (an at-least-once delivery model).
+ * **Semantics.** Asynchronous and durable: each change a sync cares about is
+ * written to a database outbox before it runs, and stays there until the
+ * handler succeeds. A run retries quickly a few times; a run that still fails
+ * is redelivered later on a growing backoff (minutes, then hours), across
+ * restarts, until it succeeds or runs out of redeliveries and is parked as
+ * dead (see `homestead-server/src/sync.ts`). Changes for the same
+ * `(sync, resource, recordId)` are delivered in order — a later change waits
+ * for an earlier one — while different records run concurrently. The framework
+ * is agnostic about how the external side maps ids: the **handler owns** the
+ * external-id mapping and idempotency, so write handlers to tolerate being
+ * re-run for the same change (an at-least-once delivery model).
+ *
+ * **Who wrote it.** Each change carries its writer ({@link SyncContext.actor})
+ * and the writer's self-chosen origin tag ({@link SyncContext.origin}, the
+ * `X-Homestead-Client` header). A handler's own writes are tagged with its
+ * {@link SyncContext.writeOrigin} when it builds its client with
+ * `serverClient(ctx.token, undefined, { origin: ctx.writeOrigin })`, and a sync
+ * never fires on a change tagged with its own write origin — so storing an
+ * external id back on the record doesn't mirror the record again. To skip what
+ * another writer did (an inbound import's cron), check `origin` in
+ * {@link ResourceSync.when}.
  *
  * Every firing runs inside an AEP-151 **operation** — the dispatcher creates
  * one before invoking the handler and completes it (succeeded/failed)
@@ -52,6 +65,17 @@
  */
 export type SyncEvent = 'create' | 'update' | 'delete';
 
+/** The change a {@link ResourceSync.when} check is asked about. */
+export interface SyncChange {
+  event: SyncEvent;
+  record: Record<string, unknown> | null;
+  previous: Record<string, unknown> | null;
+  /** The writer, as `users/{id}`, or `null` (see {@link SyncContext.actor}). */
+  actor: string | null;
+  /** The writer's origin tag, or `null` (see {@link SyncContext.origin}). */
+  origin: string | null;
+}
+
 /**
  * Context passed to a sync handler each time the dispatcher fires it.
  */
@@ -78,6 +102,30 @@ export interface SyncContext {
    * old value.
    */
   previous: Record<string, unknown> | null;
+  /**
+   * Who made the change, as a user resource name (`users/{id}`), or `null`
+   * when no authenticated caller made it. Crons, syncs, and other server jobs
+   * write as the household's superuser, so tell them apart by {@link origin}.
+   */
+  actor: string | null;
+  /**
+   * The writer's origin tag (its `X-Homestead-Client` header), or `null` when
+   * it sent none. The SPA tags writes with a per-tab id; crons and syncs with
+   * their `writeOrigin` (`cron:<id>`, `sync:<id>`).
+   */
+  origin: string | null;
+  /**
+   * The origin tag for this handler's own writes back into Homestead:
+   * `sync:<id>`. Pass it to `serverClient` (`{ origin: ctx.writeOrigin }`); the
+   * dispatcher never fires this sync on a change carrying it.
+   */
+  writeOrigin: string;
+  /**
+   * Which delivery of this change this is, from 1. Above 1 the change has
+   * failed before (in this process or an earlier one) and is being redelivered,
+   * so part of it may already have reached the external system.
+   */
+  delivery: number;
   /**
    * Short-lived admin bearer token for engine access via the server-side
    * aepbase helpers. Minted for this firing and revoked once the handler
@@ -160,11 +208,7 @@ export interface ResourceSync {
    * check that throws counts as `true`, so a bug fires the handler rather than
    * silently skipping a change. Omit to fire on every change.
    */
-  when?: (change: {
-    event: SyncEvent;
-    record: Record<string, unknown> | null;
-    previous: Record<string, unknown> | null;
-  }) => boolean;
+  when?: (change: SyncChange) => boolean;
 
   /**
    * Lazy import of the handler module. The dispatcher awaits this on demand and
