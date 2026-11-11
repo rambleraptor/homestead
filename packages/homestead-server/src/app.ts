@@ -34,7 +34,10 @@ export interface HomesteadApp {
   spa: SpaAssets | null;
   rewriteIndex: IndexRewrite;
   setupState: 'pending' | 'claimed';
-  /** Closes the databases. Does not stop crons — the app never starts any. */
+  /**
+   * Stops delivering resource syncs and closes the databases. Does not stop
+   * crons — the app never starts any.
+   */
   close: () => void;
 }
 
@@ -189,9 +192,8 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
   // collection changed so a shared list refreshes on every device at once.
   const { createChangeFeed, teeDispatcher } = await import('./change-feed');
   const changeFeed = createChangeFeed(engine);
-  engine.setSyncDispatcher(
-    teeDispatcher(createSyncDispatcher(engine.db, resourceSyncs, operationStore), changeFeed),
-  );
+  const syncDispatcher = createSyncDispatcher(engine.db, resourceSyncs, operationStore);
+  engine.setSyncDispatcher(teeDispatcher(syncDispatcher, changeFeed));
 
   // Homestead-as-OAuth-provider (authorization server). Opt-in via
   // auth.authServer.enabled. When on, create its tables up front.
@@ -297,6 +299,7 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
     rewriteIndex,
     setupState,
     close: () => {
+      syncDispatcher.stop();
       engine.db.close();
       vectorStore.close();
     },

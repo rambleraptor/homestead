@@ -6,7 +6,16 @@ export interface Transport {
   /** Engine base, already normalized to include `/api/aep`. */
   baseUrl: string;
   fetch: typeof fetch;
+  /**
+   * Tag sent as `X-Homestead-Client` on every request, naming the writer. The
+   * server echoes it on change-feed events and hands it to resource syncs, so
+   * a writer can recognise (and skip) the changes it made itself.
+   */
+  origin?: string;
 }
+
+/** Header carrying {@link Transport.origin}. */
+export const ORIGIN_HEADER = 'X-Homestead-Client';
 
 /** Per-request knobs understood by {@link Http.request}. */
 export interface RequestOptions {
@@ -55,6 +64,7 @@ export class Http {
 
   private async headers(includeUserId?: boolean): Promise<Record<string, string>> {
     const headers: Record<string, string> = {};
+    if (this.transport.origin) headers[ORIGIN_HEADER] = this.transport.origin;
     const token = await this.strategy.token();
     if (token) headers.Authorization = `Bearer ${token}`;
     if (includeUserId && this.strategy.userId) {

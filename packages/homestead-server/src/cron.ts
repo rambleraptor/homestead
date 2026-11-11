@@ -158,6 +158,7 @@ export async function runCronHook(
           id: hook.id,
           appId: hook.appId,
           token: admin.token,
+          writeOrigin: cronWriteOrigin(hook.id),
           firedAt,
           log,
         });
@@ -168,6 +169,11 @@ export async function runCronHook(
   } finally {
     admin.revoke();
   }
+}
+
+/** The origin tag a cron's own writes carry (see `CronContext.writeOrigin`). */
+export function cronWriteOrigin(id: string): string {
+  return `cron:${id}`;
 }
 
 /**

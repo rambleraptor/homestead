@@ -17,7 +17,7 @@ import type { HouseholdMember } from '../household/types';
 
 export type { CronContext, CronHandler, CronHook } from './cron';
 export type { MigrationContext, MigrationHandler, Migration } from './migrations';
-export type { SyncContext, SyncHandler, SyncEvent, ResourceSync } from './sync';
+export type { SyncChange, SyncContext, SyncHandler, SyncEvent, ResourceSync } from './sync';
 export type { CredentialSlot } from './credential-slots';
 
 /**

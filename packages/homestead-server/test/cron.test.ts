@@ -117,6 +117,7 @@ describe('runCronHook', () => {
 
     expect(seen?.id).toBe('digest');
     expect(seen?.appId).toBe('test-app');
+    expect(seen?.writeOrigin).toBe('cron:digest');
     expect(seen?.firedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     // The token resolved to the superuser while the handler ran…
     expect(userDuringRun).toBe('owner@example.com');

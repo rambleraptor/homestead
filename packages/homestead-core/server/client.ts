@@ -19,15 +19,31 @@ import {
 } from '@rambleraptor/homestead-client';
 import { AEPBASE_URL } from './aepbase';
 
+/** Options for {@link serverClient}. */
+export interface ServerClientOptions {
+  /**
+   * Tag this client's writes with an origin (`X-Homestead-Client`). Crons and
+   * syncs pass their context's `writeOrigin` so a resource sync can recognise
+   * the change as theirs — a sync never fires on its own writes, and an
+   * outbound mirror can skip what an inbound import wrote.
+   */
+  origin?: string;
+}
+
 /**
  * A {@link HomesteadClient} bound to the engine at {@link AEPBASE_URL}, acting as
  * the holder of `token`. Pass `userId` when the caller invokes AEP-136 custom
  * methods that need the gateway's `X-User-Id` header (plain CRUD never does).
  */
-export function serverClient(token: string, userId?: string): HomesteadClient {
+export function serverClient(
+  token: string,
+  userId?: string,
+  options: ServerClientOptions = {},
+): HomesteadClient {
   return createHomesteadClient({
     baseUrl: AEPBASE_URL,
     auth: bearerToken(token, userId),
+    origin: options.origin,
   });
 }
 

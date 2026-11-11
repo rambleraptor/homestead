@@ -89,6 +89,7 @@ function ctx(): CronContext {
     id: 'home-task-reminders',
     appId: 'home',
     token: 'admin-token',
+    writeOrigin: 'cron:home-task-reminders',
     firedAt: NOW.toISOString(),
     log: async () => {},
   };

@@ -48,6 +48,7 @@ const ctx = {
   id: 'documents-ingest-email',
   appId: 'documents',
   token: 'admin-tok',
+  writeOrigin: 'cron:documents-ingest-email',
   firedAt: '2026-07-23T00:00:00.000Z',
   log: vi.fn(async () => {}),
 };

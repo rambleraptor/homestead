@@ -1,11 +1,18 @@
+import { randomBytes } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { Database } from '../src/engine/sqlite';
+import { __resetMasterKeyCacheForTests } from '../src/engine/crypto';
+import { runWithRequestContext } from '../src/engine/request-context';
+import { OUTBOX_TABLE } from '../src/sync-outbox';
+import type { User } from '../src/engine/types';
 import { createUserTables, getUserByToken } from '../src/engine/users';
 import { createSuperuser } from '../src/bootstrap';
 import {
   createSyncDispatcher,
   runResourceSync,
   syncOperationMethod,
+  type DurableSyncDispatcher,
+  type SyncDelivery,
   type SyncDispatchInput,
 } from '../src/sync';
 import type { RegisteredResourceSync } from '@rambleraptor/homestead-core/apps/registry';
@@ -48,6 +55,21 @@ function input(extra: Partial<SyncDispatchInput> = {}): SyncDispatchInput {
     recordId: 'rec-1',
     record: { id: 'rec-1' },
     previous: null,
+    ...extra,
+  };
+}
+
+/** One delivery for `runResourceSync`, defaulting to a first-delivery create. */
+function delivery(extra: Partial<SyncDelivery> = {}): SyncDelivery {
+  return {
+    event: 'create',
+    resource: 'user',
+    recordId: 'rec-1',
+    record: { id: 'rec-1' },
+    previous: null,
+    actor: null,
+    origin: null,
+    delivery: 1,
     ...extra,
   };
 }
@@ -100,10 +122,35 @@ beforeEach(() => {
   process.env.HOMESTEAD_SYNC_RETRY_BACKOFF_MS = '0,0';
 });
 
+const dispatchers: DurableSyncDispatcher[] = [];
+
 afterEach(() => {
+  for (const d of dispatchers.splice(0)) d.stop();
   delete process.env.HOMESTEAD_SYNC_RETRY_BACKOFF_MS;
+  delete process.env.HOMESTEAD_SYNC_REDELIVERY_MS;
   vi.restoreAllMocks();
 });
+
+/** `createSyncDispatcher`, stopped again after the test. */
+function dispatcherFor(...args: Parameters<typeof createSyncDispatcher>): DurableSyncDispatcher {
+  const d = createSyncDispatcher(...args);
+  dispatchers.push(d);
+  return d;
+}
+
+interface OutboxRow {
+  seq: number;
+  sync_id: string;
+  record_id: string;
+  state: string;
+  deliveries: number;
+  last_error: string | null;
+  payload: string;
+}
+
+function outboxRows(db: Database): OutboxRow[] {
+  return db.query(`SELECT * FROM ${OUTBOX_TABLE} ORDER BY seq`).all() as OutboxRow[];
+}
 
 describe('runResourceSync', () => {
   test('hands the handler a working admin token + full context, then revokes it', async () => {
@@ -118,7 +165,15 @@ describe('runResourceSync', () => {
         seen = ctx;
         userDuringRun = getUserByToken(db, ctx.token)?.email;
       }),
-      input({ event: 'update', recordId: 'u1', record: { id: 'u1', email: 'a@b.c' }, previous: { id: 'u1' } }),
+      delivery({
+        event: 'update',
+        recordId: 'u1',
+        record: { id: 'u1', email: 'a@b.c' },
+        previous: { id: 'u1' },
+        actor: 'users/u9',
+        origin: 'tab-1',
+        delivery: 2,
+      }),
       store,
     );
 
@@ -129,6 +184,10 @@ describe('runResourceSync', () => {
     expect(seen?.recordId).toBe('u1');
     expect(seen?.record).toEqual({ id: 'u1', email: 'a@b.c' });
     expect(seen?.previous).toEqual({ id: 'u1' });
+    expect(seen?.actor).toBe('users/u9');
+    expect(seen?.origin).toBe('tab-1');
+    expect(seen?.writeOrigin).toBe('sync:mirror');
+    expect(seen?.delivery).toBe(2);
     expect(seen?.firedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(userDuringRun).toBe('owner@example.com');
     // Token revoked once the handler settled.
@@ -143,7 +202,7 @@ describe('runResourceSync', () => {
     await runResourceSync(
       db,
       sync('mirror', async () => ({ mirrored: 'rec-1' }), { title: 'Mirror user to Maps' }),
-      input(),
+      delivery(),
       store,
     );
 
@@ -162,7 +221,7 @@ describe('runResourceSync', () => {
   test('defaults the operation title to the sync id and response to {}', async () => {
     const db = await freshDb();
     const { store, created, completed } = fakeOperationStore();
-    await runResourceSync(db, sync('bare', async () => {}), input(), store);
+    await runResourceSync(db, sync('bare', async () => {}), delivery(), store);
     expect(created[0].title).toBe('bare');
     expect(completed[0].response).toEqual({});
     db.close();
@@ -173,18 +232,19 @@ describe('runResourceSync', () => {
     const { store, completed, updated } = fakeOperationStore();
     let attempts = 0;
 
-    await runResourceSync(
+    const result = await runResourceSync(
       db,
       sync('flaky', async () => {
         attempts++;
         if (attempts < 3) throw new Error(`boom ${attempts}`);
         return { ok: true };
       }),
-      input(),
+      delivery(),
       store,
     );
 
     expect(attempts).toBe(3);
+    expect(result).toEqual({ ok: true });
     // Succeeded on the 3rd attempt; the response is recorded.
     expect(completed[0].response).toEqual({ ok: true });
     expect(loggedMessages(updated)).toEqual([
@@ -207,10 +267,10 @@ describe('runResourceSync', () => {
         sync('doomed', async () => {
           throw new Error('always');
         }),
-        input(),
+        delivery(),
         store,
       ),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ ok: false, error: 'always' });
 
     expect(loggedLine(err, '[sync] failed', 'sync=doomed')).toBe(true);
     expect(completed[0].error).toBeInstanceOf(Error);
@@ -234,7 +294,7 @@ describe('runResourceSync', () => {
         token = ctx.token;
         throw new Error('boom');
       }),
-      input(),
+      delivery(),
       store,
     );
     expect(getUserByToken(db, token!)).toBeNull();
@@ -246,15 +306,16 @@ describe('runResourceSync', () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { store, created } = fakeOperationStore();
     let called = false;
-    await runResourceSync(
+    const result = await runResourceSync(
       db,
       sync('orphan', async () => {
         called = true;
       }),
-      input(),
+      delivery(),
       store,
     );
     expect(called).toBe(false);
+    expect(result.ok).toBe(false);
     expect(created).toHaveLength(0);
     expect(loggedLine(err, '[sync] no admin available; skipping', 'sync=orphan')).toBe(true);
     db.close();
@@ -265,7 +326,7 @@ describe('createSyncDispatcher', () => {
   test('dispatch fires only matching resource + event, and never throws', async () => {
     const db = await freshDb();
     const { store, created } = fakeOperationStore();
-    const dispatcher = createSyncDispatcher(
+    const dispatcher = dispatcherFor(
       db,
       [
         sync('on-user-create', async () => {}, { resource: 'user', on: ['create'] }),
@@ -285,13 +346,15 @@ describe('createSyncDispatcher', () => {
     await sleep(30);
     expect(created).toHaveLength(1);
     expect(created[0].method).toBe('sync:on-user-create');
+    await dispatcher.idle();
+    dispatcher.stop();
     db.close();
   });
 
   test("skips a change its when check rejects, starting no operation; a throwing check fires", async () => {
     const db = await freshDb();
     const { store, created } = fakeOperationStore();
-    const dispatcher = createSyncDispatcher(
+    const dispatcher = dispatcherFor(
       db,
       [
         sync('picky', async () => {}, { when: ({ record }) => record?.wanted === true }),
@@ -310,6 +373,8 @@ describe('createSyncDispatcher', () => {
     await waitUntil(() => created.length >= 3);
     await sleep(30);
     expect(created.map((o) => o.method).sort()).toEqual(['sync:broken', 'sync:broken', 'sync:picky']);
+    await dispatcher.idle();
+    dispatcher.stop();
     db.close();
   });
 
@@ -331,7 +396,7 @@ describe('createSyncDispatcher', () => {
       order.push(`end ${tag}`);
     };
 
-    const dispatcher = createSyncDispatcher(db, [sync('s', handler, { resource: 'user' })], store);
+    const dispatcher = dispatcherFor(db, [sync('s', handler, { resource: 'user' })], store);
 
     dispatcher.dispatch(input({ recordId: 'rec-1', record: { id: 'rec-1', n: 1 } }));
     dispatcher.dispatch(input({ recordId: 'rec-1', record: { id: 'rec-1', n: 2 } }));
@@ -348,6 +413,297 @@ describe('createSyncDispatcher', () => {
 
     // For rec-1, run n=1 fully precedes run n=2 (ordered mirroring).
     expect(order.indexOf('end rec-1:1')).toBeLessThan(order.indexOf('start rec-1:2'));
+    await dispatcher.idle();
+    dispatcher.stop();
     db.close();
+  });
+
+  test('hands the handler and the when check the writer and origin from the request', async () => {
+    const db = await freshDb();
+    const { store } = fakeOperationStore();
+    const seen: SyncContext[] = [];
+    const checked: Array<{ actor: string | null; origin: string | null }> = [];
+    const dispatcher = dispatcherFor(
+      db,
+      [
+        sync('mirror', async (ctx) => void seen.push(ctx), {
+          when: ({ actor, origin }) => {
+            checked.push({ actor, origin });
+            return true;
+          },
+        }),
+      ],
+      store,
+    );
+
+    const caller = { id: 'u7' } as User;
+    runWithRequestContext({ caller, origin: 'tab-42' }, () => dispatcher.dispatch(input()));
+    // Outside any request: no writer.
+    dispatcher.dispatch(input({ recordId: 'rec-2' }));
+
+    await waitUntil(() => seen.length === 2);
+    await dispatcher.idle();
+    expect(checked).toEqual([
+      { actor: 'users/u7', origin: 'tab-42' },
+      { actor: null, origin: null },
+    ]);
+    const byRecord = Object.fromEntries(seen.map((c) => [c.recordId, c]));
+    expect(byRecord['rec-1']).toMatchObject({ actor: 'users/u7', origin: 'tab-42', delivery: 1 });
+    expect(byRecord['rec-2']).toMatchObject({ actor: null, origin: null });
+    dispatcher.stop();
+    db.close();
+  });
+
+  test("never fires a sync on a change carrying its own write origin", async () => {
+    const db = await freshDb();
+    const { store, created } = fakeOperationStore();
+    const dispatcher = dispatcherFor(
+      db,
+      [sync('gcal-push', async () => {}), sync('other', async () => {})],
+      store,
+    );
+
+    dispatcher.dispatch(input({ origin: 'sync:gcal-push' }));
+
+    await waitUntil(() => created.length >= 1);
+    await dispatcher.idle();
+    // Only the other sync saw it; nothing for gcal-push was even queued.
+    expect(created.map((o) => o.method)).toEqual(['sync:other']);
+    expect(outboxRows(db)).toEqual([]);
+    dispatcher.stop();
+    db.close();
+  });
+
+  test('keeps the change in the outbox until delivered, then forgets it', async () => {
+    const db = await freshDb();
+    const { store } = fakeOperationStore();
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let started = false;
+    const dispatcher = dispatcherFor(
+      db,
+      [
+        sync('slow', async () => {
+          started = true;
+          await gate;
+        }),
+      ],
+      store,
+    );
+
+    dispatcher.dispatch(input());
+    // Durable before the handler has done anything.
+    expect(outboxRows(db)).toMatchObject([{ sync_id: 'slow', record_id: 'rec-1', state: 'pending' }]);
+
+    await waitUntil(() => started);
+    release();
+    await dispatcher.idle();
+    expect(outboxRows(db)).toEqual([]);
+    dispatcher.stop();
+    db.close();
+  });
+
+  test('redelivers a failed change later, counting deliveries', async () => {
+    process.env.HOMESTEAD_SYNC_REDELIVERY_MS = '0,0,0';
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const db = await freshDb();
+    const { store, updated } = fakeOperationStore();
+    const deliveries: number[] = [];
+    const dispatcher = dispatcherFor(
+      db,
+      [
+        sync('flaky', async (ctx) => {
+          deliveries.push(ctx.delivery);
+          if (ctx.delivery < 3) throw new Error(`down ${ctx.delivery}`);
+          return { ok: true };
+        }),
+      ],
+      store,
+    );
+
+    dispatcher.dispatch(input());
+    await waitUntil(() => deliveries.includes(3));
+    await dispatcher.idle();
+
+    // Three quick attempts in each of the two failed deliveries, then success.
+    expect(deliveries).toEqual([1, 1, 1, 2, 2, 2, 3]);
+    expect(outboxRows(db)).toEqual([]);
+    expect(
+      updated.some((u) =>
+        (u.metadata.logs as { message: string }[]).some((l) => l.message === 'delivery 3 of 4'),
+      ),
+    ).toBe(true);
+    dispatcher.stop();
+    db.close();
+  });
+
+  test('parks a change as dead after its last delivery; later changes still go out', async () => {
+    process.env.HOMESTEAD_SYNC_REDELIVERY_MS = '0';
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const db = await freshDb();
+    const { store } = fakeOperationStore();
+    const delivered: unknown[] = [];
+    const dispatcher = dispatcherFor(
+      db,
+      [
+        sync('picky', async (ctx) => {
+          if (ctx.record?.n === 1) throw new Error('rejected');
+          delivered.push(ctx.record?.n);
+        }),
+      ],
+      store,
+    );
+
+    dispatcher.dispatch(input({ record: { id: 'rec-1', n: 1 } }));
+    dispatcher.dispatch(input({ event: 'update', record: { id: 'rec-1', n: 2 } }));
+    await waitUntil(() => delivered.length === 1);
+    await dispatcher.idle();
+
+    expect(delivered).toEqual([2]);
+    expect(outboxRows(db)).toMatchObject([
+      { record_id: 'rec-1', state: 'dead', deliveries: 2, last_error: 'rejected' },
+    ]);
+    expect(loggedLine(err, 'giving up on change', 'sync=picky')).toBe(true);
+    dispatcher.stop();
+    db.close();
+  });
+
+  test('holds later changes to a record behind one waiting to be redelivered', async () => {
+    process.env.HOMESTEAD_SYNC_REDELIVERY_MS = '60000';
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const db = await freshDb();
+    const { store } = fakeOperationStore();
+    let clock = 1_000_000;
+    let failing = true;
+    const delivered: string[] = [];
+    const dispatcher = dispatcherFor(
+      db,
+      [
+        sync('ordered', async (ctx) => {
+          if (failing) throw new Error('offline');
+          delivered.push(`${ctx.recordId}:${ctx.record?.n}`);
+        }),
+      ],
+      store,
+      { now: () => clock },
+    );
+
+    dispatcher.dispatch(input({ record: { id: 'rec-1', n: 1 } }));
+    await waitUntil(() => outboxRows(db)[0]?.deliveries === 1);
+    failing = false;
+    dispatcher.dispatch(input({ event: 'update', record: { id: 'rec-1', n: 2 } }));
+    dispatcher.dispatch(input({ recordId: 'rec-2', record: { id: 'rec-2', n: 1 } }));
+    await waitUntil(() => delivered.length === 1);
+    await dispatcher.idle();
+
+    // rec-2 went out; rec-1's second change waits behind its first.
+    expect(delivered).toEqual(['rec-2:1']);
+    expect(outboxRows(db).map((r) => r.record_id)).toEqual(['rec-1', 'rec-1']);
+
+    // A minute later the first change is due again, and both go out in order.
+    clock += 60_000;
+    // Any new change wakes the drainer, as its timer would have.
+    dispatcher.dispatch(input({ recordId: 'rec-3', record: { id: 'rec-3', n: 1 } }));
+    await waitUntil(() => delivered.length === 4);
+    await dispatcher.idle();
+    expect(delivered.filter((d) => d.startsWith('rec-1'))).toEqual(['rec-1:1', 'rec-1:2']);
+    expect(outboxRows(db)).toEqual([]);
+    dispatcher.stop();
+    db.close();
+  });
+
+  test('a restarted server delivers what the previous one left pending', async () => {
+    process.env.HOMESTEAD_SYNC_REDELIVERY_MS = '60000';
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const db = await freshDb();
+    const { store } = fakeOperationStore();
+
+    const first = dispatcherFor(
+      db,
+      [
+        sync('mirror', async () => {
+          throw new Error('offline');
+        }),
+      ],
+      store,
+    );
+    runWithRequestContext({ caller: { id: 'u1' } as User, origin: 'tab-1' }, () =>
+      first.dispatch(input({ record: { id: 'rec-1', title: 'Soccer' } })),
+    );
+    await waitUntil(() => outboxRows(db)[0]?.deliveries === 1);
+    first.stop();
+
+    const seen: SyncContext[] = [];
+    // The redelivery is due a minute after the failure.
+    const second = dispatcherFor(db, [sync('mirror', async (ctx) => void seen.push(ctx))], store, {
+      now: () => Date.now() + 120_000,
+    });
+    await waitUntil(() => seen.length === 1);
+    await second.idle();
+
+    expect(seen[0]).toMatchObject({
+      recordId: 'rec-1',
+      record: { id: 'rec-1', title: 'Soccer' },
+      actor: 'users/u1',
+      origin: 'tab-1',
+      delivery: 2,
+    });
+    expect(outboxRows(db)).toEqual([]);
+    second.stop();
+    db.close();
+  });
+
+  test('parks a change whose sync is no longer installed', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const db = await freshDb();
+    const { store } = fakeOperationStore();
+    const first = dispatcherFor(db, [sync('gone', async () => new Promise(() => {}))], store);
+    first.dispatch(input());
+    first.stop();
+
+    const second = dispatcherFor(db, [], store);
+    await waitUntil(() => outboxRows(db)[0]?.state === 'dead');
+    await second.idle();
+    expect(outboxRows(db)[0].last_error).toBe('no sync "gone" is installed');
+    expect(loggedLine(err, 'giving up on change', 'sync=gone')).toBe(true);
+    second.stop();
+    db.close();
+  });
+
+  test('encrypts queued snapshots when a master key is configured', async () => {
+    process.env.HOMESTEAD_MASTER_KEY = randomBytes(32).toString('base64');
+    __resetMasterKeyCacheForTests();
+    try {
+      const db = await freshDb();
+      const { store } = fakeOperationStore();
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const seen: SyncContext[] = [];
+      const dispatcher = dispatcherFor(
+        db,
+        [
+          sync('mirror', async (ctx) => {
+            seen.push(ctx);
+            await gate;
+          }),
+        ],
+        store,
+      );
+
+      dispatcher.dispatch(input({ record: { id: 'rec-1', pin: '4321' } }));
+      const [row] = outboxRows(db);
+      expect(row.payload.startsWith('enc:v1:')).toBe(true);
+      expect(row.payload).not.toContain('4321');
+
+      await waitUntil(() => seen.length === 1);
+      expect(seen[0].record).toEqual({ id: 'rec-1', pin: '4321' });
+      release();
+      await dispatcher.idle();
+      dispatcher.stop();
+      db.close();
+    } finally {
+      delete process.env.HOMESTEAD_MASTER_KEY;
+      __resetMasterKeyCacheForTests();
+    }
   });
 });
