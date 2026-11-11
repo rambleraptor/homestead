@@ -7,8 +7,9 @@
 
 import { useMemo, useRef } from 'react';
 import { findImportPreview } from '../importPreview';
+import { OFFLINE_EMPTY_DESCRIPTION, OFFLINE_PLACEHOLDER } from '../offline';
 import { ChatCardProvider, type ChatCardContext } from '../cardContext';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, WifiOff } from 'lucide-react';
 import {
   Conversation,
   ConversationContent,
@@ -34,6 +35,7 @@ import {
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/suggestion';
 import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
+import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import {
   ATTACHMENT_ERRORS,
@@ -89,6 +91,10 @@ export function ChatThread({
   const last = messages.at(-1);
   const showThinking = busy && !isAnswering(last);
   const missing = chat.history.isError;
+  // Offline, the thread is read-only: what's saved on the device stays on
+  // screen, and the composer waits (keeping whatever is typed in it).
+  const { isOffline } = useOnlineStatus();
+  const blocked = missing || isOffline;
   const composer = useRef<HTMLDivElement>(null);
   usePrefillComposer(composer, draft);
 
@@ -123,14 +129,25 @@ export function ChatThread({
         <ConversationContent>
           {messages.length === 0 && !busy ? (
             conversationId && chat.history.isPending ? (
-              <ConversationEmptyState data-testid="chat-loading">
-                <Loader className="text-muted-foreground" aria-label="Opening the conversation" />
-              </ConversationEmptyState>
+              isOffline ? (
+                // Not saved on this device, and no way to fetch it: say so
+                // rather than spin until the connection returns.
+                <ConversationEmptyState
+                  icon={<WifiOff className="size-10" />}
+                  title="This conversation isn't on this device"
+                  description="You're offline. It will open when you reconnect."
+                  data-testid="chat-history-offline"
+                />
+              ) : (
+                <ConversationEmptyState data-testid="chat-loading">
+                  <Loader className="text-muted-foreground" aria-label="Opening the conversation" />
+                </ConversationEmptyState>
+              )
             ) : (
               <ConversationEmptyState
-                icon={<MessageCircle className="size-10" />}
+                icon={isOffline ? <WifiOff className="size-10" /> : <MessageCircle className="size-10" />}
                 title={empty.title}
-                description={empty.description}
+                description={isOffline ? OFFLINE_EMPTY_DESCRIPTION : empty.description}
               />
             )
           ) : (
@@ -142,7 +159,7 @@ export function ChatThread({
                 stored={chat.storedById.get(message.id)}
                 streaming={busy && i === messages.length - 1 && message.role === 'assistant'}
                 onAnswerApproval={chat.answerApproval}
-                busy={busy}
+                busy={busy || isOffline}
                 findPreview={(previewId) => findImportPreview(messages, previewId)}
               />
             ))
@@ -162,7 +179,16 @@ export function ChatThread({
     )}
 
     <div className="space-y-3 p-3" ref={composer}>
-      {messages.length === 0 && !busy && !conversationId && starters.length > 0 && (
+      {isOffline && messages.length > 0 && (
+        <p
+          className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs"
+          data-testid="chat-offline"
+        >
+          <WifiOff className="size-3.5" aria-hidden />
+          You&rsquo;re offline. The assistant will answer once you reconnect.
+        </p>
+      )}
+      {messages.length === 0 && !busy && !conversationId && !isOffline && starters.length > 0 && (
         <Suggestions data-testid="chat-suggestions">
           {starters.map((text) => (
             <Suggestion
@@ -186,10 +212,10 @@ export function ChatThread({
         </PromptInputHeader>
         <PromptInputBody>
           <PromptInputTextarea
-            placeholder={placeholder}
+            placeholder={isOffline ? OFFLINE_PLACEHOLDER : placeholder}
             aria-label="Message the assistant"
             data-testid="chat-input"
-            disabled={missing}
+            disabled={blocked}
             onKeyDown={(e) => {
               // Mid-reply, Enter waits: the draft stays put rather than
               // being sent into a conversation that can't take it yet.
@@ -201,14 +227,14 @@ export function ChatThread({
           <PromptInputTools>
             <PromptInputActionAddAttachments
               label="Attach photos or PDFs"
-              disabled={missing}
+              disabled={blocked}
               data-testid="chat-attach"
             />
           </PromptInputTools>
           <PromptInputSubmit
             status={chat.remoteRunning ? 'streaming' : status}
             onStop={chat.canStop ? () => void chat.stop() : undefined}
-            disabled={missing || (busy && !chat.canStop)}
+            disabled={blocked || (busy && !chat.canStop)}
             data-testid="chat-send"
           />
         </PromptInputFooter>

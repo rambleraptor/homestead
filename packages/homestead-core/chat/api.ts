@@ -6,6 +6,7 @@
 
 import { DefaultChatTransport, type FileUIPart } from 'ai';
 import { aepbase, authStore, refreshSession } from '@rambleraptor/homestead-core/api/aepbase';
+import { fetchOrNetworkError } from '@rambleraptor/homestead-core/api/connectivity';
 import { CHAT_MESSAGES, CONVERSATIONS } from './resources';
 import type {
   ChatTurnRequest,
@@ -154,7 +155,9 @@ export function createChatTransport(
         headers.delete('Content-Type');
         init = { ...init, headers, body: multipartTurn(init.body, files) };
       }
-      const res = await fetch(input, init);
+      // No response at all is its own error, so the caller can tell "offline"
+      // from a refusal.
+      const res = await fetchOrNetworkError(input, init);
       if (res.status === 503) throw new ChatNotConfiguredError();
       if (!res.ok) throw new ChatRequestError(res.status, await errorMessage(res));
       const id = res.headers.get('X-Conversation-Id');

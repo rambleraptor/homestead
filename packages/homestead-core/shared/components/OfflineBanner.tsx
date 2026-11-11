@@ -1,8 +1,9 @@
 /**
- * Global offline indicator. Renders a fixed strip at the bottom of the
- * viewport while the browser reports `navigator.onLine === false`. Mounts
- * once inside `AppShell` so every authenticated route shows it without
- * per-page wiring.
+ * Global offline indicator. Renders a strip along the bottom of the shell
+ * while the app is offline. Mounts once inside `AppShell`, under the page, so
+ * every authenticated route shows it without per-page wiring. It takes its
+ * own row rather than floating over the page: a page that docks something at
+ * the bottom (the home's composer) would otherwise have it covered.
  *
  * The status is sourced from `useOnlineStatus()`, which subscribes to React
  * Query's `onlineManager` — the same source that pauses + resumes mutations.
@@ -33,7 +34,7 @@ export function OfflineBanner() {
       role="status"
       aria-live="polite"
       data-testid="offline-banner"
-      className="fixed bottom-0 inset-x-0 z-50 animate-slide-up bg-amber-500 text-white px-4 py-2 text-sm text-center shadow-lg"
+      className="shrink-0 animate-slide-up bg-amber-500 text-white px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-sm text-center"
     >
       You are offline. Changes will sync when you reconnect.
     </div>

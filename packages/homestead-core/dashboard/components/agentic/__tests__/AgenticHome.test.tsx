@@ -10,6 +10,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AgenticHome } from '../AgenticHome';
 import { useAssistantAvailability } from '../../../home';
 import { useAuth } from '@rambleraptor/homestead-core/auth/useAuth';
+import { onlineManager } from '@tanstack/react-query';
 
 vi.mock('../../../home', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../home')>()),
@@ -48,6 +49,7 @@ const renderHome = (conversationId: string | null = null) =>
   );
 
 beforeEach(() => {
+  onlineManager.setOnline(true);
   vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1', name: 'Alex', type: 'regular' } } as never);
   vi.mocked(useAssistantAvailability).mockReturnValue('available');
 });
@@ -77,6 +79,14 @@ describe('AgenticHome', () => {
     vi.mocked(useAssistantAvailability).mockReturnValue(undefined);
     renderHome();
     expect(screen.queryByTestId('thread-stub')).toBeNull();
+    expect(screen.queryByTestId('home-assistant-unavailable')).toBeNull();
+  });
+
+  it('says it is offline, not blank, when it could not ask and has no connection', () => {
+    vi.mocked(useAssistantAvailability).mockReturnValue(undefined);
+    onlineManager.setOnline(false);
+    renderHome();
+    expect(screen.getByTestId('home-assistant-offline')).toHaveTextContent(/offline/i);
     expect(screen.queryByTestId('home-assistant-unavailable')).toBeNull();
   });
 
