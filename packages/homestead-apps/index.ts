@@ -8,6 +8,7 @@
  * experience, not feature content.
  */
 
+export { babyApp } from './baby';
 export { creditCardsApp } from './credit-cards';
 export { documentsApp } from './documents';
 export { eventsApp } from './events';
