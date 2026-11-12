@@ -7,6 +7,7 @@
  */
 
 import type { AppConfig } from '@rambleraptor/homestead-core/apps/types';
+import { DROP_BOX_SECRET_SLOT, DROP_BOX_URL_FLAG } from './dropBox';
 import { bookmarksResources } from './resources';
 
 export const bookmarksApp: AppConfig = {
@@ -31,6 +32,28 @@ export const bookmarksApp: AppConfig = {
   records: {
     bookmark: { component: () => import('./components/BookmarkCard').then((m) => m.BookmarkCard) },
   },
+  flags: {
+    [DROP_BOX_URL_FLAG]: {
+      type: 'string',
+      label: 'Drop box address',
+      description:
+        'Where a phone\'s shortcut sends links when this Homestead sits behind a login it can\'t ' +
+        'pass (e.g. https://homestead-drop.example.workers.dev). Leave blank to have shortcuts send ' +
+        'links straight to Homestead.',
+      default: '',
+    },
+  },
+  credentials: [
+    {
+      ...DROP_BOX_SECRET_SLOT,
+      label: 'Bookmarks drop box secret',
+      description:
+        'The admin secret of the drop box Homestead collects shared links from. It guards only the ' +
+        'drop box\'s own routes.',
+      usedBy: 'Bookmarks: Save from iPhone',
+      help: 'The value set on the drop box Worker as ADMIN_SECRET.',
+    },
+  ],
   // Fetch a newly saved link (or one asked for again) and fill the bookmark in.
   syncs: [
     {
@@ -42,6 +65,25 @@ export const bookmarksApp: AppConfig = {
       when: ({ record, previous }) =>
         record?.status === 'pending' && previous?.status !== 'pending',
       load: () => import('./syncs/capture'),
+    },
+    // The drop box (a separate public server a phone's shortcut posts to): tell
+    // it which boxes exist, and collect what's waiting in each, once a minute.
+    {
+      id: 'bookmarks-drop-box-boxes',
+      resource: 'bookmark-inbox',
+      title: 'Register drop boxes',
+      on: ['create', 'delete'],
+      load: () => import('./syncs/drop-box-register'),
+    },
+    {
+      id: 'bookmarks-drop-box',
+      resource: 'bookmark',
+      title: 'Collect links shared from a phone',
+      pull: {
+        connections: 'bookmark-inbox',
+        every: 60,
+        load: () => import('./syncs/drop-box-collect'),
+      },
     },
   ],
   web: {

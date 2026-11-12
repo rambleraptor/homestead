@@ -132,6 +132,38 @@ export class BookmarksPage {
     await this.expect(this.driver.getByTestId('iphone-shortcut-body-visibility')).toHaveCount(0);
   }
 
+  /**
+   * With a drop box configured: open "Save from iPhone" and make a shortcut
+   * address, saving as `visibility`. Returns the address a shortcut would post to.
+   */
+  async createIphoneAddress(visibility: 'private' | 'household' = 'private'): Promise<string> {
+    await this.driver.getByTestId('iphone-shortcut-open').click();
+    await this.chooseIphoneVisibility(visibility);
+    await this.driver.getByTestId('iphone-shortcut-create').click();
+    const address = this.driver.getByTestId('iphone-shortcut-url');
+    await this.expect(address).toBeVisible();
+    return (await address.getAttribute('data-value')) ?? '';
+  }
+
+  /** Leave the steps for the list of shortcuts already set up. */
+  async finishIphoneSetup() {
+    await this.driver.getByTestId('iphone-shortcut-done').click();
+    await this.expect(this.driver.getByTestId('iphone-inbox')).toBeVisible();
+  }
+
+  async checkIphoneInboxNow() {
+    await this.driver.getByTestId('iphone-inbox-check').click();
+  }
+
+  async removeIphoneInbox() {
+    await this.driver.getByTestId('iphone-inbox-remove').click();
+    await this.expect(this.driver.getByTestId('iphone-inbox')).toHaveCount(0);
+  }
+
+  async expectRowViaPhone(text: string) {
+    await this.expect(this.row(text).getByTestId('bookmark-via-phone')).toBeVisible();
+  }
+
   async closeDialog() {
     await this.driver.getByRole('button', { name: 'Close' }).click();
   }

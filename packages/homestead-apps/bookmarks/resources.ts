@@ -7,6 +7,11 @@ import type { ResourceDefinition } from '@rambleraptor/homestead-core/resources/
  */
 export const BOOKMARKS = 'bookmarks' as const;
 export const BOOKMARK_PAGES = 'pages' as const;
+/** A person's drop-box inboxes: `users/{id}/bookmark-inboxes/{id}`. */
+export const BOOKMARK_INBOXES = 'bookmark-inboxes' as const;
+
+/** `saved_via` on a bookmark that came through the drop box. */
+export const SAVED_VIA_DROP_BOX = 'drop-box' as const;
 
 export const VISIBILITY_HOUSEHOLD = 'household' as const;
 export const VISIBILITY_PRIVATE = 'private' as const;
@@ -74,6 +79,13 @@ export const bookmarksResources: ResourceDefinition[] = [
           'fetch again), "ready", or "failed" (the link still works). Leave it out when saving.',
       },
       fetch_error: { type: 'string', description: 'Why the page could not be fetched, when status is "failed".' },
+      saved_via: {
+        type: 'string',
+        enum: [SAVED_VIA_DROP_BOX],
+        description:
+          'Set by Homestead on a bookmark it collected from the drop box (a link shared from a phone). ' +
+          'Unset for one saved any other way. Leave it out.',
+      },
       created_by: { type: 'string', reference: { resource: 'user' } },
     },
   },
@@ -93,6 +105,37 @@ export const bookmarksResources: ResourceDefinition[] = [
       content: { type: 'string', description: 'The page\'s main text, as Markdown.' },
       word_count: { type: 'number', description: 'How many words the text has.' },
       source_url: { type: 'string', description: 'The address the text was fetched from, after redirects.' },
+    },
+  },
+  {
+    singular: 'bookmark-inbox',
+    plural: BOOKMARK_INBOXES,
+    // Under the user root: an inbox is its owner's alone, and the links
+    // collected from it are filed as theirs.
+    parents: ['user'],
+    description:
+      'A place links shared from a phone arrive: one per shortcut. The shortcut sends links to the ' +
+      'drop box (a separate public server) under a key; Homestead collects them from there into ' +
+      'the owner\'s bookmarks. Deleting an inbox stops its key working.',
+    user_settable_create: true,
+    // Plumbing for a phone's shortcut, not something to ask the assistant about.
+    modelTools: { chat: false, mcp: false },
+    fields: {
+      name: { type: 'string', required: true, description: 'What it is for, e.g. "iPhone shortcut".' },
+      box: {
+        type: 'string',
+        required: true,
+        immutable: true,
+        description:
+          'The SHA-256 (hex) of the key the shortcut sends. The key itself is never stored: it is ' +
+          'made in the browser and shown once.',
+      },
+      visibility: {
+        type: 'string',
+        enum: [VISIBILITY_HOUSEHOLD, VISIBILITY_PRIVATE],
+        default: VISIBILITY_PRIVATE,
+        description: 'Who sees the bookmarks collected from it: "private" (its owner) or "household".',
+      },
     },
   },
 ];

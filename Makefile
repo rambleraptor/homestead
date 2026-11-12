@@ -1,4 +1,4 @@
-.PHONY: help install clean lint type-check type-check-app type-check-cli type-check-server type-check-client type-check-harness build test test-unit test-cli test-node test-vm test-e2e test-e2e-ui test-all dev start audit format all ci install-service start-services stop restart status logs homestead homestead-test release
+.PHONY: help install clean lint type-check type-check-app type-check-cli type-check-server type-check-client type-check-harness type-check-drop build test test-unit test-cli test-node test-vm test-e2e test-e2e-ui test-all dev start audit format all ci install-service start-services stop restart status logs homestead homestead-test release
 
 # Release target platforms (filename arch follows Bun's convention: x64/arm64).
 RELEASE_PLATFORMS := linux-x64 linux-arm64 darwin-x64 darwin-arm64
@@ -33,7 +33,7 @@ lint: ## Run ESLint
 	cd $(FRONTEND_DIR) && npm run lint
 
 # Independent tsc projects: `make -j type-check` runs them side by side.
-type-check: type-check-app type-check-cli type-check-server type-check-client type-check-harness ## Run TypeScript type checking (frontend + CLI + server + client + VM harness)
+type-check: type-check-app type-check-cli type-check-server type-check-client type-check-harness type-check-drop ## Run TypeScript type checking (frontend + CLI + server + client + VM harness + drop box)
 
 type-check-app: ## Type-check the SPA, core and feature apps
 	@echo "Type-checking homestead-app..."
@@ -46,6 +46,10 @@ type-check-client: ## Type-check the standalone client library
 type-check-harness: ## Type-check the VM test harness and VM specs
 	@echo "Type-checking homestead-test-harness..."
 	npx tsc -p packages/homestead-test-harness/tsconfig.json
+
+type-check-drop: ## Type-check the drop box Worker
+	@echo "Type-checking homestead-drop..."
+	npx tsc -p packages/homestead-drop/tsconfig.json
 
 type-check-cli: ## Type-check the homestead CLI package
 	@echo "Type-checking homestead CLI..."

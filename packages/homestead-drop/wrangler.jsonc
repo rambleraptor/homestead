@@ -1,0 +1,26 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "homestead-drop",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-08",
+  // Served from the account's workers.dev address: no DNS, no zone, and out
+  // of reach of an Access rule on the Homestead's own domain.
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "homestead-drop",
+      // Filled in by `wrangler d1 create homestead-drop`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Per sender address, on the public route: a phone shares a link now and
+  // then; nothing honest sends twenty a minute.
+  "ratelimits": [
+    { "name": "SENDERS", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }
+  ],
+  // Once a day: forget links nobody collected.
+  "triggers": { "crons": ["17 4 * * *"] },
+  "observability": { "enabled": true }
+}

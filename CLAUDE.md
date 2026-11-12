@@ -421,6 +421,19 @@ SPA and apps share:
   vendored AI Elements chat components (Apache-2.0; its README lists what was
   changed from upstream — diff against it rather than overwriting)
 
+### Drop box (`packages/homestead-drop/`)
+
+A small Cloudflare Worker that is **not part of the server**: a public place a
+phone's shortcut can leave a link when the Homestead itself sits behind a login
+the shortcut can't pass (Cloudflare Access). It is built on the assumption that
+it can be broken into — it never calls Homestead and holds nothing of
+Homestead's — so everything flows one way: Bookmarks registers boxes with it
+(a push sync on `bookmark-inbox`) and collects from it (a pull sync, one loop
+per inbox), treating what comes back as untrusted (`bookmarks/syncs/drop-box-*`,
+`bookmarks/dropBox.ts`). `src/app.ts` is the whole request handling, over a
+`Store` (D1 when deployed, memory in tests — the VM specs run the same code
+through `bookmarks/vm/drop-box-stub.ts`). Its README covers deploying it.
+
 ### Feature apps package (`packages/homestead-apps/`)
 
 The user-facing feature apps (`baby`, `bookmarks`, `calendar`, `credit-cards`, `events`, `games`,
@@ -751,7 +764,10 @@ durable outbox, `homestead-server/src/sync.ts`) and/or a `pull` side (bring
 changes in per connection record on a schedule, `src/sync-pull.ts`), sharing the
 write origin `sync:<id>` so neither echoes the other. A pull's connection
 resource gains the `sync_status` system field and a `:sync` method
-(`core/server/sync-now/`). See
+(`core/server/sync-now/`). A pull writes as the system, so a record it files for
+a person is created with `ctx.ownedBy(userId)` — an in-process client whose
+creates are owned by that user (`runAsOwner` in `engine/request-context.ts`;
+like a system write, there is no way to ask for it over HTTP). See
 [`docs/guides/resource-sync.md`](packages/homestead-site/docs/guides/resource-sync.md).
 
 ### Resource references

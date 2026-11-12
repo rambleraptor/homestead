@@ -23,10 +23,19 @@ export interface VisibilityPickerProps {
    * it the labels still fold away on a phone-width screen.
    */
   compact?: boolean;
+  /** Keep the labels at every width, where the row has room for them. */
+  alwaysLabeled?: boolean;
   className?: string;
 }
 
-export function VisibilityPicker({ singular, value, onChange, compact = false, className }: VisibilityPickerProps) {
+export function VisibilityPicker({
+  singular,
+  value,
+  onChange,
+  compact = false,
+  alwaysLabeled = false,
+  className,
+}: VisibilityPickerProps) {
   const visibility = recordVisibility(singular);
   if (!visibility) return null;
   const options = [
@@ -60,7 +69,7 @@ export function VisibilityPicker({ singular, value, onChange, compact = false, c
             data-testid={`visibility-${option}`}
           >
             <Icon className="size-4" aria-hidden />
-            {!compact && <span className="sr-only sm:not-sr-only">{label}</span>}
+            {!compact && <span className={alwaysLabeled ? undefined : 'sr-only sm:not-sr-only'}>{label}</span>}
           </button>
         );
       })}

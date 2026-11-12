@@ -1,5 +1,15 @@
 import { Link } from 'react-router-dom';
-import { Check, CircleAlert, FileText, Globe, Loader2, Play, Star, type LucideIcon } from 'lucide-react';
+import {
+  Check,
+  CircleAlert,
+  FileText,
+  Globe,
+  Loader2,
+  Play,
+  Smartphone,
+  Star,
+  type LucideIcon,
+} from 'lucide-react';
 import { VisibilityBadge } from '@rambleraptor/homestead-core/permissions/components/VisibilityBadge';
 import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { displayTitle, sourceLabel } from '../bookmarks';
@@ -66,6 +76,14 @@ export function BookmarkRow({
           </span>
           {bookmark.author && <span className="truncate">· {bookmark.author}</span>}
           <VisibilityBadge singular="bookmark" record={{ ...bookmark }} showShared />
+          {bookmark.saved_via === 'drop-box' && (
+            // Came through the drop box, so it could have been put there by
+            // someone else: marked, to be recognisable.
+            <span className="inline-flex items-center gap-1" data-testid="bookmark-via-phone">
+              <Smartphone className="size-3" aria-hidden />
+              via iPhone
+            </span>
+          )}
           {fetching && (
             <span className="inline-flex items-center gap-1" data-testid="bookmark-fetching">
               <Loader2 className="size-3 animate-spin" aria-hidden />
