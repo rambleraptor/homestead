@@ -423,7 +423,7 @@ SPA and apps share:
 
 ### Feature apps package (`packages/homestead-apps/`)
 
-The user-facing feature apps (`baby`, `credit-cards`, `events`, `games`,
+The user-facing feature apps (`baby`, `bookmarks`, `credit-cards`, `events`, `games`,
 `gift-cards`, `groceries`, `hsa`, `notes`, `people`, `recipes`, `todos`) live here as
 the `@rambleraptor/homestead-apps` workspace package. (`dashboard` and
 `notifications` are always-installed core apps and live in `homestead-core`.) Apps import `@rambleraptor/homestead-core/...`
@@ -886,6 +886,18 @@ it — so sharing a gift card shares its transactions. The user subtree is the
 root case (only that user and superusers). Denies on the child type or any
 ancestor still narrow; a resource opts out with `independent_access: true`. See
 [`docs/design/parent-access-inheritance.md`](packages/homestead-site/docs/design/parent-access-inheritance.md).
+
+A resource whose records are sometimes one person's and sometimes the whole
+household's declares `access: { model: 'per-record', field, sharedValue,
+privateValue }` instead of forking into two resources: the household role's
+grant is filtered to the shared value and the engine unions it with the caller's
+own rows, so one collection holds both. The field is an immutable enum with a
+default, fixed at create (changing it means saving the record again).
+`bookmark` does this (`visibility`: `household` / `private`). The create form
+offers the choice with `VisibilityPicker` and a row states it with
+`VisibilityBadge` (`packages/homestead-core/permissions/components/`); both
+render nothing for a resource with no such choice. See
+[`docs/design/record-visibility.md`](packages/homestead-site/docs/design/record-visibility.md).
 
 ### App flags
 

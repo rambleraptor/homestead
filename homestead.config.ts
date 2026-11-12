@@ -12,6 +12,7 @@
 
 import {
   babyApp,
+  bookmarksApp,
   creditCardsApp,
   documentsApp,
   eventsApp,
@@ -190,6 +191,7 @@ const config: HomesteadConfig = {
     homeApp,
     todosApp,
     notesApp,
+    bookmarksApp,
     documentsApp,
     giftCardsApp,
     groceriesApp,

@@ -59,6 +59,7 @@ const COLORS: Record<string, string> = {
   bridge: '#1D4ED8',
   health: '#DC2626',
   notes: '#CA8A04',
+  bookmarks: '#4F46E5',
   baby: '#0EA5E9',
   chat: '#0D9488',
   notifications: '#D97706',
