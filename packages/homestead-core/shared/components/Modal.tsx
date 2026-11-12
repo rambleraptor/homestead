@@ -20,7 +20,8 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div>{children}</div>
+        {/* min-w-0: a grid item is otherwise as wide as its longest unbroken line. */}
+        <div className="min-w-0">{children}</div>
       </DialogContent>
     </Dialog>
   );

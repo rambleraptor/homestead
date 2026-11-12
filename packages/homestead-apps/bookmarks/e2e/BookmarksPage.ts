@@ -102,18 +102,21 @@ export class BookmarksPage {
     await this.driver.getByRole('button', { name: 'Undo' }).click();
   }
 
-  /** Open "Save from iPhone" and make the shortcut's key. */
+  /** Open "Save from iPhone" and make the shortcut's key, which shows the steps. */
   async createIphoneKey() {
     await this.driver.getByTestId('iphone-shortcut-open').click();
     await this.driver.getByTestId('iphone-shortcut-create-key').click();
-    await this.expect(this.driver.getByTestId('iphone-shortcut-key')).toBeVisible();
+    await this.expect(this.driver.getByTestId('iphone-shortcut-header')).toBeVisible();
   }
 
-  /** What the steps tell the shortcut to send: where, and signed in how. */
+  /**
+   * What the steps tell the shortcut to send: where, and signed in how. Read
+   * from what a tap copies, not from what is shown (a key is shown shortened).
+   */
   async iphoneShortcutRequest(): Promise<{ url: string; authorization: string }> {
-    const url = await this.driver.getByTestId('iphone-shortcut-url').textContent();
-    const authorization = await this.driver.getByTestId('iphone-shortcut-header').textContent();
-    return { url: (url ?? '').trim(), authorization: (authorization ?? '').trim() };
+    const url = await this.driver.getByTestId('iphone-shortcut-url').getAttribute('data-value');
+    const authorization = await this.driver.getByTestId('iphone-shortcut-header').getAttribute('data-value');
+    return { url: url ?? '', authorization: authorization ?? '' };
   }
 
   /** In the steps: whether the shortcut saves privately or for the family. */
