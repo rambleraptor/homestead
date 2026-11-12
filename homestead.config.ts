@@ -11,7 +11,6 @@
  */
 
 import {
-  babyApp,
   creditCardsApp,
   documentsApp,
   eventsApp,
@@ -200,7 +199,6 @@ const config: HomesteadConfig = {
     creditCardsApp,
     gamesApp,
     healthApp,
-    babyApp,
   ],
   auth,
   ai,

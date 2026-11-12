@@ -423,7 +423,7 @@ SPA and apps share:
 
 ### Feature apps package (`packages/homestead-apps/`)
 
-The user-facing feature apps (`baby`, `credit-cards`, `events`, `games`,
+The user-facing feature apps (`credit-cards`, `events`, `games`,
 `gift-cards`, `groceries`, `hsa`, `notes`, `people`, `recipes`, `todos`) live here as
 the `@rambleraptor/homestead-apps` workspace package. (`dashboard` and
 `notifications` are always-installed core apps and live in `homestead-core`.) Apps import `@rambleraptor/homestead-core/...`
