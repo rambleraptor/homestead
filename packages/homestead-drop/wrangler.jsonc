@@ -10,8 +10,8 @@
     {
       "binding": "DB",
       "database_name": "homestead-drop",
-      // Filled in by `wrangler d1 create homestead-drop`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // From `wrangler d1 create homestead-drop`. An id, not a secret.
+      "database_id": "788146ae-8d75-4820-8ed4-65be02c36b38",
       "migrations_dir": "migrations"
     }
   ],
