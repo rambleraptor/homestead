@@ -290,6 +290,40 @@ describe('pull scheduler', () => {
     expect(stateRows()[0].cursor).toBe('fresh');
   });
 
+  test('a pull can file a record as someone: it is theirs, not the system\'s', async () => {
+    const { user } = await seedUser(t.engine, { email: 'pat@example.com' });
+    await createFeed('f1', 'u');
+    const sync = pullSync(async (ctx) => {
+      // Tagged with the pull's write origin like any of its writes.
+      await ctx.ownedBy(user.id).collection('items').create({ title: 'For Pat' }, { id: 'theirs' });
+      await writeItem(ctx, 'systems', 'Nobody in particular');
+      return { cursor: 'done' };
+    });
+    const { s } = scheduler([sync]);
+    await s.start();
+    await s.idle();
+
+    const ownerOf = (id: string) =>
+      (t.engine.db.query('SELECT _owner AS owner FROM items WHERE id = ?').get(id) as { owner: string | null }).owner;
+    expect(ownerOf('theirs')).toBe(user.id);
+    expect(ownerOf('systems')).not.toBe(user.id);
+  });
+
+  test('a caller cannot choose a record\'s owner over HTTP', async () => {
+    const { user } = await seedUser(t.engine, { email: 'pat@example.com' });
+    const res = await call(t.engine, 'POST', '/items?id=mine', {
+      token: t.adminToken,
+      body: { title: 'x', _owner: user.id, owner: user.id },
+    });
+    const owner = (
+      t.engine.db.query('SELECT _owner AS owner FROM items WHERE id = ?').get('mine') as { owner: string | null } | null
+    )?.owner;
+    // Either the stray fields are refused outright or they are ignored: the
+    // record is never someone else's.
+    if (res.ok) expect(owner).not.toBe(user.id);
+    else expect(owner).toBeUndefined();
+  });
+
   test('a client cannot write sync_status; only the scheduler can', async () => {
     await createFeed('f1', 'u');
     const res = await call(t.engine, 'PATCH', '/feeds/f1', {

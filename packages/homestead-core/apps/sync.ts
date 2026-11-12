@@ -64,6 +64,8 @@
  * them out of the browser bundle (see `packages/homestead-app/vite.config.ts`).
  */
 
+import type { HomesteadClient } from '@rambleraptor/homestead-client';
+
 /**
  * The kind of record change that triggered a sync. `delete` carries the
  * pre-state on {@link SyncContext.previous} (there is no post-state); `create`
@@ -245,6 +247,16 @@ export interface PullContext {
    * when it wrote something or failed, so these lines show up then.
    */
   log: (message: string) => Promise<void>;
+  /**
+   * A client for writing records that belong to `userId`: what it creates is
+   * owned by that person, not by the system this run writes as. Use it when a
+   * pull files something into a person's own data — a record that is private
+   * to its owner would otherwise be out of their reach. Its writes carry
+   * {@link writeOrigin}. Everything else about them is a system write: the
+   * handler decides who the record is for, so name only someone the
+   * connection itself belongs to.
+   */
+  ownedBy: (userId: string) => HomesteadClient;
 }
 
 /** What a pull handler hands back after a page. */

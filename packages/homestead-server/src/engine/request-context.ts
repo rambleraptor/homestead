@@ -56,3 +56,24 @@ export function runAsSystemWrite<T>(fn: () => T): T {
 export function isSystemWrite(): boolean {
   return systemWrites.getStore() === true;
 }
+
+const owners = new AsyncLocalStorage<string>();
+
+/**
+ * Run `fn` so that a record created by an engine request made in-process from
+ * inside it belongs to `userId` rather than to the request's caller.
+ *
+ * A server job writes as the system, and the engine makes a record's creator
+ * its owner — so what a job files *for* a person (a link collected into their
+ * private bookmarks) would otherwise be the system's, and out of that
+ * person's reach. Server code only, like {@link runAsSystemWrite}: there is no
+ * way to ask for this over HTTP, so a client can never choose a record's owner.
+ */
+export function runAsOwner<T>(userId: string, fn: () => T): T {
+  return owners.run(userId, fn);
+}
+
+/** The owner a create should be stamped with instead of its caller, if any (see {@link runAsOwner}). */
+export function ownerOverride(): string | undefined {
+  return owners.getStore();
+}

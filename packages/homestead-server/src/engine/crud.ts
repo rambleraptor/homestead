@@ -66,6 +66,7 @@ import {
 import type { Schema, StoredResource, User } from './types';
 import { STANDARD_FIELDS, TYPE_SUPERUSER } from './types';
 import { applyDynamicDefaults } from './defaults';
+import { ownerOverride } from './request-context';
 import {
   applyDefaults,
   stripReadOnlyFields,
@@ -603,11 +604,12 @@ export async function handleCreate(
 
 /**
  * The owner to stamp on a newly created record: the authenticated caller's id,
- * or null when there's no auth context (unit tests, system-issued writes).
- * Phase 0 only records it — nothing reads `_owner` yet.
+ * or null when there's no auth context (unit tests, system-issued writes). A
+ * server job creating a record on someone's behalf names them instead (see
+ * `runAsOwner`).
  */
 function ownerFor(caller: User | null): string | null {
-  return caller ? caller.id : null;
+  return ownerOverride() ?? (caller ? caller.id : null);
 }
 
 export function handleGet(reg: Registry, match: RouteMatch): Response {
