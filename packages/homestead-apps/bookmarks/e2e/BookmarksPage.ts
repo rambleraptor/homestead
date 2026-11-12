@@ -102,6 +102,37 @@ export class BookmarksPage {
     await this.driver.getByRole('button', { name: 'Undo' }).click();
   }
 
+  /** Open "Save from iPhone" and make the shortcut's key. */
+  async createIphoneKey() {
+    await this.driver.getByTestId('iphone-shortcut-open').click();
+    await this.driver.getByTestId('iphone-shortcut-create-key').click();
+    await this.expect(this.driver.getByTestId('iphone-shortcut-key')).toBeVisible();
+  }
+
+  /** What the steps tell the shortcut to send: where, and signed in how. */
+  async iphoneShortcutRequest(): Promise<{ url: string; authorization: string }> {
+    const url = await this.driver.getByTestId('iphone-shortcut-url').textContent();
+    const authorization = await this.driver.getByTestId('iphone-shortcut-header').textContent();
+    return { url: (url ?? '').trim(), authorization: (authorization ?? '').trim() };
+  }
+
+  /** In the steps: whether the shortcut saves privately or for the family. */
+  async chooseIphoneVisibility(visibility: 'private' | 'household') {
+    await this.driver.getByTestId('iphone-shortcut').getByTestId(`visibility-${visibility}`).click();
+  }
+
+  async expectIphoneBodyVisibility(value: string) {
+    await this.expect(this.driver.getByTestId('iphone-shortcut-body-visibility')).toHaveText(value);
+  }
+
+  async expectNoIphoneBodyVisibility() {
+    await this.expect(this.driver.getByTestId('iphone-shortcut-body-visibility')).toHaveCount(0);
+  }
+
+  async closeDialog() {
+    await this.driver.getByRole('button', { name: 'Close' }).click();
+  }
+
   async expectBookmark(text: string) {
     await this.expect(this.row(text)).toBeVisible();
   }

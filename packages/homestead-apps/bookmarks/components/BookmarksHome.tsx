@@ -40,6 +40,7 @@ import { BOOKMARKS, VISIBILITY_HOUSEHOLD, VISIBILITY_PRIVATE } from '../resource
 import type { Bookmark, BookmarkFormData, BookmarkVisibility } from '../types';
 import { BookmarkReader } from './BookmarkReader';
 import { BookmarkRow } from './BookmarkRow';
+import { IphoneShortcut } from './IphoneShortcut';
 import { SaveBox } from './SaveBox';
 
 const BOOKMARK_COLLECTIONS = [BOOKMARKS] as const;
@@ -250,6 +251,9 @@ export function BookmarksHome({ params }: AppRouteProps) {
             <div className={cn('mx-auto flex flex-wrap items-center gap-x-4 gap-y-2', !selectedId && 'max-w-3xl')}>
               <FilterTabs label="Show" options={SHELVES} value={shelf} onChange={setShelf} testId="bookmarks-shelf" />
               <FilterTabs label="Whose" options={SCOPES} value={scope} onChange={setScope} testId="bookmarks-scope" />
+              <div className="ml-auto">
+                <IphoneShortcut />
+              </div>
             </div>
 
             {tags.length > 0 && (
