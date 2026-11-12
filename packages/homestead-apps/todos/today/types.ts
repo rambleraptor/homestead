@@ -23,6 +23,7 @@ export type TodayUrgency = 'now' | 'soon' | 'ambient';
 export type TodayLane =
   | 'reminder'
   | 'event'
+  | 'calendar'
   | 'pickup'
   | 'perk'
   | 'groceries'

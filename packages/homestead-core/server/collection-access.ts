@@ -91,3 +91,35 @@ export async function canUseRecord(
 ): Promise<boolean> {
   return recordResolver ? recordResolver(token, resource, path, verb) : false;
 }
+
+/** Whether the user with this id may `verb` one record: `Engine.userRecordAllows`. */
+export type UserRecordAccessResolver = (
+  userId: string,
+  resource: string,
+  path: string,
+  verb: 'read' | 'write',
+) => boolean;
+
+let userRecordResolver: UserRecordAccessResolver | null = null;
+
+/** Install the server's by-user record resolver. `null` removes it. */
+export function setUserRecordAccessResolver(resolver: UserRecordAccessResolver | null): void {
+  userRecordResolver = resolver;
+}
+
+/**
+ * {@link canUseRecord} for a person who isn't the caller: whether the user
+ * `userId` may `verb` the `resource` record at `path` by their grants. For
+ * server code acting on someone's behalf with no request of theirs in hand — a
+ * cron deciding whose phone hears about a record must not tell anyone about
+ * one they couldn't open. Fails closed: false when no resolver is installed,
+ * or the user doesn't exist.
+ */
+export async function userCanUseRecord(
+  userId: string,
+  resource: string,
+  path: string,
+  verb: 'read' | 'write',
+): Promise<boolean> {
+  return userRecordResolver ? userRecordResolver(userId, resource, path, verb) : false;
+}

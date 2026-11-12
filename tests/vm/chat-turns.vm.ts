@@ -389,7 +389,7 @@ describe('what a turn tells the model', () => {
   });
 
   test('app notes come from the apps the person can use', async () => {
-    expect((await context(token)).notes).toBe('Baby, Bookmarks, Notes, People, Recipes, Todos');
+    expect((await context(token)).notes).toBe('Baby, Bookmarks, Calendar, Notes, People, Recipes, Todos');
 
     // A guest who may only chat and read gift cards loses Baby's, Bookmarks',
     // People's and Recipes' notes. Notes and Todos stay: their own notes and personal todos

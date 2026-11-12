@@ -9,6 +9,7 @@
 import { Link } from 'react-router-dom';
 import {
   AlarmClock,
+  CalendarDays,
   CalendarHeart,
   CreditCard,
   ListTodo,
@@ -27,6 +28,7 @@ import type { TodayItem, TodayLane, TodayUrgency } from '../types';
 const LANE_ICONS: Record<TodayLane, LucideIcon> = {
   reminder: AlarmClock,
   event: CalendarHeart,
+  calendar: CalendarDays,
   pickup: Trash2,
   perk: CreditCard,
   groceries: ShoppingCart,

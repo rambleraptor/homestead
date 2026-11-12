@@ -10,6 +10,7 @@
 
 export { babyApp } from './baby';
 export { bookmarksApp } from './bookmarks';
+export { calendarApp } from './calendar';
 export { creditCardsApp } from './credit-cards';
 export { documentsApp } from './documents';
 export { eventsApp } from './events';

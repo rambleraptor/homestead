@@ -423,7 +423,7 @@ SPA and apps share:
 
 ### Feature apps package (`packages/homestead-apps/`)
 
-The user-facing feature apps (`baby`, `bookmarks`, `credit-cards`, `events`, `games`,
+The user-facing feature apps (`baby`, `bookmarks`, `calendar`, `credit-cards`, `events`, `games`,
 `gift-cards`, `groceries`, `hsa`, `notes`, `people`, `recipes`, `todos`) live here as
 the `@rambleraptor/homestead-apps` workspace package. (`dashboard` and
 `notifications` are always-installed core apps and live in `homestead-core`.) Apps import `@rambleraptor/homestead-core/...`
@@ -817,6 +817,7 @@ fields: {
 | `redemption`                | `perk`        | `/credit-cards/{id}/perks/{id}/redemptions/{id}`            |
 | `run`                       | `action`      | `/actions/{id}/runs/{id}`                                   |
 | `log`                       | `recipe`      | `/recipes/{id}/logs/{id}`                                   |
+| `calendar-event`            | `calendar`    | `/calendars/{id}/calendar-events/{id}`                      |
 | `notification`              | `user`        | `/users/{id}/notifications/{id}`                            |
 | `scheduled-notification`    | `user`        | `/users/{id}/scheduled-notifications/{id}`                  |
 | `notification-subscription` | `user`        | `/users/{id}/notification-subscriptions/{id}`               |
@@ -870,6 +871,12 @@ exact version) and saves a refused edit as a copy instead of losing it; and a
 device's clock (the engine fills it when a caller leaves it out). Unsaved text
 belongs in `useDeviceDraft`, not the outbox. See
 [`docs/guides/offline.md`](packages/homestead-site/docs/guides/offline.md).
+
+Server code deciding on someone else's behalf — a cron choosing whose phone
+hears about a record — asks `userCanUseRecord(userId, resource, path, verb)`
+(`core/server/collection-access.ts`, backed by `Engine.userRecordAllows`): the
+same decision a GET by that person would get, so nobody is told about a record
+they couldn't open. The Calendar's reminders (`calendar/crons/plan.ts`) use it.
 
 Row-level security **is** modeled and enforced: per-collection and per-record
 access is governed by the grant-based ACL system (`access-grant` records +

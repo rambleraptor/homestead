@@ -117,9 +117,8 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
 
   // The model-facing tool surfaces (chat, MCP) offer only what a caller can
   // reach. The engine decides that, so it's handed down like the vector store.
-  const { setCollectionAccessResolver, setRecordAccessResolver } = await import(
-    '@rambleraptor/homestead-core/server/collection-access'
-  );
+  const { setCollectionAccessResolver, setRecordAccessResolver, setUserRecordAccessResolver } =
+    await import('@rambleraptor/homestead-core/server/collection-access');
   setCollectionAccessResolver(async (token) => {
     const caller = await engine.authenticateToken(token);
     return caller ? engine.collectionAccess(caller) : null;
@@ -128,6 +127,9 @@ export async function createApp(opts: AppOptions): Promise<HomesteadApp> {
     const caller = await engine.authenticateToken(token);
     return caller ? engine.recordAllows(caller, resource, path, verb) : false;
   });
+  setUserRecordAccessResolver((userId, resource, path, verb) =>
+    engine.userRecordAllows(userId, resource, path, verb),
+  );
 
   // Which records a resource links to: the tools offer them as `include`.
   const { setLinkResolver } = await import('@rambleraptor/homestead-core/server/links');
