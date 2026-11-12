@@ -65,3 +65,14 @@ export async function getBookmarkPage(token: string, bookmarkId: string): Promis
     throw error;
   }
 }
+
+/**
+ * Put a readable copy under a bookmark, as the capture does (it takes its
+ * bookmark's id). Needs a token that may choose the id: the admin's.
+ */
+export async function setBookmarkPage(adminToken: string, bookmarkId: string, content: string): Promise<void> {
+  await bookmarks(adminToken)
+    .record(bookmarkId)
+    .collection<BookmarkPageRecord>('pages')
+    .create({ content, word_count: content.split(/\s+/).length }, { id: bookmarkId });
+}

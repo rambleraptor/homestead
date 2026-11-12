@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { bootHomestead, type Harness } from '@rambleraptor/homestead-test-harness/vm/boot';
 import { BookmarksPage } from '../e2e/BookmarksPage';
-import { createBookmark, getBookmark, getBookmarkPage } from '../e2e/helpers';
+import { createBookmark, getBookmark, getBookmarkPage, setBookmarkPage } from '../e2e/helpers';
 import {
   ARTICLE_TITLE,
   ARTICLE_URL,
@@ -69,6 +69,30 @@ describe('Bookmark capture', () => {
     await bookmarks.expectReaderText('A starter is a small pet that lives in a jar');
     await bookmarks.expectReaderMeta('The Daily Loaf · Rosa Baker');
     await bookmarks.expectRowRead(ARTICLE_TITLE, true);
+  });
+
+  test('shows a saved copy as text: HTML inside it never becomes part of the page', async () => {
+    // Whatever ends up in a saved copy — the converter escapes a page's own
+    // markup, but the reader must not rely on that.
+    const saved = await createBookmark(token, { url: 'https://example.com/a', title: 'Suspicious page' });
+    await setBookmarkPage(
+      h.admin.token,
+      saved.id,
+      [
+        'A first paragraph.',
+        '<b id="raw-bold">bold from raw HTML</b> <img id="raw-img" src="https://example.com/x.png" onerror="window.__reader = 1">',
+        '<script>window.__reader = 1</script>',
+        'A last paragraph, with **real** Markdown.',
+      ].join('\n\n'),
+    );
+
+    await bookmarks.gotoBookmark(saved.id);
+    await bookmarks.expectReaderText('A first paragraph.');
+    await bookmarks.expectReaderText('A last paragraph, with real Markdown.');
+    await bookmarks.expectReaderHasNo('#raw-bold');
+    await bookmarks.expectReaderHasNo('#raw-img');
+    await bookmarks.expectReaderHasNo('script');
+    expect((window as unknown as { __reader?: number }).__reader).toBeUndefined();
   });
 
   test('keeps a title the person gave it', async () => {

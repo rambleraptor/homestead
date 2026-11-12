@@ -13,6 +13,7 @@ import {
 import { ShareButton } from '@rambleraptor/homestead-core/permissions/components/ShareButton';
 import { VisibilityBadge } from '@rambleraptor/homestead-core/permissions/components/VisibilityBadge';
 import { MessageResponse } from '@rambleraptor/homestead-core/shared/components/ai-elements/message';
+import { markdownOnlyRehypePlugins } from '@rambleraptor/homestead-core/shared/components/markdown';
 import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { Skeleton } from '@rambleraptor/homestead-core/shared/components/Skeleton';
 import { TagInput } from '@rambleraptor/homestead-core/shared/components/TagInput';
@@ -235,6 +236,9 @@ export function BookmarkReader({ bookmark, mine, onBack, onUpdate, onDelete, onM
             mode="static"
             controls={{ table: false }}
             components={readerComponents}
+            // A page's text is Markdown Homestead made from it. Anything in it
+            // that looks like HTML stays text or is dropped — never parsed.
+            rehypePlugins={markdownOnlyRehypePlugins}
             className="text-base leading-relaxed"
             data-testid="bookmark-reader-content"
           >

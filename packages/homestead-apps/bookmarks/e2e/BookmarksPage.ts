@@ -218,6 +218,11 @@ export class BookmarksPage {
     await this.expect(this.driver.getByTestId('bookmark-reader-meta')).toContainText(text);
   }
 
+  /** Nothing in the reader's text became an element matching `css`. */
+  async expectReaderHasNo(css: string) {
+    await this.expect(this.driver.getByTestId('bookmark-reader-body').locator(css)).toHaveCount(0);
+  }
+
   async expectReaderFailed() {
     await this.expect(this.driver.getByTestId('bookmark-reader-failed')).toBeVisible();
   }
