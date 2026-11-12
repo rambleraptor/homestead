@@ -1,0 +1,17 @@
+{
+  "name": "@rambleraptor/homestead-drop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "A public drop box for links, which a Homestead behind a login collects from.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 migrations apply homestead-drop --remote",
+    "type-check": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "wrangler": "^4.98.0"
+  }
+}

@@ -11,6 +11,8 @@
  */
 
 import {
+  bookmarksApp,
+  calendarApp,
   creditCardsApp,
   documentsApp,
   eventsApp,
@@ -187,8 +189,10 @@ const embedding: HomesteadConfig['embedding'] = {
 const config: HomesteadConfig = {
   apps: [
     homeApp,
+    calendarApp,
     todosApp,
     notesApp,
+    bookmarksApp,
     documentsApp,
     giftCardsApp,
     groceriesApp,

@@ -114,6 +114,12 @@ export interface CatalogApp {
  */
 export const APP_CATALOG: readonly CatalogApp[] = [
   {
+    slug: 'calendar',
+    exportName: 'calendarApp',
+    display: 'Calendar',
+    description: 'The household’s shared calendar of events',
+  },
+  {
     slug: 'credit-cards',
     exportName: 'creditCardsApp',
     display: 'Credit Cards',

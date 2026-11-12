@@ -44,6 +44,7 @@ const DEFAULT_COLOR = '#4F46E5';
  */
 const COLORS: Record<string, string> = {
   home: '#0F766E',
+  calendar: '#4D7C0F',
   todos: '#2563EB',
   documents: '#475569',
   'gift-cards': '#DB2777',
@@ -59,6 +60,7 @@ const COLORS: Record<string, string> = {
   bridge: '#1D4ED8',
   health: '#DC2626',
   notes: '#CA8A04',
+  bookmarks: '#4F46E5',
   chat: '#0D9488',
   notifications: '#D97706',
   settings: '#52525B',

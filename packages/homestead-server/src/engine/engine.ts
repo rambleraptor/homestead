@@ -337,6 +337,16 @@ export class Engine {
     }
   }
 
+  /**
+   * {@link recordAllows} for a user known only by id — for server code deciding
+   * on someone's behalf (who a reminder about a record may go to) with no
+   * request of theirs to authenticate. False for an id that isn't a user.
+   */
+  userRecordAllows(userId: string, resource: string, path: string, verb: Verb): boolean {
+    const caller = getUserById(this.db, userId)?.user;
+    return caller ? this.recordAllows(caller, resource, path, verb) : false;
+  }
+
   /** CORS headers for the request origin, when allowed. */
   private corsHeaders(req: Request): Record<string, string> {
     const origin = req.headers.get('origin');

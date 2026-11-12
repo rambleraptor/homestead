@@ -401,4 +401,12 @@ describe('recordAllows', () => {
   test('a path that isn’t the named resource is refused', () => {
     expect(t.engine.recordAllows(alice.user, 'chapter', 'books/b1', 'read')).toBe(false);
   });
+
+  test('userRecordAllows decides the same for a user known only by id', async () => {
+    expect(t.engine.userRecordAllows(bob.user.id, 'chapter', 'books/b1/chapters/c1', 'read')).toBe(false);
+    await shareBook('share-b1', bob.user, 'read');
+    expect(t.engine.userRecordAllows(bob.user.id, 'chapter', 'books/b1/chapters/c1', 'read')).toBe(true);
+    expect(t.engine.userRecordAllows(bob.user.id, 'chapter', 'books/b1/chapters/c1', 'write')).toBe(false);
+    expect(t.engine.userRecordAllows('nobody', 'book', 'books/b1', 'read')).toBe(false);
+  });
 });

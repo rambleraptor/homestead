@@ -294,7 +294,14 @@ The handler is called a page at a time with a `PullContext`:
 | `page`        | Which page of this run, from 1. |
 | `token`       | A short-lived admin token for this run. |
 | `writeOrigin` | `sync:<id>` — tag your writes with it: `serverClient(ctx.token, undefined, { origin: ctx.writeOrigin })`. |
+| `ownedBy(userId)` | A client whose creates belong to that person rather than to the system the run writes as. |
 | `id`, `appId`, `resource`, `firedAt`, `log` | As for a push handler. |
+
+A pull writes as the system, and the engine makes a record's creator its owner —
+so something filed *for* a person (a link collected into their private
+bookmarks) would be the system's and out of their reach. Create it with
+`ctx.ownedBy(userId)` instead: the record is theirs. Name only someone the
+connection itself belongs to.
 
 It returns `{ cursor, more }`: the cursor to save (omit to keep the current one,
 `null` to clear it) and whether to call again straight away for the next page.

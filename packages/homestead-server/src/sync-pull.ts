@@ -30,7 +30,7 @@
 import type { Database } from './engine/sqlite';
 import { nowRFC3339 } from './engine/ids';
 import { decryptText, encryptionEnabled, encryptText } from './engine/crypto';
-import { currentRequestContext, runAsSystemWrite } from './engine/request-context';
+import { currentRequestContext, runAsOwner, runAsSystemWrite } from './engine/request-context';
 import { createLogger } from './log';
 import { mintAdminToken } from './bootstrap';
 import type { SyncDispatcher, SyncDispatchInput } from './sync';
@@ -194,8 +194,12 @@ function unref(timer: ReturnType<typeof setTimeout>): void {
 
 const stateKey = (syncId: string, connection: string): string => `${syncId}\u0000${connection}`;
 
-/** A client that talks to the engine in-process (no loopback socket). */
-function engineClient(engine: PullEngine, token: string, origin: string): HomesteadClient {
+/**
+ * A client that talks to the engine in-process (no loopback socket). With
+ * `owner`, what it creates belongs to that user rather than to `token`'s
+ * holder (see `runAsOwner`) — in-process is what makes that possible.
+ */
+function engineClient(engine: PullEngine, token: string, origin: string, owner?: string): HomesteadClient {
   return createHomesteadClient({
     baseUrl: 'http://homestead.internal',
     auth: bearerToken(token),
@@ -203,7 +207,8 @@ function engineClient(engine: PullEngine, token: string, origin: string): Homest
     fetch: (async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input : input.url);
       url.pathname = url.pathname.replace(/^\/api\/aep/, '') || '/';
-      return engine.fetch(new Request(url, init));
+      const send = () => engine.fetch(new Request(url, init));
+      return owner ? runAsOwner(owner, send) : send();
     }) as typeof fetch,
   });
 }
@@ -438,6 +443,7 @@ export function createPullScheduler(
             writeOrigin,
             firedAt,
             log,
+            ownedBy: (userId) => engineClient(engine, admin.token, writeOrigin, userId),
           };
           let result: PullResult | void;
           try {

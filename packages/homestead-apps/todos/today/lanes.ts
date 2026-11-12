@@ -15,6 +15,8 @@ import { formatCurrency } from '@rambleraptor/homestead-core/shared/utils/curren
 import { isAppScheduled } from '@rambleraptor/homestead-core/notifications/types';
 import type { ScheduledNotification } from '@rambleraptor/homestead-core/notifications/types';
 import type { UpcomingEvent } from '../../events/hooks/useUpcomingEvents';
+import type { Occurrence } from '../../calendar/types';
+import { formatTime } from '../../calendar/utils/occurrences';
 import { streamLabel, type PickupDay } from '../../home/utils/pickups';
 import type { GroceryItem, Store } from '../../groceries/types';
 import { MAIN_PROJECT_ID, type PersonalTodo, type Todo } from '../types';
@@ -107,6 +109,38 @@ export function buildEventItems(
         href: '/events',
         urgency: 'now' as const,
         at: event.date.getTime(),
+      },
+    ];
+  });
+}
+
+/**
+ * What's on the calendar today and not yet over. A timed event reads with its
+ * time ("at 3:30 PM", or "until 4:00 PM" once it has started); an all-day one
+ * is simply today's.
+ */
+export function buildCalendarItems(
+  occurrences: readonly Occurrence[],
+  now: Date,
+): TodayItem[] {
+  return occurrences.flatMap((occurrence) => {
+    const { event, allDay, start, end } = occurrence;
+    if (end.getTime() <= now.getTime()) return [];
+    if (daysUntil(start, now) > 0) return [];
+    const detail = allDay
+      ? 'all day'
+      : start.getTime() <= now.getTime()
+        ? `until ${formatTime(end)}`
+        : `at ${formatTime(start)}`;
+    return [
+      {
+        id: `calendar-${occurrence.key}`,
+        lane: 'calendar' as const,
+        title: event.title,
+        detail: event.location ? `${detail} · ${event.location}` : detail,
+        href: '/calendar',
+        urgency: 'now' as const,
+        at: start.getTime(),
       },
     ];
   });

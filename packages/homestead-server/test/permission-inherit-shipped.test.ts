@@ -44,6 +44,7 @@ const APP_CONFIG_MODULES = [
   '@rambleraptor/homestead-core/operations/app.config',
   '@rambleraptor/homestead-core/chat/app.config',
   ...[
+    'calendar',
     'credit-cards',
     'documents',
     'events',

@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  buildCalendarItems,
   buildEventItems,
   buildGroceryItems,
   buildPerkItems,
@@ -17,6 +18,7 @@ import {
   sortTodayItems,
 } from '../lanes';
 import type { TodayItem } from '../types';
+import { expandEvents } from '../../../calendar/utils/occurrences';
 
 /** Mid-afternoon, so "today" has hours on either side of it. */
 const NOW = new Date(2026, 7, 24, 14, 0, 0); // 24 Aug 2026, local
@@ -308,5 +310,49 @@ describe('sortTodayItems', () => {
       'soon',
       'ambient',
     ]);
+  });
+});
+
+describe('buildCalendarItems', () => {
+  const occurrences = (events: Array<Record<string, unknown>>) =>
+    expandEvents(
+      events.map((e) => ({ calendar: 'cal', ...e }) as never),
+      '2026-08-24',
+      '2026-08-25',
+    );
+
+  it('lists what is still to come today with its time, and what is under way with its end', () => {
+    const items = buildCalendarItems(
+      occurrences([
+        { id: 'a', title: 'Breakfast', start: at(0, 8).toISOString(), end: at(0, 9).toISOString() },
+        { id: 'b', title: 'Lunch out', start: at(0, 13).toISOString(), end: at(0, 15).toISOString() },
+        {
+          id: 'c',
+          title: 'Dentist',
+          start: at(0, 16).toISOString(),
+          end: at(0, 17).toISOString(),
+          location: '12 Oak St',
+        },
+        { id: 'd', title: 'Soccer', start: at(1, 16).toISOString(), end: at(1, 17).toISOString() },
+      ]),
+      NOW,
+    );
+    // Breakfast is over and Soccer is tomorrow.
+    expect(items.map((i) => i.title)).toEqual(['Lunch out', 'Dentist']);
+    expect(items[0]!.detail).toMatch(/^until /);
+    expect(items[1]!.detail).toMatch(/^at .* · 12 Oak St$/);
+    expect(items.every((i) => i.lane === 'calendar' && i.urgency === 'now')).toBe(true);
+    expect(items[1]!.href).toBe('/calendar');
+  });
+
+  it('reads an all-day event as all day', () => {
+    const items = buildCalendarItems(
+      occurrences([
+        { id: 'fair', title: 'Book fair', all_day: true, start: '2026-08-24', end: '2026-08-24' },
+      ]),
+      NOW,
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ title: 'Book fair', detail: 'all day' });
   });
 });

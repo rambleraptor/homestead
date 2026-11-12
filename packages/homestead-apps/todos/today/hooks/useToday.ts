@@ -23,6 +23,7 @@ import { getAppById } from '@rambleraptor/homestead-core/apps/registry';
 import { useAppVisible } from '@rambleraptor/homestead-core/apps/useAppVisibility';
 import { useScheduledNotifications } from '@rambleraptor/homestead-core/notifications/hooks/useScheduledNotifications';
 import { useUpcomingEvents } from '../../../events/hooks/useUpcomingEvents';
+import { useUpcomingOccurrences } from '../../../calendar/hooks/useUpcomingOccurrences';
 import { useUpcomingPickupDays } from '../../../home/hooks/useGarbagePickups';
 import { useGroceries } from '../../../groceries/hooks/useGroceries';
 import { useStores } from '../../../groceries/hooks/useStores';
@@ -32,6 +33,7 @@ import { useCreditCardPerks } from '../../../credit-cards/hooks/useCreditCardPer
 import { usePerkRedemptions } from '../../../credit-cards/hooks/usePerkRedemptions';
 import { useUpcomingPerks } from '../../../credit-cards/hooks/useUpcomingPerks';
 import {
+  buildCalendarItems,
   buildEventItems,
   buildGroceryItems,
   buildPerkItems,
@@ -69,6 +71,8 @@ export function useToday(): TodayState {
   const scheduled = useScheduledNotifications();
   const events = useUpcomingEvents(EVENT_LOOKAHEAD_DAYS);
   const pickups = useUpcomingPickupDays(PICKUP_LOOKAHEAD_DAYS);
+  // Today only: the calendar's own widget covers the week.
+  const calendar = useUpcomingOccurrences(0);
   const groceries = useGroceries();
   const stores = useStores();
   const familyTodos = useTodos();
@@ -87,6 +91,7 @@ export function useToday(): TodayState {
       // Notifications is always installed, so reminders need no visibility gate.
       ...buildReminderItems(scheduled.data ?? [], now),
       ...(shows('events') ? buildEventItems(events.data ?? [], now) : []),
+      ...(shows('calendar') ? buildCalendarItems(calendar.occurrences, now) : []),
       ...(shows('home') ? buildPickupItems(pickups.data ?? [], now) : []),
       ...(shows('credit-cards') ? buildPerkItems(upcomingPerks, now) : []),
       ...(shows('groceries')
@@ -102,6 +107,7 @@ export function useToday(): TodayState {
     shows,
     scheduled.data,
     events.data,
+    calendar.occurrences,
     pickups.data,
     upcomingPerks,
     groceries.data,
@@ -115,6 +121,7 @@ export function useToday(): TodayState {
   const isLoading =
     scheduled.isLoading ||
     (shows('events') && events.isLoading) ||
+    (shows('calendar') && calendar.isLoading) ||
     (shows('home') && pickups.isLoading) ||
     (shows('groceries') && (groceries.isLoading || stores.isLoading)) ||
     (shows('todos') && (familyTodos.isLoading || personalTodos.isLoading)) ||

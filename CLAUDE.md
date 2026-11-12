@@ -421,9 +421,22 @@ SPA and apps share:
   vendored AI Elements chat components (Apache-2.0; its README lists what was
   changed from upstream — diff against it rather than overwriting)
 
+### Drop box (`packages/homestead-drop/`)
+
+A small Cloudflare Worker that is **not part of the server**: a public place a
+phone's shortcut can leave a link when the Homestead itself sits behind a login
+the shortcut can't pass (Cloudflare Access). It is built on the assumption that
+it can be broken into — it never calls Homestead and holds nothing of
+Homestead's — so everything flows one way: Bookmarks registers boxes with it
+(a push sync on `bookmark-inbox`) and collects from it (a pull sync, one loop
+per inbox), treating what comes back as untrusted (`bookmarks/syncs/drop-box-*`,
+`bookmarks/dropBox.ts`). `src/app.ts` is the whole request handling, over a
+`Store` (D1 when deployed, memory in tests — the VM specs run the same code
+through `bookmarks/vm/drop-box-stub.ts`). Its README covers deploying it.
+
 ### Feature apps package (`packages/homestead-apps/`)
 
-The user-facing feature apps (`credit-cards`, `events`, `games`,
+The user-facing feature apps (`bookmarks`, `calendar`, `credit-cards`, `events`, `games`,
 `gift-cards`, `groceries`, `hsa`, `notes`, `people`, `recipes`, `todos`) live here as
 the `@rambleraptor/homestead-apps` workspace package. (`dashboard` and
 `notifications` are always-installed core apps and live in `homestead-core`.) Apps import `@rambleraptor/homestead-core/...`
@@ -751,7 +764,10 @@ durable outbox, `homestead-server/src/sync.ts`) and/or a `pull` side (bring
 changes in per connection record on a schedule, `src/sync-pull.ts`), sharing the
 write origin `sync:<id>` so neither echoes the other. A pull's connection
 resource gains the `sync_status` system field and a `:sync` method
-(`core/server/sync-now/`). See
+(`core/server/sync-now/`). A pull writes as the system, so a record it files for
+a person is created with `ctx.ownedBy(userId)` — an in-process client whose
+creates are owned by that user (`runAsOwner` in `engine/request-context.ts`;
+like a system write, there is no way to ask for it over HTTP). See
 [`docs/guides/resource-sync.md`](packages/homestead-site/docs/guides/resource-sync.md).
 
 ### Resource references
@@ -817,6 +833,7 @@ fields: {
 | `redemption`                | `perk`        | `/credit-cards/{id}/perks/{id}/redemptions/{id}`            |
 | `run`                       | `action`      | `/actions/{id}/runs/{id}`                                   |
 | `log`                       | `recipe`      | `/recipes/{id}/logs/{id}`                                   |
+| `calendar-event`            | `calendar`    | `/calendars/{id}/calendar-events/{id}`                      |
 | `notification`              | `user`        | `/users/{id}/notifications/{id}`                            |
 | `scheduled-notification`    | `user`        | `/users/{id}/scheduled-notifications/{id}`                  |
 | `notification-subscription` | `user`        | `/users/{id}/notification-subscriptions/{id}`               |
@@ -871,6 +888,12 @@ device's clock (the engine fills it when a caller leaves it out). Unsaved text
 belongs in `useDeviceDraft`, not the outbox. See
 [`docs/guides/offline.md`](packages/homestead-site/docs/guides/offline.md).
 
+Server code deciding on someone else's behalf — a cron choosing whose phone
+hears about a record — asks `userCanUseRecord(userId, resource, path, verb)`
+(`core/server/collection-access.ts`, backed by `Engine.userRecordAllows`): the
+same decision a GET by that person would get, so nobody is told about a record
+they couldn't open. The Calendar's reminders (`calendar/crons/plan.ts`) use it.
+
 Row-level security **is** modeled and enforced: per-collection and per-record
 access is governed by the grant-based ACL system (`access-grant` records +
 the shared `resolve()` in `packages/homestead-core/permissions/resolve.ts`,
@@ -886,6 +909,18 @@ it — so sharing a gift card shares its transactions. The user subtree is the
 root case (only that user and superusers). Denies on the child type or any
 ancestor still narrow; a resource opts out with `independent_access: true`. See
 [`docs/design/parent-access-inheritance.md`](packages/homestead-site/docs/design/parent-access-inheritance.md).
+
+A resource whose records are sometimes one person's and sometimes the whole
+household's declares `access: { model: 'per-record', field, sharedValue,
+privateValue }` instead of forking into two resources: the household role's
+grant is filtered to the shared value and the engine unions it with the caller's
+own rows, so one collection holds both. The field is an immutable enum with a
+default, fixed at create (changing it means saving the record again).
+`bookmark` does this (`visibility`: `household` / `private`). The create form
+offers the choice with `VisibilityPicker` and a row states it with
+`VisibilityBadge` (`packages/homestead-core/permissions/components/`); both
+render nothing for a resource with no such choice. See
+[`docs/design/record-visibility.md`](packages/homestead-site/docs/design/record-visibility.md).
 
 ### App flags
 

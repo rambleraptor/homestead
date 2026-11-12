@@ -8,10 +8,17 @@
 > `document` and `collection` declare `access: { model: 'private' }`, which
 > retired the hardcoded `PRIVATE_COLLECTIONS` list.
 >
+> The client surface of §3.0.5 has landed too: `VisibilityPicker` and
+> `VisibilityBadge` in `homestead-core/permissions/components/`, reading the
+> declaration through `permissions/visibility.ts`. `bookmark` (the Bookmarks app)
+> is the resource that declares `per-record` today — `visibility`, `household` /
+> `private`, private by default — with its page text in a child that inherits
+> the bookmark's access.
+>
 > **What has not:** the `todo` / `personal-todo` merge (§5), which is
-> unscheduled. `reminder` — the motivating example throughout this document — now
-> declares `per-record` for real, so the declarations below match the repo;
-> anything said about `todo` is still illustration.
+> unscheduled. `reminder` — the motivating example throughout this document —
+> has since been replaced by user-parented scheduled notifications, so read its
+> declarations below as illustration, as with anything said about `todo`.
 
 > Companion to [Permissions](./permissions). That document answers "who may
 > reach this collection". This one answers a narrower question it left open:

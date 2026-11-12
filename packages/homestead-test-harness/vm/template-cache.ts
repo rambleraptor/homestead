@@ -74,39 +74,43 @@ export function templateCacheEnabled(): boolean {
   return !process.env.HOMESTEAD_VM_NO_TEMPLATE_CACHE;
 }
 
-interface CachePaths {
-  db: string;
-  meta: string;
-}
-
-function pathsFor(key: string): CachePaths {
-  return {
-    db: join(CACHE_DIR, `template-${key}.db`),
-    meta: join(CACHE_DIR, `template-${key}.json`),
-  };
-}
-
-/** The cached template for `key`, or null. Its metadata is written last, so its presence means complete. */
-export async function readCachedTemplate<T>(key: string): Promise<(T & { dbPath: string }) | null> {
-  const { db, meta } = pathsFor(key);
-  if (!existsSync(meta) || !existsSync(db)) return null;
-  const parsed = JSON.parse(await readFile(meta, 'utf8')) as T;
-  return { ...parsed, dbPath: db };
+/** Where a key's metadata lives. It names the database file it belongs to. */
+function metaPath(key: string): string {
+  return join(CACHE_DIR, `template-${key}.json`);
 }
 
 /**
- * Store a freshly built template under `key` and prune stale entries. Writes
- * go to temp names and are renamed into place, so concurrent workers never
- * read a partial file.
+ * The cached template for `key`, or null. Its metadata is written last and
+ * names its own database file, so its presence means a complete, matching pair.
+ */
+export async function readCachedTemplate<T>(key: string): Promise<(T & { dbPath: string }) | null> {
+  const meta = metaPath(key);
+  if (!existsSync(meta)) return null;
+  const { dbFile, ...parsed } = JSON.parse(await readFile(meta, 'utf8')) as T & { dbFile?: string };
+  if (!dbFile) return null;
+  const db = join(CACHE_DIR, dbFile);
+  if (!existsSync(db)) return null;
+  return { ...(parsed as T), dbPath: db };
+}
+
+/**
+ * Store a freshly built template under `key` and prune stale entries.
+ *
+ * Workers that miss the cache at the same moment each build their own
+ * template, with their own accounts and sessions. So each writes its database
+ * under a name of its own, and the metadata — renamed into place last, in one
+ * step — names the database it describes. Whichever worker's metadata lands
+ * last wins whole; a reader can never pair one worker's database with
+ * another's sessions.
  */
 export async function writeCachedTemplate<T>(key: string, dbPath: string, meta: T): Promise<void> {
   await mkdir(CACHE_DIR, { recursive: true });
-  const target = pathsFor(key);
-  const tmp = `.${process.pid}-${Date.now()}`;
-  await writeFile(target.db + tmp, await readFile(dbPath));
-  await rename(target.db + tmp, target.db);
-  await writeFile(target.meta + tmp, JSON.stringify(meta));
-  await rename(target.meta + tmp, target.meta);
+  const unique = `${process.pid}-${Date.now()}`;
+  const dbFile = `template-${key}.${unique}.db`;
+  const target = metaPath(key);
+  await writeFile(join(CACHE_DIR, dbFile), await readFile(dbPath));
+  await writeFile(`${target}.${unique}`, JSON.stringify({ ...meta, dbFile }));
+  await rename(`${target}.${unique}`, target);
 
   // Prune older templates, but only stale ones: a concurrent run on other
   // sources may still be copying from its own entry.
