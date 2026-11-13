@@ -5,5 +5,8 @@
   "workspaces": [
     "packages/*",
     "tests/e2e"
-  ]
+  ],
+  "overrides": {
+    "hast-util-raw": "9.1.0"
+  }
 }
