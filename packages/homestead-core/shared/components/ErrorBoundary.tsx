@@ -1,11 +1,22 @@
 import { Component, type ReactNode } from 'react';
+import { AlertCircle, RotateCw } from 'lucide-react';
+import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 import { logger } from '@rambleraptor/homestead-core/utils/logger';
 import { Button } from './Button';
 import { Card } from './Card';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
-  fallback?: ReactNode;
+  /**
+   * What to show in place of the children: a node, or a function given the
+   * error and a way to try rendering the children again.
+   */
+  fallback?: ReactNode | ((error: Error, reset: () => void) => ReactNode);
+  /**
+   * When this changes, a caught error is cleared and the children render
+   * again: the page moved on, or the content that failed has changed.
+   */
+  resetKey?: unknown;
   onError?: (error: Error, errorInfo: { componentStack: string }) => void;
 }
 
@@ -53,6 +64,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     this.props.onError?.(error, errorInfo);
   }
 
+  componentDidUpdate(prevProps: ErrorBoundaryProps): void {
+    if (this.state.hasError && !Object.is(prevProps.resetKey, this.props.resetKey)) {
+      this.handleReset();
+    }
+  }
+
   handleReset = (): void => {
     this.setState({
       hasError: false,
@@ -63,8 +80,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render(): ReactNode {
     if (this.state.hasError) {
       // Custom fallback UI if provided
-      if (this.props.fallback) {
-        return this.props.fallback;
+      const { fallback } = this.props;
+      if (typeof fallback === 'function') {
+        return fallback(this.state.error ?? new Error('Unknown error'), this.handleReset);
+      }
+      if (fallback !== undefined) {
+        return fallback;
       }
 
       // Default fallback UI
@@ -155,5 +176,66 @@ export function AppErrorFallback() {
         Refresh Page
       </Button>
     </Card>
+  );
+}
+
+export interface RenderErrorProps {
+  error: Error;
+  title: string;
+  /** Shown as a Reload button when given. */
+  onReload?: () => void;
+  /** For a slot inside a page (a card, one message): smaller type, tighter box. */
+  compact?: boolean;
+  className?: string;
+  'data-testid'?: string;
+}
+
+/**
+ * The inline fallback for a piece of the screen that threw while rendering:
+ * what it was, and the error in its own words. Unlike `QueryError` it doesn't
+ * rephrase the error — a render failure is a bug, and the message is what
+ * someone needs to report it (a `TypeError` here is not a network problem).
+ */
+export function RenderError({
+  error,
+  title,
+  onReload,
+  compact = false,
+  className,
+  'data-testid': testId = 'render-error',
+}: RenderErrorProps) {
+  return (
+    <div
+      role="alert"
+      data-testid={testId}
+      className={cn(
+        'flex flex-wrap items-start gap-3 border border-red-200 bg-red-50 text-red-800',
+        compact ? 'rounded-xl px-3 py-2 text-xs' : 'rounded-2xl p-4 text-sm',
+        className,
+      )}
+    >
+      <AlertCircle
+        className={cn('mt-0.5 shrink-0 text-red-600', compact ? 'h-4 w-4' : 'h-5 w-5')}
+        aria-hidden="true"
+      />
+      <div className="min-w-0 flex-1 basis-40">
+        <p className="font-semibold">{title}</p>
+        <p className={cn('break-words font-mono text-red-700', compact ? 'mt-0.5' : 'mt-1')}>
+          {error.message || String(error)}
+        </p>
+      </div>
+      {onReload && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onReload}
+          className="ml-auto shrink-0"
+          data-testid={`${testId}-reload`}
+        >
+          <RotateCw className="h-4 w-4" aria-hidden="true" />
+          Reload
+        </Button>
+      )}
+    </div>
   );
 }

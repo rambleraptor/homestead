@@ -1,5 +1,7 @@
 // Vendored from AI Elements (vercel/ai-elements, Apache-2.0); see ./README.md.
-// Change: the card names its border color (this app has no global `border-border`).
+// Changes: the card names its border color (this app has no global
+// `border-border`); `ToolInput` shows nothing for a call whose arguments
+// haven't arrived (upstream hands `undefined` to the code block, which throws).
 
 import { Badge } from "@rambleraptor/homestead-core/shared/components/ui/badge";
 import {
@@ -125,7 +127,7 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
       Parameters
     </h4>
     <div className="rounded-md bg-muted/50">
-      <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
+      <CodeBlock code={JSON.stringify(input, null, 2) ?? ""} language="json" />
     </div>
   </div>
 );
