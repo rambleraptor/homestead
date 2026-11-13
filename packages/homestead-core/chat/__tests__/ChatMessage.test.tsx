@@ -123,6 +123,19 @@ describe('ChatMessage', () => {
     expect(states).toBeGreaterThan(20);
   }, 30_000);
 
+  // Every reply's Markdown goes through rehype-raw (hast-util-raw driving
+  // parse5's tokenizer). hast-util-raw 9.2.0 calls a tokenizer method only
+  // parse5 >= 8.1.0 has while accepting 8.0.0, and an install that paired the
+  // two threw on every reply — hence the pin in the root package.json.
+  it('renders a Markdown reply, raw HTML included', async () => {
+    const text = 'Here is **the plan**:\n\n- one\n- two\n\n<details><summary>More</summary>hidden</details>';
+    renderReply({ id: 'm1', role: 'assistant', parts: [{ type: 'text', text }] } as HomesteadUIMessage);
+    await settle();
+
+    expect(screen.queryByTestId('chat-part-error')).toBeNull();
+    expect(screen.getByText('the plan')).toBeTruthy();
+  });
+
   it('shows the error in place of a part that throws, and keeps the rest of the reply', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const parts = [
