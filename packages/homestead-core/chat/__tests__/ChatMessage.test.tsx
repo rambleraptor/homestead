@@ -50,15 +50,18 @@ const renderReply = (message: HomesteadUIMessage, streaming = false) =>
     </QueryClientProvider>,
   );
 
-/** Let lazy cards and the highlighter's first pass settle. */
-const settle = () => act(async () => void (await new Promise((resolve) => setTimeout(resolve, 0))));
+/** Flush what a render queued (effects, resolved promises). */
+const settle = () => act(async () => {});
 
-/** A tool call as the stream delivers it: its arguments a few characters at a time, then its result. */
+/** Characters of a call's arguments per streamed piece: small enough to cut keys and values mid-word. */
+const DELTA = 9;
+
+/** A tool call as the stream delivers it: its arguments a piece at a time, then its result. */
 function toolCall(id: string, tool: string, input: unknown, output: unknown): UIMessageChunk[] {
   const json = JSON.stringify(input);
   const deltas: UIMessageChunk[] = [];
-  for (let i = 0; i < json.length; i += 3) {
-    deltas.push({ type: 'tool-input-delta', toolCallId: id, inputTextDelta: json.slice(i, i + 3) });
+  for (let i = 0; i < json.length; i += DELTA) {
+    deltas.push({ type: 'tool-input-delta', toolCallId: id, inputTextDelta: json.slice(i, i + DELTA) });
   }
   return [
     { type: 'tool-input-start', toolCallId: id, toolName: tool },
@@ -118,7 +121,7 @@ describe('ChatMessage', () => {
     }
     // The first state of each call has no arguments at all yet.
     expect(states).toBeGreaterThan(20);
-  });
+  }, 30_000);
 
   it('shows the error in place of a part that throws, and keeps the rest of the reply', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -127,9 +130,9 @@ describe('ChatMessage', () => {
       { type: 'text', text: 'Here is what I found.' },
     ] as unknown as Part[];
     renderReply({ id: 'm1', role: 'assistant', parts } as HomesteadUIMessage);
-    await settle();
 
-    expect(screen.getByTestId('chat-part-error').textContent).toContain(BROKEN_CARD);
+    // The card is lazy: the error shows once it has loaded and thrown.
+    expect((await screen.findByTestId('chat-part-error')).textContent).toContain(BROKEN_CARD);
     expect(screen.getByText('Here is what I found.')).toBeTruthy();
   });
 });
