@@ -5,6 +5,7 @@ import { AppShell } from '@rambleraptor/homestead-core/layout/AppShell';
 import { Login } from '@rambleraptor/homestead-core/router/Login';
 import { AuthCallback } from '@rambleraptor/homestead-core/router/AuthCallback';
 import { Authorize } from '@rambleraptor/homestead-core/router/Authorize';
+import { ErrorBoundary } from '@rambleraptor/homestead-core/shared/components/ErrorBoundary';
 import { AppRoute } from './apps/AppRoute';
 
 /**
@@ -23,6 +24,8 @@ function ShellLayout() {
 export function App() {
   return (
     <Providers>
+      {/* The last resort, for a throw outside a page (the shell, sign-in). */}
+      <ErrorBoundary>
       <Routes>
         <Route
           path="/login"
@@ -73,6 +76,7 @@ export function App() {
           <Route path="*" element={<AppRoute />} />
         </Route>
       </Routes>
+      </ErrorBoundary>
     </Providers>
   );
 }

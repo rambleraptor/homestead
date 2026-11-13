@@ -30,12 +30,33 @@ import {
 import { wrapWithGate } from '@rambleraptor/homestead-core/apps/router/gates';
 import { getLazyComponent } from '@rambleraptor/homestead-core/apps/lazy';
 import { NotFound } from '@rambleraptor/homestead-core/router/NotFound';
+import { ErrorBoundary, RenderError } from '@rambleraptor/homestead-core/shared/components/ErrorBoundary';
 import { useDisplayedLocation } from '@rambleraptor/homestead-core/layout/useDisplayedLocation';
 
 function RouteFallback() {
   return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent-terracotta" />
+    </div>
+  );
+}
+
+/**
+ * What a page that threw while rendering leaves behind: the error, in the
+ * main area, with the shell (and so the way to every other page) still up.
+ * It offers a reload rather than a re-render — a page that can't load its
+ * code (a tab older than the build being served) only recovers that way.
+ */
+function PageError({ error }: { error: Error }) {
+  return (
+    <div className="p-4">
+      <RenderError
+        error={error}
+        onReload={() => window.location.reload()}
+        title="This page ran into a problem"
+        className="mx-auto max-w-xl"
+        data-testid="page-error"
+      />
     </div>
   );
 }
@@ -94,5 +115,13 @@ export function AppRoute() {
     element = wrapWithGate(gateName, match.app.id, element);
   }
 
-  return <LocationContext.Provider value={pinnedContext}>{element}</LocationContext.Provider>;
+  // Without this a throw anywhere in a page unmounts the whole SPA: a blank
+  // screen. Moving to another page clears it.
+  return (
+    <LocationContext.Provider value={pinnedContext}>
+      <ErrorBoundary resetKey={pathname} fallback={(error) => <PageError error={error} />}>
+        {element}
+      </ErrorBoundary>
+    </LocationContext.Provider>
+  );
 }

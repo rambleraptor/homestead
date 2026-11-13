@@ -33,6 +33,7 @@ import {
   Suggestion,
   Suggestions,
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/suggestion';
+import { ErrorBoundary, RenderError } from '@rambleraptor/homestead-core/shared/components/ErrorBoundary';
 import { QueryError } from '@rambleraptor/homestead-core/shared/components/QueryError';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
@@ -152,16 +153,30 @@ export function ChatThread({
             )
           ) : (
             messages.map((message, i) => (
-              <ChatMessage
+              // A message that can't render says so in its place; the
+              // conversation around it, and the composer, stay usable.
+              <ErrorBoundary
                 key={message.id}
-                conversationId={conversationId}
-                message={message}
-                stored={chat.storedById.get(message.id)}
-                streaming={busy && i === messages.length - 1 && message.role === 'assistant'}
-                onAnswerApproval={chat.answerApproval}
-                busy={busy || isOffline}
-                findPreview={(previewId) => findImportPreview(messages, previewId)}
-              />
+                resetKey={message}
+                fallback={(error) => (
+                  <RenderError
+                    compact
+                    error={error}
+                    title="Couldn’t show this message"
+                    data-testid="chat-message-render-error"
+                  />
+                )}
+              >
+                <ChatMessage
+                  conversationId={conversationId}
+                  message={message}
+                  stored={chat.storedById.get(message.id)}
+                  streaming={busy && i === messages.length - 1 && message.role === 'assistant'}
+                  onAnswerApproval={chat.answerApproval}
+                  busy={busy || isOffline}
+                  findPreview={(previewId) => findImportPreview(messages, previewId)}
+                />
+              </ErrorBoundary>
             ))
           )}
           {showThinking && (

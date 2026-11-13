@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { CopyIcon } from 'lucide-react';
 import { isStaticToolUIPart, type FileUIPart, type ToolUIPart } from 'ai';
 import {
@@ -19,6 +20,7 @@ import {
   ToolInput,
   ToolOutput,
 } from '@rambleraptor/homestead-core/shared/components/ai-elements/tool';
+import { ErrorBoundary, RenderError } from '@rambleraptor/homestead-core/shared/components/ErrorBoundary';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
@@ -93,6 +95,31 @@ function ToolCall({ part }: { part: ToolUIPart }) {
   );
 }
 
+/**
+ * One piece of a reply, on its own: a card or a stretch of Markdown that
+ * throws while rendering says so in its place, and the rest of the reply (and
+ * the page) stays. `resetKey` is the part itself — a new one arrives with
+ * every streamed update and when storage replaces the live turn, so a part
+ * that failed half-written gets another go once there is more of it.
+ */
+function ReplyPart({ resetKey, children }: { resetKey: unknown; children: ReactNode }) {
+  return (
+    <ErrorBoundary
+      resetKey={resetKey}
+      fallback={(error) => (
+        <RenderError
+          compact
+          error={error}
+          title="Couldn’t show this part of the reply"
+          data-testid="chat-part-error"
+        />
+      )}
+    >
+      {children}
+    </ErrorBoundary>
+  );
+}
+
 export interface ChatMessageProps {
   /** The conversation it belongs to, once it has one. */
   conversationId: string | null;
@@ -153,7 +180,11 @@ export function ChatMessage({
         )}
         {groupParts(message.parts, (part) => isStaticToolUIPart(part) && rollsUp(part)).map((group) => {
           if (group.kind === 'reads') {
-            return <ReadRollup key={`reads-${group.index}`} parts={group.parts as ToolUIPart[]} />;
+            return (
+              <ReplyPart key={`reads-${group.index}`} resetKey={group.parts.at(-1)}>
+                <ReadRollup parts={group.parts as ToolUIPart[]} />
+              </ReplyPart>
+            );
           }
           const { part, index: i } = group;
           if (part.type === 'text') {
@@ -162,30 +193,33 @@ export function ChatMessage({
                 {part.text}
               </p>
             ) : (
-              <MessageResponse
-                key={i}
-                isAnimating={streaming}
-                components={replyComponents}
-                rehypePlugins={replyRehypePlugins}
-                urlTransform={replyUrlTransform}
-              >
-                {part.text}
-              </MessageResponse>
+              <ReplyPart key={i} resetKey={part}>
+                <MessageResponse
+                  isAnimating={streaming}
+                  components={replyComponents}
+                  rehypePlugins={replyRehypePlugins}
+                  urlTransform={replyUrlTransform}
+                >
+                  {part.text}
+                </MessageResponse>
+              </ReplyPart>
             );
           }
           if (isStaticToolUIPart(part)) {
-            if (part.state === 'approval-requested' && onAnswerApproval) {
-              return (
-                <ApprovalCard
-                  key={part.toolCallId}
-                  part={part}
-                  onAnswer={onAnswerApproval}
-                  disabled={busy}
-                  findPreview={findPreview}
-                />
-              );
-            }
-            return <ToolCall key={part.toolCallId} part={part} />;
+            return (
+              <ReplyPart key={part.toolCallId} resetKey={part}>
+                {part.state === 'approval-requested' && onAnswerApproval ? (
+                  <ApprovalCard
+                    part={part}
+                    onAnswer={onAnswerApproval}
+                    disabled={busy}
+                    findPreview={findPreview}
+                  />
+                ) : (
+                  <ToolCall part={part} />
+                )}
+              </ReplyPart>
+            );
           }
           return null;
         })}
