@@ -21,6 +21,8 @@ export interface GroceryItem {
   id: string;
   name: string;
   checked: boolean;
+  /** The store section it's shelved in (a `sections.ts` id); unset until the list is sorted. */
+  category?: string;
   notes?: string;
   store?: string; // Store ID
   created_by?: string;

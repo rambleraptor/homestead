@@ -1,7 +1,9 @@
 /**
  * Grocery List Component
  *
- * Displays grocery items grouped by store.
+ * Displays grocery items grouped by store. Once the list has been sorted by
+ * section (`groceries:categorize`), a store's remaining items run in section
+ * order under a small heading each; a list never sorted draws no headings.
  *
  * The rows are choreographed: the ones there at first paint cascade in, a row
  * added later rises on its own, and a row deleted — one at a time, or a
@@ -14,7 +16,7 @@
  * until it is cleared.
  */
 
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Check, Trash2, Store as StoreIcon, Eraser, ShoppingCart } from 'lucide-react';
 import { usePendingSyncIds } from '@rambleraptor/homestead-core/api/usePendingSync';
 import {
@@ -40,6 +42,7 @@ import {
   type ChoreographedRow,
 } from '@rambleraptor/homestead-core/shared/hooks/useLeavingRows';
 import { useStores } from '../hooks/useStores';
+import { sectionOf } from '../sections';
 import type { StoreGroupedGroceries, GroceryItem, Store } from '../types';
 
 interface GroceryListProps {
@@ -57,6 +60,17 @@ interface DisplayGroup {
   rows: ChoreographedRow<GroceryItem>[];
   checkedCount: number;
   totalCount: number;
+}
+
+/**
+ * The heading each row sits under, or null for none: a remaining item's
+ * section, and — only in a store that has sections — "Crossed off" for the
+ * ticked items below them, so they don't read as part of the last section.
+ */
+function rowHeadings(rows: ChoreographedRow<GroceryItem>[]): (string | null)[] {
+  const labels = rows.map(({ item }) => (item.checked ? null : (sectionOf(item.category)?.label ?? null)));
+  const sectioned = labels.some((label) => label !== null);
+  return rows.map(({ item }, index) => (item.checked && sectioned ? 'Crossed off' : labels[index]));
 }
 
 const groupKey = (storeId: string | null | undefined) => storeId || 'no-store';
@@ -169,56 +183,69 @@ export function GroceryList({
 
   return (
     <div className="space-y-6">
-      {groups.map((group) => (
-        <div key={group.key} className="space-y-3">
-          <div className="flex items-center gap-3 px-1">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent-terracotta/10 shrink-0">
-              <StoreIcon className="w-5 h-5 text-accent-terracotta" />
+      {groups.map((group) => {
+        const headings = rowHeadings(group.rows);
+        return (
+          <div key={group.key} className="space-y-3">
+            <div className="flex items-center gap-3 px-1">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent-terracotta/10 shrink-0">
+                <StoreIcon className="w-5 h-5 text-accent-terracotta" />
+              </div>
+              <h2 className="text-lg font-display font-semibold text-brand-navy flex-1 min-w-0 truncate">
+                {group.store?.name || 'No Store'}
+              </h2>
+              <span className="text-sm font-body text-text-muted shrink-0 whitespace-nowrap">
+                {group.checkedCount} / {group.totalCount} checked
+              </span>
+              {/* Only offered once there is something crossed off to sweep away —
+                  an always-present button that does nothing invites a mis-tap. */}
+              {onClearCheckedItems && group.checkedCount > 0 && (
+                <button
+                  onClick={() => handleClear(group)}
+                  data-testid="clear-checked-items-button"
+                  title="Remove crossed-off items from this store"
+                  className="ml-1 flex items-center gap-1.5 px-3 py-1.5 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 text-sm whitespace-nowrap"
+                >
+                  <Eraser className="w-4 h-4" />
+                  <span className="hidden sm:inline">Clear crossed off</span>
+                  <span className="sm:hidden">Clear</span>
+                </button>
+              )}
             </div>
-            <h2 className="text-lg font-display font-semibold text-brand-navy flex-1 min-w-0 truncate">
-              {group.store?.name || 'No Store'}
-            </h2>
-            <span className="text-sm font-body text-text-muted shrink-0 whitespace-nowrap">
-              {group.checkedCount} / {group.totalCount} checked
-            </span>
-            {/* Only offered once there is something crossed off to sweep away —
-                an always-present button that does nothing invites a mis-tap. */}
-            {onClearCheckedItems && group.checkedCount > 0 && (
-              <button
-                onClick={() => handleClear(group)}
-                data-testid="clear-checked-items-button"
-                title="Remove crossed-off items from this store"
-                className="ml-1 flex items-center gap-1.5 px-3 py-1.5 bg-surface-white hover:bg-bg-pearl text-brand-navy rounded-lg font-medium font-body transition-colors shadow-sm border border-gray-200 text-sm whitespace-nowrap"
-              >
-                <Eraser className="w-4 h-4" />
-                <span className="hidden sm:inline">Clear crossed off</span>
-                <span className="sm:hidden">Clear</span>
-              </button>
-            )}
-          </div>
 
-          <div className="bg-surface-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="divide-y divide-gray-100">
-              {group.rows.map(({ item, exiting, firstPaint }) => {
-                const index = rowIndex++;
-                return (
-                  <GroceryItemRow
-                    key={item.id}
-                    item={item}
-                    onToggle={handleToggle}
-                    onDelete={handleDelete}
-                    isPendingSync={pendingSyncIds.has(item.id)}
-                    remoteChange={recentChanges.get(item.id)}
-                    enterDelayMs={firstPaint ? cascadeDelayMs(index) : 0}
-                    exiting={exiting}
-                    onExited={() => release(item.id)}
-                  />
-                );
-              })}
+            <div className="bg-surface-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="divide-y divide-gray-100">
+                {group.rows.map(({ item, exiting, firstPaint }, at) => {
+                  const index = rowIndex++;
+                  const heading = headings[at] !== headings[at - 1] ? headings[at] : null;
+                  return (
+                    <Fragment key={item.id}>
+                      {heading && (
+                        <h3
+                          data-testid="grocery-section-heading"
+                          className="px-4 py-1.5 bg-bg-pearl text-xs font-body font-semibold uppercase tracking-wide text-text-muted"
+                        >
+                          {heading}
+                        </h3>
+                      )}
+                      <GroceryItemRow
+                        item={item}
+                        onToggle={handleToggle}
+                        onDelete={handleDelete}
+                        isPendingSync={pendingSyncIds.has(item.id)}
+                        remoteChange={recentChanges.get(item.id)}
+                        enterDelayMs={firstPaint ? cascadeDelayMs(index) : 0}
+                        exiting={exiting}
+                        onExited={() => release(item.id)}
+                      />
+                    </Fragment>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

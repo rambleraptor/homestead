@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useGroceries } from './useGroceries';
 import { useStores } from './useStores';
+import { sectionRank } from '../sections';
 import type { StoreGroupedGroceries, GroceryStats } from '../types';
 
 export function useGroupedGroceries() {
@@ -32,6 +33,15 @@ export function useGroupedGroceries() {
       group.items.push(item);
       group.totalCount++;
       if (item.checked) group.checkedCount++;
+    }
+
+    // Within a store, what's left to buy runs in section order (the sort is
+    // stable, so names stay alphabetical inside a section); crossed-off items
+    // keep their place at the bottom.
+    for (const group of storeMap.values()) {
+      group.items.sort((a, b) =>
+        a.checked || b.checked ? 0 : sectionRank(a.category) - sectionRank(b.category),
+      );
     }
 
     const storesList = Array.from(storeMap.values())

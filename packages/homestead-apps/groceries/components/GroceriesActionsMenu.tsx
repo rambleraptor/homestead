@@ -1,8 +1,8 @@
 /**
  * Groceries Actions Menu
  *
- * The page's occasional tasks — managing stores, nudging the household,
- * importing a photographed list, starting over — gathered behind one ⋯
+ * The page's occasional tasks — managing stores, sorting the list by store
+ * section, nudging the household, importing a photographed list, starting over — gathered behind one ⋯
  * button. On a phone four labelled buttons wrapped onto two rows and pushed
  * the list down; shopping is add-and-tick, so the header keeps only the
  * title and this trigger. Same Radix popover menu as the people app's cards.
@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { Popover } from 'radix-ui';
 import {
+  ArrowDownNarrowWide,
   Bell,
   Image as ImageIcon,
   ListRestart,
@@ -23,11 +24,13 @@ import { cn } from '@rambleraptor/homestead-core/shared/lib/utils';
 
 interface GroceriesActionsMenuProps {
   onManageStores: () => void;
+  onSortBySection: () => void;
   onNotify: () => void;
   onUploadList: () => void;
   onNewList: () => void;
   /** The list has items, so "New List" has something to clear. */
   hasItems: boolean;
+  isSorting: boolean;
   isNotifying: boolean;
   isBulkUpdating: boolean;
   isOffline: boolean;
@@ -40,10 +43,12 @@ const menuItemClass =
 
 export function GroceriesActionsMenu({
   onManageStores,
+  onSortBySection,
   onNotify,
   onUploadList,
   onNewList,
   hasItems,
+  isSorting,
   isNotifying,
   isBulkUpdating,
   isOffline,
@@ -68,7 +73,7 @@ export function GroceriesActionsMenu({
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-terracotta',
         )}
       >
-        {isNotifying ? (
+        {isNotifying || isSorting ? (
           <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         ) : (
           <MoreHorizontal className="w-5 h-5" aria-hidden="true" />
@@ -88,6 +93,16 @@ export function GroceriesActionsMenu({
             onClick={menuAction(onManageStores)}
             testId="manage-stores-button"
           />
+          {hasItems && (
+            <MenuItem
+              icon={ArrowDownNarrowWide}
+              label="Sort by section"
+              onClick={menuAction(onSortBySection)}
+              disabled={isSorting || isOffline}
+              title={offlineTitle}
+              testId="sort-groceries-button"
+            />
+          )}
           <MenuItem
             icon={Bell}
             label="Notify household"

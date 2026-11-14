@@ -18,6 +18,7 @@ import { ConfirmDialog } from '@rambleraptor/homestead-core/shared/components/Co
 import { PageHeader } from '@rambleraptor/homestead-core/shared/components/PageHeader';
 import { Badge } from '@rambleraptor/homestead-core/shared/components/Badge';
 import { useSendGroceryNotification } from '../hooks/useSendGroceryNotification';
+import { useCategorizeGroceries } from '../hooks/useCategorizeGroceries';
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { useOnlineStatus } from '@rambleraptor/homestead-core/shared/hooks/useOnlineStatus';
 import { useAppFlag } from '@rambleraptor/homestead-core/settings';
@@ -36,6 +37,7 @@ export function GroceriesHome() {
   const createMutation = useCreateGroceryItem();
   const deleteAllMutation = useDeleteAllGroceries();
   const notifyMutation = useSendGroceryNotification();
+  const categorizeMutation = useCategorizeGroceries();
   const toast = useToast();
   const { isOffline } = useOnlineStatus();
   const { value: defaultStore = '' } = useAppFlag<string>(
@@ -95,6 +97,15 @@ export function GroceriesHome() {
     }
   };
 
+  const handleSortBySection = async () => {
+    try {
+      const { message } = await categorizeMutation.mutateAsync();
+      toast.success(message);
+    } catch {
+      // Error surfaced by the global mutation error toast (queryClient.ts).
+    }
+  };
+
   // Treat paused (offline) mutations as not-submitting — the optimistic
   // update has already shown the new row, so the input shouldn't lock up.
   const isSubmitting = createMutation.isPending && !createMutation.isPaused;
@@ -137,10 +148,12 @@ export function GroceriesHome() {
         actions={
           <GroceriesActionsMenu
             onManageStores={() => setShowStoreManagement(!showStoreManagement)}
+            onSortBySection={handleSortBySection}
             onNotify={handleNotify}
             onUploadList={() => setShowImageUpload(true)}
             onNewList={handleNewList}
             hasItems={stats.totalItems > 0}
+            isSorting={categorizeMutation.isPending}
             isNotifying={notifyMutation.isPending}
             isBulkUpdating={isBulkUpdating}
             isOffline={isOffline}

@@ -26,6 +26,8 @@ export const groceriesResources: ResourceDefinition[] = [
       // Quick-add omits `checked`; the engine fills this default so every
       // grocery persists as unchecked rather than with the field absent.
       checked: { type: 'boolean', default: false },
+      // The section of the store the item is shelved in (a `sections.ts` id),
+      // set by `groceries:categorize`. Empty until the list has been sorted.
       category: { type: 'string' },
       notes: { type: 'string' },
       // When a create omits `store`, the engine fills the household's
@@ -42,7 +44,23 @@ export const groceriesResources: ResourceDefinition[] = [
     // AEP-136 custom methods on the grocery collection:
     //   POST /api/aep/groceries:process-image
     //   POST /api/aep/groceries:send-notification
+    //   POST /api/aep/groceries:categorize
     customMethods: {
+      categorize: {
+        target: 'collection',
+        description:
+          'Sort the whole grocery list by store section: decides which section each item belongs in and saves it as the item\'s category.',
+        response: {
+          type: 'object',
+          properties: {
+            sorted: { type: 'integer', description: 'Items a section was decided for.' },
+            changed: { type: 'integer', description: 'Items whose section changed.' },
+            message: { type: 'string' },
+          },
+          required: ['sorted', 'changed', 'message'],
+        },
+        load: () => import('./methods/categorize'),
+      },
       'process-image': {
         target: 'collection',
         description: 'Read a photo of a grocery list and return the items on it (not saved).',

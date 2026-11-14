@@ -22,6 +22,7 @@ import {
   getEmbeddingConfig,
   type KeySource,
 } from './ai/config';
+import { GEMINI_KEY_SLOT, usesAiKeyForDecisions } from './ai/decisions';
 import { serverClient } from './client';
 import { resolveCredential } from './credentials';
 
@@ -47,7 +48,7 @@ const PROVIDERS: Record<AiProvider, { name: string; keys: string }> = {
   anthropic: { name: 'Anthropic (Claude)', keys: 'https://console.anthropic.com/settings/keys' },
 };
 
-/** The AI and embedding keys, when their blocks are configured, described for their provider. */
+/** The AI and embedding keys, when their blocks are configured, described for their provider; and the Gemini key, when the AI key doesn't cover it. */
 function coreSlots(): Array<CredentialSlot & { usedBy: string; source: () => KeySource | null }> {
   const out: Array<CredentialSlot & { usedBy: string; source: () => KeySource | null }> = [];
   const ai = getAiConfig();
@@ -77,6 +78,19 @@ function coreSlots(): Array<CredentialSlot & { usedBy: string; source: () => Key
       help: provider.keys,
       usedBy: 'Document search',
       source: () => embeddingKey()?.source ?? null,
+    });
+  }
+  // The Decisions API is Google's own; an instance already on Google's AI needs no second key.
+  if (!usesAiKeyForDecisions()) {
+    out.push({
+      ...GEMINI_KEY_SLOT,
+      label: 'Gemini API key',
+      description:
+        'A Google Gemini API key for the Gemini Decisions API, which decides which section of ' +
+        'the store each grocery item belongs in.',
+      help: PROVIDERS.google.keys,
+      usedBy: 'Groceries: Sort by section',
+      source: () => resolveCredential(GEMINI_KEY_SLOT)?.source ?? null,
     });
   }
   return out;
