@@ -124,6 +124,10 @@ export const USER_ID_PLACEHOLDER = /\{user-id:([^}]+)\}/g;
 export const CHAT_MARKERS = {
   /** Add milk to the grocery list, then confirm. */
   addMilk: 'e2e-chat-add-milk',
+  /** Add eggs, bread and butter to the grocery list, one call after another, then confirm. */
+  addGroceries: 'e2e-chat-add-groceries',
+  /** Add eggs, then an item with no name (which fails), then butter, then say so. */
+  addGroceriesOneFails: 'e2e-chat-partly-failed-groceries',
   /** List groceries with a filter, then summarize. */
   listUnchecked: 'e2e-chat-list-unchecked',
   /** Answer in text with no tool call — the plain streaming case. */
@@ -195,6 +199,25 @@ export const CHAT_SCRIPTS: readonly ChatScript[] = [
     steps: [
       { toolCalls: [{ name: 'groceries', args: { action: 'create', fields: { name: 'Milk' } } }] },
       { text: 'Added milk to the grocery list.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.addGroceries,
+    steps: [
+      // One call per round: the stub picks a round by counting tool results.
+      { toolCalls: [{ name: 'groceries', args: { action: 'create', fields: { name: 'Eggs' } } }] },
+      { toolCalls: [{ name: 'groceries', args: { action: 'create', fields: { name: 'Bread' } } }] },
+      { toolCalls: [{ name: 'groceries', args: { action: 'create', fields: { name: 'Butter' } } }] },
+      { text: 'Added all three.' },
+    ],
+  },
+  {
+    marker: CHAT_MARKERS.addGroceriesOneFails,
+    steps: [
+      { toolCalls: [{ name: 'groceries', args: { action: 'create', fields: { name: 'Eggs' } } }] },
+      { toolCalls: [{ name: 'groceries', args: { action: 'create', fields: { notes: 'the good kind' } } }] },
+      { toolCalls: [{ name: 'groceries', args: { action: 'create', fields: { name: 'Butter' } } }] },
+      { text: 'Added two; one would not go in.' },
     ],
   },
   {

@@ -390,6 +390,14 @@ export interface ChatCardProps {
    * card's undo writes back.
    */
   previous?: Record<string, unknown>;
+  /**
+   * The line to show in place of the card's own headline, when the host knows
+   * better what happened: several adds in a row are shown through the
+   * resource's `list` card, headed "Added 32 groceries" rather than
+   * "32 groceries". `cardHeadline(props)` returns it, so a card built on that
+   * needs nothing more.
+   */
+  headline?: string;
 }
 
 export interface ChatCardType {

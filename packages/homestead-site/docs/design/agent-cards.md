@@ -251,6 +251,25 @@ list an app draws (todos, groceries) always render on their own. The rules are
 `rollsUp` and `groupParts` in `chat/cards.ts`; `ChatMessage` renders through
 the groups.
 
+### 3.5.1 Add batch
+
+Two or more adds to the same resource in a row fold into one card
+(`AddBatchCard` in `ChatCard.tsx`, `chat-tool-batch`): "Added 32 groceries"
+over the records, instead of a card apiece. The records are shown by the
+resource's `list` card, given the batch's headline through
+`ChatCardProps.headline` (which `cardHeadline` returns) — so groceries come
+back by store with their checkboxes, todos with theirs, and a resource with no
+list card gets the generic list (the first few, then "and N more"). No app
+work is needed. While calls are still running the card is one progress line
+("Adding groceries… 12 of 32"); an add that failed is named under the list
+with its reason (`chat-batch-failed`), and a batch where nothing went in says
+so in its headline. Each call's own card is behind Details.
+
+The run rules are the read rollup's: a step boundary or an empty text doesn't
+break it, anything else does, including an add to a different resource. An add
+waiting on approval, or refused, keeps its own card. `addsUp`, `runKeyOf` and
+`addBatch` in `chat/cards.ts`.
+
 ### 3.6 Undo
 
 A finished update or delete can be put back from its card (`UndoCall.tsx`,

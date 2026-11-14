@@ -230,31 +230,94 @@ export function rollsUp(part: Pick<ToolUIPart, 'type' | 'state' | 'output' | 'er
   return chatCardFor(owner, action) === undefined;
 }
 
-/** A message's parts as they render: one at a time, or a run of reads folded together. */
-export type PartGroup<P> = { kind: 'one'; part: P; index: number } | { kind: 'reads'; parts: P[]; index: number };
+/**
+ * A create on a Homestead resource that can join a batch (see `addBatch`):
+ * running, finished or failed. One waiting on the person's approval, or
+ * refused, keeps its own card — there is something to answer, or to notice.
+ */
+export function addsUp(part: Pick<ToolUIPart, 'type' | 'state' | 'input'>): boolean {
+  if (part.state === 'approval-requested' || part.state === 'approval-responded' || part.state === 'output-denied') {
+    return false;
+  }
+  return ownerForTool(part.type) !== undefined && cardActionOf(part.input) === 'create';
+}
+
+/** The run of reads a reply folds into one line. */
+export const READS_RUN = 'reads';
 
 /**
- * Fold each run of two or more parts that `rollsUp` into one group. Parts that
- * show nothing between them (a step boundary, an empty text) don't break a run;
- * anything else does. A lone read stays a card of its own.
+ * Which run a tool part can fold into, or null when it renders on its own:
+ * reads of any resource fold together; adds fold per resource.
+ */
+export function runKeyOf(
+  part: Pick<ToolUIPart, 'type' | 'state' | 'output' | 'errorText' | 'input'>,
+): string | null {
+  if (rollsUp(part)) return READS_RUN;
+  if (addsUp(part)) return `adds:${part.type}`;
+  return null;
+}
+
+/** Several adds to one resource, as one card reads them. */
+export interface AddBatch {
+  total: number;
+  /** The records made so far, in the order they were asked for. */
+  records: unknown[];
+  /** Calls still running. */
+  pending: number;
+  /** Calls that failed: what was being added (its title, when the call named one), and why. */
+  failed: { title?: string; error: string }[];
+}
+
+/** Sum up a run of creates on one resource. */
+export function addBatch(
+  parts: readonly Pick<ToolUIPart, 'state' | 'input' | 'output' | 'errorText'>[],
+  titleOf: (fields: unknown) => string | undefined,
+): AddBatch {
+  const batch: AddBatch = { total: parts.length, records: [], pending: 0, failed: [] };
+  for (const part of parts) {
+    const mode = cardMode(part);
+    if (mode === 'done') {
+      batch.records.push(toolOutcome(part).result);
+    } else if (mode === 'failed') {
+      const title = titleOf((part.input as { fields?: unknown } | null | undefined)?.fields);
+      batch.failed.push({ ...(title ? { title } : {}), error: toolOutcome(part).error || 'The call failed.' });
+    } else {
+      batch.pending++;
+    }
+  }
+  return batch;
+}
+
+/** A message's parts as they render: one at a time, or a run folded together (`key`: which kind). */
+export type PartGroup<P> =
+  | { kind: 'one'; part: P; index: number }
+  | { kind: 'run'; key: string; parts: P[]; index: number };
+
+/**
+ * Fold each run of two or more parts with the same run key (`runKeyOf`) into
+ * one group. Parts that show nothing between them (a step boundary, an empty
+ * text) don't break a run; anything else does, a part of another run
+ * included. A lone part stays a card of its own.
  */
 export function groupParts<P extends { type: string; text?: string }>(
   parts: readonly P[],
-  canRollUp: (part: P) => boolean,
+  runKey: (part: P) => string | null,
 ): PartGroup<P>[] {
   const out: PartGroup<P>[] = [];
-  let run: { parts: P[]; index: number; skipped: { part: P; index: number }[] } | null = null;
+  let run: { key: string; parts: P[]; index: number; skipped: { part: P; index: number }[] } | null = null;
   const flush = () => {
     if (!run) return;
-    if (run.parts.length >= 2) out.push({ kind: 'reads', parts: run.parts, index: run.index });
+    if (run.parts.length >= 2) out.push({ kind: 'run', key: run.key, parts: run.parts, index: run.index });
     else out.push({ kind: 'one', part: run.parts[0]!, index: run.index });
     for (const skipped of run.skipped) out.push({ kind: 'one', ...skipped });
     run = null;
   };
   parts.forEach((part, index) => {
     const silent = part.type === 'step-start' || part.type === 'reasoning' || (part.type === 'text' && !part.text?.trim());
-    if (canRollUp(part)) {
-      run ??= { parts: [], index, skipped: [] };
+    const key = runKey(part);
+    if (key !== null) {
+      if (run && run.key !== key) flush();
+      run ??= { key, parts: [], index, skipped: [] };
       run.parts.push(part);
     } else if (silent && run) {
       run.skipped.push({ part, index });
@@ -266,4 +329,3 @@ export function groupParts<P extends { type: string; text?: string }>(
   flush();
   return out;
 }
-
