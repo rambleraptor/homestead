@@ -140,6 +140,21 @@ export class ChatPage {
     await this.readRollup.nth(index).getByTestId('chat-tool-rollup-toggle').click();
   }
 
+  /** A run of adds to one resource, folded into one "Added 3 groceries" card. */
+  get addBatch(): Locator {
+    return this.driver.getByTestId('chat-tool-batch');
+  }
+
+  /** Unfold an "Added …" card to show each add's own card. */
+  async openAddBatch(index = 0) {
+    await this.addBatch.nth(index).getByTestId('chat-tool-batch-toggle').click();
+  }
+
+  /** What an "Added …" card says about the adds that failed. */
+  get addBatchFailures(): Locator {
+    return this.driver.getByTestId('chat-batch-failed');
+  }
+
   /** A message card's "To …" line: who a message is (or was) for. */
   get cardRecipient(): Locator {
     return this.driver.getByTestId('chat-card-recipient');

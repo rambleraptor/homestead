@@ -24,12 +24,12 @@ import { ErrorBoundary, RenderError } from '@rambleraptor/homestead-core/shared/
 import { useToast } from '@rambleraptor/homestead-core/shared/components/ToastProvider';
 import { toolAction } from '../hooks/useConversation';
 import { useMcpToolLabel } from '../hooks/useMcpToolLabel';
-import { groupParts, ownerForTool, rollsUp } from '../cards';
+import { groupParts, ownerForTool, READS_RUN, runKeyOf } from '../cards';
 import { MessageAttachments } from './MessageAttachments';
 import { ApprovalCard } from './ApprovalCard';
 import { ReplyRating } from './ReplyRating';
 import type { BulkImportPreview } from '@rambleraptor/homestead-client';
-import { ReadRollup, ResourceToolCall } from './ChatCard';
+import { AddBatchCard, ReadRollup, ResourceToolCall } from './ChatCard';
 import { ReplyLink, replyRehypePlugins, replyUrlTransform } from './ChatValue';
 import { plainReplyText } from '../values';
 import type { HomesteadUIMessage, StoredChatMessage } from '../types';
@@ -178,11 +178,14 @@ export function ChatMessage({
             <ReasoningContent>{reasoning}</ReasoningContent>
           </Reasoning>
         )}
-        {groupParts(message.parts, (part) => isStaticToolUIPart(part) && rollsUp(part)).map((group) => {
-          if (group.kind === 'reads') {
+        {groupParts(message.parts, (part) => (isStaticToolUIPart(part) ? runKeyOf(part) : null)).map((group) => {
+          if (group.kind === 'run') {
+            const parts = group.parts as ToolUIPart[];
+            // An adds run is all one resource's tool, so the first part names its owner.
+            const owner = group.key === READS_RUN ? undefined : ownerForTool(parts[0]!.type);
             return (
-              <ReplyPart key={`reads-${group.index}`} resetKey={group.parts.at(-1)}>
-                <ReadRollup parts={group.parts as ToolUIPart[]} />
+              <ReplyPart key={`${group.key}-${group.index}`} resetKey={parts.at(-1)}>
+                {owner ? <AddBatchCard parts={parts} owner={owner} /> : <ReadRollup parts={parts} />}
               </ReplyPart>
             );
           }

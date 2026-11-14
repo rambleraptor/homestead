@@ -1,6 +1,7 @@
 /**
  * Grocery cards in an assistant reply: an item the assistant adds shows as
- * the item, with its checkbox; a list it reads comes back as the list to shop
+ * the item, with its checkbox; several added in a row show as one card; a
+ * list it reads comes back as the list to shop
  * from, grouped by store, with a way to share it with the household. The
  * scripts (tests/e2e/config/ai-scripts.ts) run their calls for real.
  */
@@ -48,6 +49,49 @@ describe('Grocery cards in chat', () => {
     await cards.toggle('Milk');
     await d.expect(cards.card('Milk')).toHaveAttribute('data-checked', 'true');
     expect((await groceries().listAll()).map((g) => [g.name, g.checked])).toEqual([['Milk', true]]);
+  });
+
+  test('several adds in a row show as one card, with every item to check off', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    const cards = new GroceryCards(d);
+    await chat.goto();
+    await chat.send(`Add eggs, bread and butter ${CHAT_MARKERS.addGroceries}`);
+
+    await d.expect(chat.messages).toContainText('Added all three.');
+    await d.expect(chat.addBatch).toHaveCount(1);
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Added 3 groceries');
+    // One card, not three: each add's own card is behind Details.
+    await d.expect(chat.toolCalls).toHaveCount(0);
+    await d.expect(cards.all).toHaveCount(3);
+    await chat.expectSettled(/Add eggs/);
+
+    await cards.toggle('Bread');
+    await d.expect(cards.card('Bread')).toHaveAttribute('data-checked', 'true');
+    expect((await groceries().listAll()).map((g) => [g.name, g.checked]).sort()).toEqual([
+      ['Bread', true],
+      ['Butter', false],
+      ['Eggs', false],
+    ]);
+
+    await chat.openAddBatch();
+    await d.expect(chat.toolCalls).toHaveCount(3);
+  });
+
+  test('an add that fails is named under the ones that went in', async () => {
+    const d = h.driver;
+    const chat = new ChatPage(d);
+    const cards = new GroceryCards(d);
+    await chat.goto();
+    await chat.send(`Add a few things ${CHAT_MARKERS.addGroceriesOneFails}`);
+
+    await d.expect(chat.messages).toContainText('Added two; one would not go in.');
+    await d.expect(chat.addBatch).toHaveCount(1);
+    await d.expect(chat.cardHeadlines.first()).toHaveText('Added 2 groceries');
+    await d.expect(cards.all).toHaveCount(2);
+    await d.expect(chat.addBatchFailures).toContainText('One couldn’t be added');
+    await d.expect(chat.addBatchFailures).toContainText('name');
+    await chat.expectSettled(/Add a few things/);
   });
 
   test('a list comes back grouped by store, in the household’s store order', async () => {

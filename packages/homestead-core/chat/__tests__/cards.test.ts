@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppConfig, ChatCardType, RecordCardType } from '../../apps/types';
 import { initializeAppRegistry, resetAppRegistry } from '../../apps/registry';
 import {
+  addBatch,
+  addsUp,
   cardActionOf,
   cardMode,
   cardRecordId,
@@ -14,6 +16,7 @@ import {
   ownerForTool,
   recordCardFor,
   rollsUp,
+  runKeyOf,
   toolOutcome,
   undoPlan,
 } from '../cards';
@@ -286,8 +289,8 @@ describe('cards', () => {
         { type: 'r', id: 5 },
         { type: 'w', id: 6 },
       ];
-      const groups = groupParts(parts, (p) => p.type === 'r');
-      expect(groups.map((g) => (g.kind === 'reads' ? `reads:${g.parts.map((p) => p.id)}` : `one:${g.part.id}`))).toEqual([
+      const groups = groupParts(parts, (p) => (p.type === 'r' ? 'reads' : null));
+      expect(groups.map((g) => (g.kind === 'run' ? `${g.key}:${g.parts.map((p) => p.id)}` : `one:${g.part.id}`))).toEqual([
         'one:0',
         'reads:1,3',
         'one:2',
@@ -295,6 +298,77 @@ describe('cards', () => {
         'one:5',
         'one:6',
       ]);
+    });
+
+    it('starts a new run where the kind of run changes', () => {
+      const parts = [
+        { type: 'a', id: 0 },
+        { type: 'a', id: 1 },
+        { type: 'b', id: 2 },
+        { type: 'b', id: 3 },
+        { type: 'a', id: 4 },
+      ];
+      const groups = groupParts(parts, (p) => p.type);
+      expect(groups.map((g) => (g.kind === 'run' ? `${g.key}:${g.parts.map((p) => p.id)}` : `one:${g.part.id}`))).toEqual([
+        'a:0,1',
+        'b:2,3',
+        'one:4',
+      ]);
+    });
+  });
+
+  describe('add batch', () => {
+    const add = (type: string, title: string, rest: Record<string, unknown> = {}) => ({
+      type,
+      state: 'output-available' as const,
+      input: { action: 'create', fields: { title } },
+      output: { result: { id: title.toLowerCase(), title } },
+      ...rest,
+    });
+
+    it('takes creates on a Homestead resource, running or finished or failed', () => {
+      expect(addsUp(add('tool-todos', 'A'))).toBe(true);
+      expect(addsUp(add('tool-todos', 'A', { state: 'input-available', output: undefined }))).toBe(true);
+      expect(addsUp(add('tool-todos', 'A', { output: { error: 'nope' } }))).toBe(true);
+      // Waiting on the person, or refused: the call keeps its own card.
+      expect(addsUp(add('tool-todos', 'A', { state: 'approval-requested' }))).toBe(false);
+      expect(addsUp(add('tool-todos', 'A', { state: 'output-denied' }))).toBe(false);
+      expect(addsUp({ ...add('tool-todos', 'A'), input: { action: 'update', id: 'a' } })).toBe(false);
+      // Arguments still streaming in: not yet known to be a create.
+      expect(addsUp({ ...add('tool-todos', 'A'), state: 'input-streaming' as never, input: undefined })).toBe(false);
+      expect(addsUp(add('tool-mcp_ha__add', 'A'))).toBe(false);
+    });
+
+    it('folds adds per resource, apart from reads', () => {
+      expect(runKeyOf(add('tool-todos', 'A'))).toBe('adds:tool-todos');
+      expect(runKeyOf(add('tool-perks', 'A'))).toBe('adds:tool-perks');
+      expect(runKeyOf({ ...add('tool-perks', 'A'), input: { action: 'list' }, output: { result: { records: [] } } })).toBe('reads');
+      expect(runKeyOf({ ...add('tool-todos', 'A'), input: { action: 'update', id: 'a' } })).toBeNull();
+    });
+
+    it('sums up what was made, what is still running, and what failed', () => {
+      const batch = addBatch(
+        [
+          add('tool-todos', 'Eggs'),
+          add('tool-todos', 'Bread', { state: 'input-available', output: undefined }),
+          add('tool-todos', 'Milk', { output: { error: 'title is taken' } }),
+          add('tool-todos', 'Rice', { state: 'output-error', output: undefined, errorText: 'boom' }),
+          add('tool-todos', 'Tea'),
+        ],
+        recordTitle,
+      );
+      expect(batch).toEqual({
+        total: 5,
+        records: [
+          { id: 'eggs', title: 'Eggs' },
+          { id: 'tea', title: 'Tea' },
+        ],
+        pending: 1,
+        failed: [
+          { title: 'Milk', error: 'title is taken' },
+          { title: 'Rice', error: 'boom' },
+        ],
+      });
     });
   });
 });

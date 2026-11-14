@@ -36,8 +36,11 @@ const LIST_PREVIEW = 5;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** "Added todo", "Adding todo…", "Couldn't add todo", "3 groceries": the line that says what happened. */
-export function cardHeadline(props: Pick<ChatCardProps, 'action' | 'mode' | 'resource' | 'result'>): string {
+export function cardHeadline(
+  props: Pick<ChatCardProps, 'action' | 'mode' | 'resource' | 'result' | 'headline'>,
+): string {
   const { action, mode, resource, result } = props;
+  if (props.headline) return props.headline;
   const one = resourceLabel(resource).toLowerCase();
   const many = resourceLabel(resource, 'plural').toLowerCase();
 

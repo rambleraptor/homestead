@@ -2,8 +2,10 @@
  * A tool call on a resource, as a reply shows it: the card as its face (the
  * app's chat card for the action, else the generic one), the AI Elements
  * status badge, and a Details toggle that opens the raw parameters and
- * result underneath — so nothing the JSON showed is lost. MCP and search
- * tools don't come here; `ChatMessage` keeps the plain header for them.
+ * result underneath — so nothing the JSON showed is lost. Runs fold: reads
+ * into one quiet line (`ReadRollup`), adds to one resource into one card
+ * (`AddBatchCard`). MCP and search tools don't come here; `ChatMessage` keeps
+ * the plain header for them.
  */
 
 import { Suspense } from 'react';
@@ -23,15 +25,18 @@ import { CollapsibleTrigger } from '@rambleraptor/homestead-core/shared/componen
 import { resourceLabel } from '@rambleraptor/homestead-core/resources/display';
 import { Shimmer } from '@rambleraptor/homestead-core/shared/components/ai-elements/shimmer';
 import { ownerOf } from '@rambleraptor/homestead-core/records/owners';
+import { recordTitle } from '@rambleraptor/homestead-core/resources/display';
 import {
+  addBatch,
   cardActionOf,
   cardMode,
   chatCardFor,
   ownerForTool,
   toolOutcome,
+  type AddBatch,
   type CardOwner,
 } from '../cards';
-import { GenericActionCard } from './GenericActionCard';
+import { CardAppIcon, CardHeadline, GenericActionCard } from './GenericActionCard';
 
 export interface CardFaceProps {
   part: ToolUIPart;
@@ -61,7 +66,12 @@ export function CardFace({ part, owner, mode }: CardFaceProps) {
     error,
     ...(previous ? { previous } : {}),
   };
-  const custom = chatCardFor(owner, action);
+  return <ActionCard owner={owner} props={props} />;
+}
+
+/** The card for a call's props: the app's chat card for the action, else the generic one. */
+function ActionCard({ owner, props }: { owner: CardOwner; props: ChatCardProps }) {
+  const custom = chatCardFor(owner, props.action);
   if (!custom) return <GenericActionCard app={owner.app} {...props} />;
   const Card = getLazyComponent(custom.component);
   // The app's card is wrapped in the same test id and attributes the generic
@@ -70,7 +80,7 @@ export function CardFace({ part, owner, mode }: CardFaceProps) {
     <div
       className="min-w-0 text-sm"
       data-testid={`chat-card-${owner.def.singular}`}
-      data-action={action}
+      data-action={props.action}
       data-mode={props.mode}
     >
       <Suspense fallback={<GenericActionCard app={owner.app} marked={false} {...props} />}>
@@ -155,3 +165,82 @@ export function ReadRollup({ parts }: { parts: ToolUIPart[] }) {
   );
 }
 
+
+/** "Added 32 groceries", "Adding groceries… 12 of 32", "Couldn't add 3 groceries": where a batch stands. */
+export function addBatchHeadline(def: CardOwner['def'], batch: AddBatch): string {
+  const one = resourceLabel(def).toLowerCase();
+  const many = resourceLabel(def, 'plural').toLowerCase();
+  const named = (n: number) => `${n} ${n === 1 ? one : many}`;
+  if (batch.pending > 0) return `Adding ${many}… ${batch.total - batch.pending} of ${batch.total}`;
+  if (batch.records.length === 0) return `Couldn't add ${named(batch.failed.length)}`;
+  return `Added ${named(batch.records.length)}`;
+}
+
+/**
+ * Several adds to one resource in a row, as one card: "Added 32 groceries"
+ * over the records as the resource's `list` card shows them (the app's own —
+ * groceries by store, each with its checkbox — else the generic one), instead
+ * of a card apiece. While calls are still running it is a single progress
+ * line; any that failed are named under the list. Each call's own card, with
+ * its parameters and result, is behind Details.
+ */
+export function AddBatchCard({ parts, owner }: { parts: ToolUIPart[]; owner: CardOwner }) {
+  const batch = addBatch(parts, recordTitle);
+  const headline = addBatchHeadline(owner.def, batch);
+  const running = batch.pending > 0;
+  const badgeState = running ? 'input-available' : batch.failed.length > 0 ? 'output-error' : 'output-available';
+  return (
+    <Tool data-testid="chat-tool-batch" data-count={batch.total}>
+      <div className="flex items-start gap-2 p-3">
+        <div className="min-w-0 flex-1 text-sm">
+          {running || batch.records.length === 0 ? (
+            <CardHeadline icon={<CardAppIcon app={owner.app} />} running={running}>
+              {headline}
+            </CardHeadline>
+          ) : (
+            <ActionCard
+              owner={owner}
+              props={{
+                resource: owner.def,
+                action: 'list',
+                mode: 'done',
+                input: { action: 'list' },
+                result: { records: batch.records, count: batch.records.length },
+                headline,
+              }}
+            />
+          )}
+          {!running && batch.failed.length > 0 && (
+            <div className="mt-2 text-destructive" role="alert" data-testid="chat-batch-failed">
+              {batch.records.length > 0 && (
+                <p className="font-medium">
+                  {batch.failed.length === 1 ? 'One couldn’t be added:' : `${batch.failed.length} couldn’t be added:`}
+                </p>
+              )}
+              <ul className="list-disc space-y-0.5 pl-5">
+                {batch.failed.map((failure, i) => (
+                  <li key={i} className="break-words">
+                    {failure.title ? `${failure.title}: ${failure.error}` : failure.error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {getStatusBadge(badgeState)}
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label="Details" data-testid="chat-tool-batch-toggle">
+              <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+      </div>
+      <ToolContent className="space-y-2">
+        {parts.map((part) => (
+          <ResourceToolCall key={part.toolCallId} part={part} owner={owner} />
+        ))}
+      </ToolContent>
+    </Tool>
+  );
+}
